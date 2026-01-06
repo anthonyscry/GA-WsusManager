@@ -1,24 +1,28 @@
 <#
-=========================================================================================
- Script Name : WsusMaintenance.ps1
- Purpose     : Monthly WSUS maintenance automation
- Author      : Anthony
- Version     : 2.1.0
- Date        : 2025-12-11
- 
- Changes in 2.1:
- - Changed decline threshold from 12 months to 6 months
- - Keeps only last 6 months of updates active
- - More aggressive bloat prevention
- 
- Changes in 2.0:
- - Auto-starts SQL Server and WSUS services if stopped
- - Declines updates based on Microsoft RELEASE DATE (not import date)
- - Conservative approval: Only Critical/Security/Rollups/SPs/Updates <6mo old
- - Safety limit: Won't auto-approve >100 updates
- - Uses CreationDate from tbProperty (Microsoft's release date)
-=========================================================================================
+===============================================================================
+Script: WsusMaintenance.ps1
+Purpose: Monthly WSUS maintenance automation.
+Overview:
+  - Synchronizes WSUS, monitors download progress, and applies approvals.
+  - Runs WSUS cleanup tasks and SUSDB index/stat maintenance.
+  - Optionally runs an aggressive cleanup stage before the backup.
+Notes:
+  - Use -SkipUltimateCleanup to avoid heavy cleanup before backup.
+  - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
+===============================================================================
+Version: 2.2.0
+Date: 2025-12-11
+Changes:
+  - Integrated ultimate cleanup steps before backup (supersession + declined purge)
+  - Added opt-out switch for ultimate cleanup
+  - Earlier improvements: decline/approval policy adjustments and service checks
 #>
+
+[CmdletBinding()]
+param(
+    # Skip the heavy "ultimate cleanup" stage before the backup if needed.
+    [switch]$SkipUltimateCleanup
+)
 
 # Suppress prompts
 $ConfirmPreference = 'None'
@@ -35,7 +39,7 @@ Start-Transcript -Path $logFile
 
 function Write-Log($msg) { Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $msg" }
 
-Write-Log "Starting WSUS monthly maintenance v2.1"
+Write-Log "Starting WSUS monthly maintenance v2.2"
 
 # === CONNECT TO WSUS ===
 Write-Log "Connecting to WSUS..."
@@ -327,6 +331,7 @@ if ($allUpdates.Count -gt 0) {
 }
 
 # === CLEANUP ===
+# Run the built-in WSUS cleanup tasks to prune obsolete data/files.
 Write-Log "Running WSUS cleanup..."
 try {
     Import-Module UpdateServices -ErrorAction SilentlyContinue
@@ -394,6 +399,7 @@ SELECT
 }
 
 # === DATABASE MAINTENANCE ===
+# Index optimization and stats updates to keep SUSDB responsive.
 Write-Log "Database maintenance..."
 
 # Wait for any pending WSUS operations to complete
@@ -462,6 +468,169 @@ try {
     Write-Log "Statistics updated"
 } catch {
     Write-Warning "Statistics update failed: $($_.Exception.Message)"
+}
+
+# === ULTIMATE CLEANUP (SUPSESSION + DECLINED PURGE) ===
+# Optional heavy cleanup before backup to reduce DB size and bloat.
+if (-not $SkipUltimateCleanup) {
+    Write-Log "Running ultimate cleanup steps before backup..."
+
+    # Stop WSUS to reduce contention while manipulating SUSDB.
+    if ($wsusService.Status -eq "Running") {
+        Write-Log "Stopping WSUS Service for ultimate cleanup..."
+        try {
+            Stop-Service WSUSService -Force -ErrorAction Stop
+            Start-Sleep -Seconds 5
+            Write-Log "WSUS Service stopped"
+        } catch {
+            Write-Warning "Failed to stop WSUS Service: $($_.Exception.Message)"
+        }
+    }
+
+    # Remove supersession records for declined updates.
+    $cleanupDeclined = @"
+SET NOCOUNT ON;
+DECLARE @Deleted INT = 0
+
+DELETE rsu
+FROM tbRevisionSupersedesUpdate rsu
+INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
+WHERE r.State = 2  -- Declined
+
+SET @Deleted = @@ROWCOUNT
+SELECT @Deleted AS DeletedDeclined
+"@
+
+    try {
+        $result1 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+            -Query $cleanupDeclined -QueryTimeout 300
+        Write-Log "Removed $($result1.DeletedDeclined) supersession records for declined updates"
+    } catch {
+        Write-Warning "Declined supersession cleanup failed: $($_.Exception.Message)"
+    }
+
+    # Remove supersession records for superseded updates in batches.
+    $cleanupSuperseded = @"
+SET NOCOUNT ON;
+DECLARE @Deleted INT = 0
+DECLARE @BatchSize INT = 10000
+DECLARE @TotalDeleted INT = 0
+
+WHILE 1 = 1
+BEGIN
+    DELETE TOP (@BatchSize) rsu
+    FROM tbRevisionSupersedesUpdate rsu
+    INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
+    WHERE r.State = 3  -- Superseded
+
+    SET @Deleted = @@ROWCOUNT
+    SET @TotalDeleted = @TotalDeleted + @Deleted
+
+    IF @Deleted = 0 BREAK
+
+    IF @TotalDeleted % 50000 = 0
+        PRINT 'Deleted ' + CAST(@TotalDeleted AS VARCHAR) + ' supersession records...'
+
+    WAITFOR DELAY '00:00:01'
+END
+
+SELECT @TotalDeleted AS DeletedSuperseded
+"@
+
+    try {
+        $startTime = Get-Date
+        $result2 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+            -Query $cleanupSuperseded -QueryTimeout 0 -Verbose 4>&1
+
+        $result2 | Where-Object { $_ -is [string] } | ForEach-Object {
+            Write-Log $_
+        }
+
+        $duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)
+        $deleted = ($result2 | Where-Object { $_.DeletedSuperseded -ne $null }).DeletedSuperseded
+        Write-Log "Removed $deleted supersession records in $duration minutes"
+    } catch {
+        Write-Warning "Superseded supersession cleanup failed: $($_.Exception.Message)"
+    }
+
+    # Delete declined updates using the official spDeleteUpdate procedure.
+    try {
+        if (-not $allUpdates -or $allUpdates.Count -eq 0) {
+            Write-Log "Reloading updates for declined purge..."
+            $allUpdates = $wsus.GetUpdates()
+        }
+
+        $declinedIDs = @($allUpdates | Where-Object { $_.IsDeclined } |
+            Select-Object -ExpandProperty Id |
+            ForEach-Object { $_.UpdateId })
+
+        if ($declinedIDs.Count -gt 0) {
+            Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
+
+            $batchSize = 100
+            $totalDeleted = 0
+            $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
+            $currentBatch = 0
+
+            for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
+                $currentBatch++
+                $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+
+                foreach ($updateId in $batch) {
+                    $deleteQuery = @"
+DECLARE @LocalUpdateID int
+SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = '$updateId'
+IF @LocalUpdateID IS NOT NULL
+    EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
+"@
+
+                    try {
+                        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+                            -Query $deleteQuery -QueryTimeout 300 -ErrorAction SilentlyContinue | Out-Null
+                        $totalDeleted++
+                    } catch {
+                        # Continue on errors to avoid aborting the batch.
+                    }
+                }
+
+                if ($currentBatch % 5 -eq 0) {
+                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
+                }
+            }
+
+            Write-Log "Declined update purge complete: $totalDeleted deleted"
+        } else {
+            Write-Log "No declined updates found to delete"
+        }
+    } catch {
+        Write-Warning "Declined update purge failed: $($_.Exception.Message)"
+    }
+
+    # Optional shrink after heavy cleanup to reclaim space (can be slow).
+    try {
+        Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
+        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+            -Query "DBCC SHRINKDATABASE (SUSDB, 10)" -QueryTimeout 0 | Out-Null
+        Write-Log "SUSDB shrink completed"
+    } catch {
+        Write-Warning "SUSDB shrink failed: $($_.Exception.Message)"
+    }
+
+    # Start WSUS service back up after database maintenance.
+    $wsusService = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    if ($wsusService -and $wsusService.Status -ne "Running") {
+        Write-Log "Starting WSUS Service..."
+        try {
+            Start-Service WSUSService -ErrorAction Stop
+            Start-Sleep -Seconds 5
+            Write-Log "WSUS Service started"
+        } catch {
+            Write-Warning "Failed to start WSUS Service: $($_.Exception.Message)"
+        }
+    }
+} else {
+    Write-Log "Skipping ultimate cleanup before backup (SkipUltimateCleanup specified)."
 }
 
 # === BACKUP ===
