@@ -3,10 +3,10 @@
 <#
 ===============================================================================
 Script: Run-WsusSql.ps1
-Purpose: Run the combined WSUS + SQL Express setup workflow.
+Purpose: Run the WSUS + SQL Express setup workflow.
 Overview:
   - Runs install.ps1 to install SQL Express, SSMS, and WSUS.
-  - Validates the WSUS content path and optionally fixes issues.
+  - Optionally validates the WSUS content path and fixes issues.
 Notes:
   - Run as Administrator on the WSUS server.
 ===============================================================================
@@ -16,10 +16,12 @@ Notes:
     SQL Server instance name (default: .\SQLEXPRESS).
 .PARAMETER SkipInstall
     Skip running install.ps1.
-.PARAMETER SkipContentValidation
-    Skip running Check-WSUSContent.ps1.
+.PARAMETER RunContentValidation
+    Run Check-WSUSContent.ps1 after install.
 .PARAMETER FixContentIssues
     Automatically fix issues found during content validation.
+.PARAMETER FixIssues
+    Alias for FixContentIssues (kept for backward compatibility).
 #>
 
 [CmdletBinding()]
@@ -27,7 +29,8 @@ param(
     [string]$ContentPath = "C:\WSUS",
     [string]$SqlInstance = ".\SQLEXPRESS",
     [switch]$SkipInstall,
-    [switch]$SkipContentValidation,
+    [switch]$RunContentValidation,
+    [Alias("FixIssues")]
     [switch]$FixContentIssues
 )
 
@@ -68,18 +71,21 @@ if (-not $SkipInstall) {
     Write-Host "Skipping install.ps1 (SkipInstall specified)."
 }
 
-if (-not $SkipContentValidation) {
+if ($RunContentValidation) {
     # Build arguments for the validation script.
-    $args = @("-ContentPath", $ContentPath, "-SqlInstance", $SqlInstance)
+    $contentArgs = @(
+        "-ContentPath", $ContentPath,
+        "-SqlInstance", $SqlInstance
+    )
     if ($FixContentIssues) {
         # Ask the validator to fix issues it finds.
-        $args += "-FixIssues"
+        $contentArgs += "-FixIssues"
     }
 
     # Validate and optionally repair the WSUS content path setup.
-    Invoke-LocalScript -Path (Join-Path $scriptRoot "Check-WSUSContent.ps1") -Description "Validating WSUS content path" -Arguments $args
+    Invoke-LocalScript -Path (Join-Path $scriptRoot "Check-WSUSContent.ps1") -Description "Validating WSUS content path" -Arguments $contentArgs
 } else {
-    Write-Host "Skipping Check-WSUSContent.ps1 (SkipContentValidation specified)."
+    Write-Host "Skipping Check-WSUSContent.ps1 (RunContentValidation not specified)."
 }
 
 # Friendly guidance for follow-up tasks after the main flow finishes.

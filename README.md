@@ -12,7 +12,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
    - `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
    - `C:\WSUS\SQLDB\SSMS-Setup-ENU.exe` (SSMS)
 
-2. **Run the combined setup script** (installs SQL + WSUS, then validates content):
+2. **Run the install script** (installs SQL + WSUS):
    ```powershell
    powershell.exe -ExecutionPolicy Bypass -File .\Run-WsusSql.ps1
    ```
@@ -21,6 +21,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
    ```powershell
    .\Check-WSUSContent.ps1 -FixIssues
    ```
+   > `-FixIssues` is for the validator script only. Use `-RunContentValidation -FixContentIssues` (or `-FixIssues` alias) with `Run-WsusSql.ps1` if you want validation after install.
 
 4. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
 
@@ -49,23 +50,24 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ### Install / setup
 
-#### `Run-WsusSql.ps1` (combined flow)
-**What it does:** Runs the install script and then validates the WSUS content path/permissions.  
-**Why use it:** Recommended one-shot flow to install WSUS + SQL Express and confirm content health.  
+#### `Run-WsusSql.ps1` (install flow)
+**What it does:** Runs the install script for WSUS + SQL Express (validation is optional).  
+**Why use it:** Recommended install flow; run validation separately or opt into validation when needed.  
 **Where to run it:** On the **WSUS server** you are provisioning.
 
 ```powershell
-# Default: install + validate
+# Default: install only
 .\Run-WsusSql.ps1
 
-# Skip install (only validate)
-.\Run-WsusSql.ps1 -SkipInstall
+# Skip install (validation only)
+.\Run-WsusSql.ps1 -SkipInstall -RunContentValidation
 
-# Skip content validation
-.\Run-WsusSql.ps1 -SkipContentValidation
+# Run content validation after install
+.\Run-WsusSql.ps1 -RunContentValidation
 
-# Auto-fix any content path issues
-.\Run-WsusSql.ps1 -FixContentIssues
+# Run content validation and auto-fix issues
+.\Run-WsusSql.ps1 -RunContentValidation -FixContentIssues
+.\Run-WsusSql.ps1 -RunContentValidation -FixIssues  # Alias for FixContentIssues
 ```
 
 #### `install.ps1`

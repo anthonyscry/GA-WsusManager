@@ -64,14 +64,14 @@ if (-not (Test-Path $contentCheckScript)) {
 
 # Build arguments for the content validation script.
 Write-Host "Running WSUS content validation..." -ForegroundColor Yellow
-$checkArgs = @(
-    "-ContentPath", $ContentPath,
-    "-SqlInstance", $SqlInstance
-)
+$checkParams = @{
+    ContentPath = $ContentPath
+    SqlInstance = $SqlInstance
+}
 if ($FixContentIssues) {
     # Include remediation switch when requested.
-    $checkArgs += "-FixIssues"
+    $checkParams.FixIssues = $true
 }
 
 # Execute the WSUS content validation (and optional fix).
-& $contentCheckScript @checkArgs
+& $contentCheckScript @checkParams
