@@ -22,7 +22,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
    .\Check-WSUSContent.ps1 -FixIssues
    ```
 
-4. **Configure products/classifications** in the WSUS console, then synchronize.
+4. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
 
 ## Domain controller (GPO) setup
 
@@ -42,6 +42,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
 ```
 
 ## What the scripts do (by category)
+All script names below match the PowerShell files in the repo root and are grouped by their primary use.
 
 ### Install / setup
 
@@ -85,8 +86,8 @@ Restores a SUSDB backup and re-attaches WSUS to it.
 ### Maintenance / utility
 
 #### `WsusMaintenance.ps1`
-Monthly maintenance automation:
-- Syncs and updates the upstream (online) WSUS server
+Monthly maintenance automation (run on the **online** WSUS server):
+- Syncs and updates the upstream WSUS server
 - Monitors downloads
 - Declines old superseded updates
 - Runs cleanup tasks
