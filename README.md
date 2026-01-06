@@ -157,6 +157,15 @@ C:\WSUS\Scripts\            # Put these scripts here for consistency
 C:\WSUS\Logs\               # Log output
 ```
 
+## Online WSUS export location
+The **online WSUS server (Server LSJ)** exports the database and content to:
+
+```
+D:\WSUS-Exports
+```
+
+Copy from this location when moving updates to **airgapped WSUS servers**.
+
 ## Example usage
 
 ### Install WSUS + SQL Express
@@ -198,6 +207,18 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Reset-WsusContent.p
 ### Create or import WSUS GPOs
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+```
+
+## Robocopy examples (moving exports to airgapped WSUS servers)
+Examples below mirror `Robocopy_example.txt` and show common transfer paths for the WSUS export data.
+
+```powershell
+robocopy "D:\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+robocopy "\\10.120.129.172\d\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+
+robocopy "\\10.120.129.172\d\WSUS-Exports" "\\10.120.129.116\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+
+robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
 ```
 
 ## Notes and known behaviors
