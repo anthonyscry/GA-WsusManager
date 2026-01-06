@@ -58,6 +58,25 @@ function Get-SAPassword {
     }
 }
 
+function Stop-SqlExpressSetup {
+    param(
+        [string]$SetupPath
+    )
+
+    $setupProcesses = Get-CimInstance Win32_Process -Filter "Name='setup.exe'" |
+        Where-Object {
+            $_.CommandLine -and $_.CommandLine -like "*$SetupPath*setup.exe*"
+        }
+
+    if ($setupProcesses) {
+        Write-Host "    Detected SQL setup already running from extraction. Stopping to avoid conflict."
+        foreach ($process in $setupProcesses) {
+            Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Seconds 3
+    }
+}
+
 # Get or retrieve password
 if (!(Test-Path $PasswordFile)) {
     $SA_Password = Get-SAPassword
@@ -80,8 +99,10 @@ if (!(Test-Path $Extractor)) { throw "SQL extractor missing at $Extractor" }
 if (!(Test-Path "$ExtractPath\setup.exe")) {
     Start-Process $Extractor -ArgumentList "/Q", "/x:$ExtractPath" -Wait -NoNewWindow
     Write-Host "    Extraction complete."
+    Stop-SqlExpressSetup -SetupPath $ExtractPath
 } else {
     Write-Host "    Already extracted."
+    Stop-SqlExpressSetup -SetupPath $ExtractPath
 }
 
 # =====================================================================
