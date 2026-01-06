@@ -29,6 +29,27 @@ Write-Log "=== WSUS Database Restore Script ===" "Cyan"
 $ContentDir = "C:\WSUS"
 $SQLInstance = ".\SQLEXPRESS"
 
+# Find sqlcmd executable (PATH or common install locations)
+$sqlCmdCandidates = @(
+    (Get-Command sqlcmd.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source),
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\110\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\120\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\130\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\140\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe"
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+
+if (-not $sqlCmdCandidates) {
+    Write-Log "ERROR: sqlcmd.exe not found. Install SQL Server Command Line Utilities or add sqlcmd to PATH." "Red"
+    exit 1
+}
+
+$SqlCmdExe = $sqlCmdCandidates
+Write-Log "Using sqlcmd: $SqlCmdExe" "Gray"
+
 # Find newest backup file in content directory
 $latestBackup = Get-ChildItem -Path $ContentDir -Filter "*.bak" -File -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending |
@@ -133,7 +154,7 @@ BEGIN
     ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 END
 "@
-    sqlcmd -S $SQLInstance -Q $setSingleUser -b
+    & $SqlCmdExe -S $SQLInstance -Q $setSingleUser -b
     Write-Log "  Database set to single user mode" "Gray"
 } catch {
     Write-Log "  Database doesn't exist yet or already in single user mode" "Gray"
@@ -143,7 +164,7 @@ Write-Log "  Restoring from backup (this may take 2-5 minutes)..." "Gray"
 $restoreCommand = "RESTORE DATABASE SUSDB FROM DISK='$BackupFile' WITH REPLACE, STATS=10"
 
 try {
-    sqlcmd -S $SQLInstance -Q $restoreCommand -b
+    & $SqlCmdExe -S $SQLInstance -Q $restoreCommand -b
     if ($LASTEXITCODE -eq 0) {
         Write-Log "  ✅ Database restored successfully" "Green"
     } else {
@@ -157,7 +178,7 @@ try {
 
 Write-Log "  Setting database to multi-user mode..." "Gray"
 try {
-    sqlcmd -S $SQLInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b
+    & $SqlCmdExe -S $SQLInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b
     Write-Log "  ✅ Database set to multi-user mode" "Green"
 } catch {
     Write-Log "  ⚠️ Warning: Could not set multi-user mode - $($_.Exception.Message)" "Yellow"
@@ -274,7 +295,7 @@ foreach ($svc in $services) {
 Write-Log "`nDatabase Size:" "Yellow"
 try {
     $sizeQuery = "SELECT CAST(SUM(size) * 8.0 / 1024 / 1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
-    $dbSize = sqlcmd -S $SQLInstance -Q $sizeQuery -h -1 -W
+    $dbSize = & $SqlCmdExe -S $SQLInstance -Q $sizeQuery -h -1 -W
     Write-Log "  SUSDB Size: $($dbSize.Trim()) GB" "Green"
 } catch {
     Write-Log "  ⚠️ Could not check database size" "Yellow"
