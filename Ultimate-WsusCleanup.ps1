@@ -1,9 +1,18 @@
-#
-# Ultimate WSUS Cleanup Script
-# Combines: Aggressive Supersession Cleanup + Remove Declined Updates + Full Optimization
-# Run this quarterly or when database becomes bloated
-#
+<#
+===============================================================================
+Script: Ultimate-WsusCleanup.ps1
+Purpose: Aggressive WSUS database cleanup for large or bloated SUSDBs.
+Overview:
+  - Removes supersession records for declined/superseded updates.
+  - Permanently deletes declined update metadata.
+  - Adds indexes, rebuilds indexes, updates stats, and shrinks DB.
+Notes:
+  - Expect WSUS to be offline during this run.
+  - Use quarterly or when DB performance degrades.
+===============================================================================
+#>
 
+# Keep the script moving even if a step fails.
 $ErrorActionPreference = 'Continue'
 
 Write-Host "`n===================================================================" -ForegroundColor Cyan
@@ -19,6 +28,7 @@ Write-Host "  6. Shrinks database"
 Write-Host "`nWARNING: WSUS will be offline for 30-90 minutes`n" -ForegroundColor Red
 
 # === GET CURRENT STATE ===
+# Load WSUS APIs and capture current health/size stats so we can compare later.
 Write-Host "=== Current State ===" -ForegroundColor Cyan
 
 [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
@@ -40,6 +50,7 @@ SELECT
     (SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) FROM sys.master_files WHERE database_id=DB_ID('SUSDB')) AS SizeGB
 "@
 
+# Query current SUSDB size and supersession counts.
 $beforeDb = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database master -Query $beforeDbQuery
 
 Write-Host "`nCurrent Database State:" -ForegroundColor Yellow
@@ -50,7 +61,7 @@ Write-Host "  Active updates: $($beforeStats.ActiveUpdates)"
 Write-Host "  Supersession records: $($beforeDb.SupersessionRecords)"
 Write-Host "  Database size: $($beforeDb.SizeGB) GB"
 
-# Calculate expected cleanup
+# Calculate expected cleanup (rough estimates).
 $expectedSupersessionRemoval = $beforeDb.DeclinedRevisions + $beforeDb.SupersededRevisions
 $expectedSpaceSavings = [math]::Round($beforeStats.DeclinedUpdates * 0.0001 + ($expectedSupersessionRemoval * 0.000001), 2)
 
@@ -60,6 +71,7 @@ Write-Host "  Delete ~$($beforeStats.DeclinedUpdates) declined updates"
 Write-Host "  Free ~$expectedSpaceSavings GB (approximate)"
 Write-Host "  Result: ~$($beforeStats.ActiveUpdates) active updates remaining"
 
+# Require explicit confirmation before heavy operations.
 $response = Read-Host "`nProceed with ultimate cleanup? (yes/no)"
 if ($response -ne "yes") {
     Write-Host "Cancelled." -ForegroundColor Yellow
@@ -67,6 +79,7 @@ if ($response -ne "yes") {
 }
 
 # === STOP WSUS SERVICE ===
+# Stop WSUS to avoid contention while modifying SUSDB.
 Write-Host "`n=== Step 1: Stop WSUS Service ===" -ForegroundColor Cyan
 Write-Host "Stopping WSUS service..." -ForegroundColor Yellow
 
@@ -80,8 +93,10 @@ try {
 }
 
 # === REMOVE SUPERSESSION RECORDS ===
+# Step 2 removes supersession rows that point to declined/superseded updates.
 Write-Host "`n=== Step 2: Remove Supersession Records ===" -ForegroundColor Cyan
 
+# Declined updates: remove supersession rows first.
 Write-Host "Removing supersession records for declined updates..." -ForegroundColor Yellow
 $cleanupDeclined = @"
 SET NOCOUNT ON;
@@ -104,6 +119,7 @@ try {
     Write-Warning "Failed: $($_.Exception.Message)"
 }
 
+# Superseded updates: delete in batches to avoid giant locks.
 Write-Host "`nRemoving supersession records for superseded updates (10-20 minutes)..." -ForegroundColor Yellow
 $cleanupSuperseded = @"
 SET NOCOUNT ON;
@@ -149,13 +165,14 @@ try {
 }
 
 # === DELETE DECLINED UPDATES ===
+# Step 3 removes the update metadata via spDeleteUpdate.
 Write-Host "`n=== Step 3: Delete Declined Updates ===" -ForegroundColor Cyan
 
 if ($beforeStats.DeclinedUpdates -gt 0) {
     Write-Host "Permanently deleting $($beforeStats.DeclinedUpdates) declined updates (20-60 minutes)..." -ForegroundColor Yellow
     Write-Host "This uses the official WSUS spDeleteUpdate stored procedure`n" -ForegroundColor Gray
     
-    # Get list of declined update IDs
+    # Get list of declined update IDs.
     $declinedIDs = @($allUpdates | Where-Object { $_.IsDeclined } | 
         Select-Object -ExpandProperty Id | 
         ForEach-Object { $_.UpdateId })

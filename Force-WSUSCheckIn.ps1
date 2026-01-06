@@ -1,8 +1,14 @@
 <#
-.SYNOPSIS
-    Force Windows Update Client to Check In with WSUS Server
-.DESCRIPTION
-    Restarts Windows Update services, clears cache if needed, and forces immediate check-in with WSUS
+===============================================================================
+Script: Force-WSUSCheckIn.ps1
+Purpose: Force a Windows Update client to check in with WSUS.
+Overview:
+  - Stops update services and optionally clears SoftwareDistribution.
+  - Resets WSUS client identity for re-registration.
+  - Triggers detection/reporting via multiple methods.
+Notes:
+  - Run as Administrator on the client device.
+===============================================================================
 .PARAMETER ClearCache
     If specified, clears the Windows Update cache (SoftwareDistribution folder)
 #>
@@ -51,12 +57,12 @@ foreach ($service in $services) {
         if ($svc.Status -eq "Running") {
             Write-Info "  Stopping $service..."
             Stop-Service $service -Force -ErrorAction Stop
-            Write-Success "  ✓ $service stopped"
+            Write-Success "  OK $service stopped"
         } else {
             Write-Info "  $service already stopped"
         }
     } catch {
-        Write-Warning "  ⚠ Could not stop $service : $_"
+        Write-Warning "  WARN Could not stop $service : $_"
     }
 }
 
@@ -77,12 +83,12 @@ if ($ClearCache) {
         if (Test-Path $sdPath) {
             Write-Info "  Backing up SoftwareDistribution folder..."
             Rename-Item $sdPath $backupPath -Force -ErrorAction Stop
-            Write-Success "  ✓ Cache cleared (backup created)"
+            Write-Success "  OK Cache cleared (backup created)"
         } else {
             Write-Info "  No cache to clear"
         }
     } catch {
-        Write-Failure "  ✗ Error clearing cache: $_"
+        Write-Failure "  FAIL Error clearing cache: $_"
     }
 } else {
     Write-Info "[2/6] Skipping cache clear (use -ClearCache to enable)"
@@ -105,16 +111,16 @@ try {
             # Remove SusClientId and AccountDomainSid to force re-registration
             if ($props.PSObject.Properties.Name -contains "SusClientId") {
                 Remove-ItemProperty -Path $regPath -Name "SusClientId" -ErrorAction SilentlyContinue
-                Write-Success "  ✓ Removed SusClientId"
+                Write-Success "  OK Removed SusClientId"
             }
             if ($props.PSObject.Properties.Name -contains "SusClientIDValidation") {
                 Remove-ItemProperty -Path $regPath -Name "SusClientIDValidation" -ErrorAction SilentlyContinue
-                Write-Success "  ✓ Removed SusClientIDValidation"
+                Write-Success "  OK Removed SusClientIDValidation"
             }
         }
     }
 } catch {
-    Write-Warning "  ⚠ Error resetting client ID: $_"
+    Write-Warning "  WARN Error resetting client ID: $_"
 }
 
 # ===========================
@@ -127,12 +133,12 @@ foreach ($service in $services) {
         if ($svc.Status -ne "Running") {
             Write-Info "  Starting $service..."
             Start-Service $service -ErrorAction Stop
-            Write-Success "  ✓ $service started"
+            Write-Success "  OK $service started"
         } else {
             Write-Info "  $service already running"
         }
     } catch {
-        Write-Warning "  ⚠ Could not start $service : $_"
+        Write-Warning "  WARN Could not start $service : $_"
     }
 }
 
@@ -163,10 +169,10 @@ try {
     $searchResult = $updateSearcher.Search("IsInstalled=0")
     
     $updateCount = $searchResult.Updates.Count
-    Write-Success "  ✓ Found $updateCount updates available"
+    Write-Success "  OK Found $updateCount updates available"
     
 } catch {
-    Write-Warning "  ⚠ Error forcing detection: $_"
+    Write-Warning "  WARN Error forcing detection: $_"
 }
 
 # ===========================
@@ -179,23 +185,23 @@ try {
     $useWUServer = Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name UseWUServer -ErrorAction SilentlyContinue
     
     if ($wuServer) {
-        Write-Success "  ✓ WSUS Server: $($wuServer.WUServer)"
+        Write-Success "  OK WSUS Server: $($wuServer.WUServer)"
     } else {
-        Write-Warning "  ⚠ No WSUS server configured (will use Windows Update)"
+        Write-Warning "  WARN No WSUS server configured (will use Windows Update)"
     }
     
     if ($wuStatusServer) {
-        Write-Success "  ✓ WSUS Status Server: $($wuStatusServer.WUStatusServer)"
+        Write-Success "  OK WSUS Status Server: $($wuStatusServer.WUStatusServer)"
     }
     
     if ($useWUServer -and $useWUServer.UseWUServer -eq 1) {
-        Write-Success "  ✓ Using WSUS server (UseWUServer = 1)"
+        Write-Success "  OK Using WSUS server (UseWUServer = 1)"
     } else {
-        Write-Warning "  ⚠ UseWUServer not enabled or not set to 1"
+        Write-Warning "  WARN UseWUServer not enabled or not set to 1"
     }
     
 } catch {
-    Write-Warning "  ⚠ Error checking WSUS config: $_"
+    Write-Warning "  WARN Error checking WSUS config: $_"
 }
 
 # ===========================
@@ -205,8 +211,8 @@ Write-Info ""
 Write-Info "=========================================="
 Write-Info "SUMMARY"
 Write-Info "=========================================="
-Write-Success "✓ Services restarted"
-Write-Success "✓ Detection and reporting initiated"
+Write-Success "OK Services restarted"
+Write-Success "OK Detection and reporting initiated"
 Write-Info ""
 Write-Info "Next steps:"
 Write-Info "1. Wait 5-10 minutes for the client to check in with WSUS"

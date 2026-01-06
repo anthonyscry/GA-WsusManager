@@ -1,9 +1,17 @@
-# =====================================================================
-#  FULL AUTOMATED SQL EXPRESS 2022 + SSMS + WSUS (SQL MODE)
-#  ZERO GUI - ZERO PROMPTS - NO REBOOT NEEDED
-#  Minimal console output + full log at C:\SQLDB\install.log
-#  Includes all configuration settings from autofix/checkwsuscontent
-# =====================================================================
+<#
+===============================================================================
+Script: install.ps1
+Purpose: Fully automated SQL Express 2022 + SSMS + WSUS installation (SQL mode).
+Overview:
+  - Extracts SQL Express and installs SQL Engine + SSMS silently.
+  - Enables SQL networking, firewall rules, and WSUS role/services.
+  - Configures WSUS content path, IIS virtual directory, and permissions.
+Notes:
+  - Logs to C:\SQLDB\install.log
+  - Requires installer files in C:\SQLDB
+  - Content folder must be C:\WSUS for correct DB file registration.
+===============================================================================
+#>
 
 # -------------------------
 # CONFIGURATION

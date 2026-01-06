@@ -1,9 +1,17 @@
 #Requires -RunAsAdministrator
 
-# =====================================================================
-# WSUS + SQL SERVER AUTO-FIX SCRIPT
-# Detects common issues and offers automated fixes
-# =====================================================================
+<#
+===============================================================================
+Script: autofix.ps1
+Purpose: Detect and optionally fix common WSUS + SQL Server issues.
+Overview:
+  - Checks SQL, WSUS, IIS services, protocols, and firewall rules.
+  - Provides optional auto-fixes for common misconfigurations.
+  - Summarizes issues and proposed remediation steps.
+Notes:
+  - Run as Administrator on the WSUS server.
+===============================================================================
+#>
 
 $ErrorActionPreference = "Continue"
 $issues = @()
