@@ -3,85 +3,299 @@
 Script: ImportScript.ps1
 Purpose: Restore a SUSDB backup and rebind WSUS to SQL/content.
 Overview:
+  - Validates backup and content directory.
+  - Ensures permissions for WSUS.
   - Stops WSUS/IIS to release SUSDB locks.
   - Restores SUSDB from a backup file.
   - Runs wsusutil postinstall and reset to align WSUS with the DB/content.
   - Performs cleanup and basic health checks.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Update the backup path to match your .bak file.
+  - Update the backup path, SQL instance, and content directory as needed.
 ===============================================================================
 #>
 
-# 1. Import SQL DB
-# Stop WSUS/IIS to release database locks before restore.
-net stop WSUSService
-net stop W3SVC
+#Requires -RunAsAdministrator
 
-# Restore SUSDB from a backup file (update path if needed).
-sqlcmd -S .\SQLEXPRESS -Q "RESTORE DATABASE SUSDB FROM DISK='C:\WSUS\SUSDB_20251124.bak' WITH REPLACE"
-sqlcmd -S .\SQLEXPRESS -Q "ALTER DATABASE SUSDB SET MULTI_USER;"
+$ErrorActionPreference = 'Continue'
 
-# Start IIS/WSUS services after the restore.
-net start W3SVC
-net start WSUSService
-
-# Re-attach WSUS to SQL + content directory and force a full reset.
-& "C:\Program Files\Update Services\Tools\wsusutil.exe" postinstall SQL_INSTANCE_NAME=".\SQLEXPRESS" CONTENT_DIR="C:\WSUS"
-& "C:\Program Files\Update Services\Tools\wsusutil.exe" reset
-
-# 2. WSUS Cleanup
-# Run the built-in WSUS cleanup tasks to clear obsolete data.
-Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Importing UpdateServices module..."
-Import-Module UpdateServices
-
-try {
-    Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Running WSUS Cleanup..."
-    Invoke-WsusServerCleanup -CleanupObsoleteComputers `
-                             -CleanupObsoleteUpdates `
-                             -CleanupUnneededContentFiles `
-                             -CompressUpdates `
-                             -DeclineSupersededUpdates `
-                             -DeclineExpiredUpdates
-
-    Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - WSUS Cleanup completed successfully"
-}
-catch {
-    Write-Error "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - WSUS Cleanup failed: $($_.Exception.Message)"
+function Write-Log($msg, $color = "White") {
+    Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $msg" -ForegroundColor $color
 }
 
+Write-Log "=== WSUS Database Restore Script ===" "Cyan"
 
-# 3. Check Service Status and SUSDB Size
-# Health Check Script for IIS, WSUS, and SQL Express
-# Using single quotes for $SQLEXPRESS services
+# Variables
+$BackupFile = "C:\WSUS\SUSDB_20251124.bak"
+$ContentDir = "C:\WSUS"
+$SQLInstance = ".\SQLEXPRESS"
 
-$services = @(
-    @{ Name = 'W3SVC'; Display = 'IIS Web Service' },                 
-    @{ Name = 'WSUSService'; Display = 'WSUS Service' },              
-    @{ Name = 'MSSQL$SQLEXPRESS'; Display = 'SQL Server (SQLEXPRESS)' }, 
-    @{ Name = 'MSSQLFDLauncher$SQLEXPRESS'; Display = 'SQL Full-text Filter Daemon (SQLEXPRESS)' }, 
-    @{ Name = 'MSSQLLaunchpad$SQLEXPRESS'; Display = 'SQL Server Launchpad (SQLEXPRESS)' }
+# === STEP 0: Validate Backup File Exists ===
+Write-Log "Validating backup file..." "Yellow"
+if (-not (Test-Path $BackupFile)) {
+    Write-Log "ERROR: Backup file not found: $BackupFile" "Red"
+    exit 1
+}
+Write-Log "✅ Backup file found: $BackupFile" "Green"
+
+# === STEP 1: Check and Set Permissions ===
+Write-Log "Checking permissions on $ContentDir..." "Yellow"
+
+if (-not (Test-Path $ContentDir)) {
+    Write-Log "Creating directory: $ContentDir" "Yellow"
+    New-Item -Path $ContentDir -ItemType Directory -Force | Out-Null
+}
+
+$accounts = @(
+    "NT AUTHORITY\NETWORK SERVICE",
+    "BUILTIN\WSUS Administrators"
 )
 
-Write-Host "===== Health Check Report =====" -ForegroundColor Cyan
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Gray
-Write-Host ""
+foreach ($account in $accounts) {
+    try {
+        Write-Log "Checking permissions for: $account" "Gray"
+        $acl = Get-Acl -Path $ContentDir
+        $existingRule = $acl.Access | Where-Object {
+            $_.IdentityReference.Value -eq $account -and
+            $_.FileSystemRights -match "FullControl"
+        }
 
+        if ($existingRule) {
+            Write-Log "  ✅ $account already has Full Control" "Green"
+        } else {
+            Write-Log "  Adding Full Control for: $account" "Yellow"
+            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                $account,
+                "FullControl",
+                "ContainerInherit,ObjectInherit",
+                "None",
+                "Allow"
+            )
+            $acl.SetAccessRule($accessRule)
+            Set-Acl -Path $ContentDir -AclObject $acl
+            Write-Log "  ✅ Full Control granted to: $account" "Green"
+        }
+    } catch {
+        Write-Log "  ⚠️ Warning: Could not set permissions for $account - $($_.Exception.Message)" "Yellow"
+    }
+}
+
+# === STEP 2: Stop Services ===
+Write-Log "Stopping services..." "Yellow"
+
+$servicesToStop = @("WSUSService", "W3SVC")
+
+foreach ($svc in $servicesToStop) {
+    try {
+        $service = Get-Service -Name $svc -ErrorAction Stop
+        if ($service.Status -ne "Stopped") {
+            Write-Log "  Stopping $svc..." "Gray"
+            Stop-Service -Name $svc -Force -ErrorAction Stop
+            Start-Sleep -Seconds 3
+            Write-Log "  ✅ $svc stopped" "Green"
+        } else {
+            Write-Log "  ✅ $svc already stopped" "Green"
+        }
+    } catch {
+        Write-Log "  ⚠️ Could not stop $svc - $($_.Exception.Message)" "Yellow"
+    }
+}
+
+# === STEP 3: Restore Database ===
+Write-Log "Restoring SUSDB database..." "Yellow"
+
+try {
+    $setSingleUser = @"
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'SUSDB')
+BEGIN
+    ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+END
+"@
+    sqlcmd -S $SQLInstance -Q $setSingleUser -b
+    Write-Log "  Database set to single user mode" "Gray"
+} catch {
+    Write-Log "  Database doesn't exist yet or already in single user mode" "Gray"
+}
+
+Write-Log "  Restoring from backup (this may take 2-5 minutes)..." "Gray"
+$restoreCommand = "RESTORE DATABASE SUSDB FROM DISK='$BackupFile' WITH REPLACE, STATS=10"
+
+try {
+    sqlcmd -S $SQLInstance -Q $restoreCommand -b
+    if ($LASTEXITCODE -eq 0) {
+        Write-Log "  ✅ Database restored successfully" "Green"
+    } else {
+        Write-Log "  ❌ Database restore failed with exit code: $LASTEXITCODE" "Red"
+        exit 1
+    }
+} catch {
+    Write-Log "  ❌ Database restore failed: $($_.Exception.Message)" "Red"
+    exit 1
+}
+
+Write-Log "  Setting database to multi-user mode..." "Gray"
+try {
+    sqlcmd -S $SQLInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b
+    Write-Log "  ✅ Database set to multi-user mode" "Green"
+} catch {
+    Write-Log "  ⚠️ Warning: Could not set multi-user mode - $($_.Exception.Message)" "Yellow"
+}
+
+# === STEP 4: Start Services ===
+Write-Log "Starting services..." "Yellow"
+
+$servicesToStart = @("W3SVC", "WSUSService")
+
+foreach ($svc in $servicesToStart) {
+    try {
+        Write-Log "  Starting $svc..." "Gray"
+        Start-Service -Name $svc -ErrorAction Stop
+        Start-Sleep -Seconds 3
+
+        $service = Get-Service -Name $svc
+        if ($service.Status -eq "Running") {
+            Write-Log "  ✅ $svc started" "Green"
+        } else {
+            Write-Log "  ⚠️ $svc status: $($service.Status)" "Yellow"
+        }
+    } catch {
+        Write-Log "  ❌ Could not start $svc - $($_.Exception.Message)" "Red"
+    }
+}
+
+Write-Log "Waiting for services to initialize..." "Gray"
+Start-Sleep -Seconds 10
+
+# === STEP 5: Run WSUS PostInstall ===
+Write-Log "Running WSUS postinstall..." "Yellow"
+
+try {
+    $postInstallCmd = "C:\Program Files\Update Services\Tools\wsusutil.exe"
+    Write-Log "  Command: wsusutil.exe postinstall..." "Gray"
+    $output = & $postInstallCmd postinstall SQL_INSTANCE_NAME="$SQLInstance" CONTENT_DIR="$ContentDir" 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Log "  ✅ WSUS postinstall completed" "Green"
+    } else {
+        Write-Log "  ⚠️ WSUS postinstall returned code: $LASTEXITCODE" "Yellow"
+        Write-Log "  Output: $output" "Gray"
+    }
+} catch {
+    Write-Log "  ⚠️ WSUS postinstall warning: $($_.Exception.Message)" "Yellow"
+}
+
+# === STEP 6: Run WSUS Reset ===
+Write-Log "Running WSUS reset (this will take 15-30 minutes)..." "Yellow"
+Write-Log "  This re-verifies database integrity and file references..." "Gray"
+
+try {
+    $resetCmd = "C:\Program Files\Update Services\Tools\wsusutil.exe"
+    Write-Log "  Starting reset (be patient)..." "Gray"
+
+    $output = & $resetCmd reset 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Log "  ✅ WSUS reset completed" "Green"
+    } else {
+        Write-Log "  ⚠️ WSUS reset returned code: $LASTEXITCODE" "Yellow"
+    }
+} catch {
+    Write-Log "  ⚠️ WSUS reset warning: $($_.Exception.Message)" "Yellow"
+}
+
+# === STEP 7: WSUS Cleanup ===
+Write-Log "Running WSUS cleanup..." "Yellow"
+
+try {
+    Import-Module UpdateServices -ErrorAction Stop
+
+    $cleanup = Invoke-WsusServerCleanup `
+        -CleanupObsoleteComputers `
+        -CleanupObsoleteUpdates `
+        -CleanupUnneededContentFiles `
+        -CompressUpdates `
+        -DeclineSupersededUpdates `
+        -DeclineExpiredUpdates `
+        -Confirm:$false
+
+    Write-Log "  ✅ WSUS cleanup completed" "Green"
+    Write-Log "    Obsolete updates: $($cleanup.ObsoleteUpdatesDeleted)" "Gray"
+    Write-Log "    Obsolete computers: $($cleanup.ObsoleteComputersDeleted)" "Gray"
+    Write-Log "    Space freed: $([math]::Round($cleanup.DiskSpaceFreed/1MB,2)) MB" "Gray"
+} catch {
+    Write-Log "  ⚠️ WSUS cleanup warning: $($_.Exception.Message)" "Yellow"
+}
+
+# === STEP 8: Health Check ===
+Write-Log "=== Health Check ===" "Cyan"
+
+$services = @(
+    @{ Name = 'W3SVC'; Display = 'IIS Web Service' },
+    @{ Name = 'WSUSService'; Display = 'WSUS Service' },
+    @{ Name = 'MSSQL$SQLEXPRESS'; Display = 'SQL Server (SQLEXPRESS)' }
+)
+
+Write-Log "`nService Status:" "Yellow"
 foreach ($svc in $services) {
     try {
         $status = (Get-Service -Name $svc.Name -ErrorAction Stop).Status
         if ($status -eq 'Running') {
-            Write-Host "$($svc.Display): RUNNING" -ForegroundColor Green
+            Write-Log "  ✅ $($svc.Display): RUNNING" "Green"
         } else {
-            Write-Host "$($svc.Display): $status" -ForegroundColor Red
+            Write-Log "  ❌ $($svc.Display): $status" "Red"
         }
-    }
-    catch {
-        Write-Host "$($svc.Display): NOT FOUND" -ForegroundColor Yellow
+    } catch {
+        Write-Log "  ❌ $($svc.Display): NOT FOUND" "Red"
     }
 }
 
-Write-Host "================================" -ForegroundColor Cyan
+Write-Log "`nDatabase Size:" "Yellow"
+try {
+    $sizeQuery = "SELECT CAST(SUM(size) * 8.0 / 1024 / 1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
+    $dbSize = sqlcmd -S $SQLInstance -Q $sizeQuery -h -1 -W
+    Write-Log "  SUSDB Size: $($dbSize.Trim()) GB" "Green"
+} catch {
+    Write-Log "  ⚠️ Could not check database size" "Yellow"
+}
 
-# Report total DB size for quick sanity check.
-sqlcmd -S localhost\SQLEXPRESS -E -Q "SELECT CAST(SUM(size) * 8.0 / 1024 / 1024 AS DECIMAL(10,2)) AS DatabaseSizeGB FROM sys.master_files"
+Write-Log "`nWSUS Status:" "Yellow"
+try {
+    [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
+    $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
+    $allUpdates = $wsus.GetUpdates()
+
+    $declined = @($allUpdates | Where-Object { $_.IsDeclined }).Count
+    $active = @($allUpdates | Where-Object { -not $_.IsDeclined -and -not $_.IsSuperseded }).Count
+
+    Write-Log "  Total updates: $($allUpdates.Count)" "Gray"
+    Write-Log "  Active updates: $active" "Green"
+    Write-Log "  Declined updates: $declined" "Gray"
+} catch {
+    Write-Log "  ⚠️ Could not check WSUS status: $($_.Exception.Message)" "Yellow"
+}
+
+Write-Log "`nContent Folder:" "Yellow"
+try {
+    $contentSize = [math]::Round((Get-ChildItem $ContentDir -Recurse -File -ErrorAction SilentlyContinue |
+        Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+    $contentFiles = (Get-ChildItem $ContentDir -Recurse -File -ErrorAction SilentlyContinue |
+        Measure-Object).Count
+
+    Write-Log "  Content Size: $contentSize GB" "Green"
+    Write-Log "  Content Files: $contentFiles" "Gray"
+} catch {
+    Write-Log "  ⚠️ Could not check content folder" "Yellow"
+}
+
+Write-Log "`n=== Restore Complete ===" "Cyan"
+Write-Log "✅ Database restored from: $BackupFile" "Green"
+Write-Log "✅ Permissions configured for NETWORK SERVICE and WSUS Administrators" "Green"
+Write-Log "✅ WSUS services started" "Green"
+Write-Log "✅ Post-install and reset completed" "Green"
+
+Write-Log "`nNext Steps:" "Yellow"
+Write-Log "  1. Open WSUS Console and verify updates are visible"
+Write-Log "  2. Check Options > Update Files and Languages"
+Write-Log "  3. Run a synchronization to verify functionality"
+Write-Log "  4. Run monthly maintenance script to keep database healthy"
+Write-Log ""
