@@ -93,7 +93,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 **Why use it:** Rehydrates WSUS from a known-good database backup (e.g., for offline/airgapped servers).  
 **Where to run it:** On the **WSUS server** that will host the restored database.
 
-> **Note:** the backup path is currently hard-coded:
+> **Note:** the backup path is currently hard-coded. Rename or update it to the latest `.bak` file before running:
 > `C:\WSUS\SUSDB_20251124.bak`
 
 ---
