@@ -22,7 +22,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
    .\Check-WSUSContent.ps1 -FixIssues
    ```
 
-4. **Configure products/classifications** in the WSUS console, then synchronize.
+4. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
 
 ## Domain controller (GPO) setup
 
@@ -41,9 +41,12 @@ powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
   -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
-## What the scripts do
+## What the scripts do (by category)
+All script names below match the PowerShell files in the repo root and are grouped by their primary use.
 
-### `Run-WsusSql.ps1` (new, combined flow)
+### Install / setup
+
+#### `Run-WsusSql.ps1` (combined flow)
 Runs the install script and then validates the WSUS content path/permissions.
 
 ```powershell
@@ -60,7 +63,7 @@ Runs the install script and then validates the WSUS content path/permissions.
 .\Run-WsusSql.ps1 -FixContentIssues
 ```
 
-### `install.ps1`
+#### `install.ps1`
 Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, including:
 - SQL Express setup (silent)
 - SSMS install
@@ -69,7 +72,44 @@ Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, includin
 - IIS virtual directory fix + permissions
 - Registry settings to bypass the initial WSUS wizard
 
-### `Check-WSUSContent.ps1`
+#### `Set-WsusGpo.ps1`
+Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
+
+### Import
+
+#### `ImportScript.ps1`
+Restores a SUSDB backup and re-attaches WSUS to it.
+
+> **Note:** the backup path is currently hard-coded. Rename or update it to the latest `.bak` file before running:
+> `C:\WSUS\SUSDB_20251124.bak`
+
+### Maintenance / utility
+
+#### `WsusMaintenance.ps1`
+Monthly maintenance automation (**online WSUS server only**):
+- Syncs and updates the upstream WSUS server
+- Monitors downloads
+- Declines old superseded updates
+- Runs cleanup tasks
+- Backs up the database and content for later import
+- Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
+
+#### `Ultimate-WsusCleanup.ps1`
+Quarterly or emergency cleanup:
+- Deletes supersession records
+- Removes declined updates
+- Rebuilds indexes and updates stats
+- Shrinks SUSDB
+
+#### `Reset-WsusContent.ps1`
+Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
+
+#### `Force-WSUSCheckIn.ps1`
+Forces a WSUS client to check in (optionally clears Windows Update cache).
+
+### Troubleshooting / validation
+
+#### `Check-WSUSContent.ps1`
 Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
 - SUSDB content path
 - Registry content path
@@ -77,38 +117,8 @@ Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
 - Permissions (NETWORK SERVICE, LOCAL SERVICE, IIS_IUSRS, WsusPool)
 - File state records and download queue
 
-### `ImportScript.ps1`
-Restores a SUSDB backup and re-attaches WSUS to it.
-
-> **Note:** the backup path is currently hard-coded:
-> `C:\WSUS\SUSDB_20251124.bak`
-
-### `WsusMaintenance.ps1`
-Monthly maintenance automation:
-- Syncs WSUS
-- Monitors downloads
-- Declines old superseded updates
-- Runs cleanup tasks
-- Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
-
-### `Ultimate-WsusCleanup.ps1`
-Quarterly or emergency cleanup:
-- Deletes supersession records
-- Removes declined updates
-- Rebuilds indexes and updates stats
-- Shrinks SUSDB
-
-### `Force-WSUSCheckIn.ps1`
-Forces a WSUS client to check in (optionally clears Windows Update cache).
-
-### `Set-WsusGpo.ps1`
-Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
-
-### `autofix.ps1`
+#### `autofix.ps1`
 Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).
-
-### `Reset-WsusContent.ps1`
-Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
 
 ## Suggested folder layout on the WSUS server
 ```
