@@ -26,9 +26,31 @@ function Write-Log($msg, $color = "White") {
 Write-Log "=== WSUS Database Restore Script ===" "Cyan"
 
 # Variables
-$BackupFile = "C:\WSUS\SUSDB_20251124.bak"
 $ContentDir = "C:\WSUS"
 $SQLInstance = ".\SQLEXPRESS"
+
+# Find newest backup file in content directory
+$latestBackup = Get-ChildItem -Path $ContentDir -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+if (-not $latestBackup) {
+    Write-Log "ERROR: No .bak files found in $ContentDir" "Red"
+    exit 1
+}
+
+$BackupFile = $latestBackup.FullName
+Write-Log "Newest backup file detected: $BackupFile" "Yellow"
+$confirmation = Read-Host "Use this backup file? (Y/n) or enter a full path"
+
+if ($confirmation -and $confirmation -notin @("Y", "y")) {
+    if (Test-Path $confirmation) {
+        $BackupFile = $confirmation
+    } else {
+        Write-Log "ERROR: Provided backup path not found: $confirmation" "Red"
+        exit 1
+    }
+}
 
 # === STEP 0: Validate Backup File Exists ===
 Write-Log "Validating backup file..." "Yellow"
