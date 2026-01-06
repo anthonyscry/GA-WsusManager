@@ -242,6 +242,3 @@ robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs
 If you want fewer entry points, here are safe merge/rename ideas:
 - Keep `Run-WsusSql.ps1`, `install.ps1`, and `Check-WSUSContent.ps1` as the main deployment flow.
 - `PS commands.txt` and `Robocopy_example.txt` are reference snippets; move them into scripts if you want everything executable.
-
-## References
-- The Confluence snapshot in this repo is included for context, but some steps and scripts may be outdated.
