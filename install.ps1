@@ -8,16 +8,16 @@ Overview:
   - Configures WSUS content path, IIS virtual directory, and permissions.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Logs to C:\WSUS\SQLDB\install.log
+  - Logs to C:\WSUS\Logs\install.log
   - Requires installer files in C:\WSUS\SQLDB
-  - Content folder must be C:\WSUS for correct DB file registration.
+  - Content folder must be C:\WSUS\WsusContent for correct DB file registration.
 ===============================================================================
 #>
 
 # -------------------------
 # CONFIGURATION
 # -------------------------
-$LogFile         = "C:\WSUS\SQLDB\install.log"
+$LogFile         = "C:\WSUS\Logs\install.log"
 $Extractor       = "C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe"
 $ExtractPath     = "C:\WSUS\SQLDB\SQL2022EXP"
 $SSMSInstaller   = "C:\WSUS\SQLDB\SSMS-Setup-ENU.exe"
@@ -49,7 +49,7 @@ $ssmsInstalled = $false
 # -------------------------
 # LOGGING SETUP
 # -------------------------
-New-Item -Path "C:\WSUS\SQLDB" -ItemType Directory -Force | Out-Null
+New-Item -Path "C:\WSUS\Logs" -ItemType Directory -Force | Out-Null
 Start-Transcript -Path $LogFile -Append -ErrorAction Ignore | Out-Null
 $ProgressPreference = "SilentlyContinue"
 $ConfirmPreference  = "None"
@@ -262,36 +262,7 @@ if ($browser) {
 Write-Host "    Networking configured."
 
 # =====================================================================
-# 7. CONFIGURE SQL SERVER FIREWALL RULES
-# =====================================================================
-Write-Host "[+] Configuring SQL Server firewall rules..."
-
-# Remove existing SQL firewall rules if they exist
-Get-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
-Get-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
-
-# Create SQL Server firewall rule for port 1433
-New-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 1433 `
-    -Action Allow `
-    -Profile Domain,Private,Public `
-    -Description "Allows inbound TCP traffic for SQL Server connections" | Out-Null
-
-# Create SQL Browser firewall rule for UDP 1434 (required for named instances)
-New-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" `
-    -Direction Inbound `
-    -Protocol UDP `
-    -LocalPort 1434 `
-    -Action Allow `
-    -Profile Domain,Private,Public `
-    -Description "Allows SQL Browser service to respond to instance queries" | Out-Null
-
-Write-Host "    SQL firewall rules configured."
-
-# =====================================================================
-# 8. INSTALL WSUS ROLE
+# 7. INSTALL WSUS ROLE
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
@@ -306,7 +277,7 @@ if ($needsInstall) {
 }
 
 # =====================================================================
-# 9. CREATE WSUS DIRECTORIES WITH FULL PERMISSIONS
+# 8. CREATE WSUS DIRECTORIES WITH FULL PERMISSIONS
 # =====================================================================
 Write-Host "[+] Creating WSUS directories with proper permissions..."
 
@@ -344,7 +315,7 @@ if ($wsusPoolExists) {
 Write-Host "    Directories created and secured."
 
 # =====================================================================
-# 10. SQL PERMISSIONS FOR WSUS
+# 9. SQL PERMISSIONS FOR WSUS
 # =====================================================================
 Write-Host "[+] Granting SQL permissions to WSUS..."
 
@@ -386,24 +357,17 @@ if ($sqlcmd) {
 }
 
 # =====================================================================
-# 11. WSUS POSTINSTALL
+# 10. WSUS POSTINSTALL
 # =====================================================================
 Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
-$wsusSetupKey = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
-$wsusConfigured = $false
-if (Test-Path $wsusSetupKey) {
-    $wsusConfigured = (Get-ItemProperty -Path $wsusSetupKey -Name ContentDir -ErrorAction SilentlyContinue).ContentDir -ne $null
-}
 
-if ($wsusConfigured) {
-    Write-Host "    WSUS already configured. Skipping postinstall."
-} elseif (Test-Path $wsusUtil) {
+if (Test-Path $wsusUtil) {
     $postInstallArgs = "postinstall", "SQL_INSTANCE_NAME=`"$sqlInstance`"", "CONTENT_DIR=`"$WSUSContent`""
-    
+
     $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -Wait -PassThru -NoNewWindow
-    
+
     if ($wsusProcess.ExitCode -eq 0) {
         Write-Host "    WSUS postinstall complete."
     } else {
@@ -414,7 +378,7 @@ if ($wsusConfigured) {
 }
 
 # =====================================================================
-# 12. CONFIGURE WSUS FIREWALL RULES
+# 11. CONFIGURE WSUS FIREWALL RULES
 # =====================================================================
 Write-Host "[+] Configuring Windows Firewall rules for WSUS..."
 
@@ -468,7 +432,7 @@ New-NetFirewallRule -DisplayName "WSUS API Remoting (Port 8531)" `
 Write-Host "    Firewall rules configured."
 
 # =====================================================================
-# 13. CONFIGURE WSUS REGISTRY SETTINGS
+# 12. CONFIGURE WSUS REGISTRY SETTINGS
 # =====================================================================
 Write-Host "[+] Configuring WSUS registry settings..."
 
@@ -506,6 +470,35 @@ Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-Services" -V
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-UI" -Value 2 -Force
 
 Write-Host "    WSUS registry configured."
+
+# =====================================================================
+# 13. CONFIGURE SQL SERVER FIREWALL RULES
+# =====================================================================
+Write-Host "[+] Configuring SQL Server firewall rules..."
+
+# Remove existing SQL firewall rules if they exist
+Get-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+Get-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+
+# Create SQL Server firewall rule for port 1433
+New-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" `
+    -Direction Inbound `
+    -Protocol TCP `
+    -LocalPort 1433 `
+    -Action Allow `
+    -Profile Domain,Private,Public `
+    -Description "Allows inbound TCP traffic for SQL Server connections" | Out-Null
+
+# Create SQL Browser firewall rule for UDP 1434 (required for named instances)
+New-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" `
+    -Direction Inbound `
+    -Protocol UDP `
+    -LocalPort 1434 `
+    -Action Allow `
+    -Profile Domain,Private,Public `
+    -Description "Allows SQL Browser service to respond to instance queries" | Out-Null
+
+Write-Host "    SQL firewall rules configured."
 
 # =====================================================================
 # 14. VERIFY AND START SERVICES
