@@ -26,6 +26,21 @@ $WSUSContent     = "C:\WSUS"
 $ConfigFile      = "C:\WSUS\SQLDB\ConfigurationFile.ini"
 $PasswordFile    = "C:\WSUS\SQLDB\sa.encrypted"
 
+# Detect existing installs to support reruns
+$sqlService = Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
+$sqlInstalled = $null -ne $sqlService
+$ssmsInstalled = $false
+@(
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+) | ForEach-Object {
+    if (-not $ssmsInstalled) {
+        $ssmsInstalled = (Get-ItemProperty $_ -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -like "SQL Server Management Studio*" } |
+            Select-Object -First 1) -ne $null
+    }
+}
+
 # -------------------------
 # LOGGING SETUP
 # -------------------------
@@ -94,15 +109,19 @@ if (!(Test-Path $PasswordFile)) {
 # 1. EXTRACT SQL EXPRESS ADV PACKAGE
 # =====================================================================
 Write-Host "[+] Extracting SQL package..."
-if (!(Test-Path $Extractor)) { throw "SQL extractor missing at $Extractor" }
-
-if (!(Test-Path "$ExtractPath\setup.exe")) {
-    Start-Process $Extractor -ArgumentList "/Q", "/x:$ExtractPath" -Wait -NoNewWindow
-    Write-Host "    Extraction complete."
-    Stop-SqlExpressSetup -SetupPath $ExtractPath
+if ($sqlInstalled) {
+    Write-Host "    SQL Server already installed. Skipping extraction."
 } else {
-    Write-Host "    Already extracted."
-    Stop-SqlExpressSetup -SetupPath $ExtractPath
+    if (!(Test-Path $Extractor)) { throw "SQL extractor missing at $Extractor" }
+
+    if (!(Test-Path "$ExtractPath\setup.exe")) {
+        Start-Process $Extractor -ArgumentList "/Q", "/x:$ExtractPath" -Wait -NoNewWindow
+        Write-Host "    Extraction complete."
+        Stop-SqlExpressSetup -SetupPath $ExtractPath
+    } else {
+        Write-Host "    Already extracted."
+        Stop-SqlExpressSetup -SetupPath $ExtractPath
+    }
 }
 
 # =====================================================================
@@ -110,7 +129,10 @@ if (!(Test-Path "$ExtractPath\setup.exe")) {
 # =====================================================================
 Write-Host "[+] Creating SQL configuration file..."
 
-$configContent = @"
+if ($sqlInstalled) {
+    Write-Host "    SQL Server already installed. Skipping config file generation."
+} else {
+    $configContent = @"
 [OPTIONS]
 ACTION="Install"
 QUIET="True"
@@ -134,31 +156,38 @@ INSTALLSHAREDWOWDIR="C:\Program Files (x86)\Microsoft SQL Server"
 INSTANCEDIR="C:\Program Files\Microsoft SQL Server"
 "@
 
-Set-Content -Path $ConfigFile -Value $configContent -Force
+    Set-Content -Path $ConfigFile -Value $configContent -Force
+}
 
 # =====================================================================
 # 3. INSTALL SQL ENGINE VIA SETUP.EXE (FULLY SILENT)
 # =====================================================================
 Write-Host "[+] Installing SQL Server Express 2022..."
 
-$setupExe = "$ExtractPath\setup.exe"
-if (!(Test-Path $setupExe)) {
-    throw "Cannot find setup.exe at $setupExe"
+if ($sqlInstalled) {
+    Write-Host "    SQL Server already installed. Skipping SQL setup."
+} else {
+    $setupExe = "$ExtractPath\setup.exe"
+    if (!(Test-Path $setupExe)) {
+        throw "Cannot find setup.exe at $setupExe"
+    }
+
+    $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -Wait -PassThru -NoNewWindow
+
+    if ($setupProcess.ExitCode -ne 0 -and $setupProcess.ExitCode -ne 3010) {
+        throw "SQL installation failed with exit code $($setupProcess.ExitCode). Check log at C:\Program Files\Microsoft SQL Server\160\Setup Bootstrap\Log\Summary.txt"
+    }
+
+    Write-Host "    SQL installation complete."
 }
-
-$setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -Wait -PassThru -NoNewWindow
-
-if ($setupProcess.ExitCode -ne 0 -and $setupProcess.ExitCode -ne 3010) {
-    throw "SQL installation failed with exit code $($setupProcess.ExitCode). Check log at C:\Program Files\Microsoft SQL Server\160\Setup Bootstrap\Log\Summary.txt"
-}
-
-Write-Host "    SQL installation complete."
 
 # =====================================================================
 # 4. INSTALL SSMS (PASSIVE MODE, NO GUI INTERACTION)
 # =====================================================================
 Write-Host "[+] Installing SSMS..."
-if (Test-Path $SSMSInstaller) {
+if ($ssmsInstalled) {
+    Write-Host "    SSMS already installed. Skipping."
+} elseif (Test-Path $SSMSInstaller) {
     Start-Process $SSMSInstaller -ArgumentList "/install", "/passive", "/norestart" -Wait -NoNewWindow
     Write-Host "    SSMS installation complete."
 } else {
@@ -295,7 +324,17 @@ icacls $WSUSRoot /grant "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)F" /T /Q | Out-Null
 icacls $WSUSRoot /grant "IIS_IUSRS:(OI)(CI)R" /T /Q | Out-Null
 
 # WsusPool application pool identity - Full Control (will be created after IIS setup)
-icacls $WSUSRoot /grant "IIS APPPOOL\WsusPool:(OI)(CI)F" /T /Q 2>$null
+$wsusPoolExists = $false
+if (Get-Command Get-WebAppPoolState -ErrorAction SilentlyContinue) {
+    if (Test-Path IIS:\AppPools\WsusPool) {
+        $wsusPoolExists = $true
+    }
+}
+if ($wsusPoolExists) {
+    icacls $WSUSRoot /grant "IIS APPPOOL\WsusPool:(OI)(CI)F" /T /Q 2>$null
+} else {
+    Write-Host "    WsusPool application pool not found yet; will apply permissions after IIS setup."
+}
 
 Write-Host "    Directories created and secured."
 
@@ -347,8 +386,15 @@ if ($sqlcmd) {
 Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
+$wsusSetupKey = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+$wsusConfigured = $false
+if (Test-Path $wsusSetupKey) {
+    $wsusConfigured = (Get-ItemProperty -Path $wsusSetupKey -Name ContentDir -ErrorAction SilentlyContinue).ContentDir -ne $null
+}
 
-if (Test-Path $wsusUtil) {
+if ($wsusConfigured) {
+    Write-Host "    WSUS already configured. Skipping postinstall."
+} elseif (Test-Path $wsusUtil) {
     $postInstallArgs = "postinstall", "SQL_INSTANCE_NAME=`"$sqlInstance`"", "CONTENT_DIR=`"$WSUSContent`""
     
     $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -Wait -PassThru -NoNewWindow
