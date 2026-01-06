@@ -1,17 +1,6 @@
 #Requires -RunAsAdministrator
 
 <#
-===============================================================================
-Script: Run-WsusSql.ps1
-Purpose: Orchestrate WSUS + SQL Express installation and post-install validation.
-Overview:
-  - Runs install.ps1 for SQL Express, SSMS, WSUS role, and baseline config.
-  - Runs Check-WSUSContent.ps1 to validate content path and permissions.
-  - Provides guardrails for the known-bad \wsuscontent path.
-Notes:
-  - Default content path is C:\WSUS (required for consistent DB registration).
-  - Use -SkipInstall or -SkipContentValidation to control the flow.
-===============================================================================
 .PARAMETER ContentPath
     WSUS content path (default: C:\WSUS).
 .PARAMETER SqlInstance
