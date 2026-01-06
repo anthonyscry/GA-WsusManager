@@ -24,6 +24,23 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 4. **Configure products/classifications** in the WSUS console, then synchronize.
 
+## Domain controller (GPO) setup
+
+To push WSUS settings to clients via Group Policy, run the new GPO script on a domain controller with **RSAT Group Policy Management** installed:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+```
+
+Optional: import a backed up GPO (if present) and link to an OU:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
+  -WsusServerUrl "http://WSUSServerName:8530" `
+  -BackupPath "C:\WSUS\Scripts\GpoBackups" `
+  -TargetOU "OU=Workstations,DC=example,DC=local"
+```
+
 ## What the scripts do
 
 ### `Run-WsusSql.ps1` (new, combined flow)
@@ -72,6 +89,7 @@ Monthly maintenance automation:
 - Monitors downloads
 - Declines old superseded updates
 - Runs cleanup tasks
+- Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
 
 ### `Ultimate-WsusCleanup.ps1`
 Quarterly or emergency cleanup:
@@ -83,10 +101,13 @@ Quarterly or emergency cleanup:
 ### `Force-WSUSCheckIn.ps1`
 Forces a WSUS client to check in (optionally clears Windows Update cache).
 
+### `Set-WsusGpo.ps1`
+Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
+
 ### `autofix.ps1`
 Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).
 
-### `test.ps1`
+### `Reset-WsusContent.ps1`
 Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
 
 ## Suggested folder layout on the WSUS server
@@ -119,15 +140,36 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\ImportScript.ps1
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\WsusMaintenance.ps1
 ```
 
+Skip the heavy cleanup stage if needed:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\WsusMaintenance.ps1 -SkipUltimateCleanup
+```
+
 ### Force a client check-in
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Force-WSUSCheckIn.ps1
+```
+
+### Reset WSUS content files
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Reset-WsusContent.ps1
+```
+
+### Create or import WSUS GPOs
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
 ```
 
 ## Notes and known behaviors
 - **Content path must be `C:\WSUS`.** `C:\WSUS\wsuscontent` is known to cause endless downloads and an unregistered file state in SUSDB.
 - The **install script removes its temporary SA password file** for security.
 - `ImportScript.ps1` uses a **fixed backup path** today; update it if your backup name changes.
+
+## Consolidation suggestions
+If you want fewer entry points, here are safe merge/rename ideas:
+- Keep `Run-WsusSql.ps1`, `install.ps1`, and `Check-WSUSContent.ps1` as the main deployment flow.
+- `PS commands.txt` and `Robocopy_example.txt` are reference snippets; move them into scripts if you want everything executable.
 
 ## References
 - The Confluence snapshot in this repo is included for context, but some steps and scripts may be outdated.

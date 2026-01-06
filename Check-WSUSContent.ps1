@@ -1,8 +1,14 @@
 <#
-.SYNOPSIS
-    WSUS Content Path and Permissions Validator/Fixer
-.DESCRIPTION
-    Checks and fixes WSUS content path in database, registry, IIS, and permissions
+===============================================================================
+Script: Check-WSUSContent.ps1
+Purpose: Validate and optionally fix WSUS content path configuration.
+Overview:
+  - Verifies content path in SUSDB, registry, and IIS.
+  - Ensures permissions for WSUS and IIS identities.
+  - Optionally fixes mismatches and clears download queue.
+Notes:
+  - Default content path is C:\WSUS for reliable DB file registration.
+===============================================================================
 .PARAMETER ContentPath
     The correct content path (default: C:\WSUS)
 .PARAMETER SqlInstance
