@@ -8,6 +8,7 @@ Overview:
   - Triggers detection/reporting via multiple methods.
 Notes:
   - Run as Administrator on the client device.
+  - Use -ClearCache to reset SoftwareDistribution before re-check-in.
 ===============================================================================
 .PARAMETER ClearCache
     If specified, clears the Windows Update cache (SoftwareDistribution folder)

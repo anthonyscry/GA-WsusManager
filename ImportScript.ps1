@@ -8,6 +8,7 @@ Overview:
   - Runs wsusutil postinstall and reset to align WSUS with the DB/content.
   - Performs cleanup and basic health checks.
 Notes:
+  - Run as Administrator on the WSUS server.
   - Update the backup path to match your .bak file.
 ===============================================================================
 #>

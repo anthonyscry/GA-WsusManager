@@ -7,6 +7,7 @@ Overview:
   - Enables SQL networking, firewall rules, and WSUS role/services.
   - Configures WSUS content path, IIS virtual directory, and permissions.
 Notes:
+  - Run as Administrator on the WSUS server.
   - Logs to C:\SQLDB\install.log
   - Requires installer files in C:\SQLDB
   - Content folder must be C:\WSUS for correct DB file registration.

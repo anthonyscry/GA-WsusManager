@@ -134,6 +134,8 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ### Troubleshooting / validation
 
+> **Note:** `Run-WsusUnified.ps1` has been removed. Use `Run-WsusTroubleshooter.ps1` for the unified health check workflow.
+
 #### `Run-WsusTroubleshooter.ps1`
 **What it does:** Runs service-level auto-fixes (SQL/WSUS/IIS) and then validates WSUS content path configuration.  
 **Why use it:** One-stop health check for common WSUS service issues and content path correctness.  

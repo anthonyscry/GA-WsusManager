@@ -7,6 +7,7 @@ Overview:
   - Runs WSUS cleanup tasks and SUSDB index/stat maintenance.
   - Optionally runs an aggressive cleanup stage before the backup.
 Notes:
+  - Run as Administrator on the WSUS server.
   - Use -SkipUltimateCleanup to avoid heavy cleanup before backup.
   - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
 ===============================================================================
