@@ -712,6 +712,11 @@ Write-Output "============================================================`n"
 
 # === COPY TO LAB SERVER ===
 Write-Log "Copying to lab server..."
+$robocopyLogDir = "C:\Logs"
+if (-not (Test-Path $robocopyLogDir)) {
+    New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
+    Write-Log "Created log directory: $robocopyLogDir"
+}
 $robocopyLog = "C:\Logs\Export_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 robocopy "C:\WSUS" "\\lab-hyperv\d\WSUS-Exports" /MIR /MT:16 /R:2 /W:5 /LOG:$robocopyLog /TEE
 
