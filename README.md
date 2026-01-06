@@ -244,4 +244,3 @@ If you want fewer entry points, here are safe merge/rename ideas:
 - `PS commands.txt` and `Robocopy_example.txt` are reference snippets; move them into scripts if you want everything executable.
 
 ## References
-- The Confluence snapshot in this repo is included for context, but some steps and scripts may be outdated.
