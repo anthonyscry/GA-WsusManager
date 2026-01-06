@@ -80,13 +80,13 @@ Creates or imports a WSUS client GPO and applies the required Windows Update pol
 #### `ImportScript.ps1`
 Restores a SUSDB backup and re-attaches WSUS to it.
 
-> **Note:** the backup path is currently hard-coded:
+> **Note:** the backup path is currently hard-coded. Rename or update it to the latest `.bak` file before running:
 > `C:\WSUS\SUSDB_20251124.bak`
 
 ### Maintenance / utility
 
 #### `WsusMaintenance.ps1`
-Monthly maintenance automation (run on the **online** WSUS server):
+Monthly maintenance automation (**online WSUS server only**):
 - Syncs and updates the upstream WSUS server
 - Monitors downloads
 - Declines old superseded updates
