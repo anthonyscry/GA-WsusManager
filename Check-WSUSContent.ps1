@@ -7,6 +7,7 @@ Overview:
   - Ensures permissions for WSUS and IIS identities.
   - Optionally fixes mismatches and clears download queue.
 Notes:
+  - Run as Administrator on the WSUS server.
   - Default content path is C:\WSUS for reliable DB file registration.
 ===============================================================================
 .PARAMETER ContentPath

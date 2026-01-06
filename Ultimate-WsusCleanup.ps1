@@ -7,6 +7,7 @@ Overview:
   - Permanently deletes declined update metadata.
   - Adds indexes, rebuilds indexes, updates stats, and shrinks DB.
 Notes:
+  - Run as Administrator on the WSUS server.
   - Expect WSUS to be offline during this run.
   - Use quarterly or when DB performance degrades.
 ===============================================================================
