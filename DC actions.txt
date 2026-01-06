@@ -1,0 +1,26 @@
+# Set WSUS server
+Set-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+  -Name WUServer -Value "http://WSUSServerName:8530"
+
+# Set statistics server
+Set-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+  -Name WUStatusServer -Value "http://WSUSServerName:8530"
+
+# Enable WSUS usage
+Set-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+  -Name UseWUServer -Value 1 -Type DWord
+
+# Force detection/report
+wuauclt /detectnow
+wuauclt /reportnow
+
+
+usoclient StartScan
+usoclient StartDownload
+usoclient StartInstall
+
+Restart-Service wuauserv
+Restart-Service bits
+usoclient StartScan
+
+

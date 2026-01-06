@@ -1,0 +1,21 @@
+powershell.exe -ExecutionPolicy Bypass -File "C:\WSUS\Scripts\WsusMaintenance.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "C:\WSUS\Scripts\ImportScript.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "C:\WSUS\Scripts\autofix.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "C:\WSUS\Scripts\test.ps1"
+
+
+# Check only (no changes)
+.\Check-WSUSContent.ps1
+
+# Check and fix automatically
+.\Check-WSUSContent.ps1 -FixIssues
+
+# Use different path or SQL instance
+.\Check-WSUSContent.ps1 -ContentPath "D:\WSUS" -SqlInstance ".\SQLEXPRESS" -FixIssues
+
+# Basic - restart services and force check-in
+.\Force-WSUSCheckIn.ps1
+
+# With cache clear (use if having persistent issues)
+.\Force-WSUSCheckIn.ps1 -ClearCache
