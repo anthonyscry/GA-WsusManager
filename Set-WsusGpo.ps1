@@ -9,6 +9,7 @@ Overview:
   - Sets WSUS policy values (WUServer, WUStatusServer, UseWUServer).
   - Optionally links the GPO to a target OU.
 Notes:
+  - Run as Administrator on a domain controller with RSAT Group Policy Management tools.
   - Requires RSAT Group Policy Management tools (GroupPolicy module).
 ===============================================================================
 .PARAMETER GpoName

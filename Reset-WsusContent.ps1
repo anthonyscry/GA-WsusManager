@@ -7,6 +7,7 @@ Overview:
   - Runs wsusutil.exe reset to re-check content integrity.
   - Starts WSUS service after the reset completes.
 Notes:
+  - Run as Administrator on the WSUS server.
   - This operation is heavy and can take 30-60 minutes.
 ===============================================================================
 #>

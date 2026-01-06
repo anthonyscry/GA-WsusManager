@@ -1,6 +1,15 @@
 #Requires -RunAsAdministrator
 
 <#
+===============================================================================
+Script: Run-WsusSql.ps1
+Purpose: Run the combined WSUS + SQL Express setup workflow.
+Overview:
+  - Runs install.ps1 to install SQL Express, SSMS, and WSUS.
+  - Validates the WSUS content path and optionally fixes issues.
+Notes:
+  - Run as Administrator on the WSUS server.
+===============================================================================
 .PARAMETER ContentPath
     WSUS content path (default: C:\WSUS).
 .PARAMETER SqlInstance

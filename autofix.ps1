@@ -10,6 +10,7 @@ Overview:
   - Summarizes issues and proposed remediation steps.
 Notes:
   - Run as Administrator on the WSUS server.
+  - Review each suggested fix before applying changes.
 ===============================================================================
 #>
 
