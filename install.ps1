@@ -28,7 +28,12 @@ $PasswordFile    = "C:\WSUS\SQLDB\sa.encrypted"
 
 # Detect existing installs to support reruns
 $sqlService = Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
-$sqlInstalled = $null -ne $sqlService
+$sqlInstanceKey = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
+$sqlInstanceExists = $false
+if (Test-Path $sqlInstanceKey) {
+    $sqlInstanceExists = (Get-ItemProperty -Path $sqlInstanceKey -ErrorAction SilentlyContinue).SQLEXPRESS -ne $null
+}
+$sqlInstalled = ($null -ne $sqlService) -or $sqlInstanceExists
 $ssmsInstalled = $false
 @(
     "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -612,7 +617,8 @@ Write-Host " Next steps:"
 Write-Host " 1. Test SQL: sqlcmd -S .\SQLEXPRESS -U sa -P [your_password]"
 Write-Host " 2. Configure WSUS via Update Services console"
 Write-Host ""
-Write-Host " If issues occur, run autofix.ps1 or Check-WSUSContent.ps1"
+Write-Host " If issues occur, run autofix.ps1 or:"
+Write-Host "   .\\Check-WSUSContent.ps1 -ContentPath $WSUSContent -SqlInstance .\\SQLEXPRESS"
 Write-Host "==============================================================="
 
 Stop-Transcript | Out-Null
