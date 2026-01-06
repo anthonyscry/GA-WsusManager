@@ -43,11 +43,16 @@ powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
 
 ## What the scripts do (by category)
 All script names below match the PowerShell files in the repo root and are grouped by their primary use.
+Each entry includes **what it does**, **why you would use it**, and **where to run it** to make the list easier to scan.
+
+---
 
 ### Install / setup
 
 #### `Run-WsusSql.ps1` (combined flow)
-Runs the install script and then validates the WSUS content path/permissions.
+**What it does:** Runs the install script and then validates the WSUS content path/permissions.  
+**Why use it:** Recommended one-shot flow to install WSUS + SQL Express and confirm content health.  
+**Where to run it:** On the **WSUS server** you are provisioning.
 
 ```powershell
 # Default: install + validate
@@ -64,61 +69,85 @@ Runs the install script and then validates the WSUS content path/permissions.
 ```
 
 #### `install.ps1`
-Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, including:
+**What it does:** Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, including:
 - SQL Express setup (silent)
 - SSMS install
 - SQL networking + firewall rules
 - WSUS role install + post-install configuration
 - IIS virtual directory fix + permissions
 - Registry settings to bypass the initial WSUS wizard
+**Why use it:** Automates a complete WSUS + SQL Express build without manual steps.  
+**Where to run it:** On the **WSUS server** hosting WSUS + SQL Express.
 
 #### `Set-WsusGpo.ps1`
-Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
+**What it does:** Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.  
+**Why use it:** Centralizes WSUS client settings via Group Policy.  
+**Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
+
+---
 
 ### Import
 
 #### `ImportScript.ps1`
-Restores a SUSDB backup and re-attaches WSUS to it.
+**What it does:** Restores a SUSDB backup and re-attaches WSUS to it.  
+**Why use it:** Rehydrates WSUS from a known-good database backup (e.g., for offline/airgapped servers).  
+**Where to run it:** On the **WSUS server** that will host the restored database.
 
 > **Note:** the backup path is currently hard-coded:
 > `C:\WSUS\SUSDB_20251124.bak`
 
+---
+
 ### Maintenance / utility
 
 #### `WsusMaintenance.ps1`
-Monthly maintenance automation (run on the **online** WSUS server):
+**What it does:** Monthly maintenance automation (run on the **online** WSUS server):
 - Syncs and updates the upstream WSUS server
 - Monitors downloads
 - Declines old superseded updates
 - Runs cleanup tasks
 - Backs up the database and content for later import
 - Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
+**Why use it:** Keeps WSUS healthy and produces backups for downstream/offline use.  
+**Where to run it:** On the **online/upstream WSUS server**.
 
 #### `Ultimate-WsusCleanup.ps1`
-Quarterly or emergency cleanup:
+**What it does:** Quarterly or emergency cleanup:
 - Deletes supersession records
 - Removes declined updates
 - Rebuilds indexes and updates stats
 - Shrinks SUSDB
+**Why use it:** Deep cleanup when WSUS performance/storage needs attention.  
+**Where to run it:** On the **WSUS server** (typically the online/upstream instance).
 
 #### `Reset-WsusContent.ps1`
-Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
+**What it does:** Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.  
+**Why use it:** Fixes or validates content issues and forces a full re-check of downloads.  
+**Where to run it:** On the **WSUS server** that hosts the content store.
 
 #### `Force-WSUSCheckIn.ps1`
-Forces a WSUS client to check in (optionally clears Windows Update cache).
+**What it does:** Forces a WSUS client to check in (optionally clears Windows Update cache).  
+**Why use it:** Troubleshoot client reporting or trigger immediate status updates.  
+**Where to run it:** On the **WSUS client machine**.
+
+---
 
 ### Troubleshooting / validation
 
 #### `Check-WSUSContent.ps1`
-Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
+**What it does:** Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
 - SUSDB content path
 - Registry content path
 - IIS virtual directory content path
 - Permissions (NETWORK SERVICE, LOCAL SERVICE, IIS_IUSRS, WsusPool)
 - File state records and download queue
+**Why use it:** Diagnose and repair common WSUS content path and permission issues.  
+**Where to run it:** On the **WSUS server** hosting the content store.
 
 #### `autofix.ps1`
-Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).
+**What it does:** Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).  
+**Why use it:** Quickly resolve common service-level problems without manual triage.  
+**Where to run it:** On the **WSUS server**.
 
 ## Suggested folder layout on the WSUS server
 ```
@@ -127,6 +156,15 @@ C:\WSUS\                    # WSUS content (must be this path)
 C:\WSUS\Scripts\            # Put these scripts here for consistency
 C:\WSUS\Logs\               # Log output
 ```
+
+## Online WSUS export location
+The **online WSUS server (Server LSJ)** exports the database and content to:
+
+```
+D:\WSUS-Exports
+```
+
+Copy from this location when moving updates to **airgapped WSUS servers**.
 
 ## Example usage
 
@@ -169,6 +207,18 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Reset-WsusContent.p
 ### Create or import WSUS GPOs
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+```
+
+## Robocopy examples (moving exports to airgapped WSUS servers)
+Examples below mirror `Robocopy_example.txt` and show common transfer paths for the WSUS export data.
+
+```powershell
+robocopy "D:\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+robocopy "\\10.120.129.172\d\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+
+robocopy "\\10.120.129.172\d\WSUS-Exports" "\\10.120.129.116\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+
+robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
 ```
 
 ## Notes and known behaviors
