@@ -134,7 +134,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ### Troubleshooting / validation
 
-#### `Run-WsusUnified.ps1`
+#### `Run-WsusTroubleshooter.ps1`
 **What it does:** Runs service-level auto-fixes (SQL/WSUS/IIS) and then validates WSUS content path configuration.  
 **Why use it:** One-stop health check for common WSUS service issues and content path correctness.  
 **Where to run it:** On the **WSUS server**.
@@ -183,9 +183,9 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Run-WsusSql.ps1
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Check-WSUSContent.ps1 -FixIssues
 ```
 
-### Unified health check (services + content)
+### Troubleshooter (services + content)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Run-WsusUnified.ps1 -FixContentIssues
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Run-WsusTroubleshooter.ps1 -FixContentIssues
 ```
 
 ### Restore a SUSDB backup
