@@ -39,6 +39,20 @@ function Write-Failure { Write-ColorOutput Red $args }
 function Write-Warning { Write-ColorOutput Yellow $args }
 function Write-Info { Write-ColorOutput Cyan $args }
 
+function Invoke-SqlScalar {
+    param(
+        [Parameter(Mandatory = $true)][string]$Instance,
+        [Parameter(Mandatory = $true)][string]$Query
+    )
+
+    $result = sqlcmd -S $Instance -E -d SUSDB -b -h -1 -W -Q "SET NOCOUNT ON; $Query" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "SQL query failed"
+    }
+
+    return $result.Trim()
+}
+
 $issuesFound = 0
 $issuesFixed = 0
 
@@ -79,11 +93,7 @@ if (Test-Path $ContentPath) {
 # ===========================
 Write-Info "[2/6] Checking database configuration..."
 try {
-    $dbPath = sqlcmd -S $SqlInstance -E -Q "USE SUSDB; SELECT LocalContentCacheLocation FROM tbConfigurationB;" -h -1 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "SQL query failed"
-    }
-    $dbPath = $dbPath.Trim()
+    $dbPath = Invoke-SqlScalar -Instance $SqlInstance -Query "SELECT LocalContentCacheLocation FROM tbConfigurationB;"
     
     if ($dbPath -eq $ContentPath) {
         Write-Success "  [OK] Database path is correct: $dbPath"
@@ -92,13 +102,9 @@ try {
         $issuesFound++
         if ($FixIssues) {
             Write-Warning "  --> Updating database..."
-            sqlcmd -S $SqlInstance -E -Q "USE SUSDB; UPDATE tbConfigurationB SET LocalContentCacheLocation = '$ContentPath';" | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "  [OK] Database path updated"
-                $issuesFixed++
-            } else {
-                Write-Failure "  [FAIL] Failed to update database"
-            }
+            Invoke-SqlScalar -Instance $SqlInstance -Query "UPDATE tbConfigurationB SET LocalContentCacheLocation = '$ContentPath';" | Out-Null
+            Write-Success "  [OK] Database path updated"
+            $issuesFixed++
         }
     }
 } catch {
@@ -212,45 +218,37 @@ try {
 Write-Info "[6/6] Checking file records in database..."
 try {
     # Check ActualState in tbFileOnServer
-    $filesPresent = sqlcmd -S $SqlInstance -E -Q "USE SUSDB; SELECT COUNT(*) FROM tbFileOnServer WHERE ActualState = 1;" -h -1 2>&1
-    $filesTotal = sqlcmd -S $SqlInstance -E -Q "USE SUSDB; SELECT COUNT(*) FROM tbFileOnServer;" -h -1 2>&1
+    $filesPresent = Invoke-SqlScalar -Instance $SqlInstance -Query "SELECT COUNT(*) FROM tbFileOnServer WHERE ActualState = 1;"
+    $filesTotal = Invoke-SqlScalar -Instance $SqlInstance -Query "SELECT COUNT(*) FROM tbFileOnServer;"
     
-    if ($LASTEXITCODE -eq 0) {
-        $filesPresent = $filesPresent.Trim()
-        $filesTotal = $filesTotal.Trim()
-        
-        Write-Info "  Files marked as present: $filesPresent / $filesTotal"
-        
-        if ([int]$filesPresent -lt [int]$filesTotal) {
-            Write-Warning "  [WARN] Not all files are marked as present in database"
-            $issuesFound++
-            if ($FixIssues) {
-                Write-Warning "  --> Updating file status in database..."
-                sqlcmd -S $SqlInstance -E -Q "USE SUSDB; UPDATE tbFileOnServer SET ActualState = 1 WHERE DesiredState = 1 AND ActualState = 0;" | Out-Null
-                Write-Success "  [OK] File status updated"
-                $issuesFixed++
-            }
-        } else {
-            Write-Success "  [OK] All files marked as present"
+    Write-Info "  Files marked as present: $filesPresent / $filesTotal"
+    
+    if ([int]$filesPresent -lt [int]$filesTotal) {
+        Write-Warning "  [WARN] Not all files are marked as present in database"
+        $issuesFound++
+        if ($FixIssues) {
+            Write-Warning "  --> Updating file status in database..."
+            Invoke-SqlScalar -Instance $SqlInstance -Query "UPDATE tbFileOnServer SET ActualState = 1 WHERE DesiredState = 1 AND ActualState = 0;" | Out-Null
+            Write-Success "  [OK] File status updated"
+            $issuesFixed++
         }
+    } else {
+        Write-Success "  [OK] All files marked as present"
     }
     
     # Check download queue
-    $queueCount = sqlcmd -S $SqlInstance -E -Q "USE SUSDB; SELECT COUNT(*) FROM tbFileDownloadProgress;" -h -1 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        $queueCount = $queueCount.Trim()
-        if ([int]$queueCount -gt 0) {
-            Write-Warning "  [WARN] $queueCount files in download queue"
-            $issuesFound++
-            if ($FixIssues) {
-                Write-Warning "  --> Clearing download queue..."
-                sqlcmd -S $SqlInstance -E -Q "USE SUSDB; DELETE FROM tbFileDownloadProgress;" | Out-Null
-                Write-Success "  [OK] Download queue cleared"
-                $issuesFixed++
-            }
-        } else {
-            Write-Success "  [OK] Download queue is empty"
+    $queueCount = Invoke-SqlScalar -Instance $SqlInstance -Query "SELECT COUNT(*) FROM tbFileDownloadProgress;"
+    if ([int]$queueCount -gt 0) {
+        Write-Warning "  [WARN] $queueCount files in download queue"
+        $issuesFound++
+        if ($FixIssues) {
+            Write-Warning "  --> Clearing download queue..."
+            Invoke-SqlScalar -Instance $SqlInstance -Query "DELETE FROM tbFileDownloadProgress;" | Out-Null
+            Write-Success "  [OK] Download queue cleared"
+            $issuesFixed++
         }
+    } else {
+        Write-Success "  [OK] Download queue is empty"
     }
 } catch {
     Write-Failure "  [FAIL] Error checking file records: $_"
