@@ -8,9 +8,9 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Quick start (recommended flow)
 
-1. **Copy the repo to the target server** and place installers in `C:\SQLDB`:
-   - `C:\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
-   - `C:\SQLDB\SSMS-Setup-ENU.exe` (SSMS)
+1. **Copy the repo to the target server** and place installers in `C:\WSUS\SQLDB`:
+   - `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
+   - `C:\WSUS\SQLDB\SSMS-Setup-ENU.exe` (SSMS)
 
 2. **Run the combined setup script** (installs SQL + WSUS, then validates content):
    ```powershell
@@ -158,7 +158,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ## Suggested folder layout on the WSUS server
 ```
-C:\SQLDB\                   # SQL + SSMS installers + logs
+C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
 C:\WSUS\Scripts\            # Put these scripts here for consistency
 C:\WSUS\Logs\               # Log output

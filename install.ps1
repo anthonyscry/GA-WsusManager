@@ -8,8 +8,8 @@ Overview:
   - Configures WSUS content path, IIS virtual directory, and permissions.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Logs to C:\SQLDB\install.log
-  - Requires installer files in C:\SQLDB
+  - Logs to C:\WSUS\SQLDB\install.log
+  - Requires installer files in C:\WSUS\SQLDB
   - Content folder must be C:\WSUS for correct DB file registration.
 ===============================================================================
 #>
@@ -17,19 +17,19 @@ Notes:
 # -------------------------
 # CONFIGURATION
 # -------------------------
-$LogFile         = "C:\SQLDB\install.log"
-$Extractor       = "C:\SQLDB\SQLEXPRADV_x64_ENU.exe"
-$ExtractPath     = "C:\SQLDB\SQL2022EXP"
-$SSMSInstaller   = "C:\SQLDB\SSMS-Setup-ENU.exe"
+$LogFile         = "C:\WSUS\SQLDB\install.log"
+$Extractor       = "C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe"
+$ExtractPath     = "C:\WSUS\SQLDB\SQL2022EXP"
+$SSMSInstaller   = "C:\WSUS\SQLDB\SSMS-Setup-ENU.exe"
 $WSUSRoot        = "C:\WSUS"
 $WSUSContent     = "C:\WSUS"
-$ConfigFile      = "C:\SQLDB\ConfigurationFile.ini"
-$PasswordFile    = "C:\SQLDB\sa.encrypted"
+$ConfigFile      = "C:\WSUS\SQLDB\ConfigurationFile.ini"
+$PasswordFile    = "C:\WSUS\SQLDB\sa.encrypted"
 
 # -------------------------
 # LOGGING SETUP
 # -------------------------
-New-Item -Path "C:\SQLDB" -ItemType Directory -Force | Out-Null
+New-Item -Path "C:\WSUS\SQLDB" -ItemType Directory -Force | Out-Null
 Start-Transcript -Path $LogFile -Append -ErrorAction Ignore | Out-Null
 $ProgressPreference = "SilentlyContinue"
 $ConfirmPreference  = "None"
