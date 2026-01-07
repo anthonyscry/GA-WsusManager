@@ -2,10 +2,6 @@
 
 This repository contains a set of PowerShell scripts to deploy a **WSUS server backed by SQL Server Express 2022**, validate content paths/permissions, and run ongoing maintenance.
 
-> **Important content path rule**
-> - **Content folder must be `C:\WSUS`.**
-> - If you set `CONTENT_DIR` to `C:\WSUS\wsuscontent`, WSUS will stay in a **constant download state** because the database does not register files correctly.
-
 ## Quick start (recommended flow)
 
 1. **Copy the repo to the target server** and place installers in `C:\WSUS\SQLDB`:
@@ -48,7 +44,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ---
 
-### Install / setup
+### <span style="color:#1f77b4;">Install / setup</span>
 
 #### `Run-WsusSql.ps1` (install flow)
 - **What it does:** Runs the install script for WSUS + SQL Express (validation is optional).
@@ -88,7 +84,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ---
 
-### Import
+### <span style="color:#2ca02c;">Import</span>
 
 #### `ImportScript.ps1`
 - **What it does:** Restores a SUSDB backup and re-attaches WSUS to it (auto-detects the newest `.bak` in `C:\WSUS` and prompts before use).
@@ -97,7 +93,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ---
 
-### Maintenance / utility
+### <span style="color:#ff7f0e;">Maintenance / utility</span>
 
 #### `WsusMaintenance.ps1`
 - **What it does:** Monthly maintenance automation (run on the **online** WSUS server):
@@ -131,7 +127,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ---
 
-### Troubleshooting / validation
+### <span style="color:#d62728;">Troubleshooting / validation</span>
 
 #### `Run-WsusTroubleshooter.ps1`
 - **What it does:** Runs service-level auto-fixes (SQL/WSUS/IIS) and then validates WSUS content path configuration.
@@ -154,7 +150,7 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Where to run it:** On the **WSUS server**.
 
 ## Suggested folder layout on the WSUS server
-```
+```text
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
 C:\WSUS\Scripts\            # Put these scripts here for consistency
@@ -164,7 +160,7 @@ C:\WSUS\Logs\               # Log output
 ## Online WSUS export location
 The **online WSUS server (Server LSJ)** exports the database and content to:
 
-```
+```text
 D:\WSUS-Exports
 ```
 
