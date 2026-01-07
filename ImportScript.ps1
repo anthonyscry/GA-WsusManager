@@ -79,7 +79,7 @@ if (-not (Test-Path $BackupFile)) {
     Write-Log "ERROR: Backup file not found: $BackupFile" "Red"
     exit 1
 }
-Write-Log "✅ Backup file found: $BackupFile" "Green"
+Write-Log "[OK] Backup file found: $BackupFile" "Green"
 
 # === STEP 1: Check and Set Permissions ===
 Write-Log "Checking permissions on $ContentDir..." "Yellow"
@@ -104,7 +104,7 @@ foreach ($account in $accounts) {
         }
 
         if ($existingRule) {
-            Write-Log "  ✅ $account already has Full Control" "Green"
+            Write-Log "  [OK] $account already has Full Control" "Green"
         } else {
             Write-Log "  Adding Full Control for: $account" "Yellow"
             $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
@@ -116,10 +116,10 @@ foreach ($account in $accounts) {
             )
             $acl.SetAccessRule($accessRule)
             Set-Acl -Path $ContentDir -AclObject $acl
-            Write-Log "  ✅ Full Control granted to: $account" "Green"
+            Write-Log "  [OK] Full Control granted to: $account" "Green"
         }
     } catch {
-        Write-Log "  ⚠️ Warning: Could not set permissions for $account - $($_.Exception.Message)" "Yellow"
+        Write-Log "  [WARN] Warning: Could not set permissions for $account - $($_.Exception.Message)" "Yellow"
     }
 }
 
@@ -135,12 +135,12 @@ foreach ($svc in $servicesToStop) {
             Write-Log "  Stopping $svc..." "Gray"
             Stop-Service -Name $svc -Force -ErrorAction Stop
             Start-Sleep -Seconds 3
-            Write-Log "  ✅ $svc stopped" "Green"
+            Write-Log "  [OK] $svc stopped" "Green"
         } else {
-            Write-Log "  ✅ $svc already stopped" "Green"
+            Write-Log "  [OK] $svc already stopped" "Green"
         }
     } catch {
-        Write-Log "  ⚠️ Could not stop $svc - $($_.Exception.Message)" "Yellow"
+        Write-Log "  [WARN] Could not stop $svc - $($_.Exception.Message)" "Yellow"
     }
 }
 
@@ -166,22 +166,22 @@ $restoreCommand = "RESTORE DATABASE SUSDB FROM DISK='$BackupFile' WITH REPLACE, 
 try {
     & $SqlCmdExe -S $SQLInstance -Q $restoreCommand -b
     if ($LASTEXITCODE -eq 0) {
-        Write-Log "  ✅ Database restored successfully" "Green"
+        Write-Log "  [OK] Database restored successfully" "Green"
     } else {
-        Write-Log "  ❌ Database restore failed with exit code: $LASTEXITCODE" "Red"
+        Write-Log "  [ERROR] Database restore failed with exit code: $LASTEXITCODE" "Red"
         exit 1
     }
 } catch {
-    Write-Log "  ❌ Database restore failed: $($_.Exception.Message)" "Red"
+    Write-Log "  [ERROR] Database restore failed: $($_.Exception.Message)" "Red"
     exit 1
 }
 
 Write-Log "  Setting database to multi-user mode..." "Gray"
 try {
     & $SqlCmdExe -S $SQLInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b
-    Write-Log "  ✅ Database set to multi-user mode" "Green"
+    Write-Log "  [OK] Database set to multi-user mode" "Green"
 } catch {
-    Write-Log "  ⚠️ Warning: Could not set multi-user mode - $($_.Exception.Message)" "Yellow"
+    Write-Log "  [WARN] Warning: Could not set multi-user mode - $($_.Exception.Message)" "Yellow"
 }
 
 # === STEP 4: Start Services ===
@@ -197,12 +197,12 @@ foreach ($svc in $servicesToStart) {
 
         $service = Get-Service -Name $svc
         if ($service.Status -eq "Running") {
-            Write-Log "  ✅ $svc started" "Green"
+            Write-Log "  [OK] $svc started" "Green"
         } else {
-            Write-Log "  ⚠️ $svc status: $($service.Status)" "Yellow"
+            Write-Log "  [WARN] $svc status: $($service.Status)" "Yellow"
         }
     } catch {
-        Write-Log "  ❌ Could not start $svc - $($_.Exception.Message)" "Red"
+        Write-Log "  [ERROR] Could not start $svc - $($_.Exception.Message)" "Red"
     }
 }
 
@@ -218,13 +218,13 @@ try {
     $output = & $postInstallCmd postinstall SQL_INSTANCE_NAME="$SQLInstance" CONTENT_DIR="$ContentDir" 2>&1
 
     if ($LASTEXITCODE -eq 0) {
-        Write-Log "  ✅ WSUS postinstall completed" "Green"
+        Write-Log "  [OK] WSUS postinstall completed" "Green"
     } else {
-        Write-Log "  ⚠️ WSUS postinstall returned code: $LASTEXITCODE" "Yellow"
+        Write-Log "  [WARN] WSUS postinstall returned code: $LASTEXITCODE" "Yellow"
         Write-Log "  Output: $output" "Gray"
     }
 } catch {
-    Write-Log "  ⚠️ WSUS postinstall warning: $($_.Exception.Message)" "Yellow"
+    Write-Log "  [WARN] WSUS postinstall warning: $($_.Exception.Message)" "Yellow"
 }
 
 # === STEP 6: Run WSUS Reset ===
@@ -238,12 +238,12 @@ try {
     $output = & $resetCmd reset 2>&1
 
     if ($LASTEXITCODE -eq 0) {
-        Write-Log "  ✅ WSUS reset completed" "Green"
+        Write-Log "  [OK] WSUS reset completed" "Green"
     } else {
-        Write-Log "  ⚠️ WSUS reset returned code: $LASTEXITCODE" "Yellow"
+        Write-Log "  [WARN] WSUS reset returned code: $LASTEXITCODE" "Yellow"
     }
 } catch {
-    Write-Log "  ⚠️ WSUS reset warning: $($_.Exception.Message)" "Yellow"
+    Write-Log "  [WARN] WSUS reset warning: $($_.Exception.Message)" "Yellow"
 }
 
 # === STEP 7: WSUS Cleanup ===
@@ -261,12 +261,12 @@ try {
         -DeclineExpiredUpdates `
         -Confirm:$false
 
-    Write-Log "  ✅ WSUS cleanup completed" "Green"
+    Write-Log "  [OK] WSUS cleanup completed" "Green"
     Write-Log "    Obsolete updates: $($cleanup.ObsoleteUpdatesDeleted)" "Gray"
     Write-Log "    Obsolete computers: $($cleanup.ObsoleteComputersDeleted)" "Gray"
     Write-Log "    Space freed: $([math]::Round($cleanup.DiskSpaceFreed/1MB,2)) MB" "Gray"
 } catch {
-    Write-Log "  ⚠️ WSUS cleanup warning: $($_.Exception.Message)" "Yellow"
+    Write-Log "  [WARN] WSUS cleanup warning: $($_.Exception.Message)" "Yellow"
 }
 
 # === STEP 8: Health Check ===
@@ -283,12 +283,12 @@ foreach ($svc in $services) {
     try {
         $status = (Get-Service -Name $svc.Name -ErrorAction Stop).Status
         if ($status -eq 'Running') {
-            Write-Log "  ✅ $($svc.Display): RUNNING" "Green"
+            Write-Log "  [OK] $($svc.Display): RUNNING" "Green"
         } else {
-            Write-Log "  ❌ $($svc.Display): $status" "Red"
+            Write-Log "  [ERROR] $($svc.Display): $status" "Red"
         }
     } catch {
-        Write-Log "  ❌ $($svc.Display): NOT FOUND" "Red"
+        Write-Log "  [ERROR] $($svc.Display): NOT FOUND" "Red"
     }
 }
 
@@ -298,7 +298,7 @@ try {
     $dbSize = & $SqlCmdExe -S $SQLInstance -Q $sizeQuery -h -1 -W
     Write-Log "  SUSDB Size: $($dbSize.Trim()) GB" "Green"
 } catch {
-    Write-Log "  ⚠️ Could not check database size" "Yellow"
+    Write-Log "  [WARN] Could not check database size" "Yellow"
 }
 
 Write-Log "`nWSUS Status:" "Yellow"
@@ -314,7 +314,7 @@ try {
     Write-Log "  Active updates: $active" "Green"
     Write-Log "  Declined updates: $declined" "Gray"
 } catch {
-    Write-Log "  ⚠️ Could not check WSUS status: $($_.Exception.Message)" "Yellow"
+    Write-Log "  [WARN] Could not check WSUS status: $($_.Exception.Message)" "Yellow"
 }
 
 Write-Log "`nContent Folder:" "Yellow"
@@ -327,14 +327,14 @@ try {
     Write-Log "  Content Size: $contentSize GB" "Green"
     Write-Log "  Content Files: $contentFiles" "Gray"
 } catch {
-    Write-Log "  ⚠️ Could not check content folder" "Yellow"
+    Write-Log "  [WARN] Could not check content folder" "Yellow"
 }
 
 Write-Log "`n=== Restore Complete ===" "Cyan"
-Write-Log "✅ Database restored from: $BackupFile" "Green"
-Write-Log "✅ Permissions configured for NETWORK SERVICE and WSUS Administrators" "Green"
-Write-Log "✅ WSUS services started" "Green"
-Write-Log "✅ Post-install and reset completed" "Green"
+Write-Log "[OK] Database restored from: $BackupFile" "Green"
+Write-Log "[OK] Permissions configured for NETWORK SERVICE and WSUS Administrators" "Green"
+Write-Log "[OK] WSUS services started" "Green"
+Write-Log "[OK] Post-install and reset completed" "Green"
 
 Write-Log "`nNext Steps:" "Yellow"
 Write-Log "  1. Open WSUS Console and verify updates are visible"
