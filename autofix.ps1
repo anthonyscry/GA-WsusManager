@@ -279,7 +279,7 @@ try {
 
 # Check 12: WSUS Content Directory
 Write-Host "[CHECK] WSUS Content Directory..." -NoNewline
-$wsusContent = "C:\WSUS\WsusContent"
+$wsusContent = "C:\WSUS"
 if (Test-Path $wsusContent) {
     $acl = Get-Acl $wsusContent
     $networkServiceAccess = $acl.Access | Where-Object {$_.IdentityReference -like "*NETWORK SERVICE*"}

@@ -11,7 +11,7 @@ Overview:
   - Performs cleanup and basic health checks.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Update the backup path, SQL instance, and content directory as needed.
+  - Script auto-detects the newest .bak in C:\WSUS and allows a custom path if needed.
 ===============================================================================
 #>
 
