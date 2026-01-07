@@ -10,7 +10,7 @@ Notes:
   - Run as Administrator on the WSUS server.
   - Logs to C:\WSUS\Logs\install.log
   - Requires installer files in C:\WSUS\SQLDB
-  - Content folder must be C:\WSUS\WsusContent for correct DB file registration.
+  - Content folder must be C:\WSUS for correct DB file registration.
 ===============================================================================
 #>
 
