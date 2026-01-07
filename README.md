@@ -2,10 +2,6 @@
 
 This repository contains a set of PowerShell scripts to deploy a **WSUS server backed by SQL Server Express 2022**, validate content paths/permissions, and run ongoing maintenance.
 
-> **Important content path rule**
-> - **Content folder must be `C:\WSUS`.**
-> - If you set `CONTENT_DIR` to `C:\WSUS\wsuscontent`, WSUS will stay in a **constant download state** because the database does not register files correctly.
-
 ## Quick start (recommended flow)
 
 1. **Copy the repo to the target server** and place installers in `C:\WSUS\SQLDB`:
@@ -48,12 +44,12 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 ---
 
-### Install / setup
+### <span style="color:#1f77b4;">Install / setup</span>
 
 #### `Run-WsusSql.ps1` (install flow)
-**What it does:** Runs the install script for WSUS + SQL Express (validation is optional).  
-**Why use it:** Recommended install flow; run validation separately or opt into validation when needed.  
-**Where to run it:** On the **WSUS server** you are provisioning.
+- **What it does:** Runs the install script for WSUS + SQL Express (validation is optional).
+- **Why use it:** Recommended install flow; run validation separately or opt into validation when needed.
+- **Where to run it:** On the **WSUS server** you are provisioning.
 
 ```powershell
 # Default: install only
@@ -71,95 +67,90 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 ```
 
 #### `install.ps1`
-**What it does:** Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, including:
-- SQL Express setup (silent)
-- SSMS install
-- SQL networking + firewall rules
-- WSUS role install + post-install configuration
-- IIS virtual directory fix + permissions
-- Registry settings to bypass the initial WSUS wizard
-**Why use it:** Automates a complete WSUS + SQL Express build without manual steps.  
-**Where to run it:** On the **WSUS server** hosting WSUS + SQL Express.
+- **What it does:** Full **SQL Express 2022 + SSMS + WSUS** installation and configuration, including:
+  - SQL Express setup (silent)
+  - SSMS install
+  - SQL networking + firewall rules
+  - WSUS role install + post-install configuration
+  - IIS virtual directory fix + permissions
+  - Registry settings to bypass the initial WSUS wizard
+- **Why use it:** Automates a complete WSUS + SQL Express build without manual steps.
+- **Where to run it:** On the **WSUS server** hosting WSUS + SQL Express.
 
 #### `Set-WsusGpo.ps1`
-**What it does:** Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.  
-**Why use it:** Centralizes WSUS client settings via Group Policy.  
-**Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
+- **What it does:** Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
+- **Why use it:** Centralizes WSUS client settings via Group Policy.
+- **Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
 
 ---
 
-### Import
+### <span style="color:#2ca02c;">Import</span>
 
 #### `ImportScript.ps1`
-**What it does:** Restores a SUSDB backup and re-attaches WSUS to it.  
-**Why use it:** Rehydrates WSUS from a known-good database backup (e.g., for offline/airgapped servers).  
-**Where to run it:** On the **WSUS server** that will host the restored database.
-
-> **Note:** the backup path is currently hard-coded. Rename or update it to the latest `.bak` file before running:
-> `C:\WSUS\SUSDB_20251124.bak`
+- **What it does:** Restores a SUSDB backup and re-attaches WSUS to it (auto-detects the newest `.bak` in `C:\WSUS` and prompts before use).
+- **Why use it:** Rehydrates WSUS from a known-good database backup (e.g., for offline/airgapped servers).
+- **Where to run it:** On the **WSUS server** that will host the restored database.
 
 ---
 
-### Maintenance / utility
+### <span style="color:#ff7f0e;">Maintenance / utility</span>
 
 #### `WsusMaintenance.ps1`
-**What it does:** Monthly maintenance automation (run on the **online** WSUS server):
-- Syncs and updates the upstream WSUS server
-- Monitors downloads
-- Declines old superseded updates
-- Runs cleanup tasks
-- Backs up the database and content for later import
-- Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
-**Why use it:** Keeps WSUS healthy and produces backups for downstream/offline use.  
-**Where to run it:** On the **online/upstream WSUS server**.
+- **What it does:** Monthly maintenance automation (run on the **online** WSUS server):
+  - Syncs and updates the upstream WSUS server
+  - Monitors downloads
+  - Declines old superseded updates
+  - Runs cleanup tasks
+  - Backs up the database and content for later import
+  - Optionally runs ultimate cleanup before the backup (use `-SkipUltimateCleanup` to skip)
+- **Why use it:** Keeps WSUS healthy and produces backups for downstream/offline use.
+- **Where to run it:** On the **online/upstream WSUS server**.
 
 #### `Ultimate-WsusCleanup.ps1`
-**What it does:** Quarterly or emergency cleanup:
-- Deletes supersession records
-- Removes declined updates
-- Rebuilds indexes and updates stats
-- Shrinks SUSDB
-**Why use it:** Deep cleanup when WSUS performance/storage needs attention.  
-**Where to run it:** On the **WSUS server** (typically the online/upstream instance).
+- **What it does:** Quarterly or emergency cleanup:
+  - Deletes supersession records
+  - Removes declined updates
+  - Rebuilds indexes and updates stats
+  - Shrinks SUSDB
+- **Why use it:** Deep cleanup when WSUS performance/storage needs attention.
+- **Where to run it:** On the **WSUS server** (typically the online/upstream instance).
 
 #### `Reset-WsusContent.ps1`
-**What it does:** Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.  
-**Why use it:** Fixes or validates content issues and forces a full re-check of downloads.  
-**Where to run it:** On the **WSUS server** that hosts the content store.
+- **What it does:** Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
+- **Why use it:** Fixes or validates content issues and forces a full re-check of downloads.
+- **Where to run it:** On the **WSUS server** that hosts the content store.
 
 #### `Force-WSUSCheckIn.ps1`
-**What it does:** Forces a WSUS client to check in (optionally clears Windows Update cache).  
-**Why use it:** Troubleshoot client reporting or trigger immediate status updates.  
-**Where to run it:** On the **WSUS client machine**.
+- **What it does:** Forces a WSUS client to check in (optionally clears Windows Update cache).
+- **Why use it:** Troubleshoot client reporting or trigger immediate status updates.
+- **Where to run it:** On the **WSUS client machine**.
 
 ---
 
-### Troubleshooting / validation
-
-> **Note:** `Run-WsusUnified.ps1` has been removed. Use `Run-WsusTroubleshooter.ps1` for the unified health check workflow.
+### <span style="color:#d62728;">Troubleshooting / validation</span>
 
 #### `Run-WsusTroubleshooter.ps1`
-**What it does:** Runs service-level auto-fixes (SQL/WSUS/IIS) and then validates WSUS content path configuration.  
-**Why use it:** One-stop health check for common WSUS service issues and content path correctness.  
-**Where to run it:** On the **WSUS server**.
+- **What it does:** Runs service-level auto-fixes (SQL/WSUS/IIS) and then validates WSUS content path configuration.
+- **Why use it:** One-stop health check for common WSUS service issues and content path correctness.
+- **Where to run it:** On the **WSUS server**.
 
 #### `Check-WSUSContent.ps1`
-**What it does:** Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
-- SUSDB content path
-- Registry content path
-- IIS virtual directory content path
-- Permissions (NETWORK SERVICE, LOCAL SERVICE, IIS_IUSRS, WsusPool)
-- File state records and download queue
-**Why use it:** Diagnose and repair common WSUS content path and permission issues.  
-**Where to run it:** On the **WSUS server** hosting the content store.
+- **What it does:** Validates that WSUS is correctly using **`C:\WSUS`** and can optionally fix:
+  - SUSDB content path
+  - Registry content path
+  - IIS virtual directory content path
+  - Permissions (NETWORK SERVICE, LOCAL SERVICE, IIS_IUSRS, WsusPool)
+  - File state records and download queue
+- **Why use it:** Diagnose and repair common WSUS content path and permission issues.
+- **Where to run it:** On the **WSUS server** hosting the content store.
 
 #### `autofix.ps1`
-**What it does:** Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).  
-**Why use it:** Quickly resolve common service-level problems without manual triage.  
-**Where to run it:** On the **WSUS server**.
+- **What it does:** Detects and fixes common WSUS + SQL service issues (SQL, WSUS, IIS).
+- **Why use it:** Quickly resolve common service-level problems without manual triage.
+- **Where to run it:** On the **WSUS server**.
 
 ## Suggested folder layout on the WSUS server
-```
+```text
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
 C:\WSUS\Scripts\            # Put these scripts here for consistency
@@ -169,7 +160,7 @@ C:\WSUS\Logs\               # Log output
 ## Online WSUS export location
 The **online WSUS server (Server LSJ)** exports the database and content to:
 
-```
+```text
 D:\WSUS-Exports
 ```
 
@@ -228,6 +219,7 @@ Examples below mirror `Robocopy_example.txt` and show common transfer paths for 
 
 ```powershell
 robocopy "D:\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
+
 robocopy "\\10.120.129.172\d\WSUS-Exports" "<Apricorn Path>" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
 
 robocopy "\\10.120.129.172\d\WSUS-Exports" "\\10.120.129.116\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
@@ -237,10 +229,5 @@ robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs
 
 ## Notes and known behaviors
 - **Content path must be `C:\WSUS`.** `C:\WSUS\wsuscontent` is known to cause endless downloads and an unregistered file state in SUSDB.
-- The **install script removes its temporary SA password file** for security.
-- `ImportScript.ps1` uses a **fixed backup path** today; update it if your backup name changes.
-
-## Consolidation suggestions
-If you want fewer entry points, here are safe merge/rename ideas:
-- Keep `Run-WsusSql.ps1`, `install.ps1`, and `Check-WSUSContent.ps1` as the main deployment flow.
-- `PS commands.txt` and `Robocopy_example.txt` are reference snippets; move them into scripts if you want everything executable.
+- The **install script deletes its temporary encrypted SA password file** when it finishes.
+- `ImportScript.ps1` scans `C:\WSUS` for the newest `.bak` file and prompts before restoring it.
