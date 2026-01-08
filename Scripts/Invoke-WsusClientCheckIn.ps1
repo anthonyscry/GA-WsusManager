@@ -1,3 +1,5 @@
+#Requires -RunAsAdministrator
+
 <#
 ===============================================================================
 Script: Invoke-WsusClientCheckIn.ps1
@@ -14,6 +16,7 @@ Notes:
     If specified, clears the Windows Update cache (SoftwareDistribution folder)
 #>
 
+[CmdletBinding()]
 param(
     [switch]$ClearCache
 )
