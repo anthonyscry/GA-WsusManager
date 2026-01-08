@@ -3,7 +3,18 @@
 <#
 ===============================================================================
 Script: Run-WsusTroubleshooter.ps1
+Status: DEPRECATED - This wrapper script is no longer needed.
 Purpose: Run the WSUS health check troubleshooter workflow.
+
+DEPRECATION NOTICE:
+This script is a thin wrapper that simply calls other scripts. It is
+recommended to call those scripts directly instead:
+
+  - For service checks: .\autofix.ps1
+  - For content validation: .\Check-WSUSContent.ps1 -FixIssues
+
+This script will be removed in a future version.
+===============================================================================
 Overview:
   - Runs autofix.ps1 to check/repair WSUS + SQL + IIS services.
   - Validates WSUS content configuration (optionally remediating issues).
@@ -28,6 +39,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# DEPRECATION WARNING
+Write-Warning @"
+=======================================================================
+DEPRECATION NOTICE: This script (Run-WsusTroubleshooter.ps1) is deprecated.
+Please call the scripts directly instead:
+  - For service checks: .\autofix.ps1
+  - For content validation: .\Check-WSUSContent.ps1 -FixIssues
+This wrapper will be removed in a future version.
+=======================================================================
+"@
+
+Start-Sleep -Seconds 3
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "WSUS Health Check Troubleshooter" -ForegroundColor Cyan

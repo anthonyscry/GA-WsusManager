@@ -3,7 +3,18 @@
 <#
 ===============================================================================
 Script: Run-WsusSql.ps1
+Status: DEPRECATED - This wrapper script is no longer needed.
 Purpose: Run the WSUS + SQL Express setup workflow.
+
+DEPRECATION NOTICE:
+This script is a thin wrapper that simply calls other scripts. It is
+recommended to call those scripts directly instead:
+
+  - For installation: .\install.ps1
+  - For content validation: .\Check-WSUSContent.ps1 -FixIssues
+
+This script will be removed in a future version.
+===============================================================================
 Overview:
   - Runs install.ps1 to install SQL Express, SSMS, and WSUS.
   - Optionally validates the WSUS content path and fixes issues.
@@ -33,6 +44,19 @@ param(
     [Alias("FixIssues")]
     [switch]$FixContentIssues
 )
+
+# DEPRECATION WARNING
+Write-Warning @"
+=======================================================================
+DEPRECATION NOTICE: This script (Run-WsusSql.ps1) is deprecated.
+Please call the scripts directly instead:
+  - For installation: .\install.ps1
+  - For content validation: .\Check-WSUSContent.ps1 -FixIssues
+This wrapper will be removed in a future version.
+=======================================================================
+"@
+
+Start-Sleep -Seconds 3
 
 # Resolve the directory where this script lives so we can call sibling scripts.
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
