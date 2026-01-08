@@ -11,15 +11,34 @@ Notes:
   - Expect WSUS to be offline during this run.
   - Use quarterly or when DB performance degrades.
 ===============================================================================
+.PARAMETER Force
+    Skip confirmation prompt and run cleanup automatically.
+.PARAMETER SkipConfirmation
+    Alias for -Force parameter.
+.PARAMETER LogFile
+    Path to log file for transcript output (default: C:\WSUS\Logs\UltimateCleanup_<timestamp>.log).
 #>
+
+[CmdletBinding()]
+param(
+    [Alias("SkipConfirmation")]
+    [switch]$Force,
+    [string]$LogFile = "C:\WSUS\Logs\UltimateCleanup_$(Get-Date -Format 'yyyyMMdd_HHmm').log"
+)
 
 # Keep the script moving even if a step fails.
 $ErrorActionPreference = 'Continue'
 
+# Setup logging
+New-Item -Path (Split-Path $LogFile -Parent) -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+Start-Transcript -Path $LogFile -Append -ErrorAction SilentlyContinue | Out-Null
+$ProgressPreference = "SilentlyContinue"
+
 Write-Host "`n===================================================================" -ForegroundColor Cyan
 Write-Host "           ULTIMATE WSUS DATABASE CLEANUP" -ForegroundColor Cyan
 Write-Host "===================================================================" -ForegroundColor Cyan
-Write-Host "This script performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow
+Write-Host "Log file: $LogFile" -ForegroundColor Gray
+Write-Host "`nThis script performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow
 Write-Host "  1. Removes supersession records for declined/superseded updates"
 Write-Host "  2. Permanently deletes declined update metadata"
 Write-Host "  3. Adds performance indexes"
@@ -72,11 +91,16 @@ Write-Host "  Delete ~$($beforeStats.DeclinedUpdates) declined updates"
 Write-Host "  Free ~$expectedSpaceSavings GB (approximate)"
 Write-Host "  Result: ~$($beforeStats.ActiveUpdates) active updates remaining"
 
-# Require explicit confirmation before heavy operations.
-$response = Read-Host "`nProceed with ultimate cleanup? (yes/no)"
-if ($response -ne "yes") {
-    Write-Host "Cancelled." -ForegroundColor Yellow
-    exit 0
+# Require explicit confirmation before heavy operations (unless -Force is specified).
+if (-not $Force) {
+    $response = Read-Host "`nProceed with ultimate cleanup? (yes/no)"
+    if ($response -ne "yes") {
+        Write-Host "Cancelled." -ForegroundColor Yellow
+        Stop-Transcript -ErrorAction SilentlyContinue
+        exit 0
+    }
+} else {
+    Write-Host "`nSkipping confirmation (-Force specified)" -ForegroundColor Yellow
 }
 
 # === STOP WSUS SERVICE ===
@@ -440,3 +464,6 @@ Write-Host "  2. Run monthly maintenance script to prevent buildup"
 Write-Host "  3. Monitor database - should stay under 3 GB"
 Write-Host "  4. Your WSUS should now be significantly faster"
 Write-Host ""
+
+# Stop transcript logging
+Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
