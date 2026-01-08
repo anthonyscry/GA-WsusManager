@@ -1,139 +1,160 @@
 #Requires -RunAsAdministrator
 
 <#
-===============================================================================
-Script: Set-WsusGroupPolicy.ps1
-Purpose: Import and configure WSUS Group Policy Objects with updated server settings.
-Overview:
-  - Imports three WSUS-related GPO backups from the WSUS GPOs directory
-  - Updates WSUS server URLs in the Update Policy GPO
-  - Configures client update settings, firewall rules, and policies
-  - Optionally links GPOs to target OUs
-GPO Backups Included:
-  1. WSUS Update Policy - Client update configuration with WSUS server URLs
-  2. WSUS Inbound Allow - Firewall rules for inbound WSUS traffic
-  3. WSUS Outbound Allow - Firewall rules for outbound WSUS traffic
-Notes:
-  - Run as Administrator on a domain controller with RSAT Group Policy Management tools.
-  - Requires RSAT Group Policy Management tools (GroupPolicy module).
-  - Automatically updates hardcoded server names from backups with new WSUS server URL.
-===============================================================================
+.SYNOPSIS
+    Import and configure WSUS Group Policy Objects for client management.
+
+.DESCRIPTION
+    Automates the deployment of three WSUS GPOs on a Domain Controller:
+    - WSUS Update Policy: Configures Windows Update client settings
+    - WSUS Inbound Allow: Firewall rules for inbound WSUS traffic
+    - WSUS Outbound Allow: Firewall rules for outbound WSUS traffic
+
+    The script automatically replaces hardcoded WSUS server URLs from backups
+    with your environment's WSUS server, ensuring seamless deployment.
+
 .PARAMETER WsusServerUrl
-    WSUS server URL (e.g. http://WSUSServerName:8530). If not provided, prompts for server name.
+    WSUS server URL (e.g., http://WSUSServerName:8530).
+    If not provided, prompts for server name interactively.
+
 .PARAMETER BackupPath
-    Path containing GPO backups. Defaults to ".\WSUS GPOs" in the script directory.
+    Path to GPO backup directory. Defaults to ".\WSUS GPOs" relative to script location.
+
 .PARAMETER TargetOU
-    Optional distinguished name of the OU to link the GPOs to.
-.PARAMETER ImportAll
-    Import all three WSUS GPOs (Update Policy, Inbound Allow, Outbound Allow). Default: $true.
+    Optional OU distinguished name to link GPOs (e.g., "OU=Workstations,DC=example,DC=local").
+
+.EXAMPLE
+    .\Set-WsusGroupPolicy.ps1
+    Prompts for WSUS server name and imports all three GPOs.
+
+.EXAMPLE
+    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
+    Imports GPOs using specified WSUS server URL.
+
+.EXAMPLE
+    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
+    Imports GPOs and links them to the specified OU.
+
+.NOTES
+    Requirements:
+    - Run on a Domain Controller with Administrator privileges
+    - RSAT Group Policy Management tools must be installed
+    - WSUS GPOs backup folder must be present in script directory
 #>
 
 [CmdletBinding()]
 param(
     [string]$WsusServerUrl,
     [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs"),
-    [string]$TargetOU,
-    [switch]$ImportAll = $true
+    [string]$TargetOU
 )
 
-function Assert-Module {
-    param([string]$Name)
-    # Ensure required modules are available before continuing.
-    if (-not (Get-Module -ListAvailable -Name $Name)) {
-        throw "Required module '$Name' not found. Install RSAT Group Policy Management tools."
+#region Helper Functions
+
+function Test-Prerequisites {
+    <#
+    .SYNOPSIS
+        Validates required PowerShell modules are available.
+    #>
+    param([string]$ModuleName)
+
+    if (-not (Get-Module -ListAvailable -Name $ModuleName)) {
+        throw "Required module '$ModuleName' not found. Install RSAT Group Policy Management tools."
     }
-    # Import the module so cmdlets like New-GPO and Set-GPRegistryValue are available.
-    Import-Module $Name -ErrorAction Stop
+    Import-Module $ModuleName -ErrorAction Stop
 }
 
-# GroupPolicy module is required for all GPO operations.
-Assert-Module -Name GroupPolicy
+function Get-WsusServerUrl {
+    <#
+    .SYNOPSIS
+        Prompts for WSUS server name if not provided via parameter.
+    #>
+    param([string]$Url)
 
-Write-Host ""
-Write-Host "==============================================================="
-Write-Host "WSUS GPO Configuration"
-Write-Host "==============================================================="
+    if ($Url) {
+        return $Url
+    }
 
-# Prompt for WSUS server URL if not provided
-if (-not $WsusServerUrl) {
-    $wsusServerName = Read-Host "Enter WSUS server name (e.g. WSUSServerName)"
-    if (-not $wsusServerName) {
+    $serverName = Read-Host "Enter WSUS server name (e.g., WSUSServerName)"
+    if (-not $serverName) {
         throw "WSUS server name is required."
     }
-    $WsusServerUrl = "http://$wsusServerName:8530"
+    return "http://$serverName:8530"
 }
 
-Write-Host "WSUS Server URL: $WsusServerUrl"
-Write-Host "GPO Backup Path: $BackupPath"
-Write-Host ""
-
-# Verify backup path exists
-if (-not (Test-Path $BackupPath)) {
-    throw "GPO backup path not found: $BackupPath"
+function Get-GpoDefinitions {
+    <#
+    .SYNOPSIS
+        Returns array of GPO definitions to process.
+    #>
+    return @(
+        @{
+            DisplayName = "WSUS Update Policy"
+            Description = "Client update configuration with WSUS server URLs"
+            UpdateWsusSettings = $true
+        },
+        @{
+            DisplayName = "WSUS Inbound Allow"
+            Description = "Firewall rules for inbound WSUS traffic"
+            UpdateWsusSettings = $false
+        },
+        @{
+            DisplayName = "WSUS Outbound Allow"
+            Description = "Firewall rules for outbound WSUS traffic"
+            UpdateWsusSettings = $false
+        }
+    )
 }
 
-# Define the three GPOs to import
-$gpoDefinitions = @(
-    @{
-        DisplayName = "WSUS Update Policy"
-        Description = "Client update configuration with WSUS server URLs"
-        UpdateWsusSettings = $true
-    },
-    @{
-        DisplayName = "WSUS Inbound Allow"
-        Description = "Firewall rules for inbound WSUS traffic"
-        UpdateWsusSettings = $false
-    },
-    @{
-        DisplayName = "WSUS Outbound Allow"
-        Description = "Firewall rules for outbound WSUS traffic"
-        UpdateWsusSettings = $false
-    }
-)
+function Import-WsusGpo {
+    <#
+    .SYNOPSIS
+        Processes a single GPO: creates or updates from backup, updates WSUS URLs, and links to OU.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$GpoDefinition,
 
-# Get all available backups from the backup path
-Write-Host "Scanning for GPO backups..."
-$availableBackups = Get-GPOBackup -Path $BackupPath -ErrorAction SilentlyContinue
-if (-not $availableBackups) {
-    throw "No GPO backups found in $BackupPath"
-}
-Write-Host "Found $($availableBackups.Count) GPO backup(s)"
-Write-Host ""
+        [Parameter(Mandatory)]
+        [object]$Backup,
 
-# Process each GPO definition
-foreach ($gpoDef in $gpoDefinitions) {
-    $gpoName = $gpoDef.DisplayName
+        [Parameter(Mandatory)]
+        [string]$BackupPath,
+
+        [Parameter(Mandatory)]
+        [string]$WsusUrl,
+
+        [string]$TargetOU
+    )
+
+    $gpoName = $GpoDefinition.DisplayName
+
     Write-Host "-----------------------------------------------------------"
     Write-Host "Processing: $gpoName"
-    Write-Host "Purpose: $($gpoDef.Description)"
+    Write-Host "Purpose: $($GpoDefinition.Description)"
     Write-Host "-----------------------------------------------------------"
 
-    # Find matching backup
-    $backup = $availableBackups | Where-Object { $_.DisplayName -eq $gpoName } | Select-Object -First 1
-
-    if (-not $backup) {
-        Write-Warning "No backup found for '$gpoName'. Skipping..."
-        continue
-    }
-
-    # Check if GPO already exists
+    # Create or update GPO from backup
     $existingGpo = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
 
     if ($existingGpo) {
         Write-Host "GPO already exists. Updating from backup..."
-        Import-GPO -BackupId $backup.Id -Path $BackupPath -TargetName $gpoName -ErrorAction Stop | Out-Null
     } else {
         Write-Host "Creating new GPO from backup..."
         $existingGpo = New-GPO -Name $gpoName -ErrorAction Stop
-        Import-GPO -BackupId $backup.Id -Path $BackupPath -TargetName $gpoName -ErrorAction Stop | Out-Null
     }
 
-    # Update WSUS server URLs if this is the Update Policy GPO
-    if ($gpoDef.UpdateWsusSettings) {
-        Write-Host "Updating WSUS server settings to: $WsusServerUrl"
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName "WUServer" -Type String -Value $WsusServerUrl -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName "WUStatusServer" -Type String -Value $WsusServerUrl -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" -ValueName "UseWUServer" -Type DWord -Value 1 -ErrorAction Stop
+    Import-GPO -BackupId $Backup.Id -Path $BackupPath -TargetName $gpoName -ErrorAction Stop | Out-Null
+
+    # Update WSUS server URLs for Update Policy GPO
+    if ($GpoDefinition.UpdateWsusSettings) {
+        Write-Host "Updating WSUS server settings to: $WsusUrl"
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "WUServer" -Type String -Value $WsusUrl -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "WUStatusServer" -Type String -Value $WsusUrl -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "UseWUServer" -Type DWord -Value 1 -ErrorAction Stop
     }
 
     # Link to target OU if specified
@@ -154,19 +175,97 @@ foreach ($gpoDef in $gpoDefinitions) {
     Write-Host ""
 }
 
-Write-Host "==============================================================="
-Write-Host "All WSUS GPOs have been configured successfully!"
-Write-Host "==============================================================="
-Write-Host ""
-Write-Host "Summary:"
-Write-Host "- WSUS Server URL: $WsusServerUrl"
-Write-Host "- GPOs Configured: $($gpoDefinitions.Count)"
-if ($TargetOU) {
-    Write-Host "- Linked to OU: $TargetOU"
+function Show-Summary {
+    <#
+    .SYNOPSIS
+        Displays configuration summary and next steps.
+    #>
+    param(
+        [string]$WsusUrl,
+        [int]$GpoCount,
+        [string]$TargetOU
+    )
+
+    Write-Host "==============================================================="
+    Write-Host "All WSUS GPOs have been configured successfully!"
+    Write-Host "==============================================================="
+    Write-Host ""
+    Write-Host "Summary:"
+    Write-Host "- WSUS Server URL: $WsusUrl"
+    Write-Host "- GPOs Configured: $GpoCount"
+    if ($TargetOU) {
+        Write-Host "- Linked to OU: $TargetOU"
+    }
+    Write-Host ""
+    Write-Host "Next Steps:"
+    Write-Host "1. Run 'gpupdate /force' on client machines to apply policies"
+    Write-Host "2. Verify client check-in: wuauclt /detectnow /reportnow"
+    Write-Host "3. Check WSUS console for client registrations"
+    Write-Host ""
 }
-Write-Host ""
-Write-Host "Next Steps:"
-Write-Host "1. Run 'gpupdate /force' on client machines to apply policies"
-Write-Host "2. Verify client check-in with: wuauclt /detectnow /reportnow"
-Write-Host "3. Check WSUS console for client registrations"
-Write-Host ""
+
+#endregion
+
+#region Main Script
+
+try {
+    # Validate prerequisites
+    Test-Prerequisites -ModuleName "GroupPolicy"
+
+    # Display banner
+    Write-Host ""
+    Write-Host "==============================================================="
+    Write-Host "WSUS GPO Configuration"
+    Write-Host "==============================================================="
+
+    # Get WSUS server URL (prompt if not provided)
+    $WsusServerUrl = Get-WsusServerUrl -Url $WsusServerUrl
+
+    Write-Host "WSUS Server URL: $WsusServerUrl"
+    Write-Host "GPO Backup Path: $BackupPath"
+    Write-Host ""
+
+    # Verify backup path exists
+    if (-not (Test-Path $BackupPath)) {
+        throw "GPO backup path not found: $BackupPath"
+    }
+
+    # Load GPO definitions
+    $gpoDefinitions = Get-GpoDefinitions
+
+    # Scan for available backups
+    Write-Host "Scanning for GPO backups..."
+    $availableBackups = Get-GPOBackup -Path $BackupPath -ErrorAction SilentlyContinue
+    if (-not $availableBackups) {
+        throw "No GPO backups found in $BackupPath"
+    }
+    Write-Host "Found $($availableBackups.Count) GPO backup(s)"
+    Write-Host ""
+
+    # Process each GPO
+    foreach ($gpoDef in $gpoDefinitions) {
+        $backup = $availableBackups | Where-Object { $_.DisplayName -eq $gpoDef.DisplayName } | Select-Object -First 1
+
+        if (-not $backup) {
+            Write-Warning "No backup found for '$($gpoDef.DisplayName)'. Skipping..."
+            continue
+        }
+
+        Import-WsusGpo -GpoDefinition $gpoDef `
+                       -Backup $backup `
+                       -BackupPath $BackupPath `
+                       -WsusUrl $WsusServerUrl `
+                       -TargetOU $TargetOU
+    }
+
+    # Display summary
+    Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count -TargetOU $TargetOU
+
+} catch {
+    Write-Host ""
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
+
+#endregion
