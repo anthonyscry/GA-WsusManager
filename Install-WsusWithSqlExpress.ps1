@@ -610,8 +610,8 @@ Write-Host " Next steps:"
 Write-Host " 1. Test SQL: sqlcmd -S .\SQLEXPRESS -U sa -P [your_password]"
 Write-Host " 2. Configure WSUS via Update Services console"
 Write-Host ""
-Write-Host " If issues occur, run Repair-WsusServices.ps1 or:"
-Write-Host "   .\\Repair-WsusContentPath.ps1 -ContentPath $WSUSContent -SqlInstance .\\SQLEXPRESS"
+Write-Host " If issues occur, run:"
+Write-Host "   .\\Test-WsusHealth.ps1 -Repair -ContentPath $WSUSContent -SqlInstance .\\SQLEXPRESS"
 Write-Host "==============================================================="
 
 Stop-Transcript | Out-Null
