@@ -173,21 +173,17 @@ Write-Host "Services started: $($result.ServicesStarted.Count)"
 The following scripts have been refactored to use these modules:
 
 ### Refactored Scripts
-- **Ultimate-WsusCleanup.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
-- **WsusMaintenance.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
-- **Check-WSUSContent.ps1** - Uses: WsusUtilities, WsusPermissions, WsusServices
-- **Force-WSUSCheckIn.ps1** - Uses: WsusUtilities
+- **Invoke-WsusDeepCleanup.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
+- **Invoke-WsusMonthlyMaintenance.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
+- **Repair-WsusContentPath.ps1** - Uses: WsusUtilities, WsusPermissions, WsusServices
+- **Invoke-WsusClientCheckIn.ps1** - Uses: WsusUtilities
 
 ### Scripts To Be Refactored
-- install.ps1
-- autofix.ps1
-- ImportScript.ps1
-- Reset-WsusContent.ps1
-- Set-WsusGpo.ps1
-
-### Deprecated Wrapper Scripts
-- **Run-WsusSql.ps1** - Thin wrapper, use install.ps1 and Check-WSUSContent.ps1 directly
-- **Run-WsusTroubleshooter.ps1** - Thin wrapper, use autofix.ps1 and Check-WSUSContent.ps1 directly
+- Install-WsusWithSqlExpress.ps1
+- Repair-WsusServices.ps1
+- Restore-WsusDatabase.ps1
+- Reset-WsusContentDownload.ps1
+- Set-WsusGroupPolicy.ps1
 
 ## Benefits of Modular Architecture
 

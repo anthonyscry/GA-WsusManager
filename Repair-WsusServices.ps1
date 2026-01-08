@@ -2,7 +2,7 @@
 
 <#
 ===============================================================================
-Script: autofix.ps1
+Script: Repair-WsusServices.ps1
 Purpose: Detect and optionally fix common WSUS + SQL Server issues.
 Overview:
   - Checks SQL, WSUS, IIS services, protocols, and firewall rules.

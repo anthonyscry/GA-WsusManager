@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: Check-WSUSContent.ps1
+Script: Repair-WsusContentPath.ps1
 Purpose: Validate and optionally fix WSUS content path configuration.
 Overview:
   - Verifies content path in SUSDB, registry, and IIS.

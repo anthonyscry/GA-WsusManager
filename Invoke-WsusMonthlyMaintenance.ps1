@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: WsusMaintenance.ps1
+Script: Invoke-WsusMonthlyMaintenance.ps1
 Purpose: Monthly WSUS maintenance automation.
 Overview:
   - Synchronizes WSUS, monitors download progress, and applies approvals.
