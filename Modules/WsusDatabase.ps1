@@ -68,11 +68,11 @@ SELECT
     (SELECT COUNT(*) FROM tbFileOnServer WHERE ActualState = 1) AS FilesPresent,
     (SELECT COUNT(*) FROM tbFileOnServer) AS FilesTotal,
     (SELECT COUNT(*) FROM tbFileDownloadProgress) AS FilesInDownloadQueue,
-    (SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) FROM sys.master_files WHERE database_id=DB_ID('SUSDB')) AS SizeGB
+    (SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) FROM master.sys.master_files WHERE database_id=DB_ID('SUSDB')) AS SizeGB
 "@
 
     try {
-        return Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+        return Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB -Query $query -QueryTimeout 30
     } catch {
         Write-Warning "Failed to get database stats: $($_.Exception.Message)"
         return $null
