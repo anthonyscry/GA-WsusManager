@@ -23,20 +23,48 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Domain controller (GPO) setup
 
-To push WSUS settings to clients via Group Policy, run the new GPO script on a domain controller with **RSAT Group Policy Management** installed:
+**⚠️ IMPORTANT: Run this on your Domain Controller, NOT on the WSUS server!**
 
+### Prerequisites
+- Domain Controller with Administrator access
+- RSAT Group Policy Management tools installed
+- Copy these files to your DC:
+  - `Set-WsusGroupPolicy.ps1` (the script)
+  - `WSUS GPOs\` folder (contains GPO backups)
+
+### What it does
+Automatically imports **three WSUS GPOs**:
+1. **WSUS Update Policy** - Configures Windows Update client settings
+2. **WSUS Inbound Allow** - Firewall rules for inbound traffic
+3. **WSUS Outbound Allow** - Firewall rules for outbound traffic
+
+The script automatically replaces hardcoded WSUS server URLs in the backups with your environment's server.
+
+### Quick setup
+
+**Option 1: Interactive mode** (prompts for WSUS server name)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+.\Set-WsusGroupPolicy.ps1
 ```
 
-Optional: import a backed up GPO (if present) and link to an OU:
-
+**Option 2: Specify WSUS server**
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
-  -WsusServerUrl "http://WSUSServerName:8530" `
-  -BackupPath "C:\WSUS\Scripts\GpoBackups" `
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
+```
+
+**Option 3: Link to specific OU**
+```powershell
+.\Set-WsusGroupPolicy.ps1 `
+  -WsusServerUrl "http://WSUS01:8530" `
   -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
+
+### Workflow
+1. Copy script + GPO backups to Domain Controller
+2. Run script (specify WSUS server URL or it will prompt)
+3. Script imports all three GPOs and updates WSUS URLs
+4. (Optional) Script links GPOs to specified OU
+5. Clients apply policies on next gpupdate
 
 ## What the scripts do (by category)
 All script names below match the PowerShell files in the repo root and are grouped by their primary use.
@@ -77,10 +105,15 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Why use it:** Automates a complete WSUS + SQL Express build without manual steps.
 - **Where to run it:** On the **WSUS server** hosting WSUS + SQL Express.
 
-#### `Set-WsusGpo.ps1`
-- **What it does:** Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
-- **Why use it:** Centralizes WSUS client settings via Group Policy.
+#### `Set-WsusGroupPolicy.ps1`
+- **What it does:** Imports and configures all three WSUS GPO backups (Update Policy, Inbound Allow, Outbound Allow) and updates hardcoded WSUS server URLs to match your environment.
+- **Why use it:** Centralizes WSUS client settings, update policies, and firewall rules via Group Policy in a single operation.
 - **Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
+- **Key features:**
+  - Automatically finds GPO backups in `WSUS GPOs` folder
+  - Updates hardcoded server names (e.g., `LSJ-WSUS2`) with your new WSUS server URL
+  - Creates or updates all three GPOs in one run
+  - Optionally links GPOs to target OUs
 
 ---
 
@@ -153,12 +186,20 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Why use it:** Quickly resolve common service-level problems without manual triage.
 - **Where to run it:** On the **WSUS server**.
 
-## Suggested folder layout on the WSUS server
+## Suggested folder layout
+
+### On the WSUS server:
 ```text
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
-C:\WSUS\Scripts\            # Put these scripts here for consistency
+C:\WSUS\Scripts\            # WSUS server scripts (Install, Maintenance, Cleanup, etc.)
 C:\WSUS\Logs\               # Log output
+```
+
+### On the Domain Controller:
+```text
+<Any location>\              # Copy Set-WsusGroupPolicy.ps1 here
+<Any location>\WSUS GPOs\    # Copy WSUS GPOs folder here (required for script)
 ```
 
 ## Online WSUS export location
@@ -232,9 +273,13 @@ Specify a custom log file location:
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force -LogFile "D:\Logs\Cleanup.log"
 ```
 
-### Create or import WSUS GPOs
+### Configure WSUS GPOs (Domain Controller)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+# Interactive mode - prompts for WSUS server name
+.\Set-WsusGroupPolicy.ps1
+
+# Specify server and link to OU
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
 ## Robocopy examples (moving exports to airgapped WSUS servers)
@@ -250,7 +295,37 @@ robocopy "\\10.120.129.172\d\WSUS-Exports" "\\10.120.129.116\WSUS" /MIR /MT:16 /
 robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs\Export_%DATE%_%TIME%.log" /TEE
 ```
 
+## Troubleshooting
+
+### GPO script issues
+
+**"Required module 'GroupPolicy' not found"**
+- Install RSAT Group Policy Management tools on your Domain Controller
+- Windows Server: `Install-WindowsFeature GPMC`
+- Windows Client: Install RSAT from Optional Features
+
+**"GPO backup path not found"**
+- Ensure `WSUS GPOs` folder is in the same directory as the script
+- Use `-BackupPath` parameter to specify custom location
+
+**"No GPO backups found"**
+- Verify the `WSUS GPOs` folder contains the three GPO backup subdirectories
+- Each backup folder should have a `bkupInfo.xml` file
+
+### WSUS content issues
+
+**Endless downloads / content not appearing**
+- Verify content path is `C:\WSUS` (NOT `C:\WSUS\wsuscontent`)
+- Run `.\Check-WSUSContent.ps1 -FixIssues` to diagnose and repair
+
+**Clients not checking in**
+- Verify GPOs are linked to correct OUs
+- Run `gpupdate /force` on client
+- Check client: `wuauclt /detectnow /reportnow`
+- Verify firewall rules allow WSUS traffic (ports 8530/8531)
+
 ## Notes and known behaviors
 - **Content path must be `C:\WSUS`.** `C:\WSUS\wsuscontent` is known to cause endless downloads and an unregistered file state in SUSDB.
 - The **install script deletes its temporary encrypted SA password file** when it finishes.
 - `ImportScript.ps1` scans `C:\WSUS` for the newest `.bak` file and prompts before restoring it.
+- **Set-WsusGroupPolicy.ps1 runs on Domain Controller**, not on WSUS server. Copy the script and GPO backups to your DC before running.
