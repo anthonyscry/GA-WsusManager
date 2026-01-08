@@ -22,7 +22,11 @@ Changes:
 [CmdletBinding()]
 param(
     # Skip the heavy "ultimate cleanup" stage before the backup if needed.
-    [switch]$SkipUltimateCleanup
+    [switch]$SkipUltimateCleanup,
+
+    # Optional: Path to export/copy backups to (e.g., "\\server\share\WSUS-Exports")
+    # If not specified, the copy step is skipped.
+    [string]$ExportPath
 )
 
 # Import shared modules
@@ -77,7 +81,7 @@ try {
     
 } catch {
     Write-Error "Failed to connect: $($_.Exception.Message)"
-    Stop-Transcript
+    Stop-WsusLogging
     exit 1
 }
 
@@ -566,15 +570,20 @@ if ($allUpdates.Count -eq 0) {
 
 Write-Output "============================================================`n"
 
-# === COPY TO LAB SERVER ===
-Write-Log "Copying to lab server..."
-$robocopyLogDir = "C:\Logs"
-if (-not (Test-Path $robocopyLogDir)) {
-    New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
-    Write-Log "Created log directory: $robocopyLogDir"
+# === COPY TO EXPORT DESTINATION (OPTIONAL) ===
+if ($ExportPath) {
+    Write-Log "Copying to export destination: $ExportPath"
+    $robocopyLogDir = "C:\WSUS\Logs"
+    if (-not (Test-Path $robocopyLogDir)) {
+        New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
+        Write-Log "Created log directory: $robocopyLogDir"
+    }
+    $robocopyLog = "$robocopyLogDir\Export_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+    robocopy "C:\WSUS" $ExportPath /MIR /MT:16 /R:2 /W:5 /LOG:$robocopyLog /TEE
+    Write-Log "Export complete"
+} else {
+    Write-Log "Skipping export (no ExportPath specified)"
 }
-$robocopyLog = "C:\Logs\Export_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-robocopy "C:\WSUS" "\\lab-hyperv\d\WSUS-Exports" /MIR /MT:16 /R:2 /W:5 /LOG:$robocopyLog /TEE
 
 Write-Log "Maintenance complete"
 Stop-WsusLogging
