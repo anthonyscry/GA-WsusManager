@@ -126,12 +126,12 @@ Write-Host "`n=== Step 2: Remove Supersession Records ===" -ForegroundColor Cyan
 # Declined updates: remove supersession rows first.
 Write-Host "Removing supersession records for declined updates..." -ForegroundColor Yellow
 $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance "localhost\SQLEXPRESS"
-Write-Host "? Removed $deletedDeclined supersession records for declined updates" -ForegroundColor Green
+Write-Host "[OK] Removed $deletedDeclined supersession records for declined updates" -ForegroundColor Green
 
 # Superseded updates: delete in batches to avoid giant locks.
 Write-Host "`nRemoving supersession records for superseded updates (10-20 minutes)..." -ForegroundColor Yellow
 $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
-Write-Host "? Cleanup complete" -ForegroundColor Green
+Write-Host "[OK] Cleanup complete" -ForegroundColor Green
 
 # === DELETE DECLINED UPDATES ===
 # Step 3 removes the update metadata via spDeleteUpdate.
@@ -178,27 +178,27 @@ IF @LocalUpdateID IS NOT NULL
         }
     }
     
-    Write-Host "? Deleted $totalDeleted declined updates" -ForegroundColor Green
+    Write-Host "[OK] Deleted $totalDeleted declined updates" -ForegroundColor Green
 } else {
-    Write-Host "? No declined updates to delete" -ForegroundColor Green
+    Write-Host "[OK] No declined updates to delete" -ForegroundColor Green
 }
 
 # === ADD PERFORMANCE INDEXES ===
 Write-Host "`n=== Step 4: Add Performance Indexes ===" -ForegroundColor Cyan
 Add-WsusPerformanceIndexes -SqlInstance "localhost\SQLEXPRESS" | Out-Null
-Write-Host "? Performance indexes configured" -ForegroundColor Green
+Write-Host "[OK] Performance indexes configured" -ForegroundColor Green
 
 # === REBUILD ALL INDEXES ===
 Write-Host "`n=== Step 5: Rebuild All Indexes ===" -ForegroundColor Cyan
 Write-Host "Rebuilding fragmented indexes (10-20 minutes)..." -ForegroundColor Yellow
 
 $rebuildResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
-Write-Host "? Rebuilt $($rebuildResult.Rebuilt) indexes, reorganized $($rebuildResult.Reorganized) indexes" -ForegroundColor Green
+Write-Host "[OK] Rebuilt $($rebuildResult.Rebuilt) indexes, reorganized $($rebuildResult.Reorganized) indexes" -ForegroundColor Green
 
 # === UPDATE STATISTICS ===
 Write-Host "`n=== Step 6: Update Statistics ===" -ForegroundColor Cyan
 if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
-    Write-Host "? Statistics updated" -ForegroundColor Green
+    Write-Host "[OK] Statistics updated" -ForegroundColor Green
 }
 
 # === SHRINK DATABASE ===
@@ -210,10 +210,10 @@ Write-Host "Space: Allocated=$([math]::Round($space.AllocatedMB,2))MB | Used=$([
 if ($space.FreeMB -gt 100) {
     Write-Host "Shrinking database..." -ForegroundColor Yellow
     if (Invoke-WsusDatabaseShrink -SqlInstance "localhost\SQLEXPRESS") {
-        Write-Host "? Database shrunk" -ForegroundColor Green
+        Write-Host "[OK] Database shrunk" -ForegroundColor Green
     }
 } else {
-    Write-Host "? Skipping shrink (only $([math]::Round($space.FreeMB,2))MB free)" -ForegroundColor Yellow
+    Write-Host "[SKIP] Skipping shrink (only $([math]::Round($space.FreeMB,2))MB free)" -ForegroundColor Yellow
 }
 
 # === RUN WSUS CLEANUP ===
@@ -222,7 +222,7 @@ Write-Host "`n=== Step 8: WSUS Server Cleanup ===" -ForegroundColor Cyan
 try {
     Import-Module UpdateServices -ErrorAction SilentlyContinue
     $cleanup = Invoke-WsusServerCleanup -CleanupObsoleteUpdates -CleanupUnneededContentFiles -CompressUpdates -Confirm:$false
-    Write-Host "? WSUS cleanup: Obsolete=$($cleanup.ObsoleteUpdatesDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB freed" -ForegroundColor Green
+    Write-Host "[OK] WSUS cleanup: Obsolete=$($cleanup.ObsoleteUpdatesDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB freed" -ForegroundColor Green
 } catch {
     Write-Warning "WSUS cleanup: $($_.Exception.Message)"
 }
@@ -251,23 +251,23 @@ Write-Host "                    BEFORE vs AFTER" -ForegroundColor Cyan
 Write-Host "===================================================================" -ForegroundColor Cyan
 
 Write-Host "`nUpdates:" -ForegroundColor Yellow
-Write-Host "  Total updates: $($beforeStats.TotalUpdates) ? $($afterStats.TotalUpdates)"
-Write-Host "  Declined updates: $($beforeStats.DeclinedUpdates) ? $($afterStats.DeclinedUpdates)"
-Write-Host "  Active updates: $($beforeStats.ActiveUpdates) ? $($afterStats.ActiveUpdates)"
+Write-Host "  Total updates: $($beforeStats.TotalUpdates) -> $($afterStats.TotalUpdates)"
+Write-Host "  Declined updates: $($beforeStats.DeclinedUpdates) -> $($afterStats.DeclinedUpdates)"
+Write-Host "  Active updates: $($beforeStats.ActiveUpdates) -> $($afterStats.ActiveUpdates)"
 
 Write-Host "`nDatabase:" -ForegroundColor Yellow
-Write-Host "  Supersession records: $($beforeDb.SupersessionRecords) ? $($afterDb.SupersessionRecords)"
-Write-Host "  Database size: $($beforeDb.SizeGB) GB ? $($afterDb.SizeGB) GB"
+Write-Host "  Supersession records: $($beforeDb.SupersessionRecords) -> $($afterDb.SupersessionRecords)"
+Write-Host "  Database size: $($beforeDb.SizeGB) GB -> $($afterDb.SizeGB) GB"
 
 $recordsRemoved = $beforeDb.SupersessionRecords - $afterDb.SupersessionRecords
 $updatesRemoved = $beforeStats.TotalUpdates - $afterStats.TotalUpdates
 $spaceFreed = [math]::Round($beforeDb.SizeGB - $afterDb.SizeGB, 2)
 
 Write-Host "`nImpact:" -ForegroundColor Green
-Write-Host "  ? Removed $recordsRemoved supersession records"
-Write-Host "  ? Deleted $updatesRemoved declined updates"
-Write-Host "  ? Freed $spaceFreed GB of space"
-Write-Host "  ? $($afterStats.ActiveUpdates) active updates remaining"
+Write-Host "  [OK] Removed $recordsRemoved supersession records"
+Write-Host "  [OK] Deleted $updatesRemoved declined updates"
+Write-Host "  [OK] Freed $spaceFreed GB of space"
+Write-Host "  [OK] $($afterStats.ActiveUpdates) active updates remaining"
 
 Write-Host "`n===================================================================" -ForegroundColor Cyan
 Write-Host "                  CLEANUP COMPLETE!" -ForegroundColor Green
