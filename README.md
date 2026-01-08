@@ -23,20 +23,35 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Domain controller (GPO) setup
 
-To push WSUS settings to clients via Group Policy, run the new GPO script on a domain controller with **RSAT Group Policy Management** installed:
+To push WSUS settings to clients via Group Policy, run the GPO script on a domain controller with **RSAT Group Policy Management** installed.
 
+The script automatically imports **all three WSUS GPOs** from the `WSUS GPOs` folder:
+- **WSUS Update Policy** - Client update configuration with WSUS server URLs
+- **WSUS Inbound Allow** - Firewall rules for inbound WSUS traffic
+- **WSUS Outbound Allow** - Firewall rules for outbound WSUS traffic
+
+### Basic usage (prompts for WSUS server name):
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1
 ```
 
-Optional: import a backed up GPO (if present) and link to an OU:
-
+### Specify WSUS server URL:
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGpo.ps1 `
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+```
+
+### Link GPOs to an OU:
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 `
   -WsusServerUrl "http://WSUSServerName:8530" `
-  -BackupPath "C:\WSUS\Scripts\GpoBackups" `
   -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
+
+The script automatically:
+- Finds all three GPO backups in the `WSUS GPOs` directory
+- Creates or updates each GPO from the backup
+- Replaces hardcoded server names with your new WSUS server URL
+- Optionally links all GPOs to your target OU
 
 ## What the scripts do (by category)
 All script names below match the PowerShell files in the repo root and are grouped by their primary use.
@@ -77,10 +92,15 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Why use it:** Automates a complete WSUS + SQL Express build without manual steps.
 - **Where to run it:** On the **WSUS server** hosting WSUS + SQL Express.
 
-#### `Set-WsusGpo.ps1`
-- **What it does:** Creates or imports a WSUS client GPO and applies the required Windows Update policy keys.
-- **Why use it:** Centralizes WSUS client settings via Group Policy.
+#### `Set-WsusGroupPolicy.ps1`
+- **What it does:** Imports and configures all three WSUS GPO backups (Update Policy, Inbound Allow, Outbound Allow) and updates hardcoded WSUS server URLs to match your environment.
+- **Why use it:** Centralizes WSUS client settings, update policies, and firewall rules via Group Policy in a single operation.
 - **Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
+- **Key features:**
+  - Automatically finds GPO backups in `WSUS GPOs` folder
+  - Updates hardcoded server names (e.g., `LSJ-WSUS2`) with your new WSUS server URL
+  - Creates or updates all three GPOs in one run
+  - Optionally links GPOs to target OUs
 
 ---
 
@@ -234,7 +254,14 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanu
 
 ### Create or import WSUS GPOs
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGpo.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+```
+
+Link to an OU:
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGroupPolicy.ps1 `
+  -WsusServerUrl "http://WSUSServerName:8530" `
+  -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
 ## Robocopy examples (moving exports to airgapped WSUS servers)
