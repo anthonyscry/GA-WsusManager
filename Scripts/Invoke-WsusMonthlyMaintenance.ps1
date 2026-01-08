@@ -407,14 +407,12 @@ if (-not $SkipUltimateCleanup) {
     Write-Log "Running ultimate cleanup steps before backup..."
 
     # Stop WSUS to reduce contention while manipulating SUSDB.
-    if ($wsusService.Status -eq "Running") {
+    if (Test-ServiceRunning -ServiceName "WSUSService") {
         Write-Log "Stopping WSUS Service for ultimate cleanup..."
-        try {
-            Stop-Service WSUSService -Force -ErrorAction Stop
-            Start-Sleep -Seconds 5
+        if (Stop-WsusServer -Force) {
             Write-Log "WSUS Service stopped"
-        } catch {
-            Write-Warning "Failed to stop WSUS Service: $($_.Exception.Message)"
+        } else {
+            Write-Warning "Failed to stop WSUS Service"
         }
     }
 

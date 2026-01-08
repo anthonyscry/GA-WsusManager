@@ -35,8 +35,18 @@ Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
 # Keep the script moving even if a step fails.
 $ErrorActionPreference = 'Continue'
 
-# Setup logging using module function
-$LogFile = Start-WsusLogging -ScriptName "UltimateCleanup" -UseTimestamp $true
+# Setup logging - use custom path if provided, otherwise use module default
+if ($PSBoundParameters.ContainsKey('LogFile')) {
+    # User specified a custom log file path - ensure directory exists
+    $logDir = Split-Path -Parent $LogFile
+    if ($logDir -and -not (Test-Path $logDir)) {
+        New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+    }
+    Start-Transcript -Path $LogFile -Append -ErrorAction SilentlyContinue | Out-Null
+} else {
+    # Use module's logging function with auto-generated filename
+    $LogFile = Start-WsusLogging -ScriptName "UltimateCleanup" -UseTimestamp $true
+}
 $ProgressPreference = "SilentlyContinue"
 
 Write-Host "`n===================================================================" -ForegroundColor Cyan
