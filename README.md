@@ -24,6 +24,13 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Quick start (recommended flow)
 
+### Prerequisites
+**Set PowerShell execution policy** (one-time setup):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+This allows locally created scripts to run without being digitally signed.
+
 ### Option 1: Interactive Menu (Easiest)
 1. **Copy repo to target server** and place installers in `C:\WSUS\SQLDB`:
    - `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
@@ -330,7 +337,7 @@ robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs
 
 **Endless downloads / content not appearing**
 - Verify content path is `C:\WSUS` (NOT `C:\WSUS\wsuscontent`)
-- Run `.\Check-WSUSContent.ps1 -FixIssues` to diagnose and repair
+- Run `.\Scripts\Test-WsusHealth.ps1` to diagnose and repair
 
 **Clients not checking in**
 - Verify GPOs are linked to correct OUs
