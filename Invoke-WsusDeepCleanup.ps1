@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: Ultimate-WsusCleanup.ps1
+Script: Invoke-WsusDeepCleanup.ps1
 Purpose: Aggressive WSUS database cleanup for large or bloated SUSDBs.
 Overview:
   - Removes supersession records for declined/superseded updates.

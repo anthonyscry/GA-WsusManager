@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: ImportScript.ps1
+Script: Restore-WsusDatabase.ps1
 Purpose: Restore a SUSDB backup and rebind WSUS to SQL/content.
 Overview:
   - Validates backup and content directory.

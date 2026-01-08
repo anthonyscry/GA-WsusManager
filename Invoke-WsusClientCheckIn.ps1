@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: Force-WSUSCheckIn.ps1
+Script: Invoke-WsusClientCheckIn.ps1
 Purpose: Force a Windows Update client to check in with WSUS.
 Overview:
   - Stops update services and optionally clears SoftwareDistribution.
