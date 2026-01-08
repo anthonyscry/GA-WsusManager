@@ -24,6 +24,13 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Quick start (recommended flow)
 
+### Prerequisites
+**Set PowerShell execution policy** (one-time setup):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+This allows locally created scripts to run without being digitally signed.
+
 ### Option 1: Interactive Menu (Easiest)
 1. **Copy repo to target server** and place installers in `C:\WSUS\SQLDB`:
    - `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
@@ -31,7 +38,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 2. **Launch the interactive menu:**
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\Invoke-WsusManagement.ps1
+   .\Invoke-WsusManagement.ps1
    ```
    - Select option **1** to install WSUS + SQL Express
    - Use menu for all other operations (maintenance, troubleshooting, etc.)
@@ -39,7 +46,7 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 ### Option 2: Direct Script Execution
 1. **Install WSUS + SQL Express:**
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\Scripts\Install-WsusWithSqlExpress.ps1
+   .\Scripts\Install-WsusWithSqlExpress.ps1
    ```
 
 2. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
@@ -67,17 +74,17 @@ The script automatically replaces hardcoded WSUS server URLs in the backups with
 
 **Option 1: Interactive mode** (prompts for WSUS server name)
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1
+.\Set-WsusGroupPolicy.ps1
 ```
 
 **Option 2: Specify WSUS server**
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
 ```
 
 **Option 3: Link to specific OU**
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 `
+.\Set-WsusGroupPolicy.ps1 `
   -WsusServerUrl "http://WSUS01:8530" `
   -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
@@ -244,44 +251,44 @@ Copy from this location when moving updates to **airgapped WSUS servers**.
 ### Interactive Menu (Recommended)
 ```powershell
 cd C:\WSUS\wsus-sql
-powershell -ExecutionPolicy Bypass -File .\Invoke-WsusManagement.ps1
+.\Invoke-WsusManagement.ps1
 ```
 
 ### Direct Script Execution
 
 #### Install WSUS + SQL Express
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Install-WsusWithSqlExpress.ps1
+.\Scripts\Install-WsusWithSqlExpress.ps1
 ```
 
 #### Restore a SUSDB backup
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Restore-WsusDatabase.ps1
+.\Scripts\Restore-WsusDatabase.ps1
 ```
 
 #### Monthly maintenance
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1
 ```
 
 #### Deep cleanup
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Invoke-WsusDeepCleanup.ps1
+.\Scripts\Invoke-WsusDeepCleanup.ps1
 ```
 
 #### Test WSUS health
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Test-WsusHealth.ps1
+.\Scripts\Test-WsusHealth.ps1
 ```
 
 #### Reset content download
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Reset-WsusContentDownload.ps1
+.\Scripts\Reset-WsusContentDownload.ps1
 ```
 
 #### Force client check-in (run on client)
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Scripts\Invoke-WsusClientCheckIn.ps1
+.\Scripts\Invoke-WsusClientCheckIn.ps1
 ```
 
 ### Configure WSUS GPOs (on Domain Controller)
@@ -290,10 +297,10 @@ powershell -ExecutionPolicy Bypass -File .\Scripts\Invoke-WsusClientCheckIn.ps1
 cd <DomainController folder location>
 
 # Interactive mode - prompts for WSUS server name
-powershell -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1
+.\Set-WsusGroupPolicy.ps1
 
 # Or specify server and link to OU
-powershell -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
 ## Robocopy examples (moving exports to airgapped WSUS servers)
@@ -330,7 +337,7 @@ robocopy "\\sandbox-hyperv\v\WSUS" "C:\WSUS" /MIR /MT:16 /R:2 /W:5 /LOG:"C:\Logs
 
 **Endless downloads / content not appearing**
 - Verify content path is `C:\WSUS` (NOT `C:\WSUS\wsuscontent`)
-- Run `powershell -ExecutionPolicy Bypass -File .\Check-WSUSContent.ps1 -FixIssues` to diagnose and repair
+- Run `.\Scripts\Test-WsusHealth.ps1` to diagnose and repair
 
 **Clients not checking in**
 - Verify GPOs are linked to correct OUs
