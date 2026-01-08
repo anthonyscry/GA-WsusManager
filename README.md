@@ -23,7 +23,9 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 
 ## Domain controller (GPO) setup
 
-To push WSUS settings to clients via Group Policy, run the GPO script on a domain controller with **RSAT Group Policy Management** installed.
+**IMPORTANT: Run this script on a Domain Controller, NOT on the WSUS server.**
+
+Copy `Set-WsusGroupPolicy.ps1` and the `WSUS GPOs` folder to your domain controller, then run the script with **RSAT Group Policy Management** installed.
 
 The script automatically imports **all three WSUS GPOs** from the `WSUS GPOs` folder:
 - **WSUS Update Policy** - Client update configuration with WSUS server URLs
@@ -32,16 +34,19 @@ The script automatically imports **all three WSUS GPOs** from the `WSUS GPOs` fo
 
 ### Basic usage (prompts for WSUS server name):
 ```powershell
+# Run on Domain Controller
 powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1
 ```
 
 ### Specify WSUS server URL:
 ```powershell
+# Run on Domain Controller
 powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUSServerName:8530"
 ```
 
 ### Link GPOs to an OU:
 ```powershell
+# Run on Domain Controller
 powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 `
   -WsusServerUrl "http://WSUSServerName:8530" `
   -TargetOU "OU=Workstations,DC=example,DC=local"
@@ -173,12 +178,20 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Why use it:** Quickly resolve common service-level problems without manual triage.
 - **Where to run it:** On the **WSUS server**.
 
-## Suggested folder layout on the WSUS server
+## Suggested folder layout
+
+### On the WSUS server:
 ```text
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
-C:\WSUS\Scripts\            # Put these scripts here for consistency
+C:\WSUS\Scripts\            # WSUS server scripts (Install, Maintenance, Cleanup, etc.)
 C:\WSUS\Logs\               # Log output
+```
+
+### On the Domain Controller:
+```text
+<Any location>\              # Copy Set-WsusGroupPolicy.ps1 here
+<Any location>\WSUS GPOs\    # Copy WSUS GPOs folder here (required for script)
 ```
 
 ## Online WSUS export location
@@ -252,14 +265,17 @@ Specify a custom log file location:
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force -LogFile "D:\Logs\Cleanup.log"
 ```
 
-### Create or import WSUS GPOs
+### Create or import WSUS GPOs (on Domain Controller)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUSServerName:8530"
+# Copy Set-WsusGroupPolicy.ps1 and WSUS GPOs folder to your Domain Controller first
+# Run this on the Domain Controller, NOT on the WSUS server
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUSServerName:8530"
 ```
 
 Link to an OU:
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Set-WsusGroupPolicy.ps1 `
+# Run on Domain Controller
+powershell.exe -ExecutionPolicy Bypass -File .\Set-WsusGroupPolicy.ps1 `
   -WsusServerUrl "http://WSUSServerName:8530" `
   -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
