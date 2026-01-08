@@ -51,7 +51,7 @@ param(
 )
 
 # Import required modules
-$modulePath = Join-Path $PSScriptRoot "Modules"
+$modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
 Import-Module (Join-Path $modulePath "WsusHealth.ps1") -Force
 
