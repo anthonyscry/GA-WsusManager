@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: install.ps1
+Script: Install-WsusWithSqlExpress.ps1
 Purpose: Fully automated SQL Express 2022 + SSMS + WSUS installation (SQL mode).
 Overview:
   - Extracts SQL Express and installs SQL Engine + SSMS silently.
@@ -285,7 +285,7 @@ Write-Host "[+] Creating WSUS directories with proper permissions..."
     New-Item -Path $_ -ItemType Directory -Force | Out-Null
 }
 
-# Set comprehensive permissions (from Check-WSUSContent.ps1)
+# Set comprehensive permissions (from Repair-WsusContentPath.ps1)
 # SYSTEM and Administrators - Full Control
 icacls $WSUSRoot /grant "SYSTEM:(OI)(CI)F" /T /Q | Out-Null
 icacls $WSUSRoot /grant "Administrators:(OI)(CI)F" /T /Q | Out-Null
@@ -447,7 +447,7 @@ if (!(Test-Path $wsusRegSetupInstalled)) {
     New-Item -Path $wsusRegSetupInstalled -Force | Out-Null
 }
 
-# Set content directory in registry (from Check-WSUSContent.ps1)
+# Set content directory in registry (from Repair-WsusContentPath.ps1)
 Set-ItemProperty -Path $wsusRegSetup -Name ContentDir -Value $WSUSContent -Force
 
 # Disable the initial configuration wizard
@@ -553,7 +553,7 @@ try {
 }
 
 # =====================================================================
-# 15. CONFIGURE IIS VIRTUAL DIRECTORY (from Check-WSUSContent.ps1)
+# 15. CONFIGURE IIS VIRTUAL DIRECTORY (from Repair-WsusContentPath.ps1)
 # =====================================================================
 Write-Host "[+] Verifying IIS virtual directory configuration..."
 
@@ -610,8 +610,8 @@ Write-Host " Next steps:"
 Write-Host " 1. Test SQL: sqlcmd -S .\SQLEXPRESS -U sa -P [your_password]"
 Write-Host " 2. Configure WSUS via Update Services console"
 Write-Host ""
-Write-Host " If issues occur, run autofix.ps1 or:"
-Write-Host "   .\\Check-WSUSContent.ps1 -ContentPath $WSUSContent -SqlInstance .\\SQLEXPRESS"
+Write-Host " If issues occur, run:"
+Write-Host "   .\\Test-WsusHealth.ps1 -Repair -ContentPath $WSUSContent -SqlInstance .\\SQLEXPRESS"
 Write-Host "==============================================================="
 
 Stop-Transcript | Out-Null

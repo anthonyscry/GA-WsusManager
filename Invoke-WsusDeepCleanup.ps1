@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: Ultimate-WsusCleanup.ps1
+Script: Invoke-WsusDeepCleanup.ps1
 Purpose: Aggressive WSUS database cleanup for large or bloated SUSDBs.
 Overview:
   - Removes supersession records for declined/superseded updates.
@@ -26,12 +26,17 @@ param(
     [string]$LogFile = "C:\WSUS\Logs\UltimateCleanup_$(Get-Date -Format 'yyyyMMdd_HHmm').log"
 )
 
+# Import shared modules
+$modulePath = Join-Path $PSScriptRoot "Modules"
+Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusDatabase.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
+
 # Keep the script moving even if a step fails.
 $ErrorActionPreference = 'Continue'
 
-# Setup logging
-New-Item -Path (Split-Path $LogFile -Parent) -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-Start-Transcript -Path $LogFile -Append -ErrorAction SilentlyContinue | Out-Null
+# Setup logging using module function
+$LogFile = Start-WsusLogging -ScriptName "UltimateCleanup" -UseTimestamp $true
 $ProgressPreference = "SilentlyContinue"
 
 Write-Host "`n===================================================================" -ForegroundColor Cyan
@@ -62,16 +67,8 @@ $beforeStats = @{
     ActiveUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and -not $_.IsSuperseded }).Count
 }
 
-$beforeDbQuery = @"
-SELECT 
-    (SELECT COUNT(*) FROM tbRevisionSupersedesUpdate) AS SupersessionRecords,
-    (SELECT COUNT(*) FROM tbRevision WHERE State = 2) AS DeclinedRevisions,
-    (SELECT COUNT(*) FROM tbRevision WHERE State = 3) AS SupersededRevisions,
-    (SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) FROM sys.master_files WHERE database_id=DB_ID('SUSDB')) AS SizeGB
-"@
-
-# Query current SUSDB size and supersession counts.
-$beforeDb = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database master -Query $beforeDbQuery
+# Query current SUSDB size and supersession counts using module function
+$beforeDb = Get-WsusDatabaseStats -SqlInstance "localhost\SQLEXPRESS"
 
 Write-Host "`nCurrent Database State:" -ForegroundColor Yellow
 Write-Host "  Total updates: $($beforeStats.TotalUpdates)"
@@ -106,14 +103,9 @@ if (-not $Force) {
 # === STOP WSUS SERVICE ===
 # Stop WSUS to avoid contention while modifying SUSDB.
 Write-Host "`n=== Step 1: Stop WSUS Service ===" -ForegroundColor Cyan
-Write-Host "Stopping WSUS service..." -ForegroundColor Yellow
 
-try {
-    Stop-Service WSUSService -Force -ErrorAction Stop
-    Start-Sleep -Seconds 5
-    Write-Host "? WSUS service stopped" -ForegroundColor Green
-} catch {
-    Write-Error "Failed to stop WSUS service: $($_.Exception.Message)"
+if (-not (Stop-WsusServer -Force)) {
+    Write-Error "Failed to stop WSUS service"
     exit 1
 }
 
@@ -123,71 +115,13 @@ Write-Host "`n=== Step 2: Remove Supersession Records ===" -ForegroundColor Cyan
 
 # Declined updates: remove supersession rows first.
 Write-Host "Removing supersession records for declined updates..." -ForegroundColor Yellow
-$cleanupDeclined = @"
-SET NOCOUNT ON;
-DECLARE @Deleted INT = 0
-
-DELETE rsu
-FROM tbRevisionSupersedesUpdate rsu
-INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
-WHERE r.State = 2  -- Declined
-
-SET @Deleted = @@ROWCOUNT
-SELECT @Deleted AS DeletedDeclined
-"@
-
-try {
-    $result1 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query $cleanupDeclined -QueryTimeout 300
-    Write-Host "? Removed $($result1.DeletedDeclined) supersession records for declined updates" -ForegroundColor Green
-} catch {
-    Write-Warning "Failed: $($_.Exception.Message)"
-}
+$deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance "localhost\SQLEXPRESS"
+Write-Host "? Removed $deletedDeclined supersession records for declined updates" -ForegroundColor Green
 
 # Superseded updates: delete in batches to avoid giant locks.
 Write-Host "`nRemoving supersession records for superseded updates (10-20 minutes)..." -ForegroundColor Yellow
-$cleanupSuperseded = @"
-SET NOCOUNT ON;
-DECLARE @Deleted INT = 0
-DECLARE @BatchSize INT = 10000
-DECLARE @TotalDeleted INT = 0
-
-WHILE 1 = 1
-BEGIN
-    DELETE TOP (@BatchSize) rsu
-    FROM tbRevisionSupersedesUpdate rsu
-    INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
-    WHERE r.State = 3  -- Superseded
-    
-    SET @Deleted = @@ROWCOUNT
-    SET @TotalDeleted = @TotalDeleted + @Deleted
-    
-    IF @Deleted = 0 BREAK
-    
-    IF @TotalDeleted % 50000 = 0
-        PRINT 'Deleted ' + CAST(@TotalDeleted AS VARCHAR) + ' supersession records...'
-    
-    WAITFOR DELAY '00:00:01'
-END
-
-SELECT @TotalDeleted AS DeletedSuperseded
-"@
-
-try {
-    $startTime = Get-Date
-    $result2 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query $cleanupSuperseded -QueryTimeout 0 -Verbose 4>&1
-    
-    $result2 | Where-Object { $_ -is [string] } | ForEach-Object { 
-        Write-Host "  $_" -ForegroundColor DarkGray 
-    }
-    
-    $duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)
-    $deleted = ($result2 | Where-Object { $_.DeletedSuperseded -ne $null }).DeletedSuperseded
-    Write-Host "? Removed $deleted supersession records in $duration minutes" -ForegroundColor Green
-} catch {
-    Write-Warning "Failed: $($_.Exception.Message)"
-}
+$deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
+Write-Host "? Cleanup complete" -ForegroundColor Green
 
 # === DELETE DECLINED UPDATES ===
 # Step 3 removes the update metadata via spDeleteUpdate.
@@ -241,146 +175,32 @@ IF @LocalUpdateID IS NOT NULL
 
 # === ADD PERFORMANCE INDEXES ===
 Write-Host "`n=== Step 4: Add Performance Indexes ===" -ForegroundColor Cyan
-
-$addIndexQuery = @"
--- Add Microsoft-recommended indexes if they don't exist
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_tbRevisionSupersedesUpdate' AND object_id = OBJECT_ID('tbRevisionSupersedesUpdate'))
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_tbRevisionSupersedesUpdate] ON [dbo].[tbRevisionSupersedesUpdate]([SupersededUpdateID])
-    PRINT 'Created IX_tbRevisionSupersedesUpdate'
-END
-ELSE
-    PRINT 'IX_tbRevisionSupersedesUpdate already exists'
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_tbLocalizedPropertyForRevision' AND object_id = OBJECT_ID('tbLocalizedPropertyForRevision'))
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_tbLocalizedPropertyForRevision] ON [dbo].[tbLocalizedPropertyForRevision]([LocalizedPropertyID])
-    PRINT 'Created IX_tbLocalizedPropertyForRevision'
-END
-ELSE
-    PRINT 'IX_tbLocalizedPropertyForRevision already exists'
-"@
-
-try {
-    $indexMessages = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query $addIndexQuery -QueryTimeout 300 -Verbose 4>&1
-    $indexMessages | Where-Object { $_ -is [string] } | ForEach-Object { 
-        Write-Host "  $_" -ForegroundColor Gray 
-    }
-    Write-Host "? Performance indexes configured" -ForegroundColor Green
-} catch {
-    Write-Warning "Index creation: $($_.Exception.Message)"
-}
+Add-WsusPerformanceIndexes -SqlInstance "localhost\SQLEXPRESS" | Out-Null
+Write-Host "? Performance indexes configured" -ForegroundColor Green
 
 # === REBUILD ALL INDEXES ===
 Write-Host "`n=== Step 5: Rebuild All Indexes ===" -ForegroundColor Cyan
 Write-Host "Rebuilding fragmented indexes (10-20 minutes)..." -ForegroundColor Yellow
 
-$rebuildQuery = @"
-SET NOCOUNT ON;
-SET DEADLOCK_PRIORITY LOW;
-
-DECLARE @TableName NVARCHAR(255), @IndexName NVARCHAR(255), @Frag FLOAT
-DECLARE @SQL NVARCHAR(MAX)
-DECLARE @Rebuilt INT = 0, @Reorganized INT = 0
-
-DECLARE index_cursor CURSOR LOCAL FAST_FORWARD FOR
-SELECT 
-    OBJECT_NAME(ips.object_id) AS TableName,
-    i.name AS IndexName,
-    ips.avg_fragmentation_in_percent
-FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') ips
-INNER JOIN sys.indexes i ON ips.object_id = i.object_id AND ips.index_id = i.index_id
-WHERE ips.avg_fragmentation_in_percent > 10
-AND ips.page_count > 1000
-AND i.name IS NOT NULL
-AND OBJECT_NAME(ips.object_id) NOT LIKE 'ivw%'
-ORDER BY ips.page_count DESC
-
-OPEN index_cursor
-FETCH NEXT FROM index_cursor INTO @TableName, @IndexName, @Frag
-
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    BEGIN TRY
-        IF @Frag > 30
-        BEGIN
-            SET @SQL = 'ALTER INDEX [' + @IndexName + '] ON [' + @TableName + '] REBUILD WITH (ONLINE = OFF, SORT_IN_TEMPDB = ON)'
-            EXEC sp_executesql @SQL
-            SET @Rebuilt = @Rebuilt + 1
-        END
-        ELSE
-        BEGIN
-            SET @SQL = 'ALTER INDEX [' + @IndexName + '] ON [' + @TableName + '] REORGANIZE'
-            EXEC sp_executesql @SQL
-            SET @Reorganized = @Reorganized + 1
-        END
-    END TRY
-    BEGIN CATCH
-        -- Skip errors
-    END CATCH
-    
-    IF (@Rebuilt + @Reorganized) % 10 = 0
-        PRINT 'Processed ' + CAST(@Rebuilt + @Reorganized AS VARCHAR) + ' indexes...'
-    
-    FETCH NEXT FROM index_cursor INTO @TableName, @IndexName, @Frag
-END
-
-CLOSE index_cursor
-DEALLOCATE index_cursor
-
-SELECT @Rebuilt AS IndexesRebuilt, @Reorganized AS IndexesReorganized
-"@
-
-try {
-    $rebuildResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query $rebuildQuery -QueryTimeout 0 -Verbose 4>&1
-    
-    $rebuildResult | Where-Object { $_ -is [string] } | ForEach-Object { 
-        Write-Host "  $_" -ForegroundColor DarkGray 
-    }
-    
-    $rebuilt = ($rebuildResult | Where-Object { $_.IndexesRebuilt -ne $null }).IndexesRebuilt
-    $reorganized = ($rebuildResult | Where-Object { $_.IndexesReorganized -ne $null }).IndexesReorganized
-    Write-Host "? Rebuilt $rebuilt indexes, reorganized $reorganized indexes" -ForegroundColor Green
-} catch {
-    Write-Warning "Index rebuild: $($_.Exception.Message)"
-}
+$rebuildResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
+Write-Host "? Rebuilt $($rebuildResult.Rebuilt) indexes, reorganized $($rebuildResult.Reorganized) indexes" -ForegroundColor Green
 
 # === UPDATE STATISTICS ===
 Write-Host "`n=== Step 6: Update Statistics ===" -ForegroundColor Cyan
-
-try {
-    Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query "EXEC sp_updatestats" -QueryTimeout 0 | Out-Null
+if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
     Write-Host "? Statistics updated" -ForegroundColor Green
-} catch {
-    Write-Warning "Statistics update: $($_.Exception.Message)"
 }
 
 # === SHRINK DATABASE ===
 Write-Host "`n=== Step 7: Shrink Database ===" -ForegroundColor Cyan
 
-$spaceQuery = @"
-SELECT 
-    SUM(size/128.0) AS AllocatedMB,
-    SUM(CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0) AS UsedMB,
-    SUM((size - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int))/128.0) AS FreeMB
-FROM sys.database_files
-WHERE type = 0
-"@
-
-$space = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB -Query $spaceQuery
+$space = Get-WsusDatabaseSpace -SqlInstance "localhost\SQLEXPRESS"
 Write-Host "Space: Allocated=$([math]::Round($space.AllocatedMB,2))MB | Used=$([math]::Round($space.UsedMB,2))MB | Free=$([math]::Round($space.FreeMB,2))MB"
 
 if ($space.FreeMB -gt 100) {
     Write-Host "Shrinking database..." -ForegroundColor Yellow
-    try {
-        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-            -Query "DBCC SHRINKDATABASE(SUSDB, 10) WITH NO_INFOMSGS" -QueryTimeout 0 | Out-Null
+    if (Invoke-WsusDatabaseShrink -SqlInstance "localhost\SQLEXPRESS") {
         Write-Host "? Database shrunk" -ForegroundColor Green
-    } catch {
-        Write-Warning "Shrink failed: $($_.Exception.Message)"
     }
 } else {
     Write-Host "? Skipping shrink (only $([math]::Round($space.FreeMB,2))MB free)" -ForegroundColor Yellow
@@ -399,27 +219,12 @@ try {
 
 # === START WSUS SERVICE ===
 Write-Host "`n=== Step 9: Start WSUS Service ===" -ForegroundColor Cyan
-
-try {
-    Start-Service WSUSService -ErrorAction Stop
-    Start-Sleep -Seconds 10
-    Write-Host "? WSUS service started" -ForegroundColor Green
-} catch {
-    Write-Error "Failed to start WSUS service: $($_.Exception.Message)"
-}
+Start-WsusServer | Out-Null
 
 # === GET FINAL STATE ===
 Write-Host "`n=== Final Results ===" -ForegroundColor Green
 
-$afterDbQuery = @"
-SELECT 
-    (SELECT COUNT(*) FROM tbRevisionSupersedesUpdate) AS SupersessionRecords,
-    (SELECT COUNT(*) FROM tbRevision WHERE State = 2) AS DeclinedRevisions,
-    (SELECT COUNT(*) FROM tbRevision WHERE State = 3) AS SupersededRevisions,
-    (SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) FROM sys.master_files WHERE database_id=DB_ID('SUSDB')) AS SizeGB
-"@
-
-$afterDb = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database master -Query $afterDbQuery
+$afterDb = Get-WsusDatabaseStats -SqlInstance "localhost\SQLEXPRESS"
 
 Write-Host "Refreshing WSUS data..." -ForegroundColor Yellow
 $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
@@ -465,5 +270,5 @@ Write-Host "  3. Monitor database - should stay under 3 GB"
 Write-Host "  4. Your WSUS should now be significantly faster"
 Write-Host ""
 
-# Stop transcript logging
-Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+# Stop transcript logging using module function
+Stop-WsusLogging
