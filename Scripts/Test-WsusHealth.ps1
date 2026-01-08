@@ -159,8 +159,9 @@ if ($Repair) {
 Write-Host "===============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Return exit code based on health status
-switch ($healthCheck.Overall) {
+# Return exit code based on health status (use final check if repair was run)
+$exitStatus = if ($Repair -and $finalCheck) { $finalCheck.Overall } else { $healthCheck.Overall }
+switch ($exitStatus) {
     "Healthy" { exit 0 }
     "Degraded" { exit 1 }
     "Unhealthy" { exit 2 }
