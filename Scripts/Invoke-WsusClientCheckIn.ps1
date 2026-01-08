@@ -19,7 +19,7 @@ param(
 )
 
 # Import shared modules
-$modulePath = Join-Path $PSScriptRoot "Modules"
+$modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
 Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
 
 Write-Info "=========================================="
