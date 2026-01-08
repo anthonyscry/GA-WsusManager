@@ -2,24 +2,47 @@
 
 This repository contains a set of PowerShell scripts to deploy a **WSUS server backed by SQL Server Express 2022**, validate content paths/permissions, and run ongoing maintenance.
 
+## Repository Structure
+
+```
+/
+├── Invoke-WsusManagement.ps1    # Interactive launcher (recommended entry point)
+├── Scripts/                      # All WSUS server scripts
+│   ├── Install-WsusWithSqlExpress.ps1
+│   ├── Invoke-WsusMonthlyMaintenance.ps1
+│   ├── Invoke-WsusDeepCleanup.ps1
+│   ├── Restore-WsusDatabase.ps1
+│   ├── Test-WsusHealth.ps1
+│   ├── Reset-WsusContentDownload.ps1
+│   └── Invoke-WsusClientCheckIn.ps1
+├── DomainController/             # GPO configuration (run on Domain Controller)
+│   ├── Set-WsusGroupPolicy.ps1
+│   └── WSUS GPOs/
+├── Modules/                      # Shared PowerShell modules
+└── README.md
+```
+
 ## Quick start (recommended flow)
 
-1. **Copy the repo to the target server** and place installers in `C:\WSUS\SQLDB`:
+### Option 1: Interactive Menu (Easiest)
+1. **Copy repo to target server** and place installers in `C:\WSUS\SQLDB`:
    - `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
    - `C:\WSUS\SQLDB\SSMS-Setup-ENU.exe` (SSMS)
 
-2. **Run the install script** (installs SQL + WSUS):
+2. **Launch the interactive menu:**
    ```powershell
-   powershell.exe -ExecutionPolicy Bypass -File .\Run-WsusSql.ps1
+   .\Invoke-WsusManagement.ps1
+   ```
+   - Select option **1** to install WSUS + SQL Express
+   - Use menu for all other operations (maintenance, troubleshooting, etc.)
+
+### Option 2: Direct Script Execution
+1. **Install WSUS + SQL Express:**
+   ```powershell
+   .\Scripts\Install-WsusWithSqlExpress.ps1
    ```
 
-3. **Verify content path and permissions** (fixes any issues found):
-   ```powershell
-   .\Check-WSUSContent.ps1 -FixIssues
-   ```
-   > `-FixIssues` is for the validator script only. Use `-RunContentValidation -FixContentIssues` (or `-FixIssues` alias) with `Run-WsusSql.ps1` if you want validation after install.
-
-4. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
+2. **Online WSUS only:** configure products/classifications in the WSUS console, then synchronize. (Airgapped/offline WSUS imports the database and content from the online server.)
 
 ## Domain controller (GPO) setup
 
@@ -28,9 +51,9 @@ This repository contains a set of PowerShell scripts to deploy a **WSUS server b
 ### Prerequisites
 - Domain Controller with Administrator access
 - RSAT Group Policy Management tools installed
-- Copy these files to your DC:
-  - `Set-WsusGroupPolicy.ps1` (the script)
-  - `WSUS GPOs\` folder (contains GPO backups)
+- Copy the `DomainController/` folder to your DC:
+  - `DomainController/Set-WsusGroupPolicy.ps1` (the script)
+  - `DomainController/WSUS GPOs/` (GPO backups)
 
 ### What it does
 Automatically imports **three WSUS GPOs**:
@@ -186,20 +209,25 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 - **Why use it:** Quickly resolve common service-level problems without manual triage.
 - **Where to run it:** On the **WSUS server**.
 
-## Suggested folder layout
+## Suggested deployment layout
 
 ### On the WSUS server:
 ```text
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
-C:\WSUS\Scripts\            # WSUS server scripts (Install, Maintenance, Cleanup, etc.)
 C:\WSUS\Logs\               # Log output
+C:\WSUS\wsus-sql\           # This repository
+    ├── Invoke-WsusManagement.ps1  # Run this for interactive menu
+    ├── Scripts\                    # All server scripts
+    ├── DomainController\          # Copy this folder to DC
+    └── Modules\
 ```
 
 ### On the Domain Controller:
 ```text
-<Any location>\              # Copy Set-WsusGroupPolicy.ps1 here
-<Any location>\WSUS GPOs\    # Copy WSUS GPOs folder here (required for script)
+<Any location>\DomainController\
+    ├── Set-WsusGroupPolicy.ps1
+    └── WSUS GPOs\
 ```
 
 ## Online WSUS export location
@@ -213,72 +241,58 @@ Copy from this location when moving updates to **airgapped WSUS servers**.
 
 ## Example usage
 
-### Install WSUS + SQL Express
+### Interactive Menu (Recommended)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Run-WsusSql.ps1
+cd C:\WSUS\wsus-sql
+.\Invoke-WsusManagement.ps1
 ```
 
-### Validate + fix content configuration
+### Direct Script Execution
+
+#### Install WSUS + SQL Express
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Check-WSUSContent.ps1 -FixIssues
+.\Scripts\Install-WsusWithSqlExpress.ps1
 ```
 
-### Troubleshooter (services + content)
+#### Restore a SUSDB backup
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Run-WsusTroubleshooter.ps1 -FixContentIssues
+.\Scripts\Restore-WsusDatabase.ps1
 ```
 
-### Restore a SUSDB backup
+#### Monthly maintenance
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\ImportScript.ps1
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1
 ```
 
-### Monthly maintenance
+#### Deep cleanup
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\WsusMaintenance.ps1
+.\Scripts\Invoke-WsusDeepCleanup.ps1
 ```
 
-Skip the heavy cleanup stage if needed:
-
+#### Test WSUS health
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\WsusMaintenance.ps1 -SkipUltimateCleanup
+.\Scripts\Test-WsusHealth.ps1
 ```
 
-### Force a client check-in
+#### Reset content download
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Force-WSUSCheckIn.ps1
+.\Scripts\Reset-WsusContentDownload.ps1
 ```
 
-### Reset WSUS content files
+#### Force client check-in (run on client)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Reset-WsusContent.ps1
+.\Scripts\Invoke-WsusClientCheckIn.ps1
 ```
 
-### Ultimate WSUS cleanup
-Run the comprehensive cleanup interactively (prompts for confirmation):
-
+### Configure WSUS GPOs (on Domain Controller)
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1
-```
+# Copy DomainController folder to DC first
+cd <DomainController folder location>
 
-Run non-interactively with `-Force` (useful for scheduled tasks):
-
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force
-```
-
-Specify a custom log file location:
-
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force -LogFile "D:\Logs\Cleanup.log"
-```
-
-### Configure WSUS GPOs (Domain Controller)
-```powershell
 # Interactive mode - prompts for WSUS server name
 .\Set-WsusGroupPolicy.ps1
 
-# Specify server and link to OU
+# Or specify server and link to OU
 .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
