@@ -24,20 +24,11 @@ param(
     [switch]$FixIssues
 )
 
-# Colors for output
-function Write-ColorOutput($ForegroundColor) {
-    $fc = $host.UI.RawUI.ForegroundColor
-    $host.UI.RawUI.ForegroundColor = $ForegroundColor
-    if ($args) {
-        Write-Output $args
-    }
-    $host.UI.RawUI.ForegroundColor = $fc
-}
-
-function Write-Success { Write-ColorOutput Green $args }
-function Write-Failure { Write-ColorOutput Red $args }
-function Write-Warning { Write-ColorOutput Yellow $args }
-function Write-Info { Write-ColorOutput Cyan $args }
+# Import shared modules
+$modulePath = Join-Path $PSScriptRoot "Modules"
+Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusPermissions.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
 
 function Invoke-SqlScalar {
     param(
@@ -64,12 +55,8 @@ Write-Info "SQL Instance: $SqlInstance"
 Write-Info "Fix Mode: $($FixIssues.IsPresent)"
 Write-Info ""
 
-# Check if running as administrator
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Failure "ERROR: This script must be run as Administrator!"
-    exit 1
-}
+# Check if running as administrator using module function
+Test-AdminPrivileges -ExitOnFail $true | Out-Null
 
 # ===========================
 # 1. CHECK CONTENT PATH EXISTS
@@ -164,52 +151,24 @@ try {
 # 5. CHECK AND FIX PERMISSIONS
 # ===========================
 Write-Info "[5/6] Checking permissions on content directory..."
-$permissionsNeeded = @(
-    @{Account = "NETWORK SERVICE"; Rights = "FullControl"},
-    @{Account = "NT AUTHORITY\LOCAL SERVICE"; Rights = "FullControl"},
-    @{Account = "IIS_IUSRS"; Rights = "Read"},
-    @{Account = "IIS APPPOOL\WsusPool"; Rights = "FullControl"}
-)
 
-$permissionsCorrect = $true
-try {
-    $acl = Get-Acl $ContentPath
-    
-    foreach ($perm in $permissionsNeeded) {
-        $account = $perm.Account
-        $hasPermission = $false
-        
-        foreach ($access in $acl.Access) {
-            if ($access.IdentityReference -like "*$account*") {
-                $hasPermission = $true
-                break
-            }
-        }
-        
-        if ($hasPermission) {
-            Write-Success "  [OK] $account has permissions"
-        } else {
-            Write-Failure "  [FAIL] $account is missing permissions"
-            $permissionsCorrect = $false
-            $issuesFound++
-        }
+$permCheck = Test-WsusContentPermissions -ContentPath $ContentPath
+
+if ($permCheck.AllCorrect) {
+    Write-Success "  [OK] All permissions correct"
+} else {
+    Write-Failure "  [FAIL] Missing permissions:"
+    $permCheck.Missing | ForEach-Object {
+        Write-Failure "    - $_"
     }
-    
-    if (-not $permissionsCorrect -and $FixIssues) {
-        Write-Warning "  --> Fixing permissions..."
-        
-        # Grant permissions
-        icacls "$ContentPath" /grant "NETWORK SERVICE:(OI)(CI)F" /T /Q | Out-Null
-        icacls "$ContentPath" /grant "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)F" /T /Q | Out-Null
-        icacls "$ContentPath" /grant "IIS_IUSRS:(OI)(CI)R" /T /Q | Out-Null
-        icacls "$ContentPath" /grant "IIS APPPOOL\WsusPool:(OI)(CI)F" /T /Q | Out-Null
-        
-        Write-Success "  [OK] Permissions updated"
-        $issuesFixed++
-    }
-} catch {
-    Write-Failure "  [FAIL] Error checking permissions: $_"
     $issuesFound++
+
+    if ($FixIssues) {
+        Write-WsusWarning "  --> Fixing permissions..."
+        if (Set-WsusContentPermissions -ContentPath $ContentPath) {
+            $issuesFixed++
+        }
+    }
 }
 
 # ===========================
@@ -259,16 +218,15 @@ try {
 # ===========================
 if ($FixIssues -and $issuesFixed -gt 0) {
     Write-Info ""
-    Write-Warning "Restarting WSUS service to apply changes..."
-    try {
-        Restart-Service WsusService -Force -ErrorAction Stop
+    Write-WsusWarning "Restarting WSUS service to apply changes..."
+    if (Restart-WsusService -ServiceName "WSUSService" -Force) {
         Write-Success "[OK] WSUS service restarted successfully"
-        
+
         # Wait and check event log
         Start-Sleep -Seconds 5
         Write-Info "Checking WSUS event log..."
         $recentEvents = Get-EventLog -LogName Application -Source "Windows Server Update Services" -Newest 2 -ErrorAction SilentlyContinue | Select-Object EntryType, Message
-        
+
         foreach ($event in $recentEvents) {
             if ($event.Message -like "*content directory is accessible*") {
                 Write-Success "[OK] WSUS reports content directory is accessible"
@@ -276,8 +234,8 @@ if ($FixIssues -and $issuesFixed -gt 0) {
                 Write-Failure "[FAIL] WSUS reports content directory is NOT accessible"
             }
         }
-    } catch {
-        Write-Failure "[FAIL] Error restarting WSUS service: $_"
+    } else {
+        Write-Failure "[FAIL] Error restarting WSUS service"
     }
 }
 
