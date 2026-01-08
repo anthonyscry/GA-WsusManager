@@ -48,9 +48,12 @@ function Test-WsusDatabaseConnection {
     }
 
     try {
-        # Test if SQL Server is running
-        if (-not (Test-ServiceRunning -ServiceName "MSSQL`$SQLEXPRESS")) {
-            $result.Message = "SQL Server service is not running"
+        # Test if SQL Server is running - extract instance name from SqlInstance parameter
+        $instanceName = if ($SqlInstance -match '\\(.+)$') { $Matches[1] } else { "MSSQLSERVER" }
+        $sqlServiceName = if ($instanceName -eq "MSSQLSERVER") { "MSSQLSERVER" } else { "MSSQL`$$instanceName" }
+
+        if (-not (Test-ServiceRunning -ServiceName $sqlServiceName)) {
+            $result.Message = "SQL Server service ($sqlServiceName) is not running"
             return $result
         }
 
