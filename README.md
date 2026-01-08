@@ -112,8 +112,12 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
   - Removes declined updates
   - Rebuilds indexes and updates stats
   - Shrinks SUSDB
+  - Logs all operations to file
 - **Why use it:** Deep cleanup when WSUS performance/storage needs attention.
 - **Where to run it:** On the **WSUS server** (typically the online/upstream instance).
+- **Parameters:**
+  - `-Force` or `-SkipConfirmation`: Skip confirmation prompt for automation
+  - `-LogFile <path>`: Custom log file location (default: `C:\WSUS\Logs\UltimateCleanup_<timestamp>.log`)
 
 #### `Reset-WsusContent.ps1`
 - **What it does:** Runs `wsusutil.exe reset` to force a full re-validation of all WSUS content.
@@ -207,6 +211,25 @@ powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Force-WSUSCheckIn.p
 ### Reset WSUS content files
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Reset-WsusContent.ps1
+```
+
+### Ultimate WSUS cleanup
+Run the comprehensive cleanup interactively (prompts for confirmation):
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1
+```
+
+Run non-interactively with `-Force` (useful for scheduled tasks):
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force
+```
+
+Specify a custom log file location:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File C:\WSUS\Scripts\Ultimate-WsusCleanup.ps1 -Force -LogFile "D:\Logs\Cleanup.log"
 ```
 
 ### Create or import WSUS GPOs
