@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: Force-WSUSCheckIn.ps1
+Script: Invoke-WsusClientCheckIn.ps1
 Purpose: Force a Windows Update client to check in with WSUS.
 Overview:
   - Stops update services and optionally clears SoftwareDistribution.
@@ -18,20 +18,9 @@ param(
     [switch]$ClearCache
 )
 
-# Colors for output
-function Write-ColorOutput($ForegroundColor) {
-    $fc = $host.UI.RawUI.ForegroundColor
-    $host.UI.RawUI.ForegroundColor = $ForegroundColor
-    if ($args) {
-        Write-Output $args
-    }
-    $host.UI.RawUI.ForegroundColor = $fc
-}
-
-function Write-Success { Write-ColorOutput Green $args }
-function Write-Failure { Write-ColorOutput Red $args }
-function Write-Warning { Write-ColorOutput Yellow $args }
-function Write-Info { Write-ColorOutput Cyan $args }
+# Import shared modules
+$modulePath = Join-Path $PSScriptRoot "Modules"
+Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
 
 Write-Info "=========================================="
 Write-Info "Force WSUS Check-In Script"
@@ -39,12 +28,8 @@ Write-Info "=========================================="
 Write-Info "Clear Cache: $($ClearCache.IsPresent)"
 Write-Info ""
 
-# Check if running as administrator
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Failure "ERROR: This script must be run as Administrator!"
-    exit 1
-}
+# Check if running as administrator using module function
+Test-AdminPrivileges -ExitOnFail $true | Out-Null
 
 # ===========================
 # 1. STOP WINDOWS UPDATE SERVICES

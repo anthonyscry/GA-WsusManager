@@ -1,6 +1,6 @@
 <#
 ===============================================================================
-Script: WsusMaintenance.ps1
+Script: Invoke-WsusMonthlyMaintenance.ps1
 Purpose: Monthly WSUS maintenance automation.
 Overview:
   - Synchronizes WSUS, monitors download progress, and applies approvals.
@@ -25,6 +25,12 @@ param(
     [switch]$SkipUltimateCleanup
 )
 
+# Import shared modules
+$modulePath = Join-Path $PSScriptRoot "Modules"
+Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusDatabase.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
+
 # Suppress prompts
 $ConfirmPreference = 'None'
 $ProgressPreference = 'SilentlyContinue'
@@ -35,61 +41,30 @@ $VerbosePreference = 'SilentlyContinue'
 # Force output redirection to prevent pauses
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
-$logFile = "C:\WSUS\Logs\WsusMaintenance_$(Get-Date -Format 'yyyyMMdd_HHmm').log"
-Start-Transcript -Path $logFile
-
-function Write-Log($msg) { Write-Output "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $msg" }
+# Setup logging using module function
+$logFile = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
 
 Write-Log "Starting WSUS monthly maintenance v2.2"
 
 # === CONNECT TO WSUS ===
 Write-Log "Connecting to WSUS..."
 
-# Check and start SQL Server Express
-$sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
-if (-not $sqlService) {
+# Check and start services using module functions
+if (-not (Test-ServiceExists -ServiceName "MSSQL`$SQLEXPRESS")) {
     Write-Error "SQL Server Express service not found. Is SQL Server installed?"
-    Stop-Transcript
+    Stop-WsusLogging
     exit 1
 }
 
-if ($sqlService.Status -ne "Running") {
-    Write-Log "SQL Server Express is stopped. Starting service..."
-    try {
-        Start-Service "MSSQL`$SQLEXPRESS" -ErrorAction Stop
-        Start-Sleep -Seconds 10
-        Write-Log "SQL Server Express started successfully"
-    } catch {
-        Write-Error "Failed to start SQL Server Express: $($_.Exception.Message)"
-        Stop-Transcript
-        exit 1
-    }
-} else {
-    Write-Log "SQL Server Express is running"
-}
+Start-SqlServerExpress | Out-Null
 
-# Check and start WSUS Service
-$wsusService = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
-if (-not $wsusService) {
+if (-not (Test-ServiceExists -ServiceName "WSUSService")) {
     Write-Error "WSUS Service not found. Is WSUS installed?"
-    Stop-Transcript
+    Stop-WsusLogging
     exit 1
 }
 
-if ($wsusService.Status -ne "Running") {
-    Write-Log "WSUS Service is stopped. Starting service..."
-    try {
-        Start-Service "WSUSService" -ErrorAction Stop
-        Start-Sleep -Seconds 10
-        Write-Log "WSUS Service started successfully"
-    } catch {
-        Write-Error "Failed to start WSUS Service: $($_.Exception.Message)"
-        Stop-Transcript
-        exit 1
-    }
-} else {
-    Write-Log "WSUS Service is running"
-}
+Start-WsusServer | Out-Null
 
 try {
     [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
@@ -407,68 +382,23 @@ Write-Log "Database maintenance..."
 Write-Log "Waiting 30 seconds for WSUS operations to complete..."
 Start-Sleep -Seconds 30
 
-$indexQuery = @"
-SET DEADLOCK_PRIORITY LOW;
-SET LOCK_TIMEOUT 300000;
-
-DECLARE @T NVARCHAR(255), @I NVARCHAR(255), @F FLOAT, @S NVARCHAR(MAX), @E NVARCHAR(MAX)
-DECLARE c CURSOR LOCAL FAST_FORWARD FOR
-SELECT OBJECT_NAME(ips.object_id), i.name, ips.avg_fragmentation_in_percent
-FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') ips
-INNER JOIN sys.indexes i ON ips.object_id = i.object_id AND ips.index_id = i.index_id
-WHERE ips.avg_fragmentation_in_percent > 10 AND ips.page_count > 100 AND i.name IS NOT NULL
-ORDER BY ips.avg_fragmentation_in_percent DESC
-
-OPEN c
-FETCH NEXT FROM c INTO @T, @I, @F
-
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    BEGIN TRY
-        SET @S = CASE WHEN @F > 30 
-                    THEN 'ALTER INDEX ['+@I+'] ON ['+@T+'] REBUILD WITH (ONLINE = OFF, MAXDOP = 1)' 
-                    ELSE 'ALTER INDEX ['+@I+'] ON ['+@T+'] REORGANIZE' 
-                 END
-        EXEC sp_executesql @S
-    END TRY
-    BEGIN CATCH
-        SET @E = ERROR_MESSAGE()
-        PRINT 'Error on ' + @T + '.' + @I + ': ' + @E
-    END CATCH
-    
-    FETCH NEXT FROM c INTO @T, @I, @F
-END
-
-CLOSE c
-DEALLOCATE c
-"@
-
+# Use module functions for index optimization
 try {
     Write-Log "Optimizing indexes (may take 5-15 minutes)..."
     $indexStart = Get-Date
-    
-    $indexResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query $indexQuery -QueryTimeout 0 -Verbose 4>&1
-    
-    $indexResult | Where-Object { $_ -is [string] } | ForEach-Object {
-        if ($_ -match 'Error') {
-            Write-Warning $_
-        }
-    }
-    
+
+    $indexResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS"
+
     $indexDuration = [math]::Round(((Get-Date) - $indexStart).TotalMinutes, 1)
-    Write-Log "Index optimization complete in $indexDuration minutes"
+    Write-Log "Index optimization complete in $indexDuration minutes (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))"
 } catch {
     Write-Warning "Index maintenance encountered errors: $($_.Exception.Message)"
     Write-Log "Continuing with remaining maintenance tasks..."
 }
 
-try {
-    Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query "EXEC sp_updatestats" -QueryTimeout 0 | Out-Null
+# Update statistics using module function
+if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
     Write-Log "Statistics updated"
-} catch {
-    Write-Warning "Statistics update failed: $($_.Exception.Message)"
 }
 
 # === ULTIMATE CLEANUP (SUPSESSION + DECLINED PURGE) ===
@@ -488,71 +418,13 @@ if (-not $SkipUltimateCleanup) {
         }
     }
 
-    # Remove supersession records for declined updates.
-    $cleanupDeclined = @"
-SET NOCOUNT ON;
-DECLARE @Deleted INT = 0
+    # Remove supersession records using module functions
+    $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance "localhost\SQLEXPRESS"
+    Write-Log "Removed $deletedDeclined supersession records for declined updates"
 
-DELETE rsu
-FROM tbRevisionSupersedesUpdate rsu
-INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
-WHERE r.State = 2  -- Declined
-
-SET @Deleted = @@ROWCOUNT
-SELECT @Deleted AS DeletedDeclined
-"@
-
-    try {
-        $result1 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-            -Query $cleanupDeclined -QueryTimeout 300
-        Write-Log "Removed $($result1.DeletedDeclined) supersession records for declined updates"
-    } catch {
-        Write-Warning "Declined supersession cleanup failed: $($_.Exception.Message)"
-    }
-
-    # Remove supersession records for superseded updates in batches.
-    $cleanupSuperseded = @"
-SET NOCOUNT ON;
-DECLARE @Deleted INT = 0
-DECLARE @BatchSize INT = 10000
-DECLARE @TotalDeleted INT = 0
-
-WHILE 1 = 1
-BEGIN
-    DELETE TOP (@BatchSize) rsu
-    FROM tbRevisionSupersedesUpdate rsu
-    INNER JOIN tbRevision r ON rsu.RevisionID = r.RevisionID
-    WHERE r.State = 3  -- Superseded
-
-    SET @Deleted = @@ROWCOUNT
-    SET @TotalDeleted = @TotalDeleted + @Deleted
-
-    IF @Deleted = 0 BREAK
-
-    IF @TotalDeleted % 50000 = 0
-        PRINT 'Deleted ' + CAST(@TotalDeleted AS VARCHAR) + ' supersession records...'
-
-    WAITFOR DELAY '00:00:01'
-END
-
-SELECT @TotalDeleted AS DeletedSuperseded
-"@
-
-    try {
-        $startTime = Get-Date
-        $result2 = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-            -Query $cleanupSuperseded -QueryTimeout 0 -Verbose 4>&1
-
-        $result2 | Where-Object { $_ -is [string] } | ForEach-Object {
-            Write-Log $_
-        }
-
-        $duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)
-        $deleted = ($result2 | Where-Object { $_.DeletedSuperseded -ne $null }).DeletedSuperseded
-        Write-Log "Removed $deleted supersession records in $duration minutes"
-    } catch {
-        Write-Warning "Superseded supersession cleanup failed: $($_.Exception.Message)"
-    }
+    # Remove supersession records for superseded updates
+    $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
+    Write-Log "Removed $deletedSuperseded supersession records for superseded updates"
 
     # Delete declined updates using the official spDeleteUpdate procedure.
     try {
@@ -609,26 +481,15 @@ IF @LocalUpdateID IS NOT NULL
     }
 
     # Optional shrink after heavy cleanup to reclaim space (can be slow).
-    try {
-        Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
-        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-            -Query "DBCC SHRINKDATABASE (SUSDB, 10)" -QueryTimeout 0 | Out-Null
+    Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
+    if (Invoke-WsusDatabaseShrink -SqlInstance "localhost\SQLEXPRESS") {
         Write-Log "SUSDB shrink completed"
-    } catch {
-        Write-Warning "SUSDB shrink failed: $($_.Exception.Message)"
     }
 
     # Start WSUS service back up after database maintenance.
-    $wsusService = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
-    if ($wsusService -and $wsusService.Status -ne "Running") {
+    if (-not (Test-ServiceRunning -ServiceName "WSUSService")) {
         Write-Log "Starting WSUS Service..."
-        try {
-            Start-Service WSUSService -ErrorAction Stop
-            Start-Sleep -Seconds 5
-            Write-Log "WSUS Service started"
-        } catch {
-            Write-Warning "Failed to start WSUS Service: $($_.Exception.Message)"
-        }
+        Start-WsusServer | Out-Null
     }
 } else {
     Write-Log "Skipping ultimate cleanup before backup (SkipUltimateCleanup specified)."
@@ -648,15 +509,13 @@ Write-Log "Starting backup: $backupFile"
 $backupStart = Get-Date
 
 try {
-    $dbSize = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database master `
-        -Query "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')" `
-        -QueryTimeout 30
-    Write-Log "Database size: $($dbSize.SizeGB) GB"
-    
+    $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
+    Write-Log "Database size: $dbSize GB"
+
     Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
         -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
         -QueryTimeout 0 | Out-Null
-    
+
     $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
     $size = [math]::Round((Get-Item $backupFile).Length / 1MB, 2)
     Write-Log "Backup complete: ${size}MB in ${duration} minutes"
@@ -694,11 +553,9 @@ Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (
 Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
 
 try {
-    $dbSize = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database master `
-        -Query "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')" `
-        -QueryTimeout 30
-    Write-Log "SUSDB size: $($dbSize.SizeGB) GB"
-    if ($dbSize.SizeGB -ge 9.0) { Write-Warning "Database approaching 10GB limit!" }
+    $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
+    Write-Log "SUSDB size: $dbSize GB"
+    if ($dbSize -ge 9.0) { Write-Warning "Database approaching 10GB limit!" }
 } catch {}
 
 Write-Log "Backup: $backupFile"
@@ -722,4 +579,4 @@ $robocopyLog = "C:\Logs\Export_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 robocopy "C:\WSUS" "\\lab-hyperv\d\WSUS-Exports" /MIR /MT:16 /R:2 /W:5 /LOG:$robocopyLog /TEE
 
 Write-Log "Maintenance complete"
-Stop-Transcript
+Stop-WsusLogging
