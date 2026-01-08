@@ -175,12 +175,11 @@ The following scripts have been refactored to use these modules:
 ### Refactored Scripts
 - **Invoke-WsusDeepCleanup.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
 - **Invoke-WsusMonthlyMaintenance.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
-- **Repair-WsusContentPath.ps1** - Uses: WsusUtilities, WsusPermissions, WsusServices
 - **Invoke-WsusClientCheckIn.ps1** - Uses: WsusUtilities
+- **Test-WsusHealth.ps1** - Uses: WsusUtilities, WsusHealth (comprehensive health check & repair)
 
 ### Scripts To Be Refactored
 - Install-WsusWithSqlExpress.ps1
-- Repair-WsusServices.ps1
 - Restore-WsusDatabase.ps1
 - Reset-WsusContentDownload.ps1
 - Set-WsusGroupPolicy.ps1
