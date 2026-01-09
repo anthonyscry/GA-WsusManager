@@ -439,8 +439,11 @@ robocopy "D:\WSUS-Exports\2026\Jan\9_Updates" "E:\2026\Jan\9_Updates" /E /MT:16 
 .\Scripts\Restore-WsusDatabase.ps1
 
 # Or manually copy content (SAFE - merges without erasing existing files)
+# NOTE: Content is restored directly to C:\WSUS (not nested in subfolders)
 robocopy "E:\2026\Jan\9_Updates\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
+
+> **Important:** Content files are copied directly into `C:\WSUS`, not into a subfolder. The `WsusContent` folder in the export is just a container - its contents merge with your existing `C:\WSUS` folder.
 
 ### Key robocopy flags
 
