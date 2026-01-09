@@ -45,10 +45,7 @@ param(
     [int]$ExportDays = 0,
 
     # Skip the export step entirely
-    [switch]$SkipExport,
-
-    # Generate HTML report after completion
-    [switch]$GenerateReport
+    [switch]$SkipExport
 )
 
 # Import shared modules
@@ -330,175 +327,6 @@ function Show-OperationSummary {
     }
 }
 
-# Generate HTML report
-function New-MaintenanceReport {
-    param(
-        [hashtable]$Results,
-        [string]$OutputPath = "C:\WSUS\Logs"
-    )
-
-    $reportFile = Join-Path $OutputPath "MaintenanceReport_$(Get-Date -Format 'yyyyMMdd_HHmmss').html"
-
-    $statusColor = if ($Results.Success) { "#28a745" } else { "#dc3545" }
-    $statusText = if ($Results.Success) { "Completed Successfully" } else { "Completed with Errors" }
-
-    # Build phases HTML using StringBuilder for safety
-    $phasesBuilder = New-Object System.Text.StringBuilder
-    foreach ($phase in $Results.Phases) {
-        $phaseClass = switch ($phase.Status) { "Completed" { "completed" } "Skipped" { "skipped" } "Failed" { "failed" } default { "" } }
-        $durationText = if ($phase.Duration) { "($($phase.Duration))" } else { "" }
-        [void]$phasesBuilder.AppendLine("            <div class='phase $phaseClass'><strong>$($phase.Name)</strong> - $($phase.Status) $durationText</div>")
-    }
-    $phasesHtml = $phasesBuilder.ToString()
-
-    # Build export section HTML (only if export was performed)
-    $exportHtml = ""
-    if ($Results.ExportPath) {
-        $exportBuilder = New-Object System.Text.StringBuilder
-        [void]$exportBuilder.AppendLine("        <h2>Export</h2>")
-        [void]$exportBuilder.AppendLine("        <table>")
-        [void]$exportBuilder.AppendLine("            <tr><th>Metric</th><th>Value</th></tr>")
-        [void]$exportBuilder.AppendLine("            <tr><td>Export Path</td><td>$($Results.ExportPath)</td></tr>")
-        [void]$exportBuilder.AppendLine("            <tr><td>Files Exported</td><td>$($Results.ExportedFiles)</td></tr>")
-        [void]$exportBuilder.AppendLine("            <tr><td>Export Size</td><td>$($Results.ExportSize) GB</td></tr>")
-        [void]$exportBuilder.AppendLine("        </table>")
-        $exportHtml = $exportBuilder.ToString()
-    }
-
-    # Build warnings section HTML (only if warnings exist)
-    $warningsHtml = ""
-    if ($Results.Warnings.Count -gt 0) {
-        $warningsBuilder = New-Object System.Text.StringBuilder
-        [void]$warningsBuilder.AppendLine("        <h2>Warnings</h2>")
-        [void]$warningsBuilder.AppendLine("        <ul>")
-        foreach ($warning in $Results.Warnings) {
-            [void]$warningsBuilder.AppendLine("            <li>$warning</li>")
-        }
-        [void]$warningsBuilder.AppendLine("        </ul>")
-        $warningsHtml = $warningsBuilder.ToString()
-    }
-
-    # Build errors section HTML (only if errors exist)
-    $errorsHtml = ""
-    if ($Results.Errors.Count -gt 0) {
-        $errorsBuilder = New-Object System.Text.StringBuilder
-        [void]$errorsBuilder.AppendLine("        <h2>Errors</h2>")
-        [void]$errorsBuilder.AppendLine("        <ul style=`"color: #dc3545;`">")
-        foreach ($err in $Results.Errors) {
-            [void]$errorsBuilder.AppendLine("            <li>$err</li>")
-        }
-        [void]$errorsBuilder.AppendLine("        </ul>")
-        $errorsHtml = $errorsBuilder.ToString()
-    }
-
-    # Build the complete HTML report
-    $reportDate = Get-Date -Format 'yyyy-MM-dd'
-    $reportDateTime = Get-Date -Format 'dddd, MMMM dd, yyyy HH:mm:ss'
-
-    # Use single-quoted here-string for template to avoid parsing issues
-    $htmlTemplate = @'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>WSUS Maintenance Report - {{REPORT_DATE}}</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; border-bottom: 3px solid #0078d4; padding-bottom: 10px; }
-        h2 { color: #0078d4; margin-top: 30px; }
-        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 4px; color: white; font-weight: bold; }
-        .success { background: #28a745; }
-        .error { background: #dc3545; }
-        .warning { background: #ffc107; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: 600; }
-        tr:hover { background: #f8f9fa; }
-        .metric { font-size: 24px; font-weight: bold; color: #0078d4; }
-        .metric-label { font-size: 12px; color: #666; text-transform: uppercase; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0; }
-        .metric-box { background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
-        .phase { padding: 8px 12px; margin: 4px 0; background: #e9ecef; border-radius: 4px; }
-        .phase.completed { border-left: 4px solid #28a745; }
-        .phase.skipped { border-left: 4px solid #6c757d; opacity: 0.6; }
-        .phase.failed { border-left: 4px solid #dc3545; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>WSUS Maintenance Report</h1>
-        <p><strong>Date:</strong> {{REPORT_DATETIME}}</p>
-        <p><strong>Server:</strong> {{COMPUTERNAME}}</p>
-        <p><strong>Status:</strong> <span class="status-badge" style="background: {{STATUS_COLOR}};">{{STATUS_TEXT}}</span></p>
-
-        <h2>Summary Metrics</h2>
-        <div class="metrics-grid">
-            <div class="metric-box">
-                <div class="metric">{{DECLINED_EXPIRED}}</div>
-                <div class="metric-label">Expired Declined</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric">{{DECLINED_SUPERSEDED}}</div>
-                <div class="metric-label">Superseded Declined</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric">{{DECLINED_OLD}}</div>
-                <div class="metric-label">Old Declined</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric">{{APPROVED}}</div>
-                <div class="metric-label">Updates Approved</div>
-            </div>
-        </div>
-
-        <h2>Operations</h2>
-{{PHASES_HTML}}
-        <h2>Database</h2>
-        <table>
-            <tr><th>Metric</th><th>Value</th></tr>
-            <tr><td>Database Size</td><td>{{DATABASE_SIZE}} GB</td></tr>
-            <tr><td>Backup File</td><td>{{BACKUP_FILE}}</td></tr>
-            <tr><td>Backup Size</td><td>{{BACKUP_SIZE}} MB</td></tr>
-        </table>
-
-{{EXPORT_HTML}}
-{{WARNINGS_HTML}}
-{{ERRORS_HTML}}
-        <div class="footer">
-            <p>Generated by WSUS Monthly Maintenance Script v{{SCRIPT_VERSION}}</p>
-            <p>Report file: {{REPORT_FILE}}</p>
-        </div>
-    </div>
-</body>
-</html>
-'@
-
-    # Replace placeholders with actual values
-    $html = $htmlTemplate
-    $html = $html.Replace('{{REPORT_DATE}}', $reportDate)
-    $html = $html.Replace('{{REPORT_DATETIME}}', $reportDateTime)
-    $html = $html.Replace('{{COMPUTERNAME}}', $env:COMPUTERNAME)
-    $html = $html.Replace('{{STATUS_COLOR}}', $statusColor)
-    $html = $html.Replace('{{STATUS_TEXT}}', $statusText)
-    $html = $html.Replace('{{DECLINED_EXPIRED}}', [string]$Results.DeclinedExpired)
-    $html = $html.Replace('{{DECLINED_SUPERSEDED}}', [string]$Results.DeclinedSuperseded)
-    $html = $html.Replace('{{DECLINED_OLD}}', [string]$Results.DeclinedOld)
-    $html = $html.Replace('{{APPROVED}}', [string]$Results.Approved)
-    $html = $html.Replace('{{DATABASE_SIZE}}', [string]$Results.DatabaseSize)
-    $html = $html.Replace('{{BACKUP_FILE}}', [string]$Results.BackupFile)
-    $html = $html.Replace('{{BACKUP_SIZE}}', [string]$Results.BackupSize)
-    $html = $html.Replace('{{PHASES_HTML}}', $phasesHtml)
-    $html = $html.Replace('{{EXPORT_HTML}}', $exportHtml)
-    $html = $html.Replace('{{WARNINGS_HTML}}', $warningsHtml)
-    $html = $html.Replace('{{ERRORS_HTML}}', $errorsHtml)
-    $html = $html.Replace('{{SCRIPT_VERSION}}', $ScriptVersion)
-    $html = $html.Replace('{{REPORT_FILE}}', $reportFile)
-
-    $html | Out-File -FilePath $reportFile -Encoding UTF8
-    return $reportFile
-}
-
 # Initialize results tracking
 $MaintenanceResults = @{
     Success = $true
@@ -561,7 +389,6 @@ if ($Profile) {
 # Apply unattended defaults
 if ($Unattended) {
     if ($ExportDays -eq 0) { $ExportDays = 30 }
-    $GenerateReport = $true
 }
 
 # Setup logging using module function
@@ -1331,14 +1158,6 @@ if ($MaintenanceResults.Errors.Count -gt 0) {
 }
 
 Write-Host ""
-
-# === GENERATE HTML REPORT ===
-if ($GenerateReport) {
-    Write-Status "Generating HTML report..." -Type Info
-    $reportFile = New-MaintenanceReport -Results $MaintenanceResults -OutputPath "C:\WSUS\Logs"
-    Write-Status "Report saved: $reportFile" -Type Success
-    Write-Log "HTML report generated: $reportFile"
-}
 
 Write-Log "Maintenance complete"
 Stop-WsusLogging
