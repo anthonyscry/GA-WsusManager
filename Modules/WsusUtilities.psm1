@@ -25,17 +25,24 @@ function Write-ColorOutput {
     <#
     .SYNOPSIS
         Writes output in a specific color
+    .PARAMETER ForegroundColor
+        The color to use for the text
+    .PARAMETER Message
+        The message to write
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ConsoleColor]$ForegroundColor
+        [ConsoleColor]$ForegroundColor,
+
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$Message
     )
 
     $fc = $host.UI.RawUI.ForegroundColor
     $host.UI.RawUI.ForegroundColor = $ForegroundColor
 
-    if ($args) {
-        Write-Output $args
+    if ($Message) {
+        Write-Host ($Message -join ' ')
     }
 
     $host.UI.RawUI.ForegroundColor = $fc
@@ -45,32 +52,56 @@ function Write-Success {
     <#
     .SYNOPSIS
         Writes success message in green
+    .PARAMETER Message
+        The message to write
     #>
-    Write-ColorOutput -ForegroundColor Green @args
+    param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$Message
+    )
+    Write-ColorOutput -ForegroundColor Green -Message $Message
 }
 
 function Write-Failure {
     <#
     .SYNOPSIS
         Writes failure message in red
+    .PARAMETER Message
+        The message to write
     #>
-    Write-ColorOutput -ForegroundColor Red @args
+    param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$Message
+    )
+    Write-ColorOutput -ForegroundColor Red -Message $Message
 }
 
 function Write-WsusWarning {
     <#
     .SYNOPSIS
         Writes warning message in yellow (renamed to avoid conflict with built-in Write-Warning)
+    .PARAMETER Message
+        The message to write
     #>
-    Write-ColorOutput -ForegroundColor Yellow @args
+    param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$Message
+    )
+    Write-ColorOutput -ForegroundColor Yellow -Message $Message
 }
 
 function Write-Info {
     <#
     .SYNOPSIS
         Writes info message in cyan
+    .PARAMETER Message
+        The message to write
     #>
-    Write-ColorOutput -ForegroundColor Cyan @args
+    param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$Message
+    )
+    Write-ColorOutput -ForegroundColor Cyan -Message $Message
 }
 
 # ===========================
