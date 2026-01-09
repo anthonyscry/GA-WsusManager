@@ -8,7 +8,7 @@ The refactored WSUS scripts now use a modular architecture where common function
 
 ## Available Modules
 
-### WsusUtilities.ps1
+### WsusUtilities.psm1
 **Common utility functions**
 
 Provides:
@@ -20,7 +20,7 @@ Provides:
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusUtilities.ps1
+Import-Module .\Modules\WsusUtilities.psm1
 
 # Check admin privileges and exit if not admin
 Test-AdminPrivileges -ExitOnFail $true
@@ -33,7 +33,7 @@ Write-Success "Operation completed successfully"
 Write-Failure "An error occurred"
 ```
 
-### WsusDatabase.ps1
+### WsusDatabase.psm1
 **Database cleanup and optimization functions**
 
 Provides:
@@ -45,7 +45,7 @@ Provides:
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusDatabase.ps1
+Import-Module .\Modules\WsusDatabase.psm1
 
 # Get database size
 $size = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
@@ -60,7 +60,7 @@ $result = Optimize-WsusIndexes -ShowProgress
 Write-Host "Rebuilt: $($result.Rebuilt), Reorganized: $($result.Reorganized)"
 ```
 
-### WsusPermissions.ps1
+### WsusPermissions.psm1
 **Content directory permissions management**
 
 Provides:
@@ -71,7 +71,7 @@ Provides:
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusPermissions.ps1
+Import-Module .\Modules\WsusPermissions.psm1
 
 # Check permissions
 $check = Test-WsusContentPermissions -ContentPath "C:\WSUS"
@@ -83,7 +83,7 @@ if (-not $check.AllCorrect) {
 Set-WsusContentPermissions -ContentPath "C:\WSUS"
 ```
 
-### WsusServices.ps1
+### WsusServices.psm1
 **Service management functions**
 
 Provides:
@@ -96,7 +96,7 @@ Provides:
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusServices.ps1
+Import-Module .\Modules\WsusServices.psm1
 
 # Start all WSUS services
 $result = Start-AllWsusServices
@@ -114,7 +114,7 @@ $status.GetEnumerator() | ForEach-Object {
 }
 ```
 
-### WsusFirewall.ps1
+### WsusFirewall.psm1
 **Firewall rule management**
 
 Provides:
@@ -127,7 +127,7 @@ Provides:
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusFirewall.ps1
+Import-Module .\Modules\WsusFirewall.psm1
 
 # Create all WSUS firewall rules
 $result = Initialize-WsusFirewallRules
@@ -140,7 +140,7 @@ if ($result.AlreadyPresent) {
 }
 ```
 
-### WsusHealth.ps1
+### WsusHealth.psm1
 **Comprehensive health checking**
 
 Provides:
@@ -152,7 +152,7 @@ Note: This module automatically imports WsusServices, WsusFirewall, and WsusPerm
 
 Example usage:
 ```powershell
-Import-Module .\Modules\WsusHealth.ps1
+Import-Module .\Modules\WsusHealth.psm1
 
 # Run comprehensive health check
 $health = Test-WsusHealth -ContentPath "C:\WSUS" -IncludeDatabase
