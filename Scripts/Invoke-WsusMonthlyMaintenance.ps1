@@ -2,7 +2,7 @@
 ===============================================================================
 Script: Invoke-WsusMonthlyMaintenance.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 3.0.0
+Version: 3.0.1
 Date: 2026-01-09
 ===============================================================================
 Purpose: Monthly WSUS maintenance automation.
@@ -65,7 +65,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.0"
+$ScriptVersion = "3.0.1"
 
 # === HELPER FUNCTIONS ===
 
@@ -510,7 +510,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
         $syncDuration = [math]::Round(((Get-Date) - $syncStart).TotalMinutes, 1)
         $syncPhase.Status = "Completed"
         $syncPhase.Duration = "$syncDuration min"
-        Write-Status "Synchronization completed ($syncDuration min)" -Type Success
+        Write-Status "Synchronization completed: $syncDuration minutes" -Type Success
     } catch {
         Write-Status "Sync failed: $($_.Exception.Message)" -Type Error
         $MaintenanceResults.Errors += "Sync failed: $($_.Exception.Message)"
@@ -541,7 +541,7 @@ do {
     $progress = $wsus.GetContentDownloadProgress()
     if ($progress.TotalFileCount -gt 0) {
         $pct = [math]::Round(($progress.DownloadedFileCount / $progress.TotalFileCount) * 100, 1)
-        Write-Log "Downloaded: $($progress.DownloadedFileCount)/$($progress.TotalFileCount) ($pct%)"
+        Write-Log "Downloaded: $($progress.DownloadedFileCount)/$($progress.TotalFileCount) - $($pct) percent"
         if ($progress.DownloadedFileCount -ge $progress.TotalFileCount) { break }
     } else {
         Write-Log "No downloads queued"
@@ -556,18 +556,18 @@ Write-Log "Fetching updates..."
 $allUpdates = @()
 
 try {
-    Write-Log "Calling GetUpdates() - this may take several minutes..."
+    Write-Log "Calling GetUpdates - this may take several minutes..."
     $getUpdatesStart = Get-Date
     
     $updateScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
     $allUpdates = $wsus.GetUpdates($updateScope)
     
     $getUpdatesDuration = [math]::Round(((Get-Date) - $getUpdatesStart).TotalSeconds, 1)
-    Write-Log "GetUpdates() completed in $getUpdatesDuration seconds"
+    Write-Log "GetUpdates completed in $getUpdatesDuration seconds"
     Write-Log "Total updates: $($allUpdates.Count)"
     
 } catch [System.Net.WebException] {
-    Write-Warning "GetUpdates() timed out after 180 seconds"
+    Write-Warning "GetUpdates timed out after 180 seconds"
     Write-Warning "This indicates SUSDB needs optimization. Running cleanup first..."
     $allUpdates = @()
 } catch {
@@ -997,7 +997,7 @@ Write-Log "Backup: $backupFile"
 
 if ($allUpdates.Count -eq 0) {
     Write-Output "------------------------------------------------------------"
-    Write-Warning "GetUpdates() timed out - consider running this script again"
+    Write-Warning "GetUpdates timed out - consider running this script again"
     Write-Warning "after the cleanup and index optimization have improved DB performance"
 }
 
