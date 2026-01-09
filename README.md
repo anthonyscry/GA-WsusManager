@@ -321,44 +321,61 @@ cd <DomainController folder location>
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     ANY MACHINE (with network access)                       │
+│                                                                             │
+│  3. Copy to USB/Apricorn                                                    │
+│     robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
                               [ USB / Apricorn ]
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          AIRGAPPED WSUS SERVER                              │
 │                                                                             │
-│  3. Copy export INTO C:\WSUS                                                │
+│  4. Copy export INTO C:\WSUS                                                │
 │     robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO              │
 │                                                                             │
 │     Result: C:\WSUS\SUSDB.bak                                               │
 │             C:\WSUS\WsusContent\                                            │
 │                                                                             │
-│  4. Restore database                                                        │
+│  5. Restore database                                                        │
 │     .\Invoke-WsusManagement.ps1 -Restore                                    │
 │                                                                             │
 │     (Auto-finds most recent .bak in C:\WSUS, restores DB, runs postinstall) │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Step 1: Run monthly maintenance on online WSUS server**
+**Step 1: Monthly maintenance** *(Run on: ONLINE WSUS server)*
 ```powershell
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
 ```
+Downloads updates, backs up database to `C:\WSUS\SUSDB.bak`.
 
-**Step 2: Export to network share**
+**Step 2: Export to network share** *(Run on: ONLINE WSUS server)*
 ```powershell
 .\Invoke-WsusManagement.ps1 -Export
 ```
+Creates `\\lab-hyperv\D\WSUS-Exports\2026\Jan\9\` with DB + new content.
 
-**Step 3: Copy export folder INTO C:\WSUS on airgapped server**
+**Step 3: Copy to USB/Apricorn** *(Run on: any machine with network access)*
+```powershell
+robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5
+```
+Copies export folder to removable drive.
+
+**Step 4: Copy into C:\WSUS** *(Run on: AIRGAPPED WSUS server)*
 ```powershell
 robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
+Copies DB + content from USB into `C:\WSUS`.
 
-**Step 4: Restore database**
+**Step 5: Restore database** *(Run on: AIRGAPPED WSUS server)*
 ```powershell
 .\Invoke-WsusManagement.ps1 -Restore
 ```
+Auto-finds `.bak` in `C:\WSUS`, restores DB, runs postinstall.
 
 ### Key robocopy flags
 
@@ -373,14 +390,13 @@ robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Im
 ### Common transfer examples
 
 ```powershell
-# Copy export from network share to USB drive
+# [Any machine with network access] Copy export to USB/Apricorn
 robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\ToUSB.log" /TEE
 
-# Import from USB INTO C:\WSUS on airgapped server (SAFE - keeps existing files)
-# Result: DB at C:\WSUS\SUSDB.bak, patches at C:\WSUS\WsusContent\
+# [AIRGAPPED server] Import from USB INTO C:\WSUS (SAFE - keeps existing files)
 robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
-# Import directly from network share (if accessible)
+# [AIRGAPPED server] Import directly from network share (if accessible)
 robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
 
