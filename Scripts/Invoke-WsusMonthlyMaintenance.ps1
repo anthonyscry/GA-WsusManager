@@ -1,6 +1,10 @@
 <#
 ===============================================================================
 Script: Invoke-WsusMonthlyMaintenance.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 3.0.0
+Date: 2026-01-09
+===============================================================================
 Purpose: Monthly WSUS maintenance automation.
 Overview:
   - Synchronizes WSUS, monitors download progress, and applies approvals.
@@ -14,32 +18,6 @@ Notes:
   - Use -Operations to run specific phases only.
   - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
 ===============================================================================
-Version: 3.0.0
-Date: 2026-01-09
-Changes:
-  - Added -Unattended mode for scheduled tasks
-  - Added -Profile parameter (Quick, Full, SyncOnly)
-  - Added -Operations for selective phase execution
-  - Added interactive menu mode (run without parameters)
-  - Added pre-flight validation checks
-  - Added colored status output
-  - Added HTML report generation
-  - Improved export path accessibility checking
-===============================================================================
-Version: 2.3.0
-Date: 2026-01-09
-Changes:
-  - Added differential export with year/month/day folder structure
-  - User prompted for export days (default 30) if not specified
-  - Added -SkipExport and -ExportDays parameters
-  - Export now uses /MAXAGE for true differential copy
-===============================================================================
-Version: 2.2.0
-Date: 2025-12-11
-Changes:
-  - Integrated ultimate cleanup steps before backup (supersession + declined purge)
-  - Added opt-out switch for ultimate cleanup
-  - Earlier improvements: decline/approval policy adjustments and service checks
 #>
 
 [CmdletBinding()]

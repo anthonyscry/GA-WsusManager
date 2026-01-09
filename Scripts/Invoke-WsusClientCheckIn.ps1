@@ -3,6 +3,10 @@
 <#
 ===============================================================================
 Script: Invoke-WsusClientCheckIn.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
 Purpose: Force a Windows Update client to check in with WSUS.
 Overview:
   - Stops update services and optionally clears SoftwareDistribution.
