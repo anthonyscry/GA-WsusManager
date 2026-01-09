@@ -82,7 +82,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.4"
+$ScriptVersion = "3.0.5"
 
 # === SQL CREDENTIAL HANDLING ===
 # Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
@@ -793,14 +793,14 @@ SELECT
 '@
 
         try {
-            # Use SQL credential for unattended mode, Windows integrated auth for interactive
+            # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
             if ($script:UseSqlCredential -and $SqlCredential) {
-                $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300 `
                     -Credential $SqlCredential
             } elseif (-not $Unattended) {
                 # Interactive mode - use Windows integrated auth
-                $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300
             } else {
                 Write-Log "Skipping deep cleanup - no SQL credential available for unattended mode"
@@ -927,17 +927,16 @@ IF @LocalUpdateID IS NOT NULL
 "@
 
                     try {
-                        # Use SQL credential for unattended mode, Windows integrated auth for interactive
+                        # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
                         if ($script:UseSqlCredential -and $SqlCredential) {
-                            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                 -Query $deleteQuery -QueryTimeout 300 `
                                 -Variable "UpdateIdParam='$updateId'" `
-                                -Credential $SqlCredential -ErrorAction SilentlyContinue | Out-Null
+                                -Credential $SqlCredential | Out-Null
                         } else {
-                            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                 -Query $deleteQuery -QueryTimeout 300 `
-                                -Variable "UpdateIdParam='$updateId'" `
-                                -ErrorAction SilentlyContinue | Out-Null
+                                -Variable "UpdateIdParam='$updateId'" | Out-Null
                         }
                         $totalDeleted++
                     } catch {
@@ -1006,14 +1005,14 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         Write-Log "Database size: $dbSize GB"
         $MaintenanceResults.DatabaseSize = $dbSize
 
-        # Use SQL credential for unattended mode, Windows integrated auth for interactive
+        # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
         if ($script:UseSqlCredential -and $SqlCredential) {
-            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 -Credential $SqlCredential | Out-Null
         } elseif (-not $Unattended) {
             # Interactive mode - use Windows integrated auth
-            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 | Out-Null
         } else {
