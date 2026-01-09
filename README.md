@@ -46,7 +46,7 @@ INSTALLATION
 
 DATABASE
   -Restore                               # Restore newest .bak from C:\WSUS
-  Menu option 3: Copy Exports            # Copy from lab server to local (differential)
+  Menu option 3: Copy for Air-Gap        # Full copy from root OR browse Year/Month/Backup archive
 
 MAINTENANCE
   .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
@@ -168,7 +168,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 |--------|-------------|
 | 1 | Install WSUS with SQL Express 2022 |
 | 2 | Restore Database from C:\WSUS (finds newest .bak) |
-| 3 | Copy Exports from Lab Server (differential copy to local) |
+| 3 | Copy for Air-Gap Server (Full copy or Browse Archive) |
 | 4 | Monthly Maintenance (Sync, Cleanup, Backup, Export) |
 | 5 | Deep Cleanup (Aggressive DB cleanup) |
 | 6 | Export for Airgapped Transfer |
@@ -271,7 +271,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 |-----------|---------|
 | Install WSUS | `.\Scripts\Install-WsusWithSqlExpress.ps1` |
 | Restore Database | `.\Invoke-WsusManagement.ps1 -Restore` |
-| Copy Exports from Lab | Menu option 3 (interactive only) |
+| Copy for Air-Gap Server | Menu option 3 (Full copy or Browse Archive) |
 | Monthly Maintenance | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1` |
 | Monthly Maintenance (Scheduled) | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Unattended -ExportDays 30` |
 | Export for Airgapped | `.\Invoke-WsusManagement.ps1 -Export` |
@@ -411,10 +411,10 @@ cd <DomainController folder location>
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          AIRGAPPED WSUS SERVER                              │
 │                                                                             │
-│  3. Option A: Copy Exports via Menu (RECOMMENDED)                           │
+│  3. Option A: Copy for Air-Gap via Menu (RECOMMENDED)                       │
 │     .\Invoke-WsusManagement.ps1  →  Select option 3                         │
-│     - Auto-finds newest export on lab server                                │
-│     - Differential copy to C:\WSUS                                          │
+│     - [F] Full Copy: latest DB + content from root folder                   │
+│     - [B] Browse Archive: navigate Year/Month to select specific backups    │
 │                                                                             │
 │  3. Option B: Manual robocopy                                               │
 │     robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO             │
@@ -447,8 +447,9 @@ Copies export folder to removable drive.
 Option A - Via menu (recommended):
 ```powershell
 .\Invoke-WsusManagement.ps1
-# Select option 3: Copy Exports from Lab Server
-# Auto-finds newest export, differential copies to C:\WSUS
+# Select option 3: Copy for Air-Gap Server
+#   [F] Full Copy - copies latest DB + WsusContent from root folder
+#   [B] Browse Archive - navigate Year/Month folders to select specific backups
 ```
 
 Option B - Manual robocopy:
