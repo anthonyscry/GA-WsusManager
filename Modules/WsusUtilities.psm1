@@ -412,6 +412,18 @@ function Test-WsusPath {
 # SQL CREDENTIAL FUNCTIONS
 # ===========================
 
+# Module-level constants for credential storage
+$script:WsusConfigPath = "C:\WSUS\Config"
+$script:WsusSqlCredentialFile = "sql_credential.xml"
+
+function Get-WsusSqlCredentialPath {
+    <#
+    .SYNOPSIS
+        Returns the full path to the SQL credential file
+    #>
+    return Join-Path $script:WsusConfigPath $script:WsusSqlCredentialFile
+}
+
 function Set-WsusSqlCredential {
     <#
     .SYNOPSIS
@@ -428,6 +440,9 @@ function Set-WsusSqlCredential {
     .PARAMETER Credential
         PSCredential object (will prompt if not provided)
 
+    .PARAMETER Force
+        Overwrite existing credentials without prompting
+
     .EXAMPLE
         Set-WsusSqlCredential
         # Prompts for credentials and stores them
@@ -435,18 +450,47 @@ function Set-WsusSqlCredential {
     .EXAMPLE
         Set-WsusSqlCredential -Username "sa"
         # Prompts for password for specified username
+
+    .OUTPUTS
+        Boolean indicating success or failure
     #>
+    [CmdletBinding()]
     param(
+        [Parameter(Position = 0)]
+        [ValidateNotNullOrEmpty()]
         [string]$Username = "dod_admin",
-        [System.Management.Automation.PSCredential]$Credential
+
+        [Parameter(Position = 1)]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
+        $Credential,
+
+        [switch]$Force
     )
 
-    $configPath = "C:\WSUS\Config"
-    $credFile = Join-Path $configPath "sql_credential.xml"
+    $credFile = Get-WsusSqlCredentialPath
+
+    # Check if credential already exists
+    if ((Test-Path $credFile) -and -not $Force) {
+        $existing = Get-WsusSqlCredential
+        if ($existing) {
+            Write-Host "Existing credential found for user: $($existing.UserName)" -ForegroundColor Yellow
+            $confirm = Read-Host "Overwrite? (Y/N)"
+            if ($confirm -notmatch '^[Yy]') {
+                Write-Host "Cancelled" -ForegroundColor Yellow
+                return $false
+            }
+        }
+    }
 
     # Create config directory if needed
-    if (-not (Test-Path $configPath)) {
-        New-Item -Path $configPath -ItemType Directory -Force | Out-Null
+    if (-not (Test-Path $script:WsusConfigPath)) {
+        try {
+            New-Item -Path $script:WsusConfigPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        } catch {
+            Write-Warning "Failed to create config directory: $($_.Exception.Message)"
+            return $false
+        }
     }
 
     # Get credential if not provided
@@ -455,14 +499,25 @@ function Set-WsusSqlCredential {
         $Credential = Get-Credential -Message "SQL Server credentials" -UserName $Username
     }
 
+    # Validate credential
     if (-not $Credential) {
         Write-Warning "No credentials provided"
         return $false
     }
 
+    if ([string]::IsNullOrWhiteSpace($Credential.UserName)) {
+        Write-Warning "Username cannot be empty"
+        return $false
+    }
+
+    if ($Credential.Password.Length -eq 0) {
+        Write-Warning "Password cannot be empty"
+        return $false
+    }
+
     try {
         # Export credential (encrypted with DPAPI - user/machine specific)
-        $Credential | Export-Clixml -Path $credFile -Force
+        $Credential | Export-Clixml -Path $credFile -Force -ErrorAction Stop
 
         # Restrict file permissions
         $acl = Get-Acl $credFile
@@ -473,13 +528,17 @@ function Set-WsusSqlCredential {
             "NT AUTHORITY\SYSTEM", "FullControl", "Allow")
         $acl.AddAccessRule($adminRule)
         $acl.AddAccessRule($systemRule)
-        Set-Acl -Path $credFile -AclObject $acl
+        Set-Acl -Path $credFile -AclObject $acl -ErrorAction Stop
 
         Write-Host "SQL credentials stored at: $credFile" -ForegroundColor Green
         Write-Host "Note: Credentials are encrypted and can only be used by administrators on this machine." -ForegroundColor Cyan
         return $true
     } catch {
         Write-Warning "Failed to store credentials: $($_.Exception.Message)"
+        # Clean up partial file if it exists
+        if (Test-Path $credFile) {
+            Remove-Item -Path $credFile -Force -ErrorAction SilentlyContinue
+        }
         return $false
     }
 }
@@ -489,20 +548,91 @@ function Get-WsusSqlCredential {
     .SYNOPSIS
         Retrieves stored SQL Server credentials
 
+    .PARAMETER Quiet
+        Suppress warning messages if credential not found
+
     .OUTPUTS
         PSCredential object or $null if not found
     #>
-    $credFile = "C:\WSUS\Config\sql_credential.xml"
+    [CmdletBinding()]
+    param(
+        [switch]$Quiet
+    )
+
+    $credFile = Get-WsusSqlCredentialPath
 
     if (-not (Test-Path $credFile)) {
+        if (-not $Quiet) {
+            Write-Verbose "No stored credential file found at: $credFile"
+        }
         return $null
     }
 
     try {
-        return Import-Clixml -Path $credFile
+        $credential = Import-Clixml -Path $credFile -ErrorAction Stop
+
+        # Validate the imported credential
+        if (-not $credential -or -not ($credential -is [System.Management.Automation.PSCredential])) {
+            Write-Warning "Stored credential file is corrupted or invalid"
+            return $null
+        }
+
+        return $credential
     } catch {
         Write-Warning "Failed to load stored credentials: $($_.Exception.Message)"
         return $null
+    }
+}
+
+function Test-WsusSqlCredential {
+    <#
+    .SYNOPSIS
+        Tests if stored SQL credentials can connect to SUSDB
+
+    .PARAMETER Credential
+        Credential to test (uses stored credential if not specified)
+
+    .PARAMETER SqlInstance
+        SQL Server instance (default: .\SQLEXPRESS)
+
+    .OUTPUTS
+        Boolean indicating if connection succeeded
+    #>
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.PSCredential]$Credential,
+
+        [string]$SqlInstance = ".\SQLEXPRESS"
+    )
+
+    # Get stored credential if not provided
+    if (-not $Credential) {
+        $Credential = Get-WsusSqlCredential
+        if (-not $Credential) {
+            Write-Warning "No credential provided and no stored credential found"
+            return $false
+        }
+    }
+
+    Write-Host "Testing SQL connection as $($Credential.UserName)..." -ForegroundColor Cyan
+
+    try {
+        # Test connection using Invoke-Sqlcmd
+        $testQuery = "SELECT 1 AS TestResult"
+        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database "SUSDB" `
+            -Query $testQuery -Credential $Credential -TrustServerCertificate `
+            -ErrorAction Stop -QueryTimeout 10
+
+        if ($result.TestResult -eq 1) {
+            Write-Host "SQL connection successful" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Warning "Unexpected result from test query"
+            return $false
+        }
+    } catch {
+        Write-Warning "SQL connection failed: $($_.Exception.Message)"
+        return $false
     }
 }
 
@@ -510,15 +640,41 @@ function Remove-WsusSqlCredential {
     <#
     .SYNOPSIS
         Removes stored SQL Server credentials
-    #>
-    $credFile = "C:\WSUS\Config\sql_credential.xml"
 
-    if (Test-Path $credFile) {
-        Remove-Item -Path $credFile -Force
+    .PARAMETER Force
+        Remove without confirmation
+
+    .OUTPUTS
+        Boolean indicating success
+    #>
+    [CmdletBinding()]
+    param(
+        [switch]$Force
+    )
+
+    $credFile = Get-WsusSqlCredentialPath
+
+    if (-not (Test-Path $credFile)) {
+        Write-Host "No stored credentials found" -ForegroundColor Yellow
+        return $false
+    }
+
+    if (-not $Force) {
+        $existing = Get-WsusSqlCredential -Quiet
+        $userName = if ($existing) { $existing.UserName } else { "unknown" }
+        $confirm = Read-Host "Remove stored credentials for '$userName'? (Y/N)"
+        if ($confirm -notmatch '^[Yy]') {
+            Write-Host "Cancelled" -ForegroundColor Yellow
+            return $false
+        }
+    }
+
+    try {
+        Remove-Item -Path $credFile -Force -ErrorAction Stop
         Write-Host "SQL credentials removed" -ForegroundColor Green
         return $true
-    } else {
-        Write-Host "No stored credentials found" -ForegroundColor Yellow
+    } catch {
+        Write-Warning "Failed to remove credentials: $($_.Exception.Message)"
         return $false
     }
 }
@@ -540,7 +696,9 @@ Export-ModuleMember -Function @(
     'Invoke-SqlScalar',
     'Get-WsusContentPath',
     'Test-WsusPath',
+    'Get-WsusSqlCredentialPath',
     'Set-WsusSqlCredential',
     'Get-WsusSqlCredential',
+    'Test-WsusSqlCredential',
     'Remove-WsusSqlCredential'
 )

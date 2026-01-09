@@ -82,20 +82,15 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.2"
+$ScriptVersion = "3.0.3"
 
 # === SQL CREDENTIAL HANDLING ===
 # For unattended/scheduled task mode, use stored credential or environment variable
 if (-not $SqlCredential) {
-    # Check for stored credential file (created by Set-WsusSqlCredential)
-    $credPath = "C:\WSUS\Config\sql_credential.xml"
-    if (Test-Path $credPath) {
-        try {
-            $SqlCredential = Import-Clixml -Path $credPath
-            Write-Host "[i] Using stored SQL credential for dod_admin" -ForegroundColor Cyan
-        } catch {
-            Write-Warning "Failed to load stored credential: $($_.Exception.Message)"
-        }
+    # Try to load stored credential using module function
+    $SqlCredential = Get-WsusSqlCredential -Quiet
+    if ($SqlCredential) {
+        Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
     }
 
     # If still no credential and not unattended, prompt
@@ -104,14 +99,22 @@ if (-not $SqlCredential) {
         Write-Host "SQL Server credentials required for database operations." -ForegroundColor Yellow
         Write-Host "Enter credentials for SQL Server access (e.g., dod_admin):" -ForegroundColor Yellow
         $SqlCredential = Get-Credential -Message "SQL Server credentials for SUSDB access" -UserName "dod_admin"
+
+        # Validate credential was provided
+        if ($SqlCredential -and $SqlCredential.Password.Length -eq 0) {
+            Write-Warning "Empty password provided - SQL operations may fail"
+        }
     }
 
     # If unattended and no credential available, warn but continue (WSUS API calls will still work)
     if (-not $SqlCredential -and $Unattended) {
         Write-Warning "No SQL credential available. Direct SQL operations will be skipped."
-        Write-Warning "Run Set-WsusSqlCredential to store credentials for unattended use."
+        Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for unattended use."
     }
 }
+
+# Store credential availability flag for later use
+$script:HasSqlCredential = ($null -ne $SqlCredential)
 
 # === HELPER FUNCTIONS ===
 
