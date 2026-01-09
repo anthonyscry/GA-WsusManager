@@ -5,7 +5,7 @@
 Script: Export-WsusIncrementalBackup.ps1
 Purpose: Export WSUS database and only NEW content files to a dated folder.
 Overview:
-  - Creates a dated export folder (e.g., 8Jan2026_WSUS)
+  - Creates a dated export folder (e.g., C:\WSUS\Backup\2026\Jan\)
   - Copies the SUSDB backup file
   - Uses robocopy to copy only content files modified since a specified date
   - Generates a ready-to-use robocopy command for the destination server
@@ -15,20 +15,20 @@ Notes:
   - Destination servers can merge without losing existing content
 ===============================================================================
 .PARAMETER ExportRoot
-    Root folder for exports (default: D:\WSUS-Exports)
+    Root folder for exports (default: C:\WSUS\Backup)
 .PARAMETER ContentPath
     WSUS content folder (default: C:\WSUS)
 .PARAMETER SinceDate
     Only copy content modified on or after this date (default: 30 days ago)
 .PARAMETER SinceDays
     Alternative: copy content modified within the last N days (default: 30)
-.PARAMETER IncludeDatabase
-    Include the SUSDB backup in the export (default: true)
+.PARAMETER SkipDatabase
+    Skip copying the SUSDB backup file
 .PARAMETER DatabasePath
     Path to SUSDB backup file (default: auto-detect newest .bak in C:\WSUS)
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1
-    Export database and content modified in the last 30 days
+    Export database and content modified in the last 30 days to C:\WSUS\Backup\2026\Jan\
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1 -SinceDays 7
     Export only content modified in the last 7 days
@@ -39,7 +39,7 @@ Notes:
 
 [CmdletBinding()]
 param(
-    [string]$ExportRoot = "D:\WSUS-Exports",
+    [string]$ExportRoot = "C:\WSUS\Backup",
     [string]$ContentPath = "C:\WSUS",
     [DateTime]$SinceDate,
     [int]$SinceDays = 30,
@@ -73,10 +73,10 @@ if ($PSBoundParameters.ContainsKey('SinceDate')) {
     $filterDate = (Get-Date).AddDays(-$SinceDays)
 }
 
-# Create dated export folder name (e.g., 8Jan2026_WSUS)
-$dateSuffix = (Get-Date).ToString("dMMMyyyy")
-$exportFolder = "${dateSuffix}_WSUS"
-$exportPath = Join-Path $ExportRoot $exportFolder
+# Create dated export folder structure (e.g., C:\WSUS\Backup\2026\Jan\)
+$year = (Get-Date).ToString("yyyy")
+$month = (Get-Date).ToString("MMM")
+$exportPath = Join-Path $ExportRoot $year $month
 
 Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Export folder: $exportPath"
@@ -165,7 +165,7 @@ $robocopyArgs = @(
     "/R:2"
     "/W:5"
     "/XF", "*.bak", "*.log"
-    "/XD", "Logs", "SQLDB"
+    "/XD", "Logs", "SQLDB", "Backup"
     "/NP"
     "/NDL"
 )
@@ -198,9 +198,10 @@ Write-Host ""
 Write-Host "[3/3] Generating import commands..." -ForegroundColor Yellow
 
 # Create a readme with import instructions
+$exportFolderName = "$year\$month"
 $importInstructions = @"
 ================================================================================
-WSUS INCREMENTAL EXPORT - $exportFolder
+WSUS INCREMENTAL EXPORT - $year\$month
 Exported: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Source: $env:COMPUTERNAME
 Content modified since: $($filterDate.ToString('yyyy-MM-dd'))
@@ -220,15 +221,15 @@ STEP 2: On the destination WSUS server, run ONE of these commands:
 
   OPTION A - Merge content (keeps existing files, adds new ones):
   -------------------------------------------------------------
-  robocopy "<SOURCE_PATH>\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import_$(Get-Date -Format 'yyyyMMdd').log" /TEE
+  robocopy "<SOURCE_PATH>\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
   OPTION B - From USB/Apricorn drive (replace E: with your drive letter):
   -----------------------------------------------------------------------
-  robocopy "E:\$exportFolder\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import_$(Get-Date -Format 'yyyyMMdd').log" /TEE
+  robocopy "E:\$year\$month\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
   OPTION C - From network share:
   ------------------------------
-  robocopy "\\SERVER\Share\$exportFolder\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import_$(Get-Date -Format 'yyyyMMdd').log" /TEE
+  robocopy "\\SERVER\Share\$year\$month\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
   KEY FLAGS:
   - /E    = Copy subdirectories including empty ones
