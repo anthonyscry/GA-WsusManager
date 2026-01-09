@@ -11,7 +11,7 @@ If you downloaded these scripts from the internet, run these commands once befor
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Unblock downloaded files (removes internet zone identifier)
-Get-ChildItem -Path ".\Scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-File
+Get-ChildItem -Path "C:\WSUS\Scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 ```
 
 ## Repository Structure
