@@ -35,7 +35,7 @@
     Skip confirmation prompts (for Cleanup operation).
 
 .PARAMETER ExportRoot
-    Root folder for exports (default: \\lab-hyperv\D\WSUS-Exports).
+    Root folder for exports (default: \\lab-hyperv\d\WSUS-Exports).
 
 .PARAMETER SinceDays
     For Export: copy content modified within last N days (default: 30).
@@ -90,7 +90,7 @@ param(
 
     # Export parameters
     [Parameter(ParameterSetName = 'Export')]
-    [string]$ExportRoot = "\\lab-hyperv\D\WSUS-Exports",
+    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
 
     [Parameter(ParameterSetName = 'Export')]
     [int]$SinceDays = 30,
@@ -569,8 +569,8 @@ function Start-InteractiveMenu {
             '3' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
             '4' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
             '5' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
-            '6' { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '7' { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
+            '6' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '7' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
             '8' { Invoke-WsusReset; pause }
             '9' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'Q' { Write-Host "Exiting..." -ForegroundColor Green; return }
