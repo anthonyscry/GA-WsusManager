@@ -124,65 +124,68 @@ function Test-Prerequisites {
         Warnings = @()
     }
 
-    Write-Status "Running pre-flight checks..." -Type Header
+    Write-Host "  Pre-flight Checks" -ForegroundColor Cyan
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
 
     # Check 1: SQL Server service exists
-    Write-Host "  Checking SQL Server..." -NoNewline
+    Write-Host "  SQL Server        " -NoNewline -ForegroundColor DarkGray
     if (Test-ServiceExists -ServiceName "MSSQL`$SQLEXPRESS") {
-        Write-Host " OK" -ForegroundColor Green
+        Write-Host "OK" -ForegroundColor Green
     } else {
-        Write-Host " FAILED" -ForegroundColor Red
+        Write-Host "FAILED" -ForegroundColor Red
         $results.Errors += "SQL Server Express service not found"
         $results.Success = $false
     }
 
     # Check 2: WSUS service exists
-    Write-Host "  Checking WSUS Service..." -NoNewline
+    Write-Host "  WSUS Service      " -NoNewline -ForegroundColor DarkGray
     if (Test-ServiceExists -ServiceName "WSUSService") {
-        Write-Host " OK" -ForegroundColor Green
+        Write-Host "OK" -ForegroundColor Green
     } else {
-        Write-Host " FAILED" -ForegroundColor Red
+        Write-Host "FAILED" -ForegroundColor Red
         $results.Errors += "WSUS Service not found"
         $results.Success = $false
     }
 
     # Check 3: Local disk space (WSUS folder)
-    Write-Host "  Checking disk space (C:\WSUS)..." -NoNewline
+    Write-Host "  Disk Space        " -NoNewline -ForegroundColor DarkGray
     $wsusDrive = (Get-Item "C:\WSUS" -ErrorAction SilentlyContinue).PSDrive
     if ($wsusDrive) {
         $freeGB = [math]::Round($wsusDrive.Free / 1GB, 2)
         if ($freeGB -ge 5) {
-            Write-Host " OK ($freeGB GB free)" -ForegroundColor Green
+            Write-Host "OK " -ForegroundColor Green -NoNewline
+            Write-Host "($freeGB GB free)" -ForegroundColor DarkGray
         } else {
-            Write-Host " LOW ($freeGB GB free)" -ForegroundColor Yellow
+            Write-Host "LOW " -ForegroundColor Yellow -NoNewline
+            Write-Host "($freeGB GB free)" -ForegroundColor DarkGray
             $results.Warnings += "Low disk space on WSUS drive: $freeGB GB"
         }
     } else {
-        Write-Host " SKIP (path not found)" -ForegroundColor Yellow
+        Write-Host "SKIP" -ForegroundColor Yellow
     }
 
     # Check 4: Export path accessibility (if not skipping export)
     if (-not $SkipExport -and $ExportPath) {
-        Write-Host "  Checking export path..." -NoNewline
+        Write-Host "  Export Path       " -NoNewline -ForegroundColor DarkGray
         $exportAccessible = Test-ExportPathAccess -ExportPath $ExportPath
         if ($exportAccessible) {
-            Write-Host " OK" -ForegroundColor Green
+            Write-Host "OK" -ForegroundColor Green
         } else {
-            Write-Host " FAILED" -ForegroundColor Red
+            Write-Host "FAILED" -ForegroundColor Red
             $results.Warnings += "Cannot access export path: $ExportPath"
         }
     }
 
     # Check 5: WSUS connection test
-    Write-Host "  Checking WSUS connection..." -NoNewline
+    Write-Host "  WSUS Connection   " -NoNewline -ForegroundColor DarkGray
     try {
         [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
         $testWsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
         if ($testWsus) {
-            Write-Host " OK" -ForegroundColor Green
+            Write-Host "OK" -ForegroundColor Green
         }
     } catch {
-        Write-Host " FAILED" -ForegroundColor Red
+        Write-Host "FAILED" -ForegroundColor Red
         $results.Errors += "Cannot connect to WSUS: $($_.Exception.Message)"
         $results.Success = $false
     }
@@ -216,28 +219,25 @@ function Test-ExportPathAccess {
 function Show-MainMenu {
     Clear-Host
     Write-Host ""
-    Write-Host "  +==========================================================+" -ForegroundColor Cyan
-    Write-Host "  |         WSUS Monthly Maintenance v$ScriptVersion                |" -ForegroundColor Cyan
-    Write-Host "  +==========================================================+" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [1] Full Maintenance                                    |" -ForegroundColor Cyan
-    Write-Host "  |      Sync -> Cleanup -> Ultimate Cleanup -> Backup -> Export |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [2] Quick Maintenance                                   |" -ForegroundColor Cyan
-    Write-Host "  |      Sync -> Cleanup -> Backup (skip heavy cleanup)      |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [3] Sync Only                                           |" -ForegroundColor Cyan
-    Write-Host "  |      Synchronize and approve updates only                |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [4] Backup & Export Only                                |" -ForegroundColor Cyan
-    Write-Host "  |      Skip sync/cleanup, just backup and export           |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [5] Database Maintenance Only                           |" -ForegroundColor Cyan
-    Write-Host "  |      Cleanup + index optimization (no sync/backup)       |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  |  [Q] Quit                                                |" -ForegroundColor Cyan
-    Write-Host "  |                                                          |" -ForegroundColor Cyan
-    Write-Host "  +==========================================================+" -ForegroundColor Cyan
+    Write-Host "  WSUS Monthly Maintenance v$ScriptVersion" -ForegroundColor Cyan
+    Write-Host "  $('=' * 40)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [1] Full Maintenance" -ForegroundColor White
+    Write-Host "      Sync > Cleanup > Ultimate Cleanup > Backup > Export" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [2] Quick Maintenance" -ForegroundColor White
+    Write-Host "      Sync > Cleanup > Backup (skip heavy cleanup)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [3] Sync Only" -ForegroundColor White
+    Write-Host "      Synchronize and approve updates only" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [4] Backup & Export Only" -ForegroundColor White
+    Write-Host "      Skip sync/cleanup, just backup and export" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [5] Database Maintenance Only" -ForegroundColor White
+    Write-Host "      Cleanup + index optimization (no sync/backup)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [Q] Quit" -ForegroundColor DarkGray
     Write-Host ""
 
     $choice = Read-Host "  Select option"
@@ -296,9 +296,8 @@ function Show-OperationSummary {
     )
 
     Write-Host ""
-    Write-Host "  +------------------------------------------------------------+" -ForegroundColor White
-    Write-Host "  |  WSUS Monthly Maintenance v$ScriptVersion                         |" -ForegroundColor White
-    Write-Host "  +------------------------------------------------------------+" -ForegroundColor White
+    Write-Host "  WSUS Monthly Maintenance v$ScriptVersion" -ForegroundColor Cyan
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
     Write-Host ""
 
     # Build operation flow
@@ -311,23 +310,23 @@ function Show-OperationSummary {
     if (Test-ShouldRunOperation "Backup" $Operations) { $flow += "Backup" }
     if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport) { $flow += "Export" }
 
-    Write-Host "  Operations:  " -NoNewline -ForegroundColor Gray
-    Write-Host ($flow -join " -> ") -ForegroundColor Cyan
+    Write-Host "  Operations:   " -NoNewline -ForegroundColor DarkGray
+    Write-Host ($flow -join " > ") -ForegroundColor White
 
     if (-not $SkipExport -and $ExportPath) {
         $year = (Get-Date).ToString("yyyy")
         $month = (Get-Date).ToString("MMM")
         $day = (Get-Date).ToString("dd")
         $fullExportPath = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
-        Write-Host "  Export Path: " -NoNewline -ForegroundColor Gray
-        Write-Host $fullExportPath -ForegroundColor Cyan
-        Write-Host "  Export Days: " -NoNewline -ForegroundColor Gray
-        Write-Host "$ExportDays days" -ForegroundColor Cyan
+        Write-Host "  Export Path:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host $fullExportPath -ForegroundColor White
+        Write-Host "  Export Days:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host "$ExportDays days" -ForegroundColor White
     }
 
-    Write-Host "  Mode:        " -NoNewline -ForegroundColor Gray
+    Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
     if ($Unattended) {
-        Write-Host "Unattended (no prompts)" -ForegroundColor Yellow
+        Write-Host "Unattended" -ForegroundColor Yellow
     } else {
         Write-Host "Interactive" -ForegroundColor Green
     }
@@ -994,27 +993,26 @@ if ($currentBackups) {
 }
 
 # === SUMMARY ===
-Write-Output "`n============================================================"
+Write-Host ""
+Write-Host "  Progress Summary" -ForegroundColor Cyan
+Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
 Write-Log "MAINTENANCE SUMMARY"
-Write-Output "------------------------------------------------------------"
 Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount"
 Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
 
 try {
     $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
     Write-Log "SUSDB size: $dbSize GB"
-    if ($dbSize -ge 9.0) { Write-Warning "Database approaching 10GB limit!" }
+    if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
 } catch {}
 
 Write-Log "Backup: $backupFile"
 
 if ($allUpdates.Count -eq 0) {
-    Write-Output "------------------------------------------------------------"
-    Write-Warning "GetUpdates timed out - consider running this script again"
-    Write-Warning "after the cleanup and index optimization have improved DB performance"
+    Write-Host "  Note: GetUpdates timed out - consider re-running after cleanup" -ForegroundColor Yellow
 }
 
-Write-Output "============================================================`n"
+Write-Host ""
 
 # === DIFFERENTIAL EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
 if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
@@ -1140,34 +1138,40 @@ if ($MaintenanceResults.Errors.Count -gt 0) {
 # === FINAL SUMMARY ===
 Write-Host ""
 $summaryColor = if ($MaintenanceResults.Success) { "Green" } else { "Red" }
-Write-Host "  +============================================================+" -ForegroundColor $summaryColor
-Write-Host "  |                   MAINTENANCE COMPLETE                      |" -ForegroundColor $summaryColor
-Write-Host "  +============================================================+" -ForegroundColor $summaryColor
+$statusText = if ($MaintenanceResults.Success) { "Maintenance Complete" } else { "Maintenance Complete (with errors)" }
+Write-Host "  $statusText" -ForegroundColor $summaryColor
+Write-Host "  $('=' * 50)" -ForegroundColor DarkGray
 Write-Host ""
-Write-Status "Total duration: $totalDuration minutes" -Type Info
-Write-Status "Declined: Expired=$($MaintenanceResults.DeclinedExpired) | Superseded=$($MaintenanceResults.DeclinedSuperseded) | Old=$($MaintenanceResults.DeclinedOld)" -Type Info
-Write-Status "Approved: $($MaintenanceResults.Approved) updates" -Type Info
+Write-Host "  Duration        " -NoNewline -ForegroundColor DarkGray
+Write-Host "$totalDuration minutes" -ForegroundColor White
+Write-Host "  Declined        " -NoNewline -ForegroundColor DarkGray
+Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old: $($MaintenanceResults.DeclinedOld)" -ForegroundColor White
+Write-Host "  Approved        " -NoNewline -ForegroundColor DarkGray
+Write-Host "$($MaintenanceResults.Approved) updates" -ForegroundColor White
 
 if ($MaintenanceResults.DatabaseSize -gt 0) {
-    Write-Status "Database: $($MaintenanceResults.DatabaseSize) GB" -Type Info
+    Write-Host "  Database Size   " -NoNewline -ForegroundColor DarkGray
+    Write-Host "$($MaintenanceResults.DatabaseSize) GB" -ForegroundColor White
 }
 if ($MaintenanceResults.BackupFile) {
-    Write-Status "Backup: $($MaintenanceResults.BackupFile) ($($MaintenanceResults.BackupSize) MB)" -Type Info
+    Write-Host "  Backup          " -NoNewline -ForegroundColor DarkGray
+    Write-Host "$(Split-Path $MaintenanceResults.BackupFile -Leaf) ($($MaintenanceResults.BackupSize) MB)" -ForegroundColor White
 }
 if ($MaintenanceResults.ExportPath) {
-    Write-Status "Export: $($MaintenanceResults.ExportPath)" -Type Info
+    Write-Host "  Export          " -NoNewline -ForegroundColor DarkGray
+    Write-Host $MaintenanceResults.ExportPath -ForegroundColor White
 }
 
 if ($MaintenanceResults.Warnings.Count -gt 0) {
     Write-Host ""
-    Write-Status "Warnings: $($MaintenanceResults.Warnings.Count)" -Type Warning
+    Write-Host "  Warnings: $($MaintenanceResults.Warnings.Count)" -ForegroundColor Yellow
 }
 
 if ($MaintenanceResults.Errors.Count -gt 0) {
     Write-Host ""
-    Write-Status "Errors: $($MaintenanceResults.Errors.Count)" -Type Error
+    Write-Host "  Errors: $($MaintenanceResults.Errors.Count)" -ForegroundColor Red
     foreach ($err in $MaintenanceResults.Errors) {
-        Write-Status "  $err" -Type Error
+        Write-Host "    $err" -ForegroundColor Red
     }
 }
 
