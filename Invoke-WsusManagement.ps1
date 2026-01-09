@@ -340,55 +340,90 @@ function Invoke-WsusRestore {
 }
 
 # ============================================================================
-# COPY EXPORTS OPERATION
+# COPY FOR AIR-GAP OPERATION
 # ============================================================================
 
-function Invoke-CopyExports {
+function Get-FolderSize {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return 0 }
+    $size = (Get-ChildItem -Path $Path -Recurse -File -ErrorAction SilentlyContinue |
+        Measure-Object -Property Length -Sum).Sum
+    return [math]::Round($size / 1GB, 2)
+}
+
+function Format-SizeDisplay {
+    param([decimal]$SizeGB)
+    if ($SizeGB -lt 1) {
+        return "$([math]::Round($SizeGB * 1024, 0)) MB"
+    }
+    return "$SizeGB GB"
+}
+
+function Copy-ToDestination {
     param(
-        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath
+        [string]$SourceFolder,
+        [string]$Destination,
+        [switch]$IncludeDatabase,
+        [switch]$IncludeContent
     )
 
-    Write-Banner "COPY EXPORTS FROM LAB SERVER"
-
-    # Check if source is accessible
-    if (-not (Test-Path $ExportSource)) {
-        Write-Log "ERROR: Cannot access $ExportSource" "Red"
-        Write-Host "Make sure the network share is accessible." -ForegroundColor Yellow
-        return
+    # Create destination if needed
+    if (-not (Test-Path $Destination)) {
+        New-Item -Path $Destination -ItemType Directory -Force | Out-Null
     }
 
-    # Find newest .bak file in export source (recursively)
-    Write-Host "Searching for newest database backup in $ExportSource..." -ForegroundColor Yellow
-    $bakFiles = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending
+    $step = 1
+    $totalSteps = ([int]$IncludeDatabase.IsPresent + [int]$IncludeContent.IsPresent)
 
-    if (-not $bakFiles -or $bakFiles.Count -eq 0) {
-        Write-Log "ERROR: No .bak files found in $ExportSource" "Red"
-        return
+    # Copy database file(s)
+    if ($IncludeDatabase) {
+        Write-Log "[$step/$totalSteps] Copying database backup..." "Yellow"
+        $bakFiles = Get-ChildItem -Path $SourceFolder -Filter "*.bak" -File -ErrorAction SilentlyContinue
+        foreach ($bak in $bakFiles) {
+            $destBakPath = Join-Path $Destination $bak.Name
+            Copy-Item -Path $bak.FullName -Destination $destBakPath -Force
+            Write-Host "  Copied: $($bak.Name) ($(Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2))))" -ForegroundColor Cyan
+        }
+        Write-Log "[OK] Database copied" "Green"
+        $step++
     }
 
-    $newestBak = $bakFiles | Select-Object -First 1
-    $sourceFolder = $newestBak.DirectoryName
+    # Differential copy of content using robocopy
+    if ($IncludeContent) {
+        $wsusContentSource = Join-Path $SourceFolder "WsusContent"
+        if (Test-Path $wsusContentSource) {
+            Write-Log "[$step/$totalSteps] Differential copy of content (this may take a while)..." "Yellow"
+            $destContent = Join-Path $Destination "WsusContent"
+
+            # /E = include subdirs, /XO = exclude older files, /MT:16 = 16 threads
+            $robocopyArgs = @(
+                "`"$wsusContentSource`"", "`"$destContent`"",
+                "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+            )
+
+            $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+            if ($proc.ExitCode -lt 8) {
+                Write-Log "[OK] Content copied" "Green"
+            } else {
+                Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+            }
+
+            # Show stats
+            $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+            $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+            Write-Host "  Destination content: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
+        } else {
+            Write-Log "[$step/$totalSteps] No WsusContent folder in source" "Yellow"
+        }
+    }
+}
+
+function Select-Destination {
+    param([string]$DefaultPath)
 
     Write-Host ""
-    Write-Host "Found newest export:" -ForegroundColor Green
-    Write-Host "  Location: $sourceFolder"
-    Write-Host "  Database: $($newestBak.Name) ($([math]::Round($newestBak.Length / 1GB, 2)) GB)"
-    Write-Host "  Date: $($newestBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
-
-    # Check for WsusContent folder
-    $wsusContentSource = Join-Path $sourceFolder "WsusContent"
-    if (Test-Path $wsusContentSource) {
-        $contentFiles = Get-ChildItem -Path $wsusContentSource -Recurse -File -ErrorAction SilentlyContinue
-        $contentSize = [math]::Round(($contentFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-        Write-Host "  Content: $($contentFiles.Count) files ($contentSize GB)"
-    }
-    Write-Host ""
-
-    # Ask for destination
     Write-Host "Destination options:" -ForegroundColor Yellow
-    Write-Host "  1. C:\WSUS (default)"
+    Write-Host "  1. $DefaultPath (default)"
     Write-Host "  2. Custom path"
     Write-Host ""
     $destChoice = Read-Host "Select destination (1/2)"
@@ -396,22 +431,74 @@ function Invoke-CopyExports {
     $destination = if ($destChoice -eq "2") {
         Read-Host "Enter destination path"
     } else {
-        $ContentPath
+        $DefaultPath
     }
 
     if (-not $destination) {
         Write-Log "ERROR: No destination specified" "Red"
-        return
+        return $null
     }
 
-    # Create destination if needed
-    if (-not (Test-Path $destination)) {
-        New-Item -Path $destination -ItemType Directory -Force | Out-Null
+    return $destination
+}
+
+function Invoke-FullCopy {
+    param(
+        [string]$ExportSource,
+        [string]$ContentPath
+    )
+
+    Write-Banner "FULL COPY - LATEST EXPORT"
+
+    # Check for root-level database
+    $rootBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $rootContent = Join-Path $ExportSource "WsusContent"
+    $hasRootContent = Test-Path $rootContent
+
+    if (-not $rootBak -and -not $hasRootContent) {
+        Write-Host "No database or content found in root folder." -ForegroundColor Yellow
+        Write-Host "Looking for newest backup in archive..." -ForegroundColor Yellow
+        Write-Host ""
+
+        # Fall back to finding newest in archive
+        $archiveBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+        if ($archiveBak) {
+            $ExportSource = $archiveBak.DirectoryName
+            $rootBak = $archiveBak
+            $rootContent = Join-Path $ExportSource "WsusContent"
+            $hasRootContent = Test-Path $rootContent
+        } else {
+            Write-Log "ERROR: No backups found anywhere in $ExportSource" "Red"
+            return
+        }
     }
+
+    Write-Host "Source: $ExportSource" -ForegroundColor Cyan
+    Write-Host ""
+
+    if ($rootBak) {
+        Write-Host "Database:" -ForegroundColor Yellow
+        Write-Host "  $($rootBak.Name) ($(Format-SizeDisplay ([math]::Round($rootBak.Length / 1GB, 2))))"
+        Write-Host "  Modified: $($rootBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    }
+
+    if ($hasRootContent) {
+        $contentSize = Get-FolderSize $rootContent
+        $contentFiles = (Get-ChildItem -Path $rootContent -Recurse -File -ErrorAction SilentlyContinue).Count
+        Write-Host ""
+        Write-Host "Content:" -ForegroundColor Yellow
+        Write-Host "  $contentFiles files ($(Format-SizeDisplay $contentSize))"
+    }
+
+    $destination = Select-Destination -DefaultPath $ContentPath
+    if (-not $destination) { return }
 
     Write-Host ""
     Write-Host "Configuration:" -ForegroundColor Yellow
-    Write-Host "  Source: $sourceFolder"
+    Write-Host "  Source: $ExportSource"
     Write-Host "  Destination: $destination"
     Write-Host "  Mode: Differential copy (only newer/missing files)"
     Write-Host ""
@@ -419,42 +506,329 @@ function Invoke-CopyExports {
     $confirm = Read-Host "Proceed with copy? (Y/n)"
     if ($confirm -notin @("Y", "y", "")) { return }
 
-    # Copy database file first
-    Write-Log "[1/2] Copying database backup..." "Yellow"
-    $destBakPath = Join-Path $destination $newestBak.Name
-    Copy-Item -Path $newestBak.FullName -Destination $destBakPath -Force
-    Write-Log "[OK] Database copied: $($newestBak.Name)" "Green"
-
-    # Differential copy of content using robocopy
-    if (Test-Path $wsusContentSource) {
-        Write-Log "[2/2] Differential copy of content (this may take a while)..." "Yellow"
-        $destContent = Join-Path $destination "WsusContent"
-
-        # /E = include subdirs, /XO = exclude older files, /MT:16 = 16 threads
-        $robocopyArgs = @(
-            "`"$wsusContentSource`"", "`"$destContent`"",
-            "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
-        )
-
-        $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-        if ($proc.ExitCode -lt 8) {
-            Write-Log "[OK] Content copied" "Green"
-        } else {
-            Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
-        }
-
-        # Show stats
-        $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
-        $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-        Write-Host "  Destination content: $($destFiles.Count) files ($destSize GB)" -ForegroundColor Cyan
-    } else {
-        Write-Log "[2/2] No WsusContent folder in source" "Yellow"
-    }
+    Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
+        -IncludeDatabase:($null -ne $rootBak) -IncludeContent:$hasRootContent
 
     Write-Banner "COPY COMPLETE"
-    Write-Host "Database and content copied to: $destination" -ForegroundColor Green
+    Write-Host "Files copied to: $destination" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+}
+
+function Invoke-BrowseArchive {
+    param(
+        [string]$ExportSource,
+        [string]$ContentPath
+    )
+
+    $archivePath = Join-Path $ExportSource "Archive"
+    $searchPath = if (Test-Path $archivePath) { $archivePath } else { $ExportSource }
+
+    # YEAR SELECTION
+    :yearLoop while ($true) {
+        Clear-Host
+        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host "              BROWSE ARCHIVE - SELECT YEAR" -ForegroundColor Cyan
+        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        $years = Get-ChildItem -Path $searchPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^\d{4}$' } |
+            Sort-Object Name -Descending
+
+        if (-not $years -or $years.Count -eq 0) {
+            Write-Host "No year folders found in $searchPath" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Expected structure:" -ForegroundColor Gray
+            Write-Host "  $searchPath\2026\Jan\9\" -ForegroundColor Gray
+            Write-Host ""
+            Read-Host "Press Enter to go back"
+            return
+        }
+
+        $i = 1
+        foreach ($year in $years) {
+            $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
+            Write-Host "  [$i] $($year.Name) ($backupCount backups)" -ForegroundColor White
+            $i++
+        }
+
+        Write-Host ""
+        Write-Host "  [B] Back" -ForegroundColor Red
+        Write-Host ""
+
+        $yearChoice = Read-Host "Select year"
+        if ($yearChoice -eq 'B' -or $yearChoice -eq 'b') { return }
+
+        $yearIndex = 0
+        if ([int]::TryParse($yearChoice, [ref]$yearIndex) -and $yearIndex -ge 1 -and $yearIndex -le $years.Count) {
+            $selectedYear = $years[$yearIndex - 1]
+
+            # MONTH SELECTION
+            :monthLoop while ($true) {
+                Clear-Host
+                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host "              BROWSE ARCHIVE - SELECT MONTH ($($selectedYear.Name))" -ForegroundColor Cyan
+                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host ""
+
+                $months = Get-ChildItem -Path $selectedYear.FullName -Directory -ErrorAction SilentlyContinue |
+                    Sort-Object {
+                        # Sort by month number or alphabetically
+                        $monthNames = @{Jan=1;Feb=2;Mar=3;Apr=4;May=5;Jun=6;Jul=7;Aug=8;Sep=9;Oct=10;Nov=11;Dec=12}
+                        if ($monthNames.ContainsKey($_.Name)) { $monthNames[$_.Name] }
+                        elseif ($_.Name -match '^\d+$') { [int]$_.Name }
+                        else { 99 }
+                    }
+
+                if (-not $months -or $months.Count -eq 0) {
+                    Write-Host "No month folders found in $($selectedYear.FullName)" -ForegroundColor Yellow
+                    Read-Host "Press Enter to go back"
+                    continue yearLoop
+                }
+
+                $i = 1
+                foreach ($month in $months) {
+                    $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
+                    Write-Host "  [$i] $($month.Name) ($backupCount backups)" -ForegroundColor White
+                    $i++
+                }
+
+                Write-Host ""
+                Write-Host "  [B] Back" -ForegroundColor Red
+                Write-Host ""
+
+                $monthChoice = Read-Host "Select month"
+                if ($monthChoice -eq 'B' -or $monthChoice -eq 'b') { continue yearLoop }
+
+                $monthIndex = 0
+                if ([int]::TryParse($monthChoice, [ref]$monthIndex) -and $monthIndex -ge 1 -and $monthIndex -le $months.Count) {
+                    $selectedMonth = $months[$monthIndex - 1]
+
+                    # BACKUP SELECTION
+                    :backupLoop while ($true) {
+                        Clear-Host
+                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host "       SELECT BACKUP ($($selectedYear.Name) / $($selectedMonth.Name))" -ForegroundColor Cyan
+                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host ""
+
+                        # Find all backup folders (contain .bak files) or day folders
+                        $backupFolders = @()
+
+                        # Check for direct backup folders (FULL_YYYYMMDD, DIFF_YYYYMMDD)
+                        $directBackups = Get-ChildItem -Path $selectedMonth.FullName -Directory -ErrorAction SilentlyContinue |
+                            Where-Object {
+                                (Get-ChildItem -Path $_.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0
+                            }
+
+                        if ($directBackups) {
+                            $backupFolders += $directBackups
+                        }
+
+                        # Also check for day subfolders (1, 2, 3... or 01, 02, 03...)
+                        $dayFolders = Get-ChildItem -Path $selectedMonth.FullName -Directory -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -match '^\d+$' }
+
+                        foreach ($day in $dayFolders) {
+                            $dayBackups = Get-ChildItem -Path $day.FullName -Directory -ErrorAction SilentlyContinue |
+                                Where-Object {
+                                    (Get-ChildItem -Path $_.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0
+                                }
+                            if ($dayBackups) {
+                                $backupFolders += $dayBackups
+                            }
+                            # Also check if the day folder itself contains backups
+                            if ((Get-ChildItem -Path $day.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0) {
+                                $backupFolders += $day
+                            }
+                        }
+
+                        # Remove duplicates and sort
+                        $backupFolders = $backupFolders | Sort-Object FullName -Unique | Sort-Object Name -Descending
+
+                        if (-not $backupFolders -or $backupFolders.Count -eq 0) {
+                            Write-Host "No backups found in $($selectedMonth.FullName)" -ForegroundColor Yellow
+                            Read-Host "Press Enter to go back"
+                            continue monthLoop
+                        }
+
+                        $i = 1
+                        $backupInfo = @()
+                        foreach ($backup in $backupFolders) {
+                            $bakFile = Get-ChildItem -Path $backup.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+                                Select-Object -First 1
+                            $contentPath = Join-Path $backup.FullName "WsusContent"
+                            $hasContent = Test-Path $contentPath
+
+                            $totalSize = 0
+                            if ($bakFile) { $totalSize += $bakFile.Length }
+                            if ($hasContent) { $totalSize += (Get-FolderSize $contentPath) * 1GB }
+                            $sizeDisplay = Format-SizeDisplay ([math]::Round($totalSize / 1GB, 2))
+
+                            $type = if ($backup.Name -like "FULL*") { "FULL" }
+                                    elseif ($backup.Name -like "DIFF*") { "DIFF" }
+                                    else { "    " }
+
+                            $contentMarker = if ($hasContent) { "+ Content" } else { "DB only" }
+
+                            Write-Host "  [$i] $($backup.Name) ($sizeDisplay) - $type $contentMarker" -ForegroundColor White
+                            $backupInfo += @{
+                                Folder = $backup
+                                BakFile = $bakFile
+                                HasContent = $hasContent
+                            }
+                            $i++
+                        }
+
+                        Write-Host ""
+                        Write-Host "  [A] Copy ALL backups listed above" -ForegroundColor Green
+                        Write-Host "  [B] Back" -ForegroundColor Red
+                        Write-Host ""
+
+                        $backupChoice = Read-Host "Select backup"
+                        if ($backupChoice -eq 'B' -or $backupChoice -eq 'b') { continue monthLoop }
+
+                        if ($backupChoice -eq 'A' -or $backupChoice -eq 'a') {
+                            # Copy all backups
+                            $destination = Select-Destination -DefaultPath $ContentPath
+                            if (-not $destination) { continue backupLoop }
+
+                            Write-Host ""
+                            Write-Host "Will copy $($backupFolders.Count) backup(s) to: $destination" -ForegroundColor Yellow
+                            $confirm = Read-Host "Proceed? (Y/n)"
+                            if ($confirm -notin @("Y", "y", "")) { continue backupLoop }
+
+                            foreach ($info in $backupInfo) {
+                                Write-Host ""
+                                Write-Host "Copying: $($info.Folder.Name)" -ForegroundColor Cyan
+                                Copy-ToDestination -SourceFolder $info.Folder.FullName -Destination $destination `
+                                    -IncludeDatabase:($null -ne $info.BakFile) -IncludeContent:$info.HasContent
+                            }
+
+                            Write-Banner "COPY COMPLETE"
+                            Write-Host "All backups copied to: $destination" -ForegroundColor Green
+                            Write-Host ""
+                            Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+                            Read-Host "Press Enter to continue"
+                            return
+                        }
+
+                        $backupIndex = 0
+                        if ([int]::TryParse($backupChoice, [ref]$backupIndex) -and $backupIndex -ge 1 -and $backupIndex -le $backupFolders.Count) {
+                            $selected = $backupInfo[$backupIndex - 1]
+
+                            # Show details and confirm
+                            Clear-Host
+                            Write-Banner "COPY: $($selected.Folder.Name)"
+
+                            Write-Host "Source: $($selected.Folder.FullName)" -ForegroundColor Cyan
+                            Write-Host ""
+
+                            if ($selected.BakFile) {
+                                Write-Host "Database:" -ForegroundColor Yellow
+                                Write-Host "  $($selected.BakFile.Name) ($(Format-SizeDisplay ([math]::Round($selected.BakFile.Length / 1GB, 2))))"
+                            }
+
+                            if ($selected.HasContent) {
+                                $contentPath = Join-Path $selected.Folder.FullName "WsusContent"
+                                $contentSize = Get-FolderSize $contentPath
+                                Write-Host ""
+                                Write-Host "Content:" -ForegroundColor Yellow
+                                Write-Host "  $(Format-SizeDisplay $contentSize)"
+                            }
+
+                            $destination = Select-Destination -DefaultPath $ContentPath
+                            if (-not $destination) { continue backupLoop }
+
+                            Write-Host ""
+                            $confirm = Read-Host "Proceed with copy? (Y/n)"
+                            if ($confirm -notin @("Y", "y", "")) { continue backupLoop }
+
+                            Copy-ToDestination -SourceFolder $selected.Folder.FullName -Destination $destination `
+                                -IncludeDatabase:($null -ne $selected.BakFile) -IncludeContent:$selected.HasContent
+
+                            Write-Banner "COPY COMPLETE"
+                            Write-Host "Files copied to: $destination" -ForegroundColor Green
+                            Write-Host ""
+                            Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+                            Read-Host "Press Enter to continue"
+                            return
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function Invoke-CopyForAirGap {
+    param(
+        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$ContentPath
+    )
+
+    # Check if source is accessible
+    if (-not (Test-Path $ExportSource)) {
+        Write-Banner "COPY FOR AIR-GAP SERVER"
+        Write-Log "ERROR: Cannot access $ExportSource" "Red"
+        Write-Host "Make sure the network share is accessible." -ForegroundColor Yellow
+        return
+    }
+
+    :mainLoop while ($true) {
+        Clear-Host
+        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host "              COPY FOR AIR-GAP SERVER" -ForegroundColor Cyan
+        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Source: $ExportSource" -ForegroundColor Gray
+        Write-Host ""
+
+        # Check what's available
+        $rootBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $rootContent = Join-Path $ExportSource "WsusContent"
+        $hasRootContent = Test-Path $rootContent
+
+        if ($rootBak -or $hasRootContent) {
+            $rootInfo = ""
+            if ($rootBak) {
+                $rootInfo += "DB: $($rootBak.LastWriteTime.ToString('yyyy-MM-dd'))"
+            }
+            if ($hasRootContent) {
+                $contentSize = Get-FolderSize $rootContent
+                if ($rootInfo) { $rootInfo += ", " }
+                $rootInfo += "Content: $(Format-SizeDisplay $contentSize)"
+            }
+            Write-Host "[F] Full Copy - Latest from root ($rootInfo)" -ForegroundColor White
+        } else {
+            Write-Host "[F] Full Copy - Latest backup (searches archive)" -ForegroundColor White
+        }
+
+        Write-Host "[B] Browse Archive - Navigate Year/Month/Backup folders" -ForegroundColor White
+        Write-Host ""
+        Write-Host "[X] Back to Main Menu" -ForegroundColor Red
+        Write-Host ""
+
+        $choice = Read-Host "Select"
+
+        switch ($choice.ToUpper()) {
+            'F' { Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
+            'B' { Invoke-BrowseArchive -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
+            'X' { return }
+            default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        }
+    }
+}
+
+# Legacy function for backward compatibility
+function Invoke-CopyExports {
+    param(
+        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$ContentPath
+    )
+    Invoke-CopyForAirGap -ExportSource $ExportSource -ContentPath $ContentPath
 }
 
 # ============================================================================
@@ -615,7 +989,7 @@ function Show-Menu {
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
     Write-Host "  2. Restore Database from C:\WSUS"
-    Write-Host "  3. Copy Exports from Lab Server"
+    Write-Host "  3. Copy for Air-Gap Server (Full or Browse Archive)"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
     Write-Host "  4. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
@@ -655,7 +1029,7 @@ function Start-InteractiveMenu {
         switch ($choice) {
             '1' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '3' { Invoke-CopyExports -ExportSource $ExportRoot -ContentPath $ContentPath; pause }
+            '3' { Invoke-CopyForAirGap -ExportSource $ExportRoot -ContentPath $ContentPath; pause }
             '4' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
             '5' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
             '6' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
