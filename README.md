@@ -18,22 +18,31 @@ Get-ChildItem -Path "C:\WSUS\wsus-sql" -Recurse -Include *.ps1,*.psm1 | Unblock-
 
 ```
 /
-├── Invoke-WsusManagement.ps1    # Interactive launcher (recommended entry point)
-├── Scripts/                      # All WSUS server scripts
-│   ├── Install-WsusWithSqlExpress.ps1
-│   ├── Invoke-WsusMonthlyMaintenance.ps1
-│   ├── Invoke-WsusDeepCleanup.ps1
-│   ├── Restore-WsusDatabase.ps1
-│   ├── Test-WsusHealth.ps1
-│   ├── Reset-WsusContentDownload.ps1
-│   ├── Export-WsusIncrementalBackup.ps1
-│   └── Invoke-WsusClientCheckIn.ps1
+├── Invoke-WsusManagement.ps1     # Main script with switches (recommended entry point)
+├── Scripts/
+│   ├── Install-WsusWithSqlExpress.ps1     # One-time WSUS + SQL installation
+│   ├── Invoke-WsusMonthlyMaintenance.ps1  # Scheduled maintenance
+│   └── Invoke-WsusClientCheckIn.ps1       # Client-side check-in (run on clients)
 ├── DomainController/             # GPO configuration (run on Domain Controller)
 │   ├── Set-WsusGroupPolicy.ps1
 │   └── WSUS GPOs/
 ├── Modules/                      # Shared PowerShell modules
 └── README.md
 ```
+
+## Command Reference
+
+All operations are available via `Invoke-WsusManagement.ps1`:
+
+| Command | Description |
+|---------|-------------|
+| `.\Invoke-WsusManagement.ps1` | Interactive menu |
+| `.\Invoke-WsusManagement.ps1 -Export` | Export DB + content for airgapped transfer |
+| `.\Invoke-WsusManagement.ps1 -Restore` | Restore database from backup |
+| `.\Invoke-WsusManagement.ps1 -Health` | Run health check |
+| `.\Invoke-WsusManagement.ps1 -Repair` | Run health check + auto-repair |
+| `.\Invoke-WsusManagement.ps1 -Cleanup -Force` | Deep database cleanup |
+| `.\Invoke-WsusManagement.ps1 -Reset` | Reset content download |
 
 ## Quick start (recommended flow)
 
@@ -102,213 +111,100 @@ The script automatically replaces hardcoded WSUS server URLs in the backups with
 4. (Optional) Script links GPOs to specified OU
 5. Clients apply policies on next gpupdate
 
-## What the scripts do (by category)
+## What the scripts do
 
-Scripts are located in the `Scripts/` folder (run from WSUS server) or `DomainController/` folder (run from DC).
-Each entry includes **what it does**, **why you would use it**, and **where to run it**.
+### Main Script: `Invoke-WsusManagement.ps1`
+
+The main script handles all WSUS operations via switches or interactive menu.
+
+| Switch | Description |
+|--------|-------------|
+| (none) | Interactive menu |
+| `-Export` | Export DB + differential content for airgapped transfer |
+| `-Restore` | Restore SUSDB from backup |
+| `-Health` | Run health check (read-only) |
+| `-Repair` | Run health check with auto-repair |
+| `-Cleanup -Force` | Deep database cleanup |
+| `-Reset` | Reset content download |
+
+**Export Parameters:**
+- `-ExportRoot <path>`: Export destination (default: `\\lab-hyperv\D\WSUS-Exports`)
+- `-SinceDays <n>`: Copy content from last N days (default: 30)
+- `-SkipDatabase`: Skip database, export only content
+
+```powershell
+# Interactive menu
+.\Invoke-WsusManagement.ps1
+
+# Export to network share
+.\Invoke-WsusManagement.ps1 -Export
+
+# Export last 7 days only
+.\Invoke-WsusManagement.ps1 -Export -SinceDays 7
+
+# Restore database
+.\Invoke-WsusManagement.ps1 -Restore
+
+# Health check with repair
+.\Invoke-WsusManagement.ps1 -Repair
+
+# Deep cleanup (automated)
+.\Invoke-WsusManagement.ps1 -Cleanup -Force
+```
 
 ---
 
-### Install / Setup
-
-#### `Invoke-WsusManagement.ps1` (Interactive Menu)
-- **What it does:** Interactive menu-driven launcher for all WSUS operations.
-- **Why use it:** Easiest way to access all scripts without remembering command names.
-- **Where to run it:** On the **WSUS server**.
-
-```powershell
-.\Invoke-WsusManagement.ps1
-```
+### Separate Scripts
 
 #### `Scripts/Install-WsusWithSqlExpress.ps1`
-- **What it does:** Full **SQL Express 2022 + SSMS + WSUS** installation and configuration:
-  - SQL Express extraction and silent install
-  - SSMS installation
-  - SQL networking + firewall rules
-  - WSUS role install + post-install configuration
-  - IIS virtual directory fix + permissions
-  - Registry settings to bypass the initial WSUS wizard
-- **Why use it:** Automates a complete WSUS + SQL Express build without manual steps.
-- **Where to run it:** On the **WSUS server** you are provisioning.
-- **Requirements:** Place installers in `C:\WSUS\SQLDB`:
-  - `SQLEXPRADV_x64_ENU.exe` (SQL Express 2022 Advanced)
-  - `SSMS-Setup-ENU.exe` (SSMS)
+- **What it does:** Full **SQL Express 2022 + SSMS + WSUS** installation
+- **Where to run it:** On the **WSUS server** you are provisioning
+- **Requirements:** Place installers in `C:\WSUS\SQLDB`
 
 ```powershell
 .\Scripts\Install-WsusWithSqlExpress.ps1
 ```
 
-#### `DomainController/Set-WsusGroupPolicy.ps1`
-- **What it does:** Imports and configures all three WSUS GPO backups (Update Policy, Inbound Allow, Outbound Allow) and updates hardcoded WSUS server URLs to match your environment.
-- **Why use it:** Centralizes WSUS client settings, update policies, and firewall rules via Group Policy.
-- **Where to run it:** On a **Domain Controller** with **RSAT Group Policy Management** installed.
-- **Key features:**
-  - Automatically finds GPO backups in `WSUS GPOs` folder
-  - Updates hardcoded server names with your new WSUS server URL
-  - Creates or updates all three GPOs in one run
-  - Optionally links GPOs to target OUs
-
-```powershell
-# Interactive mode
-.\Set-WsusGroupPolicy.ps1
-
-# Specify server and link to OU
-.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
-```
-
----
-
-### Import / Restore
-
-#### `Scripts/Restore-WsusDatabase.ps1`
-- **What it does:** Restores a SUSDB backup and rebinds WSUS to the database:
-  - Validates backup file and content directory
-  - Sets proper permissions for WSUS
-  - Stops WSUS/IIS to release locks
-  - Restores SUSDB from backup
-  - Runs wsusutil postinstall and reset
-- **Why use it:** Rehydrate WSUS from a database backup (e.g., for offline/airgapped servers).
-- **Where to run it:** On the **WSUS server** that will host the restored database.
-
-```powershell
-.\Scripts\Restore-WsusDatabase.ps1
-# Auto-detects newest .bak file in C:\WSUS and prompts for confirmation
-```
-
----
-
-### Maintenance
-
 #### `Scripts/Invoke-WsusMonthlyMaintenance.ps1`
-- **What it does:** Monthly maintenance automation:
-  - Synchronizes WSUS and monitors download progress
-  - Applies update approvals
-  - Declines old superseded updates
-  - Runs WSUS cleanup tasks and SUSDB index maintenance
-  - Backs up database and content
-  - Optionally runs aggressive cleanup before backup
-- **Why use it:** Keeps WSUS healthy and produces backups for downstream/offline servers.
-- **Where to run it:** On the **online/upstream WSUS server**.
-- **Parameters:**
-  - `-SkipUltimateCleanup`: Skip heavy cleanup stage before backup
-  - `-ExportPath <path>`: Copy backups to specified location (e.g., network share)
+- **What it does:** Monthly maintenance (sync, decline, cleanup, backup)
+- **Where to run it:** On the **online/upstream WSUS server**
 
 ```powershell
-# Standard maintenance
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
-
-# Skip deep cleanup
-.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -SkipUltimateCleanup
-
-# Export backups to network share
-.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -ExportPath "\\server\share\WSUS-Exports"
-```
-
-#### `Scripts/Invoke-WsusDeepCleanup.ps1`
-- **What it does:** Aggressive database cleanup for large or bloated SUSDBs:
-  - Removes supersession records for declined/superseded updates
-  - Permanently deletes declined update metadata
-  - Adds performance indexes, rebuilds all indexes
-  - Updates statistics and shrinks database
-- **Why use it:** Deep cleanup when WSUS performance/storage needs attention.
-- **Where to run it:** On the **WSUS server** (quarterly or as needed).
-- **Parameters:**
-  - `-Force` or `-SkipConfirmation`: Skip confirmation prompt for automation
-  - `-LogFile <path>`: Custom log file location
-
-```powershell
-# Interactive (prompts for confirmation)
-.\Scripts\Invoke-WsusDeepCleanup.ps1
-
-# Automated (no prompts)
-.\Scripts\Invoke-WsusDeepCleanup.ps1 -Force
-```
-
-#### `Scripts/Reset-WsusContentDownload.ps1`
-- **What it does:** Runs `wsusutil.exe reset` to force re-verification of all WSUS content and re-download missing files.
-- **Why use it:** Fix content integrity issues or force a full re-check of downloads.
-- **Where to run it:** On the **WSUS server** that hosts the content store.
-- **Note:** This operation is heavy and can take 30-60 minutes.
-
-```powershell
-.\Scripts\Reset-WsusContentDownload.ps1
-```
-
-#### `Scripts/Export-WsusIncrementalBackup.ps1`
-- **What it does:** Creates a dated export folder with database and differential content:
-  - Creates folder structure like `\\lab-hyperv\D\WSUS-Exports\2026\Jan\9\`
-  - Copies the full SUSDB database backup
-  - Uses robocopy with MAXAGE to copy only recently modified content files
-  - Generates ready-to-use import commands for destination servers
-- **Why use it:** Monthly export for airgapped servers - includes DB + only new patches.
-- **Where to run it:** On the **online/upstream WSUS server**.
-- **Parameters:**
-  - `-ExportRoot <path>`: Root folder for exports (default: `\\lab-hyperv\D\WSUS-Exports`)
-  - `-SinceDays <n>`: Copy content modified within the last N days (default: 30)
-  - `-SinceDate <date>`: Copy content modified since a specific date
-  - `-SkipDatabase`: Skip database backup (export only content)
-
-```powershell
-# Export DB + differential content from last 30 days to \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\
-.\Scripts\Export-WsusIncrementalBackup.ps1
-
-# Export DB + only last 7 days of content
-.\Scripts\Export-WsusIncrementalBackup.ps1 -SinceDays 7
-
-# Export content since a specific date
-.\Scripts\Export-WsusIncrementalBackup.ps1 -SinceDate "2026-01-01"
-
-# Export only content (no database)
-.\Scripts\Export-WsusIncrementalBackup.ps1 -SkipDatabase
-```
-
----
-
-### Troubleshooting / Health Check
-
-#### `Scripts/Test-WsusHealth.ps1`
-- **What it does:** Comprehensive WSUS health check and repair utility:
-  - Checks SQL Server, WSUS, and IIS services
-  - Validates firewall rules
-  - Verifies content path permissions and configuration
-  - Tests database connectivity
-  - Provides optional auto-repair for all issues
-- **Why use it:** One-stop health check and repair for common WSUS issues.
-- **Where to run it:** On the **WSUS server**.
-- **Parameters:**
-  - `-Repair`: Automatically fix detected issues
-  - `-ContentPath <path>`: Custom content path (default: `C:\WSUS`)
-  - `-SkipDatabase`: Skip database connectivity checks
-
-```powershell
-# Health check only (no repairs)
-.\Scripts\Test-WsusHealth.ps1
-
-# Health check with auto-repair
-.\Scripts\Test-WsusHealth.ps1 -Repair
-
-# Custom content path
-.\Scripts\Test-WsusHealth.ps1 -ContentPath "D:\WSUS" -Repair
 ```
 
 #### `Scripts/Invoke-WsusClientCheckIn.ps1`
-- **What it does:** Forces a Windows Update client to check in with WSUS:
-  - Stops update services
-  - Optionally clears SoftwareDistribution cache
-  - Resets WSUS client identity for re-registration
-  - Triggers detection/reporting
-- **Why use it:** Troubleshoot client reporting or trigger immediate status updates.
-- **Where to run it:** On the **WSUS client machine** (not the server).
-- **Parameters:**
-  - `-ClearCache`: Clear Windows Update cache before re-check-in
+- **What it does:** Force Windows Update client to check in with WSUS
+- **Where to run it:** On **client machines** (not the WSUS server)
 
 ```powershell
-# Standard check-in
 .\Scripts\Invoke-WsusClientCheckIn.ps1
-
-# Clear cache and re-register
-.\Scripts\Invoke-WsusClientCheckIn.ps1 -ClearCache
 ```
+
+#### `DomainController/Set-WsusGroupPolicy.ps1`
+- **What it does:** Import and configure WSUS GPOs
+- **Where to run it:** On a **Domain Controller**
+
+```powershell
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
+```
+
+---
+
+### Operations Summary
+
+| Operation | Command |
+|-----------|---------|
+| Install WSUS | `.\Scripts\Install-WsusWithSqlExpress.ps1` |
+| Monthly Maintenance | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1` |
+| Export for Airgapped | `.\Invoke-WsusManagement.ps1 -Export` |
+| Restore Database | `.\Invoke-WsusManagement.ps1 -Restore` |
+| Health Check | `.\Invoke-WsusManagement.ps1 -Health` |
+| Health + Repair | `.\Invoke-WsusManagement.ps1 -Repair` |
+| Deep Cleanup | `.\Invoke-WsusManagement.ps1 -Cleanup -Force` |
+| Reset Content | `.\Invoke-WsusManagement.ps1 -Reset` |
+| Client Check-In | `.\Scripts\Invoke-WsusClientCheckIn.ps1` |
+| Configure GPOs | `.\DomainController\Set-WsusGroupPolicy.ps1` |
 
 ## Suggested deployment layout
 
@@ -348,40 +244,30 @@ cd C:\WSUS\wsus-sql
 .\Invoke-WsusManagement.ps1
 ```
 
-### Direct Script Execution
-
-#### Install WSUS + SQL Express
+### Direct Commands
 ```powershell
+# Install WSUS + SQL Express
 .\Scripts\Install-WsusWithSqlExpress.ps1
-```
 
-#### Restore a SUSDB backup
-```powershell
-.\Scripts\Restore-WsusDatabase.ps1
-```
-
-#### Monthly maintenance
-```powershell
+# Monthly maintenance
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
-```
 
-#### Deep cleanup
-```powershell
-.\Scripts\Invoke-WsusDeepCleanup.ps1
-```
+# Export for airgapped transfer
+.\Invoke-WsusManagement.ps1 -Export
 
-#### Test WSUS health
-```powershell
-.\Scripts\Test-WsusHealth.ps1
-```
+# Restore database
+.\Invoke-WsusManagement.ps1 -Restore
 
-#### Reset content download
-```powershell
-.\Scripts\Reset-WsusContentDownload.ps1
-```
+# Health check + repair
+.\Invoke-WsusManagement.ps1 -Repair
 
-#### Force client check-in (run on client)
-```powershell
+# Deep cleanup
+.\Invoke-WsusManagement.ps1 -Cleanup -Force
+
+# Reset content
+.\Invoke-WsusManagement.ps1 -Reset
+
+# Force client check-in (run on client)
 .\Scripts\Invoke-WsusClientCheckIn.ps1
 ```
 
