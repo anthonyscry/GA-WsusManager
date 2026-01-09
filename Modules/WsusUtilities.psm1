@@ -408,6 +408,121 @@ function Test-WsusPath {
     return $false
 }
 
+# ===========================
+# SQL CREDENTIAL FUNCTIONS
+# ===========================
+
+function Set-WsusSqlCredential {
+    <#
+    .SYNOPSIS
+        Stores SQL Server credentials for unattended maintenance tasks
+
+    .DESCRIPTION
+        Stores encrypted credentials that can be used by scheduled maintenance tasks.
+        The credentials are encrypted using Windows DPAPI and can only be decrypted
+        by the same user account on the same machine.
+
+    .PARAMETER Username
+        SQL Server username (default: dod_admin)
+
+    .PARAMETER Credential
+        PSCredential object (will prompt if not provided)
+
+    .EXAMPLE
+        Set-WsusSqlCredential
+        # Prompts for credentials and stores them
+
+    .EXAMPLE
+        Set-WsusSqlCredential -Username "sa"
+        # Prompts for password for specified username
+    #>
+    param(
+        [string]$Username = "dod_admin",
+        [System.Management.Automation.PSCredential]$Credential
+    )
+
+    $configPath = "C:\WSUS\Config"
+    $credFile = Join-Path $configPath "sql_credential.xml"
+
+    # Create config directory if needed
+    if (-not (Test-Path $configPath)) {
+        New-Item -Path $configPath -ItemType Directory -Force | Out-Null
+    }
+
+    # Get credential if not provided
+    if (-not $Credential) {
+        Write-Host "Enter SQL Server credentials for unattended maintenance:" -ForegroundColor Yellow
+        $Credential = Get-Credential -Message "SQL Server credentials" -UserName $Username
+    }
+
+    if (-not $Credential) {
+        Write-Warning "No credentials provided"
+        return $false
+    }
+
+    try {
+        # Export credential (encrypted with DPAPI - user/machine specific)
+        $Credential | Export-Clixml -Path $credFile -Force
+
+        # Restrict file permissions
+        $acl = Get-Acl $credFile
+        $acl.SetAccessRuleProtection($true, $false)
+        $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "BUILTIN\Administrators", "FullControl", "Allow")
+        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "NT AUTHORITY\SYSTEM", "FullControl", "Allow")
+        $acl.AddAccessRule($adminRule)
+        $acl.AddAccessRule($systemRule)
+        Set-Acl -Path $credFile -AclObject $acl
+
+        Write-Host "SQL credentials stored at: $credFile" -ForegroundColor Green
+        Write-Host "Note: Credentials are encrypted and can only be used by administrators on this machine." -ForegroundColor Cyan
+        return $true
+    } catch {
+        Write-Warning "Failed to store credentials: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Get-WsusSqlCredential {
+    <#
+    .SYNOPSIS
+        Retrieves stored SQL Server credentials
+
+    .OUTPUTS
+        PSCredential object or $null if not found
+    #>
+    $credFile = "C:\WSUS\Config\sql_credential.xml"
+
+    if (-not (Test-Path $credFile)) {
+        return $null
+    }
+
+    try {
+        return Import-Clixml -Path $credFile
+    } catch {
+        Write-Warning "Failed to load stored credentials: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Remove-WsusSqlCredential {
+    <#
+    .SYNOPSIS
+        Removes stored SQL Server credentials
+    #>
+    $credFile = "C:\WSUS\Config\sql_credential.xml"
+
+    if (Test-Path $credFile) {
+        Remove-Item -Path $credFile -Force
+        Write-Host "SQL credentials removed" -ForegroundColor Green
+        return $true
+    } else {
+        Write-Host "No stored credentials found" -ForegroundColor Yellow
+        return $false
+    }
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Write-ColorOutput',
@@ -424,5 +539,8 @@ Export-ModuleMember -Function @(
     'Test-AdminPrivileges',
     'Invoke-SqlScalar',
     'Get-WsusContentPath',
-    'Test-WsusPath'
+    'Test-WsusPath',
+    'Set-WsusSqlCredential',
+    'Get-WsusSqlCredential',
+    'Remove-WsusSqlCredential'
 )

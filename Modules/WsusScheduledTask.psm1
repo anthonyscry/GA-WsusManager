@@ -47,8 +47,11 @@ function New-WsusMaintenanceTask {
     .PARAMETER Profile
         Maintenance profile to use: Full, Quick, SyncOnly (default: Full)
 
-    .PARAMETER RunAsSystem
-        Run as SYSTEM account (default: true)
+    .PARAMETER RunAsUser
+        User account to run the task as (default: .\dod_admin)
+
+    .PARAMETER UserPassword
+        Password for the user account (will prompt if not provided)
 
     .OUTPUTS
         Hashtable with task creation results
@@ -72,7 +75,9 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$Profile = 'Full',
 
-        [switch]$RunAsSystem = $true
+        [string]$RunAsUser = ".\dod_admin",
+
+        [securestring]$UserPassword
     )
 
     $result = @{
@@ -102,6 +107,17 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
+    # Prompt for password if not provided
+    if (-not $UserPassword) {
+        Write-Host "Enter password for $RunAsUser to run scheduled task:" -ForegroundColor Yellow
+        $UserPassword = Read-Host -AsSecureString "Password"
+    }
+
+    # Convert SecureString to plain text for schtasks (required by Register-ScheduledTask with -User/-Password)
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($UserPassword)
+    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+
     try {
         # Build the action
         $action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
@@ -120,37 +136,37 @@ function New-WsusMaintenanceTask {
             }
         }
 
-        # Build settings
+        # Build settings - RunOnlyIfNetworkAvailable removed to allow offline runs
         $settings = New-ScheduledTaskSettingsSet `
             -AllowStartIfOnBatteries `
             -DontStopIfGoingOnBatteries `
             -StartWhenAvailable `
-            -RunOnlyIfNetworkAvailable `
             -ExecutionTimeLimit (New-TimeSpan -Hours 4)
-
-        # Build principal
-        $principal = if ($RunAsSystem) {
-            New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-        } else {
-            New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-        }
 
         # Check if task already exists
         $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         if ($existingTask) {
-            # Update existing task
-            Set-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
-            $result.Message = "Scheduled task '$TaskName' updated successfully"
-        } else {
-            # Create new task
-            Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
-            $result.Message = "Scheduled task '$TaskName' created successfully"
+            # Remove existing task first (easier than updating with credentials)
+            Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false | Out-Null
         }
 
+        # Create task with user credentials - runs whether user is logged on or not
+        Register-ScheduledTask -TaskName $TaskName `
+            -Action $action `
+            -Trigger $trigger `
+            -Settings $settings `
+            -User $RunAsUser `
+            -Password $PlainPassword `
+            -RunLevel Highest | Out-Null
+
+        $result.Message = "Scheduled task '$TaskName' created to run as $RunAsUser (no login required)"
         $result.Success = $true
 
     } catch {
         $result.Message = "Failed to create scheduled task: $($_.Exception.Message)"
+    } finally {
+        # Clear password from memory
+        $PlainPassword = $null
     }
 
     return $result
