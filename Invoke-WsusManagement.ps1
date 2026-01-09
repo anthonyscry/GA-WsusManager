@@ -121,14 +121,16 @@ $ErrorActionPreference = 'Continue'
 # 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
 # 2. Flat: All scripts in same folder (user copied main script into Scripts folder)
 $ScriptRoot = $PSScriptRoot
-$ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
+$ScriptsFolder = $PSScriptRoot
 
-if (Test-Path (Join-Path $PSScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
+# Check flat layout FIRST (scripts in same folder as main script)
+# This prevents double-Scripts path issue when running from Scripts folder
+if (Test-Path (Join-Path $PSScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
+    # Flat layout - all scripts in same folder (or user is running from Scripts folder)
+    $ScriptsFolder = $PSScriptRoot
+} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
     # Standard layout - scripts are in Scripts\ subfolder
     $ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
-} elseif (Test-Path (Join-Path $PSScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
-    # Flat layout - all scripts in same folder
-    $ScriptsFolder = $PSScriptRoot
 }
 
 # ============================================================================
