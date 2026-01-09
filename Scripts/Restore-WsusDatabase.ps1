@@ -157,17 +157,21 @@ if ($confirmation -and $confirmation -notin @("Y", "y", "")) {
     exit 0
 }
 
-# Check for WsusContent folder in export path and offer to copy
+# Check for WsusContent folder in export path and offer to copy entire export folder
 $wsusContentPath = Join-Path $exportPath "WsusContent"
 if (Test-Path $wsusContentPath) {
     Write-Host ""
-    Write-Host "WsusContent folder found in export!" -ForegroundColor Green
-    $copyContent = Read-Host "Copy content files to C:\WSUS? (Y/n)"
+    Write-Host "Export folder contents found!" -ForegroundColor Green
+    Write-Host "  This will copy the entire export folder INTO C:\WSUS:" -ForegroundColor Gray
+    Write-Host "    - SUSDB.bak -> C:\WSUS\SUSDB.bak" -ForegroundColor Gray
+    Write-Host "    - WsusContent\ -> C:\WSUS\WsusContent\" -ForegroundColor Gray
+    Write-Host ""
+    $copyContent = Read-Host "Copy export folder to C:\WSUS? (Y/n)"
 
     if ($copyContent -in @("Y", "y", "")) {
-        Write-Log "Copying content files (this may take a while)..." "Yellow"
+        Write-Log "Copying export folder contents (this may take a while)..." "Yellow"
         $robocopyArgs = @(
-            "`"$wsusContentPath`""
+            "`"$exportPath`""
             "`"$ContentDir`""
             "/E"
             "/MT:16"
@@ -180,7 +184,8 @@ if (Test-Path $wsusContentPath) {
         $robocopyProcess = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
 
         if ($robocopyProcess.ExitCode -lt 8) {
-            Write-Log "[OK] Content files copied successfully" "Green"
+            Write-Log "[OK] Export folder copied successfully" "Green"
+            Write-Log "  Contents now at C:\WSUS (DB + WsusContent)" "Gray"
         } else {
             Write-Log "[WARN] Robocopy reported issues (exit code: $($robocopyProcess.ExitCode))" "Yellow"
         }
