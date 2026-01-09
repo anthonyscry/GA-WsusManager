@@ -606,7 +606,7 @@ if (-not $SkipExport -and $ExportPath) {
     $year = (Get-Date).ToString("yyyy")
     $month = (Get-Date).ToString("MMM")
     $day = (Get-Date).ToString("dd")
-    $exportDestination = Join-Path $ExportPath $year $month $day
+    $exportDestination = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
 
     Write-Log "Export destination: $exportDestination"
 
