@@ -291,7 +291,7 @@ function Start-SqlServerExpress {
     )
 
     $serviceName = "MSSQL`$$InstanceName"
-    return Start-WsusService -ServiceName $serviceName -WaitSeconds 10
+    return Start-WsusService -ServiceName $serviceName -TimeoutSeconds 10
 }
 
 function Stop-SqlServerExpress {
@@ -325,7 +325,7 @@ function Start-WsusServer {
     .OUTPUTS
         Boolean indicating success
     #>
-    return Start-WsusService -ServiceName "WSUSService" -WaitSeconds 10
+    return Start-WsusService -ServiceName "WSUSService" -TimeoutSeconds 10
 }
 
 function Stop-WsusServer {
@@ -343,7 +343,7 @@ function Stop-WsusServer {
         [switch]$Force
     )
 
-    return Stop-WsusService -ServiceName "WSUSService" -Force:$Force -WaitSeconds 5
+    return Stop-WsusService -ServiceName "WSUSService" -Force:$Force -TimeoutSeconds 5
 }
 
 function Start-IISService {
@@ -354,7 +354,7 @@ function Start-IISService {
     .OUTPUTS
         Boolean indicating success
     #>
-    return Start-WsusService -ServiceName "W3SVC" -WaitSeconds 5
+    return Start-WsusService -ServiceName "W3SVC" -TimeoutSeconds 5
 }
 
 function Stop-IISService {
