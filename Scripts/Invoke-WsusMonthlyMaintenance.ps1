@@ -49,7 +49,20 @@ param(
 )
 
 # Import shared modules
-$modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
+# Support two deployment layouts:
+# 1. Standard: Script in Scripts\, Modules in ..\Modules (parent folder)
+# 2. Flat: Everything under one root folder (e.g., C:\wsus\Scripts as root)
+$modulePath = $null
+if (Test-Path (Join-Path $PSScriptRoot "Modules\WsusUtilities.psm1")) {
+    # Flat layout - Modules folder is alongside script
+    $modulePath = Join-Path $PSScriptRoot "Modules"
+} elseif (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\WsusUtilities.psm1")) {
+    # Standard layout - Modules folder is in parent directory
+    $modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
+} else {
+    Write-Error "Cannot find Modules folder. Expected at '$PSScriptRoot\Modules' or '$(Split-Path $PSScriptRoot -Parent)\Modules'"
+    exit 1
+}
 Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
 Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force
 Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
