@@ -35,7 +35,7 @@
     Skip confirmation prompts (for Cleanup operation).
 
 .PARAMETER ExportRoot
-    Root folder for exports (default: \\lab-hyperv\D\WSUS-Exports).
+    Root folder for exports (default: \\lab-hyperv\d\WSUS-Exports).
 
 .PARAMETER SinceDays
     For Export: copy content modified within last N days (default: 30).
@@ -90,7 +90,7 @@ param(
 
     # Export parameters
     [Parameter(ParameterSetName = 'Export')]
-    [string]$ExportRoot = "\\lab-hyperv\D\WSUS-Exports",
+    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
 
     [Parameter(ParameterSetName = 'Export')]
     [int]$SinceDays = 30,

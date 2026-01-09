@@ -34,15 +34,33 @@ Get-ChildItem -Path "C:\WSUS\Scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-F
 
 All operations are available via `Invoke-WsusManagement.ps1`:
 
-| Command | Description |
-|---------|-------------|
-| `.\Invoke-WsusManagement.ps1` | Interactive menu |
-| `.\Invoke-WsusManagement.ps1 -Export` | Export DB + content for airgapped transfer |
-| `.\Invoke-WsusManagement.ps1 -Restore` | Restore database from backup |
-| `.\Invoke-WsusManagement.ps1 -Health` | Run health check |
-| `.\Invoke-WsusManagement.ps1 -Repair` | Run health check + auto-repair |
-| `.\Invoke-WsusManagement.ps1 -Cleanup -Force` | Deep database cleanup |
-| `.\Invoke-WsusManagement.ps1 -Reset` | Reset content download |
+```
+.\Invoke-WsusManagement.ps1              # Interactive menu (recommended)
+
+INSTALLATION
+  .\Scripts\Install-WsusWithSqlExpress.ps1
+
+DATABASE
+  -Restore                               # Restore database from backup
+
+MAINTENANCE
+  .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+  -Cleanup -Force                        # Deep database cleanup
+
+EXPORT/TRANSFER
+  -Export                                # Export DB + content for airgapped transfer
+    -ExportRoot <path>                   # Export destination (default: \\lab-hyperv\d\WSUS-Exports)
+    -SinceDays <n>                       # Copy content from last N days (default: 30)
+    -SkipDatabase                        # Skip database, export only content
+
+TROUBLESHOOTING
+  -Health                                # Run health check (read-only)
+  -Repair                                # Run health check + auto-repair
+  -Reset                                 # Reset content download
+
+CLIENT
+  .\Scripts\Invoke-WsusClientCheckIn.ps1 # Run on client machines
+```
 
 ## Quick start (recommended flow)
 
@@ -128,7 +146,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 | `-Reset` | Reset content download |
 
 **Export Parameters:**
-- `-ExportRoot <path>`: Export destination (default: `\\lab-hyperv\D\WSUS-Exports`)
+- `-ExportRoot <path>`: Export destination (default: `\\lab-hyperv\d\WSUS-Exports`)
 - `-SinceDays <n>`: Copy content from last N days (default: 30)
 - `-SkipDatabase`: Skip database, export only content
 
@@ -231,7 +249,7 @@ C:\WSUS\wsus-sql\           # This repository
 The **online WSUS server** exports the database and content to:
 
 ```text
-\\lab-hyperv\D\WSUS-Exports
+\\lab-hyperv\d\WSUS-Exports
 ```
 
 Copy from this location when moving updates to **airgapped WSUS servers**.
@@ -288,7 +306,7 @@ cd <DomainController folder location>
 ### Export folder structure
 
 ```
-\\lab-hyperv\D\WSUS-Exports\
+\\lab-hyperv\d\WSUS-Exports\
 ├── 2026\
 │   ├── Jan\
 │   │   ├── 9\                 # Export from day 9
@@ -315,7 +333,7 @@ cd <DomainController folder location>
 │  2. Export                  ──►  Copies DB + new content to network share  │
 │     .\Invoke-WsusManagement.ps1 -Export                                     │
 │                                                                             │
-│     Output: \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\                         │
+│     Output: \\lab-hyperv\d\WSUS-Exports\2026\Jan\9\                         │
 │             ├── SUSDB.bak                                                   │
 │             └── WsusContent\                                                │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -325,7 +343,7 @@ cd <DomainController folder location>
 │                     ANY MACHINE (with network access)                       │
 │                                                                             │
 │  3. Copy to USB/Apricorn                                                    │
-│     robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E    │
+│     robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E    │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                               [ USB / Apricorn ]
@@ -357,11 +375,11 @@ Downloads updates, backs up database to `C:\WSUS\SUSDB.bak`.
 ```powershell
 .\Invoke-WsusManagement.ps1 -Export
 ```
-Creates `\\lab-hyperv\D\WSUS-Exports\2026\Jan\9\` with DB + new content.
+Creates `\\lab-hyperv\d\WSUS-Exports\2026\Jan\9\` with DB + new content.
 
 **Step 3: Copy to USB/Apricorn** *(Run on: any machine with network access)*
 ```powershell
-robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5
+robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5
 ```
 Copies export folder to removable drive.
 
@@ -391,13 +409,13 @@ Auto-finds `.bak` in `C:\WSUS`, restores DB, runs postinstall.
 
 ```powershell
 # [Any machine with network access] Copy export to USB/Apricorn
-robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\ToUSB.log" /TEE
+robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\ToUSB.log" /TEE
 
 # [AIRGAPPED server] Import from USB INTO C:\WSUS (SAFE - keeps existing files)
 robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
 # [AIRGAPPED server] Import directly from network share (if accessible)
-robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
 
 ## Troubleshooting
