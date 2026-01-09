@@ -217,13 +217,16 @@ IMPORT INSTRUCTIONS (on airgapped WSUS server)
 --------------------------------------------------------------------------------
 
 STEP 1: Copy this folder to your airgapped server (USB, network, etc.)
-        Recommended location: C:\WSUS\Backup\$year\$month\$exportFolder
 
 STEP 2: Run the restore script which will auto-detect the folder:
         .\Scripts\Restore-WsusDatabase.ps1
 
         Or manually merge content (SAFE - keeps existing files):
         robocopy "E:\$year\$month\$exportFolder\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+
+  IMPORTANT: Content is restored directly to C:\WSUS (not nested).
+             The WsusContent folder is just a container - its contents
+             merge with your existing C:\WSUS folder.
 
   KEY FLAGS:
   - /E    = Copy subdirectories including empty ones
