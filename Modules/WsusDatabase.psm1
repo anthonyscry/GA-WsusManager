@@ -28,13 +28,13 @@ function Get-WsusDatabaseSize {
         Gets the current WSUS database size in GB
 
     .PARAMETER SqlInstance
-        SQL Server instance name (default: localhost\SQLEXPRESS)
+        SQL Server instance name (default: .\SQLEXPRESS)
 
     .OUTPUTS
         Decimal value representing database size in GB
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $query = "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
@@ -60,7 +60,7 @@ function Get-WsusDatabaseStats {
         Custom object with database statistics
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $query = @"
@@ -98,7 +98,7 @@ function Remove-DeclinedSupersessionRecords {
         Number of records deleted
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $query = @"
@@ -142,7 +142,7 @@ function Remove-SupersededSupersessionRecords {
         Number of records deleted
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS",
+        [string]$SqlInstance = ".\SQLEXPRESS",
         [int]$BatchSize = 10000,
         [switch]$ShowProgress
     )
@@ -224,7 +224,7 @@ function Optimize-WsusIndexes {
         Custom object with rebuild and reorganize counts
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS",
+        [string]$SqlInstance = ".\SQLEXPRESS",
         [int]$FragmentationThreshold = 10,
         [int]$RebuildThreshold = 30,
         [switch]$ShowProgress
@@ -321,7 +321,7 @@ function Add-WsusPerformanceIndexes {
         Array of messages about index creation
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $query = @"
@@ -374,7 +374,7 @@ function Update-WsusStatistics {
         Boolean indicating success
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     try {
@@ -406,7 +406,7 @@ function Invoke-WsusDatabaseShrink {
         Boolean indicating success
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS",
+        [string]$SqlInstance = ".\SQLEXPRESS",
         [int]$TargetFreePercent = 10
     )
 
@@ -433,7 +433,7 @@ function Get-WsusDatabaseSpace {
         Custom object with allocated, used, and free space in MB
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $query = @"

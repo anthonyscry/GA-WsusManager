@@ -43,7 +43,7 @@ function Test-WsusDatabaseConnection {
         Hashtable with connection test results
     #>
     param(
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     $result = @{
@@ -106,7 +106,7 @@ function Test-WsusHealth {
     #>
     param(
         [string]$ContentPath = "C:\WSUS",
-        [string]$SqlInstance = "localhost\SQLEXPRESS",
+        [string]$SqlInstance = ".\SQLEXPRESS",
         [switch]$IncludeDatabase
     )
 
@@ -243,7 +243,7 @@ function Repair-WsusHealth {
     #>
     param(
         [string]$ContentPath = "C:\WSUS",
-        [string]$SqlInstance = "localhost\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS"
     )
 
     Write-Host "`n========================================" -ForegroundColor Cyan

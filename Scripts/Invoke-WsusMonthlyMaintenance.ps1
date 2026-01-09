@@ -765,7 +765,7 @@ SELECT
 '@
 
         try {
-            $deepResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+            $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query $deepCleanupQuery -QueryTimeout 300
             Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
             Write-Log "Total old declined updates (released over 6mo ago): $($deepResult.TotalOldDeclined)"
@@ -804,7 +804,7 @@ SELECT
         Write-Log "Optimizing indexes (may take 5-15 minutes)..."
         $indexStart = Get-Date
 
-        $indexResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS"
+        $indexResult = Optimize-WsusIndexes -SqlInstance ".\SQLEXPRESS"
 
         $indexDuration = [math]::Round(((Get-Date) - $indexStart).TotalMinutes, 1)
         Write-Log "Index optimization complete in $indexDuration minutes (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))"
@@ -815,7 +815,7 @@ SELECT
     }
 
     # Update statistics using module function
-    if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
+    if (Update-WsusStatistics -SqlInstance ".\SQLEXPRESS") {
         Write-Log "Statistics updated"
     }
 } else {
@@ -842,11 +842,11 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
     }
 
     # Remove supersession records using module functions
-    $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance "localhost\SQLEXPRESS"
+    $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance ".\SQLEXPRESS"
     Write-Log "Removed $deletedDeclined supersession records for declined updates"
 
     # Remove supersession records for superseded updates
-    $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance "localhost\SQLEXPRESS" -ShowProgress
+    $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance ".\SQLEXPRESS" -ShowProgress
     Write-Log "Removed $deletedSuperseded supersession records for superseded updates"
 
     # Delete declined updates using the official spDeleteUpdate procedure.
@@ -873,16 +873,19 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                 $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
 
                 foreach ($updateId in $batch) {
+                    # Use parameterized query to prevent SQL injection
                     $deleteQuery = @"
 DECLARE @LocalUpdateID int
-SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = '$updateId'
+DECLARE @UpdateGuid uniqueidentifier = @UpdateIdParam
+SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
 IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
 "@
 
                     try {
-                        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-                            -Query $deleteQuery -QueryTimeout 300 -ErrorAction SilentlyContinue | Out-Null
+                        Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                            -Query $deleteQuery -QueryTimeout 300 `
+                            -Variable "UpdateIdParam='$updateId'" -ErrorAction SilentlyContinue | Out-Null
                         $totalDeleted++
                     } catch {
                         # Continue on errors to avoid aborting the batch.
@@ -905,7 +908,7 @@ IF @LocalUpdateID IS NOT NULL
 
     # Optional shrink after heavy cleanup to reclaim space (can be slow).
     Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
-    if (Invoke-WsusDatabaseShrink -SqlInstance "localhost\SQLEXPRESS") {
+    if (Invoke-WsusDatabaseShrink -SqlInstance ".\SQLEXPRESS") {
         Write-Log "SUSDB shrink completed"
     }
 
@@ -944,11 +947,11 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
     $backupStart = Get-Date
 
     try {
-        $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
+        $dbSize = Get-WsusDatabaseSize -SqlInstance ".\SQLEXPRESS"
         Write-Log "Database size: $dbSize GB"
         $MaintenanceResults.DatabaseSize = $dbSize
 
-        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+        Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
             -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
             -QueryTimeout 0 | Out-Null
 
@@ -1003,7 +1006,7 @@ Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (
 Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
 
 try {
-    $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
+    $dbSize = Get-WsusDatabaseSize -SqlInstance ".\SQLEXPRESS"
     Write-Log "SUSDB size: $dbSize GB"
     if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
 } catch {}
