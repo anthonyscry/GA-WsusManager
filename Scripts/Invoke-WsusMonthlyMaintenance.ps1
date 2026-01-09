@@ -532,7 +532,7 @@ if ($enabledProducts.Count -eq 0) {
     Write-Warning "No products enabled! Configure in WSUS Console."
 }
 
-Write-Log "Note: Verify classifications are enabled in WSUS Console > Options > Products and Classifications"
+Write-Log "Note: Verify classifications are enabled in WSUS Console -> Options -> Products and Classifications"
 
 # === MONITOR DOWNLOADS ===
 Write-Log "Monitoring downloads..."
@@ -590,7 +590,7 @@ if ($allUpdates.Count -gt 0) {
     # Use CreationDate (Microsoft's release date) not ArrivalDate (when imported to WSUS)
     $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.CreationDate -lt $cutoff })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (Released >6mo ago)=$($oldUpdates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -625,7 +625,7 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (Released >6mo ago)=$oldCount"
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -652,7 +652,7 @@ if ($allUpdates.Count -gt 0) {
         })
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
-        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates only, <6mo old, not superseded/expired"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates only, released within 6mo, not superseded/expired"
         Write-Log "  Excluded: Definition Updates, Upgrades, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
@@ -754,7 +754,7 @@ SELECT
             $deepResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
                 -Query $deepCleanupQuery -QueryTimeout 300
             Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
-            Write-Log "Total old declined updates (released >6mo ago): $($deepResult.TotalOldDeclined)"
+            Write-Log "Total old declined updates (released over 6mo ago): $($deepResult.TotalOldDeclined)"
 
             if ($deepResult.TotalOldDeclined -gt 5000) {
                 Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
@@ -984,7 +984,7 @@ if ($currentBackups) {
 Write-Output "`n============================================================"
 Write-Log "MAINTENANCE SUMMARY"
 Write-Output "------------------------------------------------------------"
-Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (Released >6mo ago)=$oldCount"
+Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount"
 Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
 
 try {
