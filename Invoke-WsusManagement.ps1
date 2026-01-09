@@ -14,14 +14,10 @@ Date: 2026-01-09
 .DESCRIPTION
     Consolidated WSUS management with switches for each operation:
     - No switch: Interactive menu
-    - -Export: Export DB + content for airgapped transfer
     - -Restore: Restore database from backup
     - -Health/-Repair: Run health check and optional repairs
     - -Cleanup: Deep database cleanup
     - -Reset: Reset content download
-
-.PARAMETER Export
-    Export database and differential content for airgapped transfer.
 
 .PARAMETER Restore
     Restore WSUS database from backup.
@@ -55,10 +51,6 @@ Date: 2026-01-09
     Launch interactive menu.
 
 .EXAMPLE
-    .\Invoke-WsusManagement.ps1 -Export
-    Export DB + differential content to network share.
-
-.EXAMPLE
     .\Invoke-WsusManagement.ps1 -Restore
     Restore database from backup.
 
@@ -77,9 +69,6 @@ Date: 2026-01-09
 
 [CmdletBinding(DefaultParameterSetName = 'Menu')]
 param(
-    [Parameter(ParameterSetName = 'Export')]
-    [switch]$Export,
-
     [Parameter(ParameterSetName = 'Restore')]
     [switch]$Restore,
 
@@ -95,21 +84,12 @@ param(
     [Parameter(ParameterSetName = 'Reset')]
     [switch]$Reset,
 
-    # Export parameters
-    [Parameter(ParameterSetName = 'Export')]
-    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
-
-    [Parameter(ParameterSetName = 'Export')]
-    [int]$SinceDays = 30,
-
-    [Parameter(ParameterSetName = 'Export')]
-    [switch]$SkipDatabase,
-
     # Cleanup parameters
     [Parameter(ParameterSetName = 'Cleanup')]
     [switch]$Force,
 
     # Common
+    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
     [string]$SqlInstance = ".\SQLEXPRESS"
 )
@@ -163,116 +143,6 @@ function Get-SqlCmd {
     ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
     return $candidates
-}
-
-# ============================================================================
-# EXPORT OPERATION
-# ============================================================================
-
-function Invoke-WsusExport {
-    param(
-        [string]$ExportRoot,
-        [string]$ContentPath,
-        [int]$SinceDays,
-        [switch]$SkipDatabase
-    )
-
-    Write-Banner "WSUS INCREMENTAL EXPORT"
-
-    $filterDate = (Get-Date).AddDays(-$SinceDays)
-    $year = (Get-Date).ToString("yyyy")
-    $month = (Get-Date).ToString("MMM")
-    $day = (Get-Date).ToString("d")
-    $exportPath = Join-Path $ExportRoot $year $month $day
-
-    Write-Host "Configuration:" -ForegroundColor Yellow
-    Write-Host "  Export folder: $exportPath"
-    Write-Host "  Content source: $ContentPath"
-    Write-Host "  Include files modified since: $($filterDate.ToString('yyyy-MM-dd'))"
-    Write-Host "  Include database: $(-not $SkipDatabase.IsPresent)"
-    Write-Host ""
-
-    # Create directories
-    if (-not (Test-Path $exportPath)) {
-        New-Item -Path $exportPath -ItemType Directory -Force | Out-Null
-    }
-
-    $wsusContentSource = Join-Path $ContentPath "WsusContent"
-    $contentExportPath = Join-Path $exportPath "WsusContent"
-    if (-not (Test-Path $contentExportPath)) {
-        New-Item -Path $contentExportPath -ItemType Directory -Force | Out-Null
-    }
-
-    # Step 1: Copy database
-    if (-not $SkipDatabase) {
-        Write-Host "[1/3] Copying database backup..." -ForegroundColor Yellow
-        $backupFile = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
-
-        if ($backupFile) {
-            Write-Host "  Found: $($backupFile.Name) ($([math]::Round($backupFile.Length / 1GB, 2)) GB)"
-            Copy-Item -Path $backupFile.FullName -Destination (Join-Path $exportPath $backupFile.Name) -Force
-            Write-Host "  [OK] Database copied" -ForegroundColor Green
-        } else {
-            Write-Host "  [WARN] No .bak file found" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "[1/3] Skipping database" -ForegroundColor Gray
-    }
-
-    # Step 2: Copy content
-    Write-Host ""
-    Write-Host "[2/3] Copying new content files..." -ForegroundColor Yellow
-    $maxAgeDays = [Math]::Max(1, ((Get-Date) - $filterDate).Days)
-
-    $robocopyArgs = @(
-        "`"$wsusContentSource`"", "`"$contentExportPath`"",
-        "/E", "/MAXAGE:$maxAgeDays", "/MT:16", "/R:2", "/W:5",
-        "/XF", "*.bak", "*.log", "/XD", "Logs", "SQLDB", "Backup",
-        "/NP", "/NDL"
-    )
-
-    $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-    if ($proc.ExitCode -lt 8) {
-        Write-Host "  [OK] Content copied" -ForegroundColor Green
-    } else {
-        Write-Host "  [WARN] Robocopy exit code: $($proc.ExitCode)" -ForegroundColor Yellow
-    }
-
-    # Stats
-    $files = Get-ChildItem -Path $contentExportPath -Recurse -File -ErrorAction SilentlyContinue
-    $size = ($files | Measure-Object -Property Length -Sum).Sum
-    Write-Host "  Files: $($files.Count) | Size: $([math]::Round($size / 1GB, 2)) GB" -ForegroundColor Cyan
-
-    # Step 3: Create instructions
-    Write-Host ""
-    Write-Host "[3/3] Generating import instructions..." -ForegroundColor Yellow
-
-    $instructions = @"
-================================================================================
-WSUS EXPORT - $year\$month\$day
-Exported: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Source: $env:COMPUTERNAME
-================================================================================
-
-IMPORT INSTRUCTIONS:
-
-1. Copy this folder into C:\WSUS on the target server:
-   robocopy "E:\$year\$month\$day" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
-
-2. Run the restore script:
-   .\Invoke-WsusManagement.ps1 -Restore
-
-================================================================================
-"@
-    $instructions | Out-File -FilePath (Join-Path $exportPath "IMPORT_INSTRUCTIONS.txt") -Encoding UTF8
-
-    Write-Banner "EXPORT COMPLETE"
-    Write-Host "Location: $exportPath" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Import command:" -ForegroundColor Yellow
-    Write-Host "  robocopy `"$exportPath`" `"C:\WSUS`" /E /MT:16 /R:2 /W:5 /XO" -ForegroundColor Cyan
-    Write-Host ""
 }
 
 # ============================================================================
@@ -779,23 +649,43 @@ function Invoke-BrowseArchive {
 }
 
 function Invoke-CopyForAirGap {
+    <#
+    .SYNOPSIS
+        Import WSUS data from external media (Apricorn, optical, USB) to air-gap server
+    .DESCRIPTION
+        Prompts for source path (where external media is mounted) and copies to local WSUS
+    #>
     param(
-        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
         [string]$ContentPath
     )
 
+    Write-Banner "IMPORT FROM EXTERNAL MEDIA"
+
+    Write-Host "This will import WSUS data from external media to this server." -ForegroundColor Yellow
+    Write-Host "Use this on the AIR-GAP server to import transported data." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Prompt for source path
+    Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
+    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+    Write-Host "  Or press Enter for network share: $DefaultSource" -ForegroundColor Gray
+    Write-Host ""
+    $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+
+    $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+
     # Check if source is accessible
     if (-not (Test-Path $ExportSource)) {
-        Write-Banner "COPY FOR AIR-GAP SERVER"
         Write-Log "ERROR: Cannot access $ExportSource" "Red"
-        Write-Host "Make sure the network share is accessible." -ForegroundColor Yellow
+        Write-Host "Make sure the path exists and media is connected." -ForegroundColor Yellow
         return
     }
 
     :mainLoop while ($true) {
         Clear-Host
         Write-Host "=================================================================" -ForegroundColor Cyan
-        Write-Host "              COPY FOR AIR-GAP SERVER" -ForegroundColor Cyan
+        Write-Host "              IMPORT FROM EXTERNAL MEDIA" -ForegroundColor Cyan
         Write-Host "=================================================================" -ForegroundColor Cyan
         Write-Host ""
         Write-Host "Source: $ExportSource" -ForegroundColor Gray
@@ -817,12 +707,13 @@ function Invoke-CopyForAirGap {
                 if ($rootInfo) { $rootInfo += ", " }
                 $rootInfo += "Content: $(Format-SizeDisplay $contentSize)"
             }
-            Write-Host "[F] Full Copy - Latest from root ($rootInfo)" -ForegroundColor White
+            Write-Host "[F] Full Copy - Import from root ($rootInfo)" -ForegroundColor White
         } else {
-            Write-Host "[F] Full Copy - Latest backup (searches archive)" -ForegroundColor White
+            Write-Host "[F] Full Copy - Search for newest backup" -ForegroundColor White
         }
 
-        Write-Host "[B] Browse Archive - Navigate Year/Month/Backup folders" -ForegroundColor White
+        Write-Host "[B] Browse Archive - Navigate Year/Month folders" -ForegroundColor White
+        Write-Host "[C] Change Source Path" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "[X] Back to Main Menu" -ForegroundColor Red
         Write-Host ""
@@ -832,19 +723,308 @@ function Invoke-CopyForAirGap {
         switch ($choice.ToUpper()) {
             'F' { Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
             'B' { Invoke-BrowseArchive -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
+            'C' {
+                Write-Host ""
+                $newSource = Read-Host "Enter new source path"
+                if ($newSource -and (Test-Path $newSource)) {
+                    $ExportSource = $newSource
+                } else {
+                    Write-Host "Invalid path or not accessible" -ForegroundColor Red
+                    Start-Sleep -Seconds 2
+                }
+            }
             'X' { return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
     }
 }
 
-# Legacy function for backward compatibility
-function Invoke-CopyExports {
+# ============================================================================
+# EXPORT TO EXTERNAL MEDIA (FOR AIR-GAP TRANSFER)
+# ============================================================================
+
+function Invoke-ExportToDvd {
+    <#
+    .SYNOPSIS
+        Export WSUS data as split zip files for DVD burning
+    .DESCRIPTION
+        Zips source data and splits into 4.3GB chunks for single-layer DVD burning
+    #>
     param(
-        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath
+        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$ContentPath = "C:\WSUS"
     )
-    Invoke-CopyForAirGap -ExportSource $ExportSource -ContentPath $ContentPath
+
+    Write-Banner "EXPORT FOR DVD BURNING"
+
+    # Check for 7-Zip
+    $sevenZip = $null
+    $sevenZipPaths = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe",
+        (Get-Command 7z.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+    )
+    foreach ($path in $sevenZipPaths) {
+        if ($path -and (Test-Path $path)) {
+            $sevenZip = $path
+            break
+        }
+    }
+
+    if (-not $sevenZip) {
+        Write-Log "ERROR: 7-Zip not found" "Red"
+        Write-Host "Please install 7-Zip from https://www.7-zip.org/" -ForegroundColor Yellow
+        Write-Host "Required for creating split archives for DVD burning." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "This will create split zip files sized for single-layer DVDs (4.3GB each)." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Prompt for source
+    Write-Host "Source options:" -ForegroundColor Cyan
+    Write-Host "  1. Network share: $DefaultSource"
+    Write-Host "  2. Local WSUS: $ContentPath"
+    Write-Host "  3. Custom path"
+    Write-Host ""
+    $sourceChoice = Read-Host "Select source (1/2/3)"
+
+    $source = switch ($sourceChoice) {
+        "1" { $DefaultSource }
+        "2" { $ContentPath }
+        "3" { Read-Host "Enter source path" }
+        default { $DefaultSource }
+    }
+
+    if (-not $source -or -not (Test-Path $source)) {
+        Write-Log "ERROR: Source path not accessible: $source" "Red"
+        return
+    }
+
+    # Calculate source size
+    Write-Host ""
+    Write-Host "Calculating source size..." -ForegroundColor Yellow
+    $sourceSize = Get-FolderSize $source
+    $estimatedDvds = [math]::Ceiling($sourceSize / 4.3)
+    Write-Host "Source: $source" -ForegroundColor Cyan
+    Write-Host "  Total size: $(Format-SizeDisplay $sourceSize)"
+    Write-Host "  Estimated DVDs needed: $estimatedDvds (4.3GB each)"
+    Write-Host ""
+
+    # Prompt for output location
+    Write-Host "Output location for zip files:" -ForegroundColor Cyan
+    Write-Host "  Example: D:\DVD-Export  C:\Temp\WSUS-DVDs" -ForegroundColor Gray
+    Write-Host ""
+    $outputPath = Read-Host "Enter output path"
+
+    if (-not $outputPath) {
+        Write-Log "ERROR: No output path specified" "Red"
+        return
+    }
+
+    # Create output if needed
+    if (-not (Test-Path $outputPath)) {
+        New-Item -Path $outputPath -ItemType Directory -Force | Out-Null
+    }
+
+    # Check available space
+    $outputDrive = (Get-Item $outputPath).PSDrive
+    if ($outputDrive) {
+        $freeGB = [math]::Round($outputDrive.Free / 1GB, 2)
+        Write-Host "  Available space: $freeGB GB" -ForegroundColor $(if ($freeGB -lt $sourceSize) { "Red" } else { "Green" })
+        if ($freeGB -lt $sourceSize) {
+            Write-Host "  WARNING: May not have enough space for compressed archive" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    $confirm = Read-Host "Proceed with DVD export? (Y/n)"
+    if ($confirm -notin @("Y", "y", "")) { return }
+
+    # Create split archive using 7-Zip
+    $archiveName = "WSUS_Export_$(Get-Date -Format 'yyyyMMdd')"
+    $archivePath = Join-Path $outputPath "$archiveName.7z"
+
+    Write-Log "Creating split archive (4.3GB volumes)..." "Yellow"
+    Write-Host "This may take a while depending on data size..." -ForegroundColor Gray
+    Write-Host ""
+
+    # 7z a -v4300m = split into 4300MB volumes
+    $args = @(
+        "a",                    # add to archive
+        "-v4300m",              # split into 4.3GB volumes (DVD size)
+        "-mx=1",                # fast compression (speed over size)
+        "-mmt=on",              # multi-threading
+        "`"$archivePath`"",     # output archive
+        "`"$source\*`""         # source files
+    )
+
+    $proc = Start-Process -FilePath $sevenZip -ArgumentList $args -Wait -PassThru -NoNewWindow
+    if ($proc.ExitCode -eq 0) {
+        Write-Log "[OK] Archive created successfully" "Green"
+    } else {
+        Write-Log "[WARN] 7-Zip exit code: $($proc.ExitCode)" "Yellow"
+    }
+
+    # List created files
+    Write-Host ""
+    Write-Host "Created files:" -ForegroundColor Cyan
+    $createdFiles = Get-ChildItem -Path $outputPath -Filter "$archiveName.*" | Sort-Object Name
+    $totalParts = $createdFiles.Count
+    foreach ($file in $createdFiles) {
+        Write-Host "  $($file.Name) ($(Format-SizeDisplay ([math]::Round($file.Length / 1GB, 2))))"
+    }
+
+    Write-Banner "DVD EXPORT COMPLETE"
+    Write-Host "Output location: $outputPath" -ForegroundColor Green
+    Write-Host "Total parts: $totalParts" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Burning instructions:" -ForegroundColor Yellow
+    Write-Host "  1. Burn each .7z.001, .7z.002, etc. to separate DVDs"
+    Write-Host "  2. Label DVDs: 'WSUS Export $(Get-Date -Format 'yyyy-MM-dd') - Disc N of $totalParts'"
+    Write-Host "  3. On air-gap server, copy all parts to one folder"
+    Write-Host "  4. Extract with: 7z x $archiveName.7z.001"
+    Write-Host "  5. Run option 3 to import the extracted data"
+    Write-Host ""
+}
+
+function Invoke-ExportToMedia {
+    <#
+    .SYNOPSIS
+        Export WSUS data to external media (Apricorn, optical, USB) for air-gap transfer
+    .DESCRIPTION
+        Prompts for source and destination, then uses robocopy for fast differential copy
+    #>
+    param(
+        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$ContentPath = "C:\WSUS"
+    )
+
+    Write-Banner "EXPORT TO EXTERNAL MEDIA"
+
+    Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
+    Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Prompt for source
+    Write-Host "Source options:" -ForegroundColor Cyan
+    Write-Host "  1. Network share: $DefaultSource"
+    Write-Host "  2. Local WSUS: $ContentPath"
+    Write-Host "  3. Custom path"
+    Write-Host ""
+    $sourceChoice = Read-Host "Select source (1/2/3)"
+
+    $source = switch ($sourceChoice) {
+        "1" { $DefaultSource }
+        "2" { $ContentPath }
+        "3" { Read-Host "Enter source path" }
+        default { $DefaultSource }
+    }
+
+    if (-not $source -or -not (Test-Path $source)) {
+        Write-Log "ERROR: Source path not accessible: $source" "Red"
+        return
+    }
+
+    # Check what's in source
+    $sourceBak = Get-ChildItem -Path $source -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $sourceContent = Join-Path $source "WsusContent"
+    $hasContent = Test-Path $sourceContent
+
+    Write-Host ""
+    Write-Host "Source: $source" -ForegroundColor Cyan
+    if ($sourceBak) {
+        Write-Host "  Database: $($sourceBak.Name) ($(Format-SizeDisplay ([math]::Round($sourceBak.Length / 1GB, 2))))"
+        Write-Host "  Modified: $($sourceBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    } else {
+        Write-Host "  Database: None found" -ForegroundColor Yellow
+    }
+    if ($hasContent) {
+        $contentSize = Get-FolderSize $sourceContent
+        $contentFiles = (Get-ChildItem -Path $sourceContent -Recurse -File -ErrorAction SilentlyContinue).Count
+        Write-Host "  Content: $contentFiles files ($(Format-SizeDisplay $contentSize))"
+    } else {
+        Write-Host "  Content: None found" -ForegroundColor Yellow
+    }
+    Write-Host ""
+
+    # Prompt for destination
+    Write-Host "Destination (external media path):" -ForegroundColor Cyan
+    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+    Write-Host ""
+    $destination = Read-Host "Enter destination path"
+
+    if (-not $destination) {
+        Write-Log "ERROR: No destination specified" "Red"
+        return
+    }
+
+    # Create destination if needed
+    if (-not (Test-Path $destination)) {
+        Write-Host "Creating destination: $destination" -ForegroundColor Yellow
+        try {
+            New-Item -Path $destination -ItemType Directory -Force | Out-Null
+        } catch {
+            Write-Log "ERROR: Cannot create destination: $($_.Exception.Message)" "Red"
+            return
+        }
+    }
+
+    # Show summary
+    Write-Host ""
+    Write-Host "Configuration:" -ForegroundColor Yellow
+    Write-Host "  Source:      $source"
+    Write-Host "  Destination: $destination"
+    Write-Host "  Mode:        Differential (only newer/missing files)"
+    Write-Host ""
+
+    $confirm = Read-Host "Proceed with export? (Y/n)"
+    if ($confirm -notin @("Y", "y", "")) { return }
+
+    # Copy database
+    if ($sourceBak) {
+        Write-Log "[1/2] Copying database backup..." "Yellow"
+        Copy-Item -Path $sourceBak.FullName -Destination $destination -Force
+        Write-Log "[OK] Database copied: $($sourceBak.Name)" "Green"
+    } else {
+        Write-Log "[1/2] No database backup to copy" "Yellow"
+    }
+
+    # Copy content using robocopy
+    if ($hasContent) {
+        Write-Log "[2/2] Copying content (this may take a while)..." "Yellow"
+        $destContent = Join-Path $destination "WsusContent"
+
+        # /E = include subdirs, /XO = exclude older, /MT:16 = 16 threads
+        $robocopyArgs = @(
+            "`"$sourceContent`"", "`"$destContent`"",
+            "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+        )
+
+        $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+        if ($proc.ExitCode -lt 8) {
+            Write-Log "[OK] Content copied" "Green"
+        } else {
+            Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+        }
+
+        # Show stats
+        $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+        $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+        Write-Host "  Exported: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
+    } else {
+        Write-Log "[2/2] No content folder to copy" "Yellow"
+    }
+
+    Write-Banner "EXPORT COMPLETE"
+    Write-Host "Data exported to: $destination" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next steps:" -ForegroundColor Yellow
+    Write-Host "  1. Safely eject the external media"
+    Write-Host "  2. Transport to air-gap server"
+    Write-Host "  3. On air-gap server, run option 3 (Import from External Media)"
+    Write-Host ""
 }
 
 # ============================================================================
@@ -1005,22 +1185,21 @@ function Show-Menu {
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
     Write-Host "  2. Restore Database from C:\WSUS"
-    Write-Host "  3. Copy for Air-Gap Server (Full or Browse Archive)"
+    Write-Host "  3. Import from External Media (Apricorn/USB/Optical)"
+    Write-Host "  4. Export to External Media (for Air-Gap Transfer)"
+    Write-Host "  5. Export for DVD Burning (split 4.3GB archives)"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
-    Write-Host "  4. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
-    Write-Host "  5. Deep Cleanup (Aggressive DB cleanup)"
-    Write-Host ""
-    Write-Host "EXPORT/TRANSFER" -ForegroundColor Yellow
-    Write-Host "  6. Export for Airgapped Transfer"
+    Write-Host "  6. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  7. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
-    Write-Host "  7. Health Check"
-    Write-Host "  8. Health Check + Repair"
-    Write-Host "  9. Reset Content Download"
+    Write-Host "  8. Health Check"
+    Write-Host "  9. Health Check + Repair"
+    Write-Host "  10. Reset Content Download"
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
-    Write-Host "  10. Force Client Check-In (run on client)"
+    Write-Host "  11. Force Client Check-In (run on client)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -1043,17 +1222,18 @@ function Start-InteractiveMenu {
         $choice = Read-Host "Select"
 
         switch ($choice) {
-            '1' { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
-            '2' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '3' { Invoke-CopyForAirGap -ExportSource $ExportRoot -ContentPath $ContentPath; pause }
-            '4' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
-            '5' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
-            '6' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
-            '7' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '8' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
-            '9' { Invoke-WsusReset; pause }
-            '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
-            'Q' { Write-Host "Exiting..." -ForegroundColor Green; return }
+            '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
+            '2'  { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '3'  { Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
+            '4'  { Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
+            '5'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
+            '6'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '7'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
+            '8'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '9'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
+            '10' { Invoke-WsusReset; pause }
+            '11' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            'Q'  { Write-Host "Exiting..." -ForegroundColor Green; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
     } while ($choice -ne 'Q')
@@ -1064,7 +1244,6 @@ function Start-InteractiveMenu {
 # ============================================================================
 
 switch ($PSCmdlet.ParameterSetName) {
-    'Export'  { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase }
     'Restore' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance }
     'Health'  { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance }
     'Repair'  { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair }
