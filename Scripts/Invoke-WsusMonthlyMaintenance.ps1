@@ -82,39 +82,32 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.3"
+$ScriptVersion = "3.0.4"
 
 # === SQL CREDENTIAL HANDLING ===
-# For unattended/scheduled task mode, use stored credential or environment variable
-if (-not $SqlCredential) {
-    # Try to load stored credential using module function
-    $SqlCredential = Get-WsusSqlCredential -Quiet
-    if ($SqlCredential) {
-        Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
-    }
-
-    # If still no credential and not unattended, prompt
-    if (-not $SqlCredential -and -not $Unattended) {
-        Write-Host ""
-        Write-Host "SQL Server credentials required for database operations." -ForegroundColor Yellow
-        Write-Host "Enter credentials for SQL Server access (e.g., dod_admin):" -ForegroundColor Yellow
-        $SqlCredential = Get-Credential -Message "SQL Server credentials for SUSDB access" -UserName "dod_admin"
-
-        # Validate credential was provided
-        if ($SqlCredential -and $SqlCredential.Password.Length -eq 0) {
-            Write-Warning "Empty password provided - SQL operations may fail"
+# Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
+# Unattended/Scheduled task mode: Use stored SQL credential (dod_admin)
+if ($Unattended) {
+    # Scheduled task mode - use stored SQL credential
+    if (-not $SqlCredential) {
+        $SqlCredential = Get-WsusSqlCredential -Quiet
+        if ($SqlCredential) {
+            Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
+        } else {
+            Write-Warning "No SQL credential available for unattended mode. Direct SQL operations will be skipped."
+            Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for scheduled task use."
         }
     }
-
-    # If unattended and no credential available, warn but continue (WSUS API calls will still work)
-    if (-not $SqlCredential -and $Unattended) {
-        Write-Warning "No SQL credential available. Direct SQL operations will be skipped."
-        Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for unattended use."
-    }
+    $script:UseSqlCredential = ($null -ne $SqlCredential)
+} else {
+    # Interactive mode - use Windows Integrated Authentication
+    Write-Host "[i] Using Windows Integrated Authentication for SQL operations" -ForegroundColor Cyan
+    $SqlCredential = $null
+    $script:UseSqlCredential = $false
 }
 
 # Store credential availability flag for later use
-$script:HasSqlCredential = ($null -ne $SqlCredential)
+$script:HasSqlCredential = $Unattended -and ($null -ne $SqlCredential)
 
 # === HELPER FUNCTIONS ===
 
@@ -800,12 +793,17 @@ SELECT
 '@
 
         try {
-            if ($SqlCredential) {
+            # Use SQL credential for unattended mode, Windows integrated auth for interactive
+            if ($script:UseSqlCredential -and $SqlCredential) {
                 $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300 `
                     -Credential $SqlCredential -TrustServerCertificate
+            } elseif (-not $Unattended) {
+                # Interactive mode - use Windows integrated auth
+                $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                    -Query $deepCleanupQuery -QueryTimeout 300 -TrustServerCertificate
             } else {
-                Write-Log "Skipping deep cleanup - no SQL credential available"
+                Write-Log "Skipping deep cleanup - no SQL credential available for unattended mode"
                 $deepResult = $null
             }
             if ($deepResult) {
@@ -903,7 +901,10 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
             Select-Object -ExpandProperty Id |
             ForEach-Object { $_.UpdateId })
 
-        if ($declinedIDs.Count -gt 0 -and $SqlCredential) {
+        # Run SQL operations if: interactive mode (Windows auth) OR unattended with credential
+        $canRunSql = (-not $Unattended) -or ($script:UseSqlCredential -and $SqlCredential)
+
+        if ($declinedIDs.Count -gt 0 -and $canRunSql) {
             Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
 
             $batchSize = 100
@@ -926,10 +927,18 @@ IF @LocalUpdateID IS NOT NULL
 "@
 
                     try {
-                        Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                            -Query $deleteQuery -QueryTimeout 300 `
-                            -Variable "UpdateIdParam='$updateId'" `
-                            -Credential $SqlCredential -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
+                        # Use SQL credential for unattended mode, Windows integrated auth for interactive
+                        if ($script:UseSqlCredential -and $SqlCredential) {
+                            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                -Query $deleteQuery -QueryTimeout 300 `
+                                -Variable "UpdateIdParam='$updateId'" `
+                                -Credential $SqlCredential -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
+                        } else {
+                            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                -Query $deleteQuery -QueryTimeout 300 `
+                                -Variable "UpdateIdParam='$updateId'" `
+                                -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
+                        }
                         $totalDeleted++
                     } catch {
                         # Continue on errors to avoid aborting the batch.
@@ -943,8 +952,8 @@ IF @LocalUpdateID IS NOT NULL
             }
 
             Write-Log "Declined update purge complete: $totalDeleted deleted"
-        } elseif ($declinedIDs.Count -gt 0 -and -not $SqlCredential) {
-            Write-Log "Skipping declined update deletion - no SQL credential available"
+        } elseif ($declinedIDs.Count -gt 0 -and -not $canRunSql) {
+            Write-Log "Skipping declined update deletion - no SQL credential available for unattended mode"
         } else {
             Write-Log "No declined updates found to delete"
         }
@@ -997,13 +1006,19 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         Write-Log "Database size: $dbSize GB"
         $MaintenanceResults.DatabaseSize = $dbSize
 
-        if ($SqlCredential) {
+        # Use SQL credential for unattended mode, Windows integrated auth for interactive
+        if ($script:UseSqlCredential -and $SqlCredential) {
             Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 -Credential $SqlCredential -TrustServerCertificate | Out-Null
+        } elseif (-not $Unattended) {
+            # Interactive mode - use Windows integrated auth
+            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -QueryTimeout 0 -TrustServerCertificate | Out-Null
         } else {
-            Write-Warning "Cannot perform database backup - no SQL credential available"
-            throw "SQL credential required for backup"
+            Write-Warning "Cannot perform database backup - no SQL credential available for unattended mode"
+            throw "SQL credential required for backup in unattended mode"
         }
 
         $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
