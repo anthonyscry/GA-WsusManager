@@ -115,7 +115,21 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+
+# Determine the project root and scripts folder
+# Handle two deployment scenarios:
+# 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
+# 2. Flat: All scripts in same folder (user copied main script into Scripts folder)
 $ScriptRoot = $PSScriptRoot
+$ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
+
+if (Test-Path (Join-Path $PSScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
+    # Standard layout - scripts are in Scripts\ subfolder
+    $ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
+} elseif (Test-Path (Join-Path $PSScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
+    # Flat layout - all scripts in same folder
+    $ScriptsFolder = $PSScriptRoot
+}
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -1027,16 +1041,16 @@ function Start-InteractiveMenu {
         $choice = Read-Host "Select"
 
         switch ($choice) {
-            '1' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
+            '1' { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '3' { Invoke-CopyForAirGap -ExportSource $ExportRoot -ContentPath $ContentPath; pause }
-            '4' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '4' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
             '5' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
             '6' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
             '7' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '8' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
             '9' { Invoke-WsusReset; pause }
-            '10' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'Q' { Write-Host "Exiting..." -ForegroundColor Green; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
