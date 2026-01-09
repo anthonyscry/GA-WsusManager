@@ -797,11 +797,11 @@ SELECT
             if ($script:UseSqlCredential -and $SqlCredential) {
                 $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300 `
-                    -Credential $SqlCredential -TrustServerCertificate
+                    -Credential $SqlCredential
             } elseif (-not $Unattended) {
                 # Interactive mode - use Windows integrated auth
                 $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                    -Query $deepCleanupQuery -QueryTimeout 300 -TrustServerCertificate
+                    -Query $deepCleanupQuery -QueryTimeout 300
             } else {
                 Write-Log "Skipping deep cleanup - no SQL credential available for unattended mode"
                 $deepResult = $null
@@ -932,12 +932,12 @@ IF @LocalUpdateID IS NOT NULL
                             Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                 -Query $deleteQuery -QueryTimeout 300 `
                                 -Variable "UpdateIdParam='$updateId'" `
-                                -Credential $SqlCredential -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
+                                -Credential $SqlCredential -ErrorAction SilentlyContinue | Out-Null
                         } else {
                             Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                 -Query $deleteQuery -QueryTimeout 300 `
                                 -Variable "UpdateIdParam='$updateId'" `
-                                -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
+                                -ErrorAction SilentlyContinue | Out-Null
                         }
                         $totalDeleted++
                     } catch {
@@ -1010,12 +1010,12 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         if ($script:UseSqlCredential -and $SqlCredential) {
             Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
-                -QueryTimeout 0 -Credential $SqlCredential -TrustServerCertificate | Out-Null
+                -QueryTimeout 0 -Credential $SqlCredential | Out-Null
         } elseif (-not $Unattended) {
             # Interactive mode - use Windows integrated auth
             Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
-                -QueryTimeout 0 -TrustServerCertificate | Out-Null
+                -QueryTimeout 0 | Out-Null
         } else {
             Write-Warning "Cannot perform database backup - no SQL credential available for unattended mode"
             throw "SQL credential required for backup in unattended mode"
