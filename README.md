@@ -41,11 +41,16 @@ INSTALLATION
   .\Scripts\Install-WsusWithSqlExpress.ps1
 
 DATABASE
-  -Restore                               # Restore database from backup
+  -Restore                               # Restore newest .bak from C:\WSUS
+  Menu option 3: Copy Exports            # Copy from lab server to local (differential)
 
 MAINTENANCE
   .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
-  -Cleanup -Force                        # Deep database cleanup
+    -ExportPath <path>                   # Export destination (default: \\lab-hyperv\d\WSUS-Exports)
+    -ExportDays <n>                      # Days for differential export (default: prompts, 30)
+    -SkipExport                          # Skip export step entirely
+    -SkipUltimateCleanup                 # Skip heavy cleanup before backup
+  -Cleanup -Force                        # Deep database cleanup (menu only)
 
 EXPORT/TRANSFER
   -Export                                # Export DB + content for airgapped transfer
@@ -139,7 +144,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 |--------|-------------|
 | (none) | Interactive menu |
 | `-Export` | Export DB + differential content for airgapped transfer |
-| `-Restore` | Restore SUSDB from backup |
+| `-Restore` | Restore newest .bak from C:\WSUS |
 | `-Health` | Run health check (read-only) |
 | `-Repair` | Run health check with auto-repair |
 | `-Cleanup -Force` | Deep database cleanup |
@@ -149,6 +154,20 @@ The main script handles all WSUS operations via switches or interactive menu.
 - `-ExportRoot <path>`: Export destination (default: `\\lab-hyperv\d\WSUS-Exports`)
 - `-SinceDays <n>`: Copy content from last N days (default: 30)
 - `-SkipDatabase`: Skip database, export only content
+
+**Interactive Menu Options:**
+| Option | Description |
+|--------|-------------|
+| 1 | Install WSUS with SQL Express 2022 |
+| 2 | Restore Database from C:\WSUS (finds newest .bak) |
+| 3 | Copy Exports from Lab Server (differential copy to local) |
+| 4 | Monthly Maintenance (Sync, Cleanup, Backup, Export) |
+| 5 | Deep Cleanup (Aggressive DB cleanup) |
+| 6 | Export for Airgapped Transfer |
+| 7 | Health Check |
+| 8 | Health Check + Repair |
+| 9 | Reset Content Download |
+| 10 | Force Client Check-In (run on client) |
 
 ```powershell
 # Interactive menu
@@ -160,7 +179,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 # Export last 7 days only
 .\Invoke-WsusManagement.ps1 -Export -SinceDays 7
 
-# Restore database
+# Restore database (finds newest .bak in C:\WSUS)
 .\Invoke-WsusManagement.ps1 -Restore
 
 # Health check with repair
@@ -184,11 +203,25 @@ The main script handles all WSUS operations via switches or interactive menu.
 ```
 
 #### `Scripts/Invoke-WsusMonthlyMaintenance.ps1`
-- **What it does:** Monthly maintenance (sync, decline, cleanup, backup)
+- **What it does:** Monthly maintenance (sync, decline, cleanup, backup, export)
 - **Where to run it:** On the **online/upstream WSUS server**
+- **New:** Includes differential export with year/month/day folder structure
+
+**Parameters:**
+- `-ExportPath <path>`: Export destination (default: `\\lab-hyperv\d\WSUS-Exports`)
+- `-ExportDays <n>`: Days for differential export (default: prompts user, 30)
+- `-SkipExport`: Skip the export step entirely
+- `-SkipUltimateCleanup`: Skip heavy cleanup before backup
 
 ```powershell
+# Run with default export (prompts for days)
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+
+# Run with 14-day differential export
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -ExportDays 14
+
+# Skip export entirely
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -SkipExport
 ```
 
 #### `Scripts/Invoke-WsusClientCheckIn.ps1`
@@ -214,9 +247,11 @@ The main script handles all WSUS operations via switches or interactive menu.
 | Operation | Command |
 |-----------|---------|
 | Install WSUS | `.\Scripts\Install-WsusWithSqlExpress.ps1` |
-| Monthly Maintenance | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1` |
-| Export for Airgapped | `.\Invoke-WsusManagement.ps1 -Export` |
 | Restore Database | `.\Invoke-WsusManagement.ps1 -Restore` |
+| Copy Exports from Lab | Menu option 3 (interactive only) |
+| Monthly Maintenance | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1` |
+| Monthly Maintenance + Export | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -ExportDays 30` |
+| Export for Airgapped | `.\Invoke-WsusManagement.ps1 -Export` |
 | Health Check | `.\Invoke-WsusManagement.ps1 -Health` |
 | Health + Repair | `.\Invoke-WsusManagement.ps1 -Repair` |
 | Deep Cleanup | `.\Invoke-WsusManagement.ps1 -Cleanup -Force` |
@@ -327,23 +362,24 @@ cd <DomainController folder location>
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           ONLINE WSUS SERVER                                │
 │                                                                             │
-│  1. Monthly Maintenance     ──►  Downloads updates, backs up DB to C:\WSUS │
+│  1. Monthly Maintenance     ──►  Sync, cleanup, backup, AND export         │
 │     .\Scripts\Invoke-WsusMonthlyMaintenance.ps1                             │
 │                                                                             │
-│  2. Export                  ──►  Copies DB + new content to network share  │
-│     .\Invoke-WsusManagement.ps1 -Export                                     │
+│     - Prompts for export days (default: 30)                                 │
+│     - Creates: \\lab-hyperv\d\WSUS-Exports\2026\Jan\09\                     │
+│       ├── SUSDB_20260109.bak                                                │
+│       └── WsusContent\ (files modified within N days)                       │
 │                                                                             │
-│     Output: \\lab-hyperv\d\WSUS-Exports\2026\Jan\9\                         │
-│             ├── SUSDB.bak                                                   │
-│             └── WsusContent\                                                │
+│  (Alternative: Manual export if needed)                                     │
+│     .\Invoke-WsusManagement.ps1 -Export                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     ANY MACHINE (with network access)                       │
 │                                                                             │
-│  3. Copy to USB/Apricorn                                                    │
-│     robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E    │
+│  2. Copy to USB/Apricorn                                                    │
+│     robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\09" "E:\2026\Jan\09" /E  │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                               [ USB / Apricorn ]
@@ -352,48 +388,57 @@ cd <DomainController folder location>
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          AIRGAPPED WSUS SERVER                              │
 │                                                                             │
-│  4. Copy export INTO C:\WSUS                                                │
-│     robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO              │
+│  3. Option A: Copy Exports via Menu (RECOMMENDED)                           │
+│     .\Invoke-WsusManagement.ps1  →  Select option 3                         │
+│     - Auto-finds newest export on lab server                                │
+│     - Differential copy to C:\WSUS                                          │
 │                                                                             │
-│     Result: C:\WSUS\SUSDB.bak                                               │
-│             C:\WSUS\WsusContent\                                            │
+│  3. Option B: Manual robocopy                                               │
+│     robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO             │
 │                                                                             │
-│  5. Restore database                                                        │
-│     .\Invoke-WsusManagement.ps1 -Restore                                    │
+│  4. Restore database                                                        │
+│     .\Invoke-WsusManagement.ps1  →  Select option 2                         │
+│     (or: .\Invoke-WsusManagement.ps1 -Restore)                              │
 │                                                                             │
-│     (Auto-finds most recent .bak in C:\WSUS, restores DB, runs postinstall) │
+│     - Finds newest .bak in C:\WSUS                                          │
+│     - Shows available backups with dates                                    │
+│     - Restores DB, runs postinstall                                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Step 1: Monthly maintenance** *(Run on: ONLINE WSUS server)*
+**Step 1: Monthly maintenance with export** *(Run on: ONLINE WSUS server)*
 ```powershell
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+# Prompts: "Export files modified within how many days? (default: 30)"
 ```
-Downloads updates, backs up database to `C:\WSUS\SUSDB.bak`.
+Downloads updates, backs up database, exports to `\\lab-hyperv\d\WSUS-Exports\2026\Jan\09\`.
 
-**Step 2: Export to network share** *(Run on: ONLINE WSUS server)*
+**Step 2: Copy to USB/Apricorn** *(Run on: any machine with network access)*
 ```powershell
-.\Invoke-WsusManagement.ps1 -Export
-```
-Creates `\\lab-hyperv\d\WSUS-Exports\2026\Jan\9\` with DB + new content.
-
-**Step 3: Copy to USB/Apricorn** *(Run on: any machine with network access)*
-```powershell
-robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5
+robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\09" "E:\2026\Jan\09" /E /MT:16 /R:2 /W:5
 ```
 Copies export folder to removable drive.
 
-**Step 4: Copy into C:\WSUS** *(Run on: AIRGAPPED WSUS server)*
-```powershell
-robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-```
-Copies DB + content from USB into `C:\WSUS`.
+**Step 3: Copy exports to airgapped server** *(Run on: AIRGAPPED WSUS server)*
 
-**Step 5: Restore database** *(Run on: AIRGAPPED WSUS server)*
+Option A - Via menu (recommended):
+```powershell
+.\Invoke-WsusManagement.ps1
+# Select option 3: Copy Exports from Lab Server
+# Auto-finds newest export, differential copies to C:\WSUS
+```
+
+Option B - Manual robocopy:
+```powershell
+robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+```
+
+**Step 4: Restore database** *(Run on: AIRGAPPED WSUS server)*
 ```powershell
 .\Invoke-WsusManagement.ps1 -Restore
+# Or use menu option 2
 ```
-Auto-finds `.bak` in `C:\WSUS`, restores DB, runs postinstall.
+Finds newest `.bak` in `C:\WSUS`, shows available backups, restores DB, runs postinstall.
 
 ### Key robocopy flags
 
