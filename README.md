@@ -15,7 +15,7 @@ If you downloaded these scripts from the internet, run these commands once befor
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Unblock downloaded files (removes internet zone identifier)
-Get-ChildItem -Path "C:\WSUS\wsus-sql" -Recurse -Include *.ps1,*.psm1 | Unblock-File
+Get-ChildItem -Path "C:\WSUS\scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 ```
 
 ## Repository Structure
@@ -289,7 +289,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 C:\WSUS\SQLDB\               # SQL + SSMS installers + logs
 C:\WSUS\                    # WSUS content (must be this path)
 C:\WSUS\Logs\               # Log output
-C:\WSUS\wsus-sql\           # This repository
+C:\WSUS\scripts\            # This repository
     ├── Invoke-WsusManagement.ps1  # Run this for interactive menu
     ├── Scripts\                    # All server scripts
     ├── DomainController\          # Copy this folder to DC
@@ -316,7 +316,7 @@ Copy from this location when moving updates to **airgapped WSUS servers**.
 
 ### Interactive Menu (Recommended)
 ```powershell
-cd C:\WSUS\wsus-sql
+cd C:\WSUS\scripts
 .\Invoke-WsusManagement.ps1
 ```
 
