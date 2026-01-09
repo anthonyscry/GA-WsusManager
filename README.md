@@ -305,31 +305,59 @@ cd <DomainController folder location>
 
 ### Airgapped WSUS workflow
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ONLINE WSUS SERVER                                │
+│                                                                             │
+│  1. Monthly Maintenance     ──►  Downloads updates, backs up DB to C:\WSUS │
+│     .\Scripts\Invoke-WsusMonthlyMaintenance.ps1                             │
+│                                                                             │
+│  2. Export                  ──►  Copies DB + new content to network share  │
+│     .\Invoke-WsusManagement.ps1 -Export                                     │
+│                                                                             │
+│     Output: \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\                         │
+│             ├── SUSDB.bak                                                   │
+│             └── WsusContent\                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              [ USB / Apricorn ]
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          AIRGAPPED WSUS SERVER                              │
+│                                                                             │
+│  3. Copy export INTO C:\WSUS                                                │
+│     robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO              │
+│                                                                             │
+│     Result: C:\WSUS\SUSDB.bak                                               │
+│             C:\WSUS\WsusContent\                                            │
+│                                                                             │
+│  4. Restore database                                                        │
+│     .\Invoke-WsusManagement.ps1 -Restore                                    │
+│                                                                             │
+│     (Auto-finds most recent .bak in C:\WSUS, restores DB, runs postinstall) │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 **Step 1: Run monthly maintenance on online WSUS server**
 ```powershell
-# Downloads updates and backs up DB to C:\WSUS\
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
 ```
 
 **Step 2: Export to network share**
 ```powershell
-# Exports DB + differential content to \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\
-.\Scripts\Export-WsusIncrementalBackup.ps1
+.\Invoke-WsusManagement.ps1 -Export
 ```
 
 **Step 3: Copy export folder INTO C:\WSUS on airgapped server**
 ```powershell
-# Copy the dated folder into C:\WSUS (SAFE - merges without erasing)
 robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
 
-> **Result:**
-> - `SUSDB.bak` → `C:\WSUS\SUSDB.bak`
-> - `WsusContent\` → `C:\WSUS\WsusContent\`
-
-**Step 4: Run restore script (finds most recent .bak in C:\WSUS)**
+**Step 4: Restore database**
 ```powershell
-.\Scripts\Restore-WsusDatabase.ps1
+.\Invoke-WsusManagement.ps1 -Restore
 ```
 
 ### Key robocopy flags
@@ -377,7 +405,7 @@ robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 
 
 **Endless downloads / content not appearing**
 - Verify content path is `C:\WSUS` (NOT `C:\WSUS\wsuscontent`)
-- Run `.\Scripts\Test-WsusHealth.ps1` to diagnose and repair
+- Run `.\Invoke-WsusManagement.ps1 -Repair` to diagnose and fix
 
 **Clients not checking in**
 - Verify GPOs are linked to correct OUs
@@ -388,5 +416,5 @@ robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 
 ## Notes and known behaviors
 - **Content path must be `C:\WSUS`.** `C:\WSUS\wsuscontent` is known to cause endless downloads and an unregistered file state in SUSDB.
 - The **install script deletes its temporary encrypted SA password file** when it finishes.
-- `ImportScript.ps1` scans `C:\WSUS` for the newest `.bak` file and prompts before restoring it.
+- The **restore command** (`.\Invoke-WsusManagement.ps1 -Restore`) auto-detects the newest `.bak` file in `C:\WSUS`.
 - **Set-WsusGroupPolicy.ps1 runs on Domain Controller**, not on WSUS server. Copy the script and GPO backups to your DC before running.
