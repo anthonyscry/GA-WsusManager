@@ -606,7 +606,8 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host "=================================================================" -ForegroundColor Cyan
-    Write-Host "              WSUS Management" -ForegroundColor Cyan
+    Write-Host "              WSUS Management v3.0.0" -ForegroundColor Cyan
+    Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host "=================================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "INSTALLATION" -ForegroundColor Yellow
