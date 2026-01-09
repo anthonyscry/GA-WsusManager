@@ -620,7 +620,7 @@ function Test-WsusSqlCredential {
         # Test connection using Invoke-Sqlcmd
         $testQuery = "SELECT 1 AS TestResult"
         $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database "SUSDB" `
-            -Query $testQuery -Credential $Credential -TrustServerCertificate `
+            -Query $testQuery -Credential $Credential `
             -ErrorAction Stop -QueryTimeout 10
 
         if ($result.TestResult -eq 1) {
