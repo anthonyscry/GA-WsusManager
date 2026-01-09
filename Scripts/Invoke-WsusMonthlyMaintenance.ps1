@@ -10,7 +10,8 @@ Overview:
   - Synchronizes WSUS, monitors download progress, and applies approvals.
   - Runs WSUS cleanup tasks and SUSDB index/stat maintenance.
   - Optionally runs an aggressive cleanup stage before the backup.
-  - Differential export to network share with year/month/day structure.
+  - Exports full backup + content to root WSUS-Exports folder.
+  - Creates differential archive copy in year/month subfolder.
 Notes:
   - Run as Administrator on the WSUS server.
   - Use -Unattended for scheduled tasks (no prompts, uses defaults).
@@ -37,7 +38,7 @@ param(
     [switch]$SkipUltimateCleanup,
 
     # Root path for exports (e.g., "\\lab-hyperv\d\WSUS-Exports")
-    # Exports will be organized as: ExportPath\Year\Month\Day
+    # Full backup + content goes to root, archive copies go to Year\Month subfolder
     [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
 
     # Number of days to include in differential export (files modified within this many days)
@@ -316,12 +317,13 @@ function Show-OperationSummary {
     if (-not $SkipExport -and $ExportPath) {
         $year = (Get-Date).ToString("yyyy")
         $month = (Get-Date).ToString("MMM")
-        $day = (Get-Date).ToString("dd")
-        $fullExportPath = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
-        Write-Host "  Export Path:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host $fullExportPath -ForegroundColor White
+        $archivePath = [System.IO.Path]::Combine($ExportPath, $year, $month)
+        Write-Host "  Root Export:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host $ExportPath -ForegroundColor White
+        Write-Host "  Archive Path: " -NoNewline -ForegroundColor DarkGray
+        Write-Host $archivePath -ForegroundColor White
         Write-Host "  Export Days:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "$ExportDays days" -ForegroundColor White
+        Write-Host "$ExportDays days (for archive differential)" -ForegroundColor White
     }
 
     Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
@@ -1014,10 +1016,12 @@ if ($allUpdates.Count -eq 0) {
 
 Write-Host ""
 
-# === DIFFERENTIAL EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
+# === EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
+# Step 1: Full backup + content to root folder
+# Step 2: Differential copy to year/month archive folder
 if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
-    Write-Status "Starting differential export..." -Type Phase
-    Write-Log "Starting differential export..."
+    Write-Status "Starting export to network share..." -Type Phase
+    Write-Log "Starting export to network share..."
     $exportPhase = @{ Name = "Export"; Status = "In Progress"; Duration = "" }
     $exportStart = Get-Date
 
@@ -1033,15 +1037,15 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
         }
     }
-    Write-Log "Export will include files modified within last $ExportDays days"
+    Write-Log "Differential export will include files modified within last $ExportDays days"
 
-    # Create year/month/day structure
+    # Create year/month structure for archive (no day subfolder)
     $year = (Get-Date).ToString("yyyy")
     $month = (Get-Date).ToString("MMM")
-    $day = (Get-Date).ToString("dd")
-    $exportDestination = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
+    $archiveDestination = [System.IO.Path]::Combine($ExportPath, $year, $month)
 
-    Write-Log "Export destination: $exportDestination"
+    Write-Log "Root export path: $ExportPath"
+    Write-Log "Archive path: $archiveDestination"
 
     # Check if export path is accessible using improved test
     if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
@@ -1050,39 +1054,34 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         $MaintenanceResults.Errors += "Export path inaccessible: $ExportPath"
         $exportPhase.Status = "Failed"
     } else {
-        # Create export directory
-        if (-not (Test-Path $exportDestination)) {
-            New-Item -Path $exportDestination -ItemType Directory -Force | Out-Null
-            Write-Log "Created export directory: $exportDestination"
-        }
-
-        # Copy database backup
-        Write-Log "[1/2] Copying database backup..."
+        # =====================================================================
+        # STEP 1: Full backup + content to ROOT folder
+        # =====================================================================
+        Write-Log "[1/4] Copying full database backup to root..."
         if (Test-Path $backupFile) {
-            Copy-Item -Path $backupFile -Destination $exportDestination -Force
-            Write-Log "Database copied: $(Split-Path $backupFile -Leaf)"
+            Copy-Item -Path $backupFile -Destination $ExportPath -Force
+            Write-Log "Database copied to root: $(Split-Path $backupFile -Leaf)"
         } else {
             Write-Warning "Backup file not found: $backupFile"
         }
 
-        # Differential copy of content using robocopy with MAXAGE
-        Write-Log "[2/2] Differential copy of content (files modified within $ExportDays days)..."
+        # Full content sync to root (mirror mode)
+        Write-Log "[2/4] Syncing full content to root folder..."
         $wsusContentSource = "C:\WSUS\WsusContent"
-        $contentExportPath = Join-Path $exportDestination "WsusContent"
+        $rootContentPath = Join-Path $ExportPath "WsusContent"
 
         if (Test-Path $wsusContentSource) {
             $robocopyLogDir = "C:\WSUS\Logs"
             if (-not (Test-Path $robocopyLogDir)) {
                 New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
             }
-            $robocopyLog = "$robocopyLogDir\Export_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+            $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
-            # /E = include subdirs, /MAXAGE:N = only files modified within N days
-            # /XO = exclude older files (differential), /MT:16 = 16 threads
+            # /E = include subdirs, /XO = exclude older (differential), /MT:16 = 16 threads
             $robocopyArgs = @(
                 $wsusContentSource,
-                $contentExportPath,
-                "/E", "/MAXAGE:$ExportDays", "/XO", "/MT:16", "/R:2", "/W:5",
+                $rootContentPath,
+                "/E", "/XO", "/MT:16", "/R:2", "/W:5",
                 "/XF", "*.bak", "*.log",
                 "/XD", "Logs", "SQLDB", "Backup",
                 "/LOG:$robocopyLog", "/TEE", "/NP", "/NDL"
@@ -1090,29 +1089,78 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
             $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
             if ($robocopyResult.ExitCode -lt 8) {
-                Write-Log "Content export completed successfully"
+                Write-Log "Full content sync to root completed successfully"
             } else {
                 Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
-                $MaintenanceResults.Warnings += "Robocopy exit code: $($robocopyResult.ExitCode)"
+                $MaintenanceResults.Warnings += "Root sync robocopy exit code: $($robocopyResult.ExitCode)"
             }
 
-            # Show export stats
-            if (Test-Path $contentExportPath) {
-                $exportedFiles = Get-ChildItem -Path $contentExportPath -Recurse -File -ErrorAction SilentlyContinue
-                $exportedSize = [math]::Round(($exportedFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                Write-Log "Exported: $($exportedFiles.Count) files ($exportedSize GB)"
-                $MaintenanceResults.ExportedFiles = $exportedFiles.Count
-                $MaintenanceResults.ExportSize = $exportedSize
+            # Show root export stats
+            if (Test-Path $rootContentPath) {
+                $rootFiles = Get-ChildItem -Path $rootContentPath -Recurse -File -ErrorAction SilentlyContinue
+                $rootSize = [math]::Round(($rootFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                Write-Log "Root content: $($rootFiles.Count) files ($rootSize GB)"
             }
         } else {
             Write-Warning "WsusContent folder not found: $wsusContentSource"
         }
 
+        # =====================================================================
+        # STEP 2: Differential copy to ARCHIVE folder (year/month)
+        # =====================================================================
+        Write-Log "[3/4] Creating archive directory..."
+        if (-not (Test-Path $archiveDestination)) {
+            New-Item -Path $archiveDestination -ItemType Directory -Force | Out-Null
+            Write-Log "Created archive directory: $archiveDestination"
+        }
+
+        # Copy database backup to archive
+        Write-Log "[4/4] Copying differential to archive ($year/$month)..."
+        if (Test-Path $backupFile) {
+            Copy-Item -Path $backupFile -Destination $archiveDestination -Force
+            Write-Log "Database copied to archive: $(Split-Path $backupFile -Leaf)"
+        }
+
+        # Differential copy of content to archive using robocopy with MAXAGE
+        $archiveContentPath = Join-Path $archiveDestination "WsusContent"
+
+        if (Test-Path $wsusContentSource) {
+            $robocopyLogArchive = "$robocopyLogDir\Export_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+            # /E = include subdirs, /MAXAGE:N = only files modified within N days
+            # /XO = exclude older files (differential), /MT:16 = 16 threads
+            $robocopyArgs = @(
+                $wsusContentSource,
+                $archiveContentPath,
+                "/E", "/MAXAGE:$ExportDays", "/XO", "/MT:16", "/R:2", "/W:5",
+                "/XF", "*.bak", "*.log",
+                "/XD", "Logs", "SQLDB", "Backup",
+                "/LOG:$robocopyLogArchive", "/TEE", "/NP", "/NDL"
+            )
+
+            $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+            if ($robocopyResult.ExitCode -lt 8) {
+                Write-Log "Differential archive export completed successfully"
+            } else {
+                Write-Warning "Archive robocopy exit code: $($robocopyResult.ExitCode)"
+                $MaintenanceResults.Warnings += "Archive robocopy exit code: $($robocopyResult.ExitCode)"
+            }
+
+            # Show archive export stats
+            if (Test-Path $archiveContentPath) {
+                $exportedFiles = Get-ChildItem -Path $archiveContentPath -Recurse -File -ErrorAction SilentlyContinue
+                $exportedSize = [math]::Round(($exportedFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                Write-Log "Archive content: $($exportedFiles.Count) files ($exportedSize GB)"
+                $MaintenanceResults.ExportedFiles = $exportedFiles.Count
+                $MaintenanceResults.ExportSize = $exportedSize
+            }
+        }
+
         $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
-        $MaintenanceResults.ExportPath = $exportDestination
+        $MaintenanceResults.ExportPath = "$ExportPath (root) + $archiveDestination (archive)"
         $exportPhase.Status = "Completed"
         $exportPhase.Duration = "$exportDuration min"
-        Write-Log "Export complete: $exportDestination"
+        Write-Log "Export complete: Root=$ExportPath, Archive=$archiveDestination"
         Write-Status "Export completed ($exportDuration min)" -Type Success
     }
     $MaintenanceResults.Phases += $exportPhase
