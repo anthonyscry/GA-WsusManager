@@ -1,6 +1,10 @@
 <#
 ===============================================================================
 Script: Install-WsusWithSqlExpress.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
 Purpose: Fully automated SQL Express 2022 + SSMS + WSUS installation (SQL mode).
 Overview:
   - Extracts SQL Express and installs SQL Engine + SSMS silently.

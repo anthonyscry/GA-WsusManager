@@ -1,5 +1,7 @@
 # WSUS PowerShell Modules
 
+**Author:** Tony Tran, ISSO, GA-ASI
+
 This directory contains shared PowerShell modules used by the WSUS SQL scripts to eliminate code duplication and improve maintainability.
 
 ## Overview
@@ -170,19 +172,16 @@ Write-Host "Services started: $($result.ServicesStarted.Count)"
 
 ## Scripts That Use These Modules
 
-The following scripts have been refactored to use these modules:
+The following scripts use these modules:
 
-### Refactored Scripts
-- **Invoke-WsusDeepCleanup.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
+### Main Entry Point
+- **Invoke-WsusManagement.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices, WsusHealth
+
+### Maintenance Scripts
 - **Invoke-WsusMonthlyMaintenance.ps1** - Uses: WsusUtilities, WsusDatabase, WsusServices
-- **Invoke-WsusClientCheckIn.ps1** - Uses: WsusUtilities
-- **Test-WsusHealth.ps1** - Uses: WsusUtilities, WsusHealth (comprehensive health check & repair)
 
-### Scripts To Be Refactored
-- Install-WsusWithSqlExpress.ps1
-- Restore-WsusDatabase.ps1
-- Reset-WsusContentDownload.ps1
-- Set-WsusGroupPolicy.ps1
+### Client Scripts
+- **Invoke-WsusClientCheckIn.ps1** - Uses: WsusUtilities
 
 ## Benefits of Modular Architecture
 
@@ -205,18 +204,7 @@ When extending these modules:
 
 ## Version History
 
-- **v1.0.0** (2025-01-08): Initial module extraction from consolidated scripts
+- **v1.0.0** (2026-01-09): Initial module extraction from consolidated scripts
   - Created 6 core modules
-  - Refactored 4 major scripts
-  - Deprecated 2 wrapper scripts
+  - Standardized author headers
   - Reduced codebase by ~480 lines
-
-## Future Enhancements
-
-Planned improvements for these modules:
-
-1. Add Pester tests for each module
-2. Create module manifests (.psd1) for version management
-3. Add pipeline support (ValueFromPipeline) where appropriate
-4. Refactor remaining scripts to use modules
-5. Consider packaging as a PowerShell module gallery submission

@@ -1,4 +1,11 @@
 <#
+===============================================================================
+Module: WsusHealth.psm1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     WSUS comprehensive health check functions
 
@@ -11,8 +18,6 @@
     - Overall system health reports
 
 .NOTES
-    Version: 1.0.0
-    Author: WSUS SQL Toolkit
     Requires: WsusServices.psm1, WsusFirewall.psm1, WsusPermissions.psm1
 #>
 

@@ -1,6 +1,13 @@
 #Requires -RunAsAdministrator
 
 <#
+===============================================================================
+Script: Set-WsusGroupPolicy.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     Import and configure WSUS Group Policy Objects for client management.
 

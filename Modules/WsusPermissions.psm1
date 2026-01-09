@@ -1,14 +1,17 @@
 <#
+===============================================================================
+Module: WsusPermissions.psm1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     WSUS content directory permissions management
 
 .DESCRIPTION
     Provides standardized functions for setting and verifying WSUS content
     directory permissions across all required service accounts
-
-.NOTES
-    Version: 1.0.0
-    Author: WSUS SQL Toolkit
 #>
 
 # ===========================
