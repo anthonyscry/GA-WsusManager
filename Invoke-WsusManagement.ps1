@@ -384,9 +384,9 @@ function Invoke-WsusHealthCheck {
     Write-Banner "WSUS HEALTH CHECK"
 
     $modulePath = Join-Path $ScriptRoot "Modules"
-    if (Test-Path (Join-Path $modulePath "WsusHealth.ps1")) {
-        Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
-        Import-Module (Join-Path $modulePath "WsusHealth.ps1") -Force
+    if (Test-Path (Join-Path $modulePath "WsusHealth.psm1")) {
+        Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
+        Import-Module (Join-Path $modulePath "WsusHealth.psm1") -Force
 
         if ($Repair) {
             Write-Host "Running health check with AUTO-REPAIR..." -ForegroundColor Yellow
@@ -436,10 +436,10 @@ function Invoke-WsusCleanup {
     Write-Banner "WSUS DEEP CLEANUP"
 
     $modulePath = Join-Path $ScriptRoot "Modules"
-    if (Test-Path (Join-Path $modulePath "WsusDatabase.ps1")) {
-        Import-Module (Join-Path $modulePath "WsusUtilities.ps1") -Force
-        Import-Module (Join-Path $modulePath "WsusDatabase.ps1") -Force
-        Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
+    if (Test-Path (Join-Path $modulePath "WsusDatabase.psm1")) {
+        Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
+        Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force
+        Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
     }
 
     Write-Host "This performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow

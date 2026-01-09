@@ -13,14 +13,14 @@
 .NOTES
     Version: 1.0.0
     Author: WSUS SQL Toolkit
-    Requires: WsusServices.ps1, WsusFirewall.ps1, WsusPermissions.ps1
+    Requires: WsusServices.psm1, WsusFirewall.psm1, WsusPermissions.psm1
 #>
 
 # Import required modules
 $modulePath = Split-Path -Parent $PSCommandPath
-Import-Module (Join-Path $modulePath "WsusServices.ps1") -Force
-Import-Module (Join-Path $modulePath "WsusFirewall.ps1") -Force
-Import-Module (Join-Path $modulePath "WsusPermissions.ps1") -Force
+Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
+Import-Module (Join-Path $modulePath "WsusFirewall.psm1") -Force
+Import-Module (Join-Path $modulePath "WsusPermissions.psm1") -Force
 
 # ===========================
 # DATABASE HEALTH FUNCTIONS
