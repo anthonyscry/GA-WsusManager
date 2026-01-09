@@ -2,7 +2,7 @@
 ===============================================================================
 Module: WsusScheduledTask.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
+Version: 1.1.0
 Date: 2026-01-09
 ===============================================================================
 
@@ -16,6 +16,75 @@ Date: 2026-01-09
     - Task status checking
     - Task removal
 #>
+
+# ===========================
+# PRIVATE HELPER FUNCTIONS
+# ===========================
+
+function Test-ValidTimeFormat {
+    <#
+    .SYNOPSIS
+        Validates time string is in HH:mm format
+    #>
+    param([string]$Time)
+
+    if ($Time -notmatch '^\d{1,2}:\d{2}$') {
+        return $false
+    }
+
+    $parts = $Time -split ':'
+    $hour = [int]$parts[0]
+    $minute = [int]$parts[1]
+
+    return ($hour -ge 0 -and $hour -le 23 -and $minute -ge 0 -and $minute -le 59)
+}
+
+function Test-ValidUserFormat {
+    <#
+    .SYNOPSIS
+        Validates user account format (.\user, DOMAIN\user, or user@domain)
+    #>
+    param([string]$User)
+
+    if ([string]::IsNullOrWhiteSpace($User)) {
+        return $false
+    }
+
+    # Accept: .\username, DOMAIN\username, username@domain.com, or just username
+    return ($User -match '^\.\\[\w\-]+$' -or
+            $User -match '^[\w\-]+\\[\w\-]+$' -or
+            $User -match '^[\w\-\.]+@[\w\-\.]+$' -or
+            $User -match '^[\w\-]+$')
+}
+
+function ConvertFrom-SecureStringToPlainText {
+    <#
+    .SYNOPSIS
+        Converts SecureString to plain text (for Register-ScheduledTask)
+    #>
+    param([securestring]$SecureString)
+
+    if (-not $SecureString -or $SecureString.Length -eq 0) {
+        return $null
+    }
+
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureString)
+    try {
+        return [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    } finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    }
+}
+
+function Test-IsAdministrator {
+    <#
+    .SYNOPSIS
+        Checks if current session has administrator privileges
+    #>
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
 
 # ===========================
 # SCHEDULED TASK FUNCTIONS
@@ -102,8 +171,29 @@ function New-WsusMaintenanceTask {
         }
     }
 
+    # === INPUT VALIDATION ===
+
+    # Check admin privileges
+    if (-not (Test-IsAdministrator)) {
+        $result.Message = "Administrator privileges required to create scheduled tasks"
+        return $result
+    }
+
+    # Validate script path
     if (-not $ScriptPath -or -not (Test-Path $ScriptPath)) {
         $result.Message = "Maintenance script not found. Please specify -ScriptPath"
+        return $result
+    }
+
+    # Validate time format
+    if (-not (Test-ValidTimeFormat -Time $Time)) {
+        $result.Message = "Invalid time format '$Time'. Use HH:mm format (e.g., 01:00, 14:30)"
+        return $result
+    }
+
+    # Validate user format
+    if (-not (Test-ValidUserFormat -User $RunAsUser)) {
+        $result.Message = "Invalid user format '$RunAsUser'. Use .\username, DOMAIN\username, or username@domain"
         return $result
     }
 
@@ -113,10 +203,12 @@ function New-WsusMaintenanceTask {
         $UserPassword = Read-Host -AsSecureString "Password"
     }
 
-    # Convert SecureString to plain text for schtasks (required by Register-ScheduledTask with -User/-Password)
-    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($UserPassword)
-    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    # Validate password was provided
+    $PlainPassword = ConvertFrom-SecureStringToPlainText -SecureString $UserPassword
+    if ([string]::IsNullOrEmpty($PlainPassword)) {
+        $result.Message = "Password is required for scheduled task creation"
+        return $result
+    }
 
     try {
         # Build the action
