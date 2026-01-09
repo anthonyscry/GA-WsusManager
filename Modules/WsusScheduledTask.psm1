@@ -65,9 +65,9 @@ function New-WsusMaintenanceTask {
         [int]$DayOfMonth = 15,
 
         [ValidateSet('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')]
-        [string]$DayOfWeek = 'Sunday',
+        [string]$DayOfWeek = 'Saturday',
 
-        [string]$Time = "02:00",
+        [string]$Time = "01:00",
 
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$Profile = 'Full',
@@ -299,8 +299,8 @@ function Show-WsusScheduledTaskMenu {
         }
 
         Write-Host "Options:" -ForegroundColor Yellow
-        Write-Host "  [1] Create/Update Monthly Task (15th of each month, 2:00 AM)"
-        Write-Host "  [2] Create/Update Weekly Task (Sunday, 2:00 AM)"
+        Write-Host "  [1] Create/Update Monthly Task (15th of each month, 1:00 AM)"
+        Write-Host "  [2] Create/Update Weekly Task (Saturday, 1:00 AM)"
         Write-Host "  [3] Create Custom Task"
         Write-Host "  [4] Run Task Now"
         Write-Host "  [5] Remove Task"
@@ -312,7 +312,7 @@ function Show-WsusScheduledTaskMenu {
 
         switch ($choice.ToUpper()) {
             '1' {
-                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "02:00" -Profile Full -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "01:00" -Profile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
@@ -322,7 +322,7 @@ function Show-WsusScheduledTaskMenu {
                 Read-Host "Press Enter to continue"
             }
             '2' {
-                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Sunday -Time "02:00" -Profile Quick -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Saturday -Time "01:00" -Profile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
