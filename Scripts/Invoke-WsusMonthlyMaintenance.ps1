@@ -9,10 +9,22 @@ Overview:
   - Differential export to network share with year/month/day structure.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Use -SkipUltimateCleanup to avoid heavy cleanup before backup.
-  - Use -SkipExport to skip the export step.
-  - Use -ExportDays N to set days for differential export (default: prompts user, 30).
+  - Use -Unattended for scheduled tasks (no prompts, uses defaults).
+  - Use -Profile to select preset configurations (Quick, Full, SyncOnly).
+  - Use -Operations to run specific phases only.
   - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
+===============================================================================
+Version: 3.0.0
+Date: 2026-01-09
+Changes:
+  - Added -Unattended mode for scheduled tasks
+  - Added -Profile parameter (Quick, Full, SyncOnly)
+  - Added -Operations for selective phase execution
+  - Added interactive menu mode (run without parameters)
+  - Added pre-flight validation checks
+  - Added colored status output
+  - Added HTML report generation
+  - Improved export path accessibility checking
 ===============================================================================
 Version: 2.3.0
 Date: 2026-01-09
@@ -32,6 +44,17 @@ Changes:
 
 [CmdletBinding()]
 param(
+    # Run in unattended mode (no prompts, uses all defaults) - ideal for scheduled tasks
+    [switch]$Unattended,
+
+    # Preset configuration profiles
+    [ValidateSet("Quick", "Full", "SyncOnly")]
+    [string]$Profile,
+
+    # Specific operations to run (default: all)
+    [ValidateSet("Sync", "Cleanup", "UltimateCleanup", "Backup", "Export", "All")]
+    [string[]]$Operations = @("All"),
+
     # Skip the heavy "ultimate cleanup" stage before the backup if needed.
     [switch]$SkipUltimateCleanup,
 
@@ -44,7 +67,10 @@ param(
     [int]$ExportDays = 0,
 
     # Skip the export step entirely
-    [switch]$SkipExport
+    [switch]$SkipExport,
+
+    # Generate HTML report after completion
+    [switch]$GenerateReport
 )
 
 # Import shared modules
@@ -63,101 +89,588 @@ $VerbosePreference = 'SilentlyContinue'
 # Force output redirection to prevent pauses
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
+# === SCRIPT VERSION ===
+$ScriptVersion = "3.0.0"
+
+# === HELPER FUNCTIONS ===
+
+# Colored status output
+function Write-Status {
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet("Info", "Success", "Warning", "Error", "Header", "Phase")]
+        [string]$Type = "Info"
+    )
+    $colors = @{
+        Info    = "Cyan"
+        Success = "Green"
+        Warning = "Yellow"
+        Error   = "Red"
+        Header  = "Magenta"
+        Phase   = "White"
+    }
+    $prefixes = @{
+        Info    = "[i]"
+        Success = "[+]"
+        Warning = "[!]"
+        Error   = "[X]"
+        Header  = "==>"
+        Phase   = ">>>"
+    }
+    $prefix = $prefixes[$Type]
+    $color = $colors[$Type]
+    Write-Host "$prefix " -ForegroundColor $color -NoNewline
+    Write-Host $Message
+}
+
+# Pre-flight validation
+function Test-Prerequisites {
+    param(
+        [string]$ExportPath,
+        [bool]$SkipExport
+    )
+
+    $results = @{
+        Success = $true
+        Errors = @()
+        Warnings = @()
+    }
+
+    Write-Status "Running pre-flight checks..." -Type Header
+
+    # Check 1: SQL Server service exists
+    Write-Host "  Checking SQL Server..." -NoNewline
+    if (Test-ServiceExists -ServiceName "MSSQL`$SQLEXPRESS") {
+        Write-Host " OK" -ForegroundColor Green
+    } else {
+        Write-Host " FAILED" -ForegroundColor Red
+        $results.Errors += "SQL Server Express service not found"
+        $results.Success = $false
+    }
+
+    # Check 2: WSUS service exists
+    Write-Host "  Checking WSUS Service..." -NoNewline
+    if (Test-ServiceExists -ServiceName "WSUSService") {
+        Write-Host " OK" -ForegroundColor Green
+    } else {
+        Write-Host " FAILED" -ForegroundColor Red
+        $results.Errors += "WSUS Service not found"
+        $results.Success = $false
+    }
+
+    # Check 3: Local disk space (WSUS folder)
+    Write-Host "  Checking disk space (C:\WSUS)..." -NoNewline
+    $wsusDrive = (Get-Item "C:\WSUS" -ErrorAction SilentlyContinue).PSDrive
+    if ($wsusDrive) {
+        $freeGB = [math]::Round($wsusDrive.Free / 1GB, 2)
+        if ($freeGB -ge 5) {
+            Write-Host " OK ($freeGB GB free)" -ForegroundColor Green
+        } else {
+            Write-Host " LOW ($freeGB GB free)" -ForegroundColor Yellow
+            $results.Warnings += "Low disk space on WSUS drive: $freeGB GB"
+        }
+    } else {
+        Write-Host " SKIP (path not found)" -ForegroundColor Yellow
+    }
+
+    # Check 4: Export path accessibility (if not skipping export)
+    if (-not $SkipExport -and $ExportPath) {
+        Write-Host "  Checking export path..." -NoNewline
+        $exportAccessible = Test-ExportPathAccess -ExportPath $ExportPath
+        if ($exportAccessible) {
+            Write-Host " OK" -ForegroundColor Green
+        } else {
+            Write-Host " FAILED" -ForegroundColor Red
+            $results.Warnings += "Cannot access export path: $ExportPath"
+        }
+    }
+
+    # Check 5: WSUS connection test
+    Write-Host "  Checking WSUS connection..." -NoNewline
+    try {
+        [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
+        $testWsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
+        if ($testWsus) {
+            Write-Host " OK" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host " FAILED" -ForegroundColor Red
+        $results.Errors += "Cannot connect to WSUS: $($_.Exception.Message)"
+        $results.Success = $false
+    }
+
+    Write-Host ""
+    return $results
+}
+
+# Test export path with write access
+function Test-ExportPathAccess {
+    param([string]$ExportPath)
+
+    try {
+        # First check if path exists or parent exists
+        if (Test-Path $ExportPath) {
+            $testFile = Join-Path $ExportPath ".wsus_access_test_$(Get-Random).tmp"
+            New-Item -Path $testFile -ItemType File -Force -ErrorAction Stop | Out-Null
+            Remove-Item $testFile -Force -ErrorAction SilentlyContinue
+            return $true
+        } else {
+            # Try to create the path
+            New-Item -Path $ExportPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
+            return $true
+        }
+    } catch {
+        return $false
+    }
+}
+
+# Interactive menu
+function Show-MainMenu {
+    Clear-Host
+    Write-Host ""
+    Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "  ║         WSUS Monthly Maintenance v$ScriptVersion                ║" -ForegroundColor Cyan
+    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [1] Full Maintenance                                    ║" -ForegroundColor Cyan
+    Write-Host "  ║      Sync → Cleanup → Ultimate Cleanup → Backup → Export ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [2] Quick Maintenance                                   ║" -ForegroundColor Cyan
+    Write-Host "  ║      Sync → Cleanup → Backup (skip heavy cleanup)        ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [3] Sync Only                                           ║" -ForegroundColor Cyan
+    Write-Host "  ║      Synchronize and approve updates only                ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [4] Backup & Export Only                                ║" -ForegroundColor Cyan
+    Write-Host "  ║      Skip sync/cleanup, just backup and export           ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [5] Database Maintenance Only                           ║" -ForegroundColor Cyan
+    Write-Host "  ║      Cleanup + index optimization (no sync/backup)       ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ║  [Q] Quit                                                ║" -ForegroundColor Cyan
+    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
+    Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host ""
+
+    $choice = Read-Host "  Select option"
+    return $choice
+}
+
+# Apply profile settings
+function Set-ProfileSettings {
+    param([string]$ProfileName)
+
+    $settings = @{
+        Operations = @("All")
+        SkipUltimateCleanup = $false
+        SkipExport = $false
+        ExportDays = 30
+    }
+
+    switch ($ProfileName) {
+        "Quick" {
+            $settings.SkipUltimateCleanup = $true
+            $settings.ExportDays = 7
+        }
+        "Full" {
+            $settings.SkipUltimateCleanup = $false
+            $settings.ExportDays = 30
+        }
+        "SyncOnly" {
+            $settings.Operations = @("Sync")
+            $settings.SkipExport = $true
+        }
+    }
+
+    return $settings
+}
+
+# Check if operation should run
+function Test-ShouldRunOperation {
+    param(
+        [string]$Operation,
+        [string[]]$SelectedOperations
+    )
+
+    if ($SelectedOperations -contains "All") { return $true }
+    return $SelectedOperations -contains $Operation
+}
+
+# Show operation summary before starting
+function Show-OperationSummary {
+    param(
+        [string[]]$Operations,
+        [bool]$SkipUltimateCleanup,
+        [bool]$SkipExport,
+        [string]$ExportPath,
+        [int]$ExportDays,
+        [bool]$Unattended
+    )
+
+    Write-Host ""
+    Write-Host "  ┌────────────────────────────────────────────────────────────┐" -ForegroundColor White
+    Write-Host "  │  WSUS Monthly Maintenance v$ScriptVersion                         │" -ForegroundColor White
+    Write-Host "  └────────────────────────────────────────────────────────────┘" -ForegroundColor White
+    Write-Host ""
+
+    # Build operation flow
+    $flow = @()
+    if (Test-ShouldRunOperation "Sync" $Operations) { $flow += "Sync" }
+    if (Test-ShouldRunOperation "Cleanup" $Operations) { $flow += "Cleanup" }
+    if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltimateCleanup) {
+        $flow += "UltimateCleanup"
+    }
+    if (Test-ShouldRunOperation "Backup" $Operations) { $flow += "Backup" }
+    if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport) { $flow += "Export" }
+
+    Write-Host "  Operations:  " -NoNewline -ForegroundColor Gray
+    Write-Host ($flow -join " → ") -ForegroundColor Cyan
+
+    if (-not $SkipExport -and $ExportPath) {
+        $year = (Get-Date).ToString("yyyy")
+        $month = (Get-Date).ToString("MMM")
+        $day = (Get-Date).ToString("dd")
+        $fullExportPath = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
+        Write-Host "  Export Path: " -NoNewline -ForegroundColor Gray
+        Write-Host $fullExportPath -ForegroundColor Cyan
+        Write-Host "  Export Days: " -NoNewline -ForegroundColor Gray
+        Write-Host "$ExportDays days" -ForegroundColor Cyan
+    }
+
+    Write-Host "  Mode:        " -NoNewline -ForegroundColor Gray
+    if ($Unattended) {
+        Write-Host "Unattended (no prompts)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Interactive" -ForegroundColor Green
+    }
+
+    Write-Host ""
+
+    if (-not $Unattended) {
+        Write-Host "  Press Enter to continue or Ctrl+C to cancel..." -ForegroundColor DarkGray
+        Read-Host | Out-Null
+    }
+}
+
+# Generate HTML report
+function New-MaintenanceReport {
+    param(
+        [hashtable]$Results,
+        [string]$OutputPath = "C:\WSUS\Logs"
+    )
+
+    $reportFile = Join-Path $OutputPath "MaintenanceReport_$(Get-Date -Format 'yyyyMMdd_HHmmss').html"
+
+    $statusColor = if ($Results.Success) { "#28a745" } else { "#dc3545" }
+    $statusText = if ($Results.Success) { "Completed Successfully" } else { "Completed with Errors" }
+
+    $html = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WSUS Maintenance Report - $(Get-Date -Format 'yyyy-MM-dd')</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 3px solid #0078d4; padding-bottom: 10px; }
+        h2 { color: #0078d4; margin-top: 30px; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 4px; color: white; font-weight: bold; }
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+        .warning { background: #ffc107; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 600; }
+        tr:hover { background: #f8f9fa; }
+        .metric { font-size: 24px; font-weight: bold; color: #0078d4; }
+        .metric-label { font-size: 12px; color: #666; text-transform: uppercase; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0; }
+        .metric-box { background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+        .phase { padding: 8px 12px; margin: 4px 0; background: #e9ecef; border-radius: 4px; }
+        .phase.completed { border-left: 4px solid #28a745; }
+        .phase.skipped { border-left: 4px solid #6c757d; opacity: 0.6; }
+        .phase.failed { border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WSUS Maintenance Report</h1>
+        <p><strong>Date:</strong> $(Get-Date -Format 'dddd, MMMM dd, yyyy HH:mm:ss')</p>
+        <p><strong>Server:</strong> $env:COMPUTERNAME</p>
+        <p><strong>Status:</strong> <span class="status-badge" style="background: $statusColor;">$statusText</span></p>
+
+        <h2>Summary Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric">$($Results.DeclinedExpired)</div>
+                <div class="metric-label">Expired Declined</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric">$($Results.DeclinedSuperseded)</div>
+                <div class="metric-label">Superseded Declined</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric">$($Results.DeclinedOld)</div>
+                <div class="metric-label">Old Declined</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric">$($Results.Approved)</div>
+                <div class="metric-label">Updates Approved</div>
+            </div>
+        </div>
+
+        <h2>Operations</h2>
+        $(foreach ($phase in $Results.Phases) {
+            $phaseClass = switch ($phase.Status) { "Completed" { "completed" } "Skipped" { "skipped" } "Failed" { "failed" } }
+            "<div class='phase $phaseClass'><strong>$($phase.Name)</strong> - $($phase.Status) $(if ($phase.Duration) { "($($phase.Duration))" })</div>"
+        })
+
+        <h2>Database</h2>
+        <table>
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Database Size</td><td>$($Results.DatabaseSize) GB</td></tr>
+            <tr><td>Backup File</td><td>$($Results.BackupFile)</td></tr>
+            <tr><td>Backup Size</td><td>$($Results.BackupSize) MB</td></tr>
+        </table>
+
+        $(if ($Results.ExportPath) {
+        @"
+        <h2>Export</h2>
+        <table>
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Export Path</td><td>$($Results.ExportPath)</td></tr>
+            <tr><td>Files Exported</td><td>$($Results.ExportedFiles)</td></tr>
+            <tr><td>Export Size</td><td>$($Results.ExportSize) GB</td></tr>
+        </table>
+"@
+        })
+
+        $(if ($Results.Warnings.Count -gt 0) {
+        @"
+        <h2>Warnings</h2>
+        <ul>
+            $(foreach ($warn in $Results.Warnings) { "<li>$warn</li>" })
+        </ul>
+"@
+        })
+
+        $(if ($Results.Errors.Count -gt 0) {
+        @"
+        <h2>Errors</h2>
+        <ul style="color: #dc3545;">
+            $(foreach ($err in $Results.Errors) { "<li>$err</li>" })
+        </ul>
+"@
+        })
+
+        <div class="footer">
+            <p>Generated by WSUS Monthly Maintenance Script v$ScriptVersion</p>
+            <p>Report file: $reportFile</p>
+        </div>
+    </div>
+</body>
+</html>
+"@
+
+    $html | Out-File -FilePath $reportFile -Encoding UTF8
+    return $reportFile
+}
+
+# Initialize results tracking
+$MaintenanceResults = @{
+    Success = $true
+    StartTime = Get-Date
+    EndTime = $null
+    Phases = @()
+    DeclinedExpired = 0
+    DeclinedSuperseded = 0
+    DeclinedOld = 0
+    Approved = 0
+    DatabaseSize = 0
+    BackupFile = ""
+    BackupSize = 0
+    ExportPath = ""
+    ExportedFiles = 0
+    ExportSize = 0
+    Warnings = @()
+    Errors = @()
+}
+
+# === INTERACTIVE MENU MODE ===
+# Show menu if no profile/operations specified and not unattended
+if (-not $Unattended -and -not $Profile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
+    $menuChoice = Show-MainMenu
+
+    switch ($menuChoice) {
+        "1" { $Profile = "Full" }
+        "2" { $Profile = "Quick" }
+        "3" { $Profile = "SyncOnly" }
+        "4" {
+            $Operations = @("Backup", "Export")
+        }
+        "5" {
+            $Operations = @("Cleanup", "UltimateCleanup")
+            $SkipExport = $true
+        }
+        "Q" { exit 0 }
+        "q" { exit 0 }
+        default { $Profile = "Full" }
+    }
+}
+
+# === APPLY PROFILE SETTINGS ===
+if ($Profile) {
+    $profileSettings = Set-ProfileSettings -ProfileName $Profile
+    if (-not $PSBoundParameters.ContainsKey('SkipUltimateCleanup')) {
+        $SkipUltimateCleanup = $profileSettings.SkipUltimateCleanup
+    }
+    if (-not $PSBoundParameters.ContainsKey('SkipExport')) {
+        $SkipExport = $profileSettings.SkipExport
+    }
+    if ($ExportDays -eq 0) {
+        $ExportDays = $profileSettings.ExportDays
+    }
+    if ($profileSettings.Operations[0] -ne "All") {
+        $Operations = $profileSettings.Operations
+    }
+}
+
+# Apply unattended defaults
+if ($Unattended) {
+    if ($ExportDays -eq 0) { $ExportDays = 30 }
+    $GenerateReport = $true
+}
+
 # Setup logging using module function
 $logFile = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
 
-Write-Log "Starting WSUS monthly maintenance v2.2"
+Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
+
+# === SHOW OPERATION SUMMARY ===
+Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
+    -SkipExport $SkipExport -ExportPath $ExportPath -ExportDays $ExportDays -Unattended $Unattended
+
+# === PRE-FLIGHT CHECKS ===
+$preflightResults = Test-Prerequisites -ExportPath $ExportPath -SkipExport $SkipExport
+
+if (-not $preflightResults.Success) {
+    Write-Status "Pre-flight checks failed!" -Type Error
+    foreach ($err in $preflightResults.Errors) {
+        Write-Status "  $err" -Type Error
+        $MaintenanceResults.Errors += $err
+    }
+    $MaintenanceResults.Success = $false
+    Stop-WsusLogging
+    exit 1
+}
+
+if ($preflightResults.Warnings.Count -gt 0) {
+    foreach ($warn in $preflightResults.Warnings) {
+        Write-Status $warn -Type Warning
+        $MaintenanceResults.Warnings += $warn
+    }
+}
 
 # === CONNECT TO WSUS ===
+Write-Status "Connecting to WSUS..." -Type Phase
 Write-Log "Connecting to WSUS..."
 
-# Check and start services using module functions
-if (-not (Test-ServiceExists -ServiceName "MSSQL`$SQLEXPRESS")) {
-    Write-Error "SQL Server Express service not found. Is SQL Server installed?"
-    Stop-WsusLogging
-    exit 1
-}
-
+# Start services using module functions
 Start-SqlServerExpress | Out-Null
-
-if (-not (Test-ServiceExists -ServiceName "WSUSService")) {
-    Write-Error "WSUS Service not found. Is WSUS installed?"
-    Stop-WsusLogging
-    exit 1
-}
-
 Start-WsusServer | Out-Null
 
 try {
     [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
     Write-Log "WSUS connection successful"
-    
+    Write-Status "WSUS connection successful" -Type Success
+
     Start-Sleep -Seconds 2
     $subscription = $wsus.GetSubscription()
     Write-Log "Subscription object retrieved"
-    
+
 } catch {
-    Write-Error "Failed to connect: $($_.Exception.Message)"
+    Write-Status "Failed to connect: $($_.Exception.Message)" -Type Error
+    $MaintenanceResults.Errors += "WSUS connection failed: $($_.Exception.Message)"
+    $MaintenanceResults.Success = $false
     Stop-WsusLogging
     exit 1
 }
 
 # === SYNCHRONIZE ===
-Write-Log "Starting synchronization..."
-try {
-    $lastSync = $subscription.GetLastSynchronizationInfo()
-    if ($lastSync) {
-        Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
-    }
-    
-    $subscription.StartSynchronization()
-    Write-Log "Sync triggered, waiting for it to start..."
-    Start-Sleep -Seconds 15
-    
-    $syncIterations = 0
-    $maxIterations = 120
-    
-    do {
-        Start-Sleep -Seconds 30
-        $syncStatus = $subscription.GetSynchronizationStatus()
-        $syncProgress = $subscription.GetSynchronizationProgress()
-        
-        if ($syncStatus -eq "Running") {
-            Write-Log "Syncing: $($syncProgress.Phase) | Items: $($syncProgress.ProcessedItems)/$($syncProgress.TotalItems)"
-            $syncIterations++
-        } elseif ($syncStatus -eq "NotProcessing") {
-            Write-Log "Sync completed or not running"
-            break
-        } else {
-            Write-Log "Sync status: $syncStatus"
-            $syncIterations++
+if (Test-ShouldRunOperation "Sync" $Operations) {
+    Write-Status "Starting synchronization..." -Type Phase
+    Write-Log "Starting synchronization..."
+    $syncStart = Get-Date
+    $syncPhase = @{ Name = "Synchronization"; Status = "In Progress"; Duration = "" }
+
+    try {
+        $lastSync = $subscription.GetLastSynchronizationInfo()
+        if ($lastSync) {
+            Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
         }
-        
-        if ($syncIterations -ge $maxIterations) {
-            Write-Warning "Sync timeout after 60 minutes"
-            break
-        }
-        
-    } while ($syncStatus -eq "Running" -or $syncIterations -lt 5)
-    
-    Start-Sleep -Seconds 5
-    
-    $finalSync = $subscription.GetLastSynchronizationInfo()
-    if ($finalSync) {
-        Write-Log "Sync complete: Result=$($finalSync.Result) | New=$($finalSync.NewUpdates) | Revised=$($finalSync.RevisedUpdates)"
-        
-        if ($finalSync.Result -ne "Succeeded") {
-            Write-Warning "Sync result: $($finalSync.Result)"
-            if ($finalSync.Error) {
-                Write-Error "Sync error: $($finalSync.Error.Message)"
+
+        $subscription.StartSynchronization()
+        Write-Log "Sync triggered, waiting for it to start..."
+        Start-Sleep -Seconds 15
+
+        $syncIterations = 0
+        $maxIterations = 120
+
+        do {
+            Start-Sleep -Seconds 30
+            $syncStatus = $subscription.GetSynchronizationStatus()
+            $syncProgress = $subscription.GetSynchronizationProgress()
+
+            if ($syncStatus -eq "Running") {
+                Write-Log "Syncing: $($syncProgress.Phase) | Items: $($syncProgress.ProcessedItems)/$($syncProgress.TotalItems)"
+                $syncIterations++
+            } elseif ($syncStatus -eq "NotProcessing") {
+                Write-Log "Sync completed or not running"
+                break
+            } else {
+                Write-Log "Sync status: $syncStatus"
+                $syncIterations++
             }
+
+            if ($syncIterations -ge $maxIterations) {
+                Write-Warning "Sync timeout after 60 minutes"
+                break
+            }
+
+        } while ($syncStatus -eq "Running" -or $syncIterations -lt 5)
+
+        Start-Sleep -Seconds 5
+
+        $finalSync = $subscription.GetLastSynchronizationInfo()
+        if ($finalSync) {
+            Write-Log "Sync complete: Result=$($finalSync.Result) | New=$($finalSync.NewUpdates) | Revised=$($finalSync.RevisedUpdates)"
+
+            if ($finalSync.Result -ne "Succeeded") {
+                Write-Warning "Sync result: $($finalSync.Result)"
+                $MaintenanceResults.Warnings += "Sync result: $($finalSync.Result)"
+                if ($finalSync.Error) {
+                    Write-Error "Sync error: $($finalSync.Error.Message)"
+                }
+            }
+        } else {
+            Write-Warning "Could not retrieve final sync info"
         }
-    } else {
-        Write-Warning "Could not retrieve final sync info"
+
+        $syncDuration = [math]::Round(((Get-Date) - $syncStart).TotalMinutes, 1)
+        $syncPhase.Status = "Completed"
+        $syncPhase.Duration = "$syncDuration min"
+        Write-Status "Synchronization completed ($syncDuration min)" -Type Success
+    } catch {
+        Write-Status "Sync failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Sync failed: $($_.Exception.Message)"
+        $syncPhase.Status = "Failed"
     }
-} catch {
-    Write-Error "Sync failed: $($_.Exception.Message)"
+    $MaintenanceResults.Phases += $syncPhase
+} else {
+    Write-Status "Skipping synchronization" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
 }
 
 # === CONFIGURATION CHECK ===
@@ -328,31 +841,41 @@ if ($allUpdates.Count -gt 0) {
     Write-Warning "Proceeding with cleanup and database maintenance to improve performance"
 }
 
+# Store results for reporting
+$MaintenanceResults.DeclinedExpired = $expiredCount
+$MaintenanceResults.DeclinedSuperseded = $supersededCount
+$MaintenanceResults.DeclinedOld = $oldCount
+$MaintenanceResults.Approved = $approvedCount
+
 # === CLEANUP ===
-# Run the built-in WSUS cleanup tasks to prune obsolete data/files.
-Write-Log "Running WSUS cleanup..."
-try {
-    Import-Module UpdateServices -ErrorAction SilentlyContinue
-    
-    Write-Log "This may take 10-30 minutes for large databases..."
+if (Test-ShouldRunOperation "Cleanup" $Operations) {
+    # Run the built-in WSUS cleanup tasks to prune obsolete data/files.
+    Write-Status "Running WSUS cleanup..." -Type Phase
+    Write-Log "Running WSUS cleanup..."
+    $cleanupPhase = @{ Name = "WSUS Cleanup"; Status = "In Progress"; Duration = "" }
     $cleanupStart = Get-Date
-    
-    $cleanup = Invoke-WsusServerCleanup `
-                         -CleanupObsoleteComputers `
-                         -CleanupObsoleteUpdates `
-                         -CleanupUnneededContentFiles `
-                         -CompressUpdates `
-                         -DeclineSupersededUpdates `
-                         -DeclineExpiredUpdates `
-                         -Confirm:$false
-    
-    $cleanupDuration = [math]::Round(((Get-Date) - $cleanupStart).TotalMinutes, 1)
-    Write-Log "Cleanup completed in $cleanupDuration minutes"
-    Write-Log "Results: Obsolete Updates=$($cleanup.ObsoleteUpdatesDeleted) | Computers=$($cleanup.ObsoleteComputersDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB"
-    
-    # Additional deep cleanup for declined updates
-    Write-Log "Running deep cleanup of old declined update metadata..."
-    $deepCleanupQuery = @"
+
+    try {
+        Import-Module UpdateServices -ErrorAction SilentlyContinue
+
+        Write-Log "This may take 10-30 minutes for large databases..."
+
+        $cleanup = Invoke-WsusServerCleanup `
+                             -CleanupObsoleteComputers `
+                             -CleanupObsoleteUpdates `
+                             -CleanupUnneededContentFiles `
+                             -CompressUpdates `
+                             -DeclineSupersededUpdates `
+                             -DeclineExpiredUpdates `
+                             -Confirm:$false
+
+        $cleanupDuration = [math]::Round(((Get-Date) - $cleanupStart).TotalMinutes, 1)
+        Write-Log "Cleanup completed in $cleanupDuration minutes"
+        Write-Log "Results: Obsolete Updates=$($cleanup.ObsoleteUpdatesDeleted) | Computers=$($cleanup.ObsoleteComputersDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB"
+
+        # Additional deep cleanup for declined updates
+        Write-Log "Running deep cleanup of old declined update metadata..."
+        $deepCleanupQuery = @"
 -- Remove update status for old declined updates (keeps DB lean)
 -- Using correct schema: tbProperty has CreationDate (Microsoft's release date)
 -- Join through tbRevision to get to tbProperty
@@ -369,64 +892,81 @@ AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())  -- Microsoft released >6 mon
 SET @Deleted = @@ROWCOUNT
 
 -- Return count of declined updates using correct join
-SELECT 
+SELECT
     @Deleted AS StatusRecordsDeleted,
-    (SELECT COUNT(*) 
-     FROM tbRevision r 
+    (SELECT COUNT(*)
+     FROM tbRevision r
      INNER JOIN tbProperty p ON r.RevisionID = p.RevisionID
-     WHERE r.State = 2 
+     WHERE r.State = 2
      AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())) AS TotalOldDeclined
 "@
-    
-    try {
-        $deepResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-            -Query $deepCleanupQuery -QueryTimeout 300
-        Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
-        Write-Log "Total old declined updates (released >6mo ago): $($deepResult.TotalOldDeclined)"
-        
-        if ($deepResult.TotalOldDeclined -gt 5000) {
-            Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
-            Write-Warning "Consider running aggressive cleanup script for database optimization"
+
+        try {
+            $deepResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+                -Query $deepCleanupQuery -QueryTimeout 300
+            Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
+            Write-Log "Total old declined updates (released >6mo ago): $($deepResult.TotalOldDeclined)"
+
+            if ($deepResult.TotalOldDeclined -gt 5000) {
+                Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
+                Write-Warning "Consider running aggressive cleanup script for database optimization"
+                $MaintenanceResults.Warnings += "Large number of old declined updates: $($deepResult.TotalOldDeclined)"
+            }
+        } catch {
+            Write-Warning "Deep cleanup query failed: $($_.Exception.Message)"
         }
+
+        $cleanupPhase.Status = "Completed"
+        $cleanupPhase.Duration = "$cleanupDuration min"
+        Write-Status "Cleanup completed ($cleanupDuration min)" -Type Success
+
     } catch {
-        Write-Warning "Deep cleanup query failed: $($_.Exception.Message)"
+        Write-Status "Cleanup failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Cleanup failed: $($_.Exception.Message)"
+        $cleanupPhase.Status = "Failed"
     }
-    
-} catch {
-    Write-Warning "Cleanup failed: $($_.Exception.Message)"
-}
+    $MaintenanceResults.Phases += $cleanupPhase
 
-# === DATABASE MAINTENANCE ===
-# Index optimization and stats updates to keep SUSDB responsive.
-Write-Log "Database maintenance..."
+    # === DATABASE MAINTENANCE ===
+    # Index optimization and stats updates to keep SUSDB responsive.
+    Write-Status "Running database maintenance..." -Type Phase
+    Write-Log "Database maintenance..."
 
-# Wait for any pending WSUS operations to complete
-Write-Log "Waiting 30 seconds for WSUS operations to complete..."
-Start-Sleep -Seconds 30
+    # Wait for any pending WSUS operations to complete
+    Write-Log "Waiting 30 seconds for WSUS operations to complete..."
+    Start-Sleep -Seconds 30
 
-# Use module functions for index optimization
-try {
-    Write-Log "Optimizing indexes (may take 5-15 minutes)..."
-    $indexStart = Get-Date
+    # Use module functions for index optimization
+    try {
+        Write-Log "Optimizing indexes (may take 5-15 minutes)..."
+        $indexStart = Get-Date
 
-    $indexResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS"
+        $indexResult = Optimize-WsusIndexes -SqlInstance "localhost\SQLEXPRESS"
 
-    $indexDuration = [math]::Round(((Get-Date) - $indexStart).TotalMinutes, 1)
-    Write-Log "Index optimization complete in $indexDuration minutes (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))"
-} catch {
-    Write-Warning "Index maintenance encountered errors: $($_.Exception.Message)"
-    Write-Log "Continuing with remaining maintenance tasks..."
-}
+        $indexDuration = [math]::Round(((Get-Date) - $indexStart).TotalMinutes, 1)
+        Write-Log "Index optimization complete in $indexDuration minutes (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))"
+        Write-Status "Database maintenance completed" -Type Success
+    } catch {
+        Write-Warning "Index maintenance encountered errors: $($_.Exception.Message)"
+        Write-Log "Continuing with remaining maintenance tasks..."
+    }
 
-# Update statistics using module function
-if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
-    Write-Log "Statistics updated"
+    # Update statistics using module function
+    if (Update-WsusStatistics -SqlInstance "localhost\SQLEXPRESS") {
+        Write-Log "Statistics updated"
+    }
+} else {
+    Write-Status "Skipping cleanup" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "WSUS Cleanup"; Status = "Skipped"; Duration = "" }
 }
 
 # === ULTIMATE CLEANUP (SUPSESSION + DECLINED PURGE) ===
 # Optional heavy cleanup before backup to reduce DB size and bloat.
-if (-not $SkipUltimateCleanup) {
+if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltimateCleanup) {
+    Write-Status "Running ultimate cleanup..." -Type Phase
     Write-Log "Running ultimate cleanup steps before backup..."
+    $ultimatePhase = @{ Name = "Ultimate Cleanup"; Status = "In Progress"; Duration = "" }
+    $ultimateStart = Get-Date
 
     # Stop WSUS to reduce contention while manipulating SUSDB.
     if (Test-ServiceRunning -ServiceName "WSUSService") {
@@ -511,36 +1051,62 @@ IF @LocalUpdateID IS NOT NULL
         Write-Log "Starting WSUS Service..."
         Start-WsusServer | Out-Null
     }
+
+    $ultimateDuration = [math]::Round(((Get-Date) - $ultimateStart).TotalMinutes, 1)
+    $ultimatePhase.Status = "Completed"
+    $ultimatePhase.Duration = "$ultimateDuration min"
+    $MaintenanceResults.Phases += $ultimatePhase
+    Write-Status "Ultimate cleanup completed ($ultimateDuration min)" -Type Success
 } else {
-    Write-Log "Skipping ultimate cleanup before backup (SkipUltimateCleanup specified)."
+    Write-Status "Skipping ultimate cleanup" -Type Info
+    Write-Log "Skipping ultimate cleanup before backup (SkipUltimateCleanup specified or not selected)."
+    $MaintenanceResults.Phases += @{ Name = "Ultimate Cleanup"; Status = "Skipped"; Duration = "" }
 }
 
 # === BACKUP ===
-$backupFolder = "C:\WSUS"
-$backupFile = Join-Path $backupFolder "SUSDB_$(Get-Date -Format 'yyyyMMdd').bak"
+if (Test-ShouldRunOperation "Backup" $Operations) {
+    Write-Status "Starting database backup..." -Type Phase
+    $backupPhase = @{ Name = "Database Backup"; Status = "In Progress"; Duration = "" }
 
-if (Test-Path $backupFile) {
-    $counter = 1
-    while (Test-Path "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak") { $counter++ }
-    $backupFile = "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak"
-}
+    $backupFolder = "C:\WSUS"
+    $backupFile = Join-Path $backupFolder "SUSDB_$(Get-Date -Format 'yyyyMMdd').bak"
 
-Write-Log "Starting backup: $backupFile"
-$backupStart = Get-Date
+    if (Test-Path $backupFile) {
+        $counter = 1
+        while (Test-Path "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak") { $counter++ }
+        $backupFile = "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak"
+    }
 
-try {
-    $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
-    Write-Log "Database size: $dbSize GB"
+    Write-Log "Starting backup: $backupFile"
+    $backupStart = Get-Date
 
-    Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
-        -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
-        -QueryTimeout 0 | Out-Null
+    try {
+        $dbSize = Get-WsusDatabaseSize -SqlInstance "localhost\SQLEXPRESS"
+        Write-Log "Database size: $dbSize GB"
+        $MaintenanceResults.DatabaseSize = $dbSize
 
-    $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
-    $size = [math]::Round((Get-Item $backupFile).Length / 1MB, 2)
-    Write-Log "Backup complete: ${size}MB in ${duration} minutes"
-} catch {
-    Write-Error "Backup failed: $($_.Exception.Message)"
+        Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
+            -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+            -QueryTimeout 0 | Out-Null
+
+        $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
+        $size = [math]::Round((Get-Item $backupFile).Length / 1MB, 2)
+        Write-Log "Backup complete: ${size}MB in ${duration} minutes"
+
+        $MaintenanceResults.BackupFile = $backupFile
+        $MaintenanceResults.BackupSize = $size
+        $backupPhase.Status = "Completed"
+        $backupPhase.Duration = "$duration min"
+        Write-Status "Backup completed: ${size}MB ($duration min)" -Type Success
+    } catch {
+        Write-Status "Backup failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Backup failed: $($_.Exception.Message)"
+        $backupPhase.Status = "Failed"
+    }
+    $MaintenanceResults.Phases += $backupPhase
+} else {
+    Write-Status "Skipping backup" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "Database Backup"; Status = "Skipped"; Duration = "" }
 }
 
 # === CLEANUP OLD BACKUPS ===
@@ -589,16 +1155,23 @@ if ($allUpdates.Count -eq 0) {
 Write-Output "============================================================`n"
 
 # === DIFFERENTIAL EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
-if (-not $SkipExport -and $ExportPath) {
+if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
+    Write-Status "Starting differential export..." -Type Phase
     Write-Log "Starting differential export..."
+    $exportPhase = @{ Name = "Export"; Status = "In Progress"; Duration = "" }
+    $exportStart = Get-Date
 
-    # Prompt for days if not specified via command line
+    # Prompt for days if not specified via command line (skip in unattended mode)
     if ($ExportDays -eq 0) {
-        Write-Host ""
-        Write-Host "Differential Export Configuration" -ForegroundColor Yellow
-        Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
-        $daysInput = Read-Host "Days"
-        $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
+        if ($Unattended) {
+            $ExportDays = 30
+        } else {
+            Write-Host ""
+            Write-Host "Differential Export Configuration" -ForegroundColor Yellow
+            Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
+            $daysInput = Read-Host "Days"
+            $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
+        }
     }
     Write-Log "Export will include files modified within last $ExportDays days"
 
@@ -606,14 +1179,16 @@ if (-not $SkipExport -and $ExportPath) {
     $year = (Get-Date).ToString("yyyy")
     $month = (Get-Date).ToString("MMM")
     $day = (Get-Date).ToString("dd")
-    $exportDestination = Join-Path $ExportPath $year $month $day
+    $exportDestination = [System.IO.Path]::Combine($ExportPath, $year, $month, $day)
 
     Write-Log "Export destination: $exportDestination"
 
-    # Check if export path is accessible
-    if (-not (Test-Path (Split-Path $ExportPath -Parent))) {
-        Write-Warning "Cannot access export root: $ExportPath"
+    # Check if export path is accessible using improved test
+    if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
+        Write-Status "Cannot access export path: $ExportPath" -Type Error
         Write-Warning "Skipping export - check network connectivity"
+        $MaintenanceResults.Errors += "Export path inaccessible: $ExportPath"
+        $exportPhase.Status = "Failed"
     } else {
         # Create export directory
         if (-not (Test-Path $exportDestination)) {
@@ -658,6 +1233,7 @@ if (-not $SkipExport -and $ExportPath) {
                 Write-Log "Content export completed successfully"
             } else {
                 Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
+                $MaintenanceResults.Warnings += "Robocopy exit code: $($robocopyResult.ExitCode)"
             }
 
             # Show export stats
@@ -665,17 +1241,81 @@ if (-not $SkipExport -and $ExportPath) {
                 $exportedFiles = Get-ChildItem -Path $contentExportPath -Recurse -File -ErrorAction SilentlyContinue
                 $exportedSize = [math]::Round(($exportedFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
                 Write-Log "Exported: $($exportedFiles.Count) files ($exportedSize GB)"
+                $MaintenanceResults.ExportedFiles = $exportedFiles.Count
+                $MaintenanceResults.ExportSize = $exportedSize
             }
         } else {
             Write-Warning "WsusContent folder not found: $wsusContentSource"
         }
 
+        $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
+        $MaintenanceResults.ExportPath = $exportDestination
+        $exportPhase.Status = "Completed"
+        $exportPhase.Duration = "$exportDuration min"
         Write-Log "Export complete: $exportDestination"
+        Write-Status "Export completed ($exportDuration min)" -Type Success
     }
+    $MaintenanceResults.Phases += $exportPhase
 } elseif ($SkipExport) {
+    Write-Status "Skipping export (SkipExport specified)" -Type Info
     Write-Log "Skipping export (SkipExport specified)"
+    $MaintenanceResults.Phases += @{ Name = "Export"; Status = "Skipped"; Duration = "" }
 } else {
-    Write-Log "Skipping export (no ExportPath specified)"
+    Write-Status "Skipping export" -Type Info
+    Write-Log "Skipping export (no ExportPath specified or not selected)"
+    $MaintenanceResults.Phases += @{ Name = "Export"; Status = "Skipped"; Duration = "" }
+}
+
+# === FINALIZE RESULTS ===
+$MaintenanceResults.EndTime = Get-Date
+$totalDuration = [math]::Round(($MaintenanceResults.EndTime - $MaintenanceResults.StartTime).TotalMinutes, 1)
+
+# Check if any errors occurred
+if ($MaintenanceResults.Errors.Count -gt 0) {
+    $MaintenanceResults.Success = $false
+}
+
+# === FINAL SUMMARY ===
+Write-Host ""
+Write-Host "  ╔════════════════════════════════════════════════════════════╗" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
+Write-Host "  ║                   MAINTENANCE COMPLETE                      ║" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
+Write-Host "  ╚════════════════════════════════════════════════════════════╝" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
+Write-Host ""
+Write-Status "Total duration: $totalDuration minutes" -Type Info
+Write-Status "Declined: Expired=$($MaintenanceResults.DeclinedExpired) | Superseded=$($MaintenanceResults.DeclinedSuperseded) | Old=$($MaintenanceResults.DeclinedOld)" -Type Info
+Write-Status "Approved: $($MaintenanceResults.Approved) updates" -Type Info
+
+if ($MaintenanceResults.DatabaseSize -gt 0) {
+    Write-Status "Database: $($MaintenanceResults.DatabaseSize) GB" -Type Info
+}
+if ($MaintenanceResults.BackupFile) {
+    Write-Status "Backup: $($MaintenanceResults.BackupFile) ($($MaintenanceResults.BackupSize) MB)" -Type Info
+}
+if ($MaintenanceResults.ExportPath) {
+    Write-Status "Export: $($MaintenanceResults.ExportPath)" -Type Info
+}
+
+if ($MaintenanceResults.Warnings.Count -gt 0) {
+    Write-Host ""
+    Write-Status "Warnings: $($MaintenanceResults.Warnings.Count)" -Type Warning
+}
+
+if ($MaintenanceResults.Errors.Count -gt 0) {
+    Write-Host ""
+    Write-Status "Errors: $($MaintenanceResults.Errors.Count)" -Type Error
+    foreach ($err in $MaintenanceResults.Errors) {
+        Write-Status "  $err" -Type Error
+    }
+}
+
+Write-Host ""
+
+# === GENERATE HTML REPORT ===
+if ($GenerateReport) {
+    Write-Status "Generating HTML report..." -Type Info
+    $reportFile = New-MaintenanceReport -Results $MaintenanceResults -OutputPath "C:\WSUS\Logs"
+    Write-Status "Report saved: $reportFile" -Type Success
+    Write-Log "HTML report generated: $reportFile"
 }
 
 Write-Log "Maintenance complete"
