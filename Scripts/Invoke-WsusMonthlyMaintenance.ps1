@@ -46,7 +46,10 @@ param(
     [int]$ExportDays = 0,
 
     # Skip the export step entirely
-    [switch]$SkipExport
+    [switch]$SkipExport,
+
+    # SQL Server credentials for database operations (prompted if not provided)
+    [System.Management.Automation.PSCredential]$SqlCredential
 )
 
 # Import shared modules
@@ -79,7 +82,39 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.1"
+$ScriptVersion = "3.0.3"
+
+# === SQL CREDENTIAL HANDLING ===
+# For unattended/scheduled task mode, use stored credential or environment variable
+if (-not $SqlCredential) {
+    # Try to load stored credential using module function
+    $SqlCredential = Get-WsusSqlCredential -Quiet
+    if ($SqlCredential) {
+        Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
+    }
+
+    # If still no credential and not unattended, prompt
+    if (-not $SqlCredential -and -not $Unattended) {
+        Write-Host ""
+        Write-Host "SQL Server credentials required for database operations." -ForegroundColor Yellow
+        Write-Host "Enter credentials for SQL Server access (e.g., dod_admin):" -ForegroundColor Yellow
+        $SqlCredential = Get-Credential -Message "SQL Server credentials for SUSDB access" -UserName "dod_admin"
+
+        # Validate credential was provided
+        if ($SqlCredential -and $SqlCredential.Password.Length -eq 0) {
+            Write-Warning "Empty password provided - SQL operations may fail"
+        }
+    }
+
+    # If unattended and no credential available, warn but continue (WSUS API calls will still work)
+    if (-not $SqlCredential -and $Unattended) {
+        Write-Warning "No SQL credential available. Direct SQL operations will be skipped."
+        Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for unattended use."
+    }
+}
+
+# Store credential availability flag for later use
+$script:HasSqlCredential = ($null -ne $SqlCredential)
 
 # === HELPER FUNCTIONS ===
 
@@ -765,15 +800,23 @@ SELECT
 '@
 
         try {
-            $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                -Query $deepCleanupQuery -QueryTimeout 300
-            Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
-            Write-Log "Total old declined updates (released over 6mo ago): $($deepResult.TotalOldDeclined)"
+            if ($SqlCredential) {
+                $deepResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                    -Query $deepCleanupQuery -QueryTimeout 300 `
+                    -Credential $SqlCredential -TrustServerCertificate
+            } else {
+                Write-Log "Skipping deep cleanup - no SQL credential available"
+                $deepResult = $null
+            }
+            if ($deepResult) {
+                Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
+                Write-Log "Total old declined updates (released over 6mo ago): $($deepResult.TotalOldDeclined)"
 
-            if ($deepResult.TotalOldDeclined -gt 5000) {
-                Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
-                Write-Warning "Consider running aggressive cleanup script for database optimization"
-                $MaintenanceResults.Warnings += "Large number of old declined updates: $($deepResult.TotalOldDeclined)"
+                if ($deepResult.TotalOldDeclined -gt 5000) {
+                    Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
+                    Write-Warning "Consider running aggressive cleanup script for database optimization"
+                    $MaintenanceResults.Warnings += "Large number of old declined updates: $($deepResult.TotalOldDeclined)"
+                }
             }
         } catch {
             Write-Warning "Deep cleanup query failed: $($_.Exception.Message)"
@@ -860,7 +903,7 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
             Select-Object -ExpandProperty Id |
             ForEach-Object { $_.UpdateId })
 
-        if ($declinedIDs.Count -gt 0) {
+        if ($declinedIDs.Count -gt 0 -and $SqlCredential) {
             Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
 
             $batchSize = 100
@@ -885,7 +928,8 @@ IF @LocalUpdateID IS NOT NULL
                     try {
                         Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                             -Query $deleteQuery -QueryTimeout 300 `
-                            -Variable "UpdateIdParam='$updateId'" -ErrorAction SilentlyContinue | Out-Null
+                            -Variable "UpdateIdParam='$updateId'" `
+                            -Credential $SqlCredential -TrustServerCertificate -ErrorAction SilentlyContinue | Out-Null
                         $totalDeleted++
                     } catch {
                         # Continue on errors to avoid aborting the batch.
@@ -899,6 +943,8 @@ IF @LocalUpdateID IS NOT NULL
             }
 
             Write-Log "Declined update purge complete: $totalDeleted deleted"
+        } elseif ($declinedIDs.Count -gt 0 -and -not $SqlCredential) {
+            Write-Log "Skipping declined update deletion - no SQL credential available"
         } else {
             Write-Log "No declined updates found to delete"
         }
@@ -951,9 +997,14 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         Write-Log "Database size: $dbSize GB"
         $MaintenanceResults.DatabaseSize = $dbSize
 
-        Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-            -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
-            -QueryTimeout 0 | Out-Null
+        if ($SqlCredential) {
+            Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -QueryTimeout 0 -Credential $SqlCredential -TrustServerCertificate | Out-Null
+        } else {
+            Write-Warning "Cannot perform database backup - no SQL credential available"
+            throw "SQL credential required for backup"
+        }
 
         $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
         $size = [math]::Round((Get-Item $backupFile).Length / 1MB, 2)
