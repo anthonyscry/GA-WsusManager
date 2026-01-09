@@ -55,13 +55,63 @@ Write-Log "Using sqlcmd: $SqlCmdExe" "Gray"
 Write-Host ""
 Write-Host "Where is the WSUS export located?" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Examples:" -ForegroundColor Gray
-Write-Host "  C:\WSUS\Backup\2026\Jan     (local backup)"
-Write-Host "  E:\2026\Jan                  (USB/Apricorn drive)"
-Write-Host "  \\server\share\2026\Jan     (network share)"
-Write-Host ""
 
-$exportPath = Read-Host "Enter export folder path"
+# Auto-detect current year/month folder in common locations
+$year = (Get-Date).ToString("yyyy")
+$month = (Get-Date).ToString("MMM")
+$searchPaths = @(
+    "C:\WSUS\Backup\$year\$month",
+    "C:\WSUS\Backup\$year",
+    "D:\WSUS-Exports\$year\$month",
+    "E:\$year\$month",
+    "F:\$year\$month"
+)
+
+$detectedPath = $null
+foreach ($path in $searchPaths) {
+    if (Test-Path $path) {
+        # Look for the most recent _Updates folder or use the path directly
+        $updateFolders = Get-ChildItem -Path $path -Directory -Filter "*_Updates" -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+
+        if ($updateFolders) {
+            $detectedPath = $updateFolders.FullName
+            break
+        } elseif (Test-Path (Join-Path $path "WsusContent")) {
+            $detectedPath = $path
+            break
+        }
+    }
+}
+
+if ($detectedPath) {
+    Write-Host "Auto-detected export folder:" -ForegroundColor Green
+    Write-Host "  $detectedPath" -ForegroundColor Cyan
+    Write-Host ""
+    $useDetected = Read-Host "Use this folder? (Y/n)"
+
+    if ($useDetected -in @("Y", "y", "")) {
+        $exportPath = $detectedPath
+    } else {
+        Write-Host ""
+        Write-Host "Examples:" -ForegroundColor Gray
+        Write-Host "  C:\WSUS\Backup\2026\Jan\9_Updates  (local backup)"
+        Write-Host "  E:\2026\Jan\9_Updates               (USB/Apricorn drive)"
+        Write-Host "  \\server\share\2026\Jan            (network share)"
+        Write-Host ""
+        $exportPath = Read-Host "Enter export folder path"
+    }
+} else {
+    Write-Host "No export folder auto-detected for $year\$month" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Examples:" -ForegroundColor Gray
+    Write-Host "  C:\WSUS\Backup\2026\Jan\9_Updates  (local backup)"
+    Write-Host "  E:\2026\Jan\9_Updates               (USB/Apricorn drive)"
+    Write-Host "  \\server\share\2026\Jan            (network share)"
+    Write-Host ""
+    $exportPath = Read-Host "Enter export folder path"
+}
 
 if (-not $exportPath) {
     Write-Log "ERROR: No path provided" "Red"
