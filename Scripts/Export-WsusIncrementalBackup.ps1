@@ -98,7 +98,8 @@ if (-not (Test-Path $exportPath)) {
     New-Item -Path $exportPath -ItemType Directory -Force | Out-Null
 }
 
-# Create content subfolder
+# Content will be copied to WsusContent subfolder (mirrors C:\WSUS\WsusContent structure)
+$wsusContentSource = Join-Path $ContentPath "WsusContent"
 $contentExportPath = Join-Path $exportPath "WsusContent"
 if (-not (Test-Path $contentExportPath)) {
     New-Item -Path $contentExportPath -ItemType Directory -Force | Out-Null
@@ -159,7 +160,7 @@ Write-Host "  Using MAXAGE: $maxAgeDays days"
 # /NFL = no file list (use /V for verbose)
 
 $robocopyArgs = @(
-    "`"$ContentPath`""
+    "`"$wsusContentSource`""
     "`"$contentExportPath`""
     "/E"
     "/MAXAGE:$maxAgeDays"
@@ -218,15 +219,15 @@ IMPORT INSTRUCTIONS (on airgapped WSUS server)
 
 STEP 1: Copy this folder to your airgapped server (USB, network, etc.)
 
-STEP 2: Run the restore script which will auto-detect the folder:
+STEP 2: Copy entire export folder INTO C:\WSUS (SAFE MERGE - keeps existing files):
+        robocopy "E:\$year\$month\$exportFolder" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+
+        Or run the restore script for guided restore:
         .\Scripts\Restore-WsusDatabase.ps1
 
-        Or manually merge content (SAFE - keeps existing files):
-        robocopy "E:\$year\$month\$exportFolder\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-
-  IMPORTANT: Content is restored directly to C:\WSUS (not nested).
-             The WsusContent folder is just a container - its contents
-             merge with your existing C:\WSUS folder.
+  RESULT: This copies everything into C:\WSUS:
+          - SUSDB.bak -> C:\WSUS\SUSDB.bak
+          - WsusContent\ -> C:\WSUS\WsusContent\
 
   KEY FLAGS:
   - /E    = Copy subdirectories including empty ones
@@ -266,7 +267,11 @@ Get-ChildItem -Path $exportPath | ForEach-Object {
 Write-Host ""
 Write-Host "To import on destination server (SAFE MERGE - won't delete existing files):" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  robocopy `"$contentExportPath`" `"C:\WSUS`" /E /MT:16 /R:2 /W:5 /XO /LOG:`"C:\WSUS\Logs\Import.log`" /TEE" -ForegroundColor Cyan
+Write-Host "  robocopy `"$exportPath`" `"C:\WSUS`" /E /MT:16 /R:2 /W:5 /XO /LOG:`"C:\WSUS\Logs\Import.log`" /TEE" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "This copies the entire export folder INTO C:\WSUS:" -ForegroundColor Gray
+Write-Host "  - SUSDB.bak -> C:\WSUS\SUSDB.bak" -ForegroundColor Gray
+Write-Host "  - WsusContent\ -> C:\WSUS\WsusContent\" -ForegroundColor Gray
 Write-Host ""
 Write-Host "See IMPORT_INSTRUCTIONS.txt in the export folder for full details." -ForegroundColor Gray
 Write-Host ""
