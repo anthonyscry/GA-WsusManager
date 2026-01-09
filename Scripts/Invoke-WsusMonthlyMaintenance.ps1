@@ -1199,9 +1199,11 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
         # Copy database backup to archive
         Write-Log "[4/4] Copying differential to archive ($year/$month)..."
-        if (Test-Path $backupFile) {
+        if ($backupFile -and (Test-Path $backupFile)) {
             Copy-Item -Path $backupFile -Destination $archiveDestination -Force
             Write-Log "Database copied to archive: $(Split-Path $backupFile -Leaf)"
+        } else {
+            Write-Warning "No database backup to copy to archive"
         }
 
         # Differential copy of content to archive using robocopy with MAXAGE
