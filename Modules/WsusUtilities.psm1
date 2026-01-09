@@ -211,6 +211,107 @@ function Test-AdminPrivileges {
 }
 
 # ===========================
+# ERROR HANDLING FUNCTIONS
+# ===========================
+
+function Write-LogError {
+    <#
+    .SYNOPSIS
+        Writes an error message to both console and log
+
+    .PARAMETER Message
+        The error message to write
+
+    .PARAMETER Exception
+        Optional exception object to include details from
+
+    .PARAMETER Throw
+        If true, throws the error after logging
+    #>
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Message,
+
+        [System.Exception]$Exception,
+
+        [switch]$Throw
+    )
+
+    $fullMessage = if ($Exception) {
+        "$Message - $($Exception.Message)"
+    } else {
+        $Message
+    }
+
+    Write-Log "ERROR: $fullMessage"
+    Write-Failure "ERROR: $fullMessage"
+
+    if ($Throw) {
+        throw $fullMessage
+    }
+}
+
+function Write-LogWarning {
+    <#
+    .SYNOPSIS
+        Writes a warning message to both console and log
+
+    .PARAMETER Message
+        The warning message to write
+    #>
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Message
+    )
+
+    Write-Log "WARNING: $Message"
+    Write-WsusWarning "WARNING: $Message"
+}
+
+function Invoke-WithErrorHandling {
+    <#
+    .SYNOPSIS
+        Executes a script block with standardized error handling
+
+    .PARAMETER ScriptBlock
+        The code to execute
+
+    .PARAMETER ErrorMessage
+        Message to display if an error occurs
+
+    .PARAMETER ContinueOnError
+        If true, continues execution after an error (default: false)
+
+    .PARAMETER ReturnDefault
+        Value to return if an error occurs (when ContinueOnError is true)
+
+    .EXAMPLE
+        $result = Invoke-WithErrorHandling -ScriptBlock { Get-Service "WSUSService" } -ErrorMessage "Failed to get WSUS service"
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$ScriptBlock,
+
+        [string]$ErrorMessage = "An error occurred",
+
+        [switch]$ContinueOnError,
+
+        $ReturnDefault = $null
+    )
+
+    try {
+        return & $ScriptBlock
+    } catch {
+        if ($ContinueOnError) {
+            Write-LogWarning "$ErrorMessage : $($_.Exception.Message)"
+            return $ReturnDefault
+        } else {
+            Write-LogError $ErrorMessage -Exception $_.Exception -Throw
+        }
+    }
+}
+
+# ===========================
 # SQL HELPER FUNCTIONS
 # ===========================
 
@@ -315,6 +416,9 @@ Export-ModuleMember -Function @(
     'Write-WsusWarning',
     'Write-Info',
     'Write-Log',
+    'Write-LogError',
+    'Write-LogWarning',
+    'Invoke-WithErrorHandling',
     'Start-WsusLogging',
     'Stop-WsusLogging',
     'Test-AdminPrivileges',
