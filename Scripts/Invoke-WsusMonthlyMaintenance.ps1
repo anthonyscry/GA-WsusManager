@@ -342,61 +342,65 @@ function New-MaintenanceReport {
     $statusColor = if ($Results.Success) { "#28a745" } else { "#dc3545" }
     $statusText = if ($Results.Success) { "Completed Successfully" } else { "Completed with Errors" }
 
-    # Build phases HTML
-    $phasesHtml = ""
+    # Build phases HTML using StringBuilder for safety
+    $phasesBuilder = New-Object System.Text.StringBuilder
     foreach ($phase in $Results.Phases) {
         $phaseClass = switch ($phase.Status) { "Completed" { "completed" } "Skipped" { "skipped" } "Failed" { "failed" } default { "" } }
         $durationText = if ($phase.Duration) { "($($phase.Duration))" } else { "" }
-        $phasesHtml += "            <div class='phase $phaseClass'><strong>$($phase.Name)</strong> - $($phase.Status) $durationText</div>`n"
+        [void]$phasesBuilder.AppendLine("            <div class='phase $phaseClass'><strong>$($phase.Name)</strong> - $($phase.Status) $durationText</div>")
     }
+    $phasesHtml = $phasesBuilder.ToString()
 
     # Build export section HTML (only if export was performed)
     $exportHtml = ""
     if ($Results.ExportPath) {
-        $exportHtml = @"
-        <h2>Export</h2>
-        <table>
-            <tr><th>Metric</th><th>Value</th></tr>
-            <tr><td>Export Path</td><td>$($Results.ExportPath)</td></tr>
-            <tr><td>Files Exported</td><td>$($Results.ExportedFiles)</td></tr>
-            <tr><td>Export Size</td><td>$($Results.ExportSize) GB</td></tr>
-        </table>
-"@
+        $exportBuilder = New-Object System.Text.StringBuilder
+        [void]$exportBuilder.AppendLine("        <h2>Export</h2>")
+        [void]$exportBuilder.AppendLine("        <table>")
+        [void]$exportBuilder.AppendLine("            <tr><th>Metric</th><th>Value</th></tr>")
+        [void]$exportBuilder.AppendLine("            <tr><td>Export Path</td><td>$($Results.ExportPath)</td></tr>")
+        [void]$exportBuilder.AppendLine("            <tr><td>Files Exported</td><td>$($Results.ExportedFiles)</td></tr>")
+        [void]$exportBuilder.AppendLine("            <tr><td>Export Size</td><td>$($Results.ExportSize) GB</td></tr>")
+        [void]$exportBuilder.AppendLine("        </table>")
+        $exportHtml = $exportBuilder.ToString()
     }
 
     # Build warnings section HTML (only if warnings exist)
     $warningsHtml = ""
     if ($Results.Warnings.Count -gt 0) {
-        $warningItems = ($Results.Warnings | ForEach-Object { "            <li>$_</li>" }) -join "`n"
-        $warningsHtml = @"
-        <h2>Warnings</h2>
-        <ul>
-$warningItems
-        </ul>
-"@
+        $warningsBuilder = New-Object System.Text.StringBuilder
+        [void]$warningsBuilder.AppendLine("        <h2>Warnings</h2>")
+        [void]$warningsBuilder.AppendLine("        <ul>")
+        foreach ($warning in $Results.Warnings) {
+            [void]$warningsBuilder.AppendLine("            <li>$warning</li>")
+        }
+        [void]$warningsBuilder.AppendLine("        </ul>")
+        $warningsHtml = $warningsBuilder.ToString()
     }
 
     # Build errors section HTML (only if errors exist)
     $errorsHtml = ""
     if ($Results.Errors.Count -gt 0) {
-        $errorItems = ($Results.Errors | ForEach-Object { "            <li>$_</li>" }) -join "`n"
-        $errorsHtml = @"
-        <h2>Errors</h2>
-        <ul style="color: #dc3545;">
-$errorItems
-        </ul>
-"@
+        $errorsBuilder = New-Object System.Text.StringBuilder
+        [void]$errorsBuilder.AppendLine("        <h2>Errors</h2>")
+        [void]$errorsBuilder.AppendLine("        <ul style=`"color: #dc3545;`">")
+        foreach ($err in $Results.Errors) {
+            [void]$errorsBuilder.AppendLine("            <li>$err</li>")
+        }
+        [void]$errorsBuilder.AppendLine("        </ul>")
+        $errorsHtml = $errorsBuilder.ToString()
     }
 
     # Build the complete HTML report
     $reportDate = Get-Date -Format 'yyyy-MM-dd'
     $reportDateTime = Get-Date -Format 'dddd, MMMM dd, yyyy HH:mm:ss'
 
-    $html = @"
+    # Use single-quoted here-string for template to avoid parsing issues
+    $htmlTemplate = @'
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WSUS Maintenance Report - $reportDate</title>
+    <title>WSUS Maintenance Report - {{REPORT_DATE}}</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 40px; background: #f5f5f5; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -424,51 +428,72 @@ $errorItems
 <body>
     <div class="container">
         <h1>WSUS Maintenance Report</h1>
-        <p><strong>Date:</strong> $reportDateTime</p>
-        <p><strong>Server:</strong> $env:COMPUTERNAME</p>
-        <p><strong>Status:</strong> <span class="status-badge" style="background: $statusColor;">$statusText</span></p>
+        <p><strong>Date:</strong> {{REPORT_DATETIME}}</p>
+        <p><strong>Server:</strong> {{COMPUTERNAME}}</p>
+        <p><strong>Status:</strong> <span class="status-badge" style="background: {{STATUS_COLOR}};">{{STATUS_TEXT}}</span></p>
 
         <h2>Summary Metrics</h2>
         <div class="metrics-grid">
             <div class="metric-box">
-                <div class="metric">$($Results.DeclinedExpired)</div>
+                <div class="metric">{{DECLINED_EXPIRED}}</div>
                 <div class="metric-label">Expired Declined</div>
             </div>
             <div class="metric-box">
-                <div class="metric">$($Results.DeclinedSuperseded)</div>
+                <div class="metric">{{DECLINED_SUPERSEDED}}</div>
                 <div class="metric-label">Superseded Declined</div>
             </div>
             <div class="metric-box">
-                <div class="metric">$($Results.DeclinedOld)</div>
+                <div class="metric">{{DECLINED_OLD}}</div>
                 <div class="metric-label">Old Declined</div>
             </div>
             <div class="metric-box">
-                <div class="metric">$($Results.Approved)</div>
+                <div class="metric">{{APPROVED}}</div>
                 <div class="metric-label">Updates Approved</div>
             </div>
         </div>
 
         <h2>Operations</h2>
-$phasesHtml
+{{PHASES_HTML}}
         <h2>Database</h2>
         <table>
             <tr><th>Metric</th><th>Value</th></tr>
-            <tr><td>Database Size</td><td>$($Results.DatabaseSize) GB</td></tr>
-            <tr><td>Backup File</td><td>$($Results.BackupFile)</td></tr>
-            <tr><td>Backup Size</td><td>$($Results.BackupSize) MB</td></tr>
+            <tr><td>Database Size</td><td>{{DATABASE_SIZE}} GB</td></tr>
+            <tr><td>Backup File</td><td>{{BACKUP_FILE}}</td></tr>
+            <tr><td>Backup Size</td><td>{{BACKUP_SIZE}} MB</td></tr>
         </table>
 
-$exportHtml
-$warningsHtml
-$errorsHtml
+{{EXPORT_HTML}}
+{{WARNINGS_HTML}}
+{{ERRORS_HTML}}
         <div class="footer">
-            <p>Generated by WSUS Monthly Maintenance Script v$ScriptVersion</p>
-            <p>Report file: $reportFile</p>
+            <p>Generated by WSUS Monthly Maintenance Script v{{SCRIPT_VERSION}}</p>
+            <p>Report file: {{REPORT_FILE}}</p>
         </div>
     </div>
 </body>
 </html>
-"@
+'@
+
+    # Replace placeholders with actual values
+    $html = $htmlTemplate
+    $html = $html.Replace('{{REPORT_DATE}}', $reportDate)
+    $html = $html.Replace('{{REPORT_DATETIME}}', $reportDateTime)
+    $html = $html.Replace('{{COMPUTERNAME}}', $env:COMPUTERNAME)
+    $html = $html.Replace('{{STATUS_COLOR}}', $statusColor)
+    $html = $html.Replace('{{STATUS_TEXT}}', $statusText)
+    $html = $html.Replace('{{DECLINED_EXPIRED}}', [string]$Results.DeclinedExpired)
+    $html = $html.Replace('{{DECLINED_SUPERSEDED}}', [string]$Results.DeclinedSuperseded)
+    $html = $html.Replace('{{DECLINED_OLD}}', [string]$Results.DeclinedOld)
+    $html = $html.Replace('{{APPROVED}}', [string]$Results.Approved)
+    $html = $html.Replace('{{DATABASE_SIZE}}', [string]$Results.DatabaseSize)
+    $html = $html.Replace('{{BACKUP_FILE}}', [string]$Results.BackupFile)
+    $html = $html.Replace('{{BACKUP_SIZE}}', [string]$Results.BackupSize)
+    $html = $html.Replace('{{PHASES_HTML}}', $phasesHtml)
+    $html = $html.Replace('{{EXPORT_HTML}}', $exportHtml)
+    $html = $html.Replace('{{WARNINGS_HTML}}', $warningsHtml)
+    $html = $html.Replace('{{ERRORS_HTML}}', $errorsHtml)
+    $html = $html.Replace('{{SCRIPT_VERSION}}', $ScriptVersion)
+    $html = $html.Replace('{{REPORT_FILE}}', $reportFile)
 
     $html | Out-File -FilePath $reportFile -Encoding UTF8
     return $reportFile
