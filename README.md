@@ -1,6 +1,8 @@
 # WSUS + SQL Express (2022) Automation
 
 **Author:** Tony Tran, ISSO, GA-ASI
+**Version:** 3.0.0
+**Date:** 2026-01-09
 
 This repository contains a set of PowerShell scripts to deploy a **WSUS server backed by SQL Server Express 2022**, validate content paths/permissions, and run ongoing maintenance.
 
@@ -13,7 +15,7 @@ If you downloaded these scripts from the internet, run these commands once befor
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Unblock downloaded files (removes internet zone identifier)
-Get-ChildItem -Path "C:\WSUS\Scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-File
+Get-ChildItem -Path "C:\WSUS\wsus-sql" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 ```
 
 ## Repository Structure
@@ -48,10 +50,14 @@ DATABASE
 
 MAINTENANCE
   .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+    -Unattended                          # No prompts, uses defaults (for scheduled tasks)
+    -Profile <Quick|Full|SyncOnly>       # Preset configuration profiles
+    -Operations <Sync,Cleanup,...>       # Run specific phases only
     -ExportPath <path>                   # Export destination (default: \\lab-hyperv\d\WSUS-Exports)
     -ExportDays <n>                      # Days for differential export (default: prompts, 30)
     -SkipExport                          # Skip export step entirely
     -SkipUltimateCleanup                 # Skip heavy cleanup before backup
+    -GenerateReport                      # Generate HTML report after completion
   -Cleanup -Force                        # Deep database cleanup (menu only)
 
 EXPORT/TRANSFER
@@ -207,20 +213,35 @@ The main script handles all WSUS operations via switches or interactive menu.
 #### `Scripts/Invoke-WsusMonthlyMaintenance.ps1`
 - **What it does:** Monthly maintenance (sync, decline, cleanup, backup, export)
 - **Where to run it:** On the **online/upstream WSUS server**
-- **New:** Includes differential export with year/month/day folder structure
+- **Features:** Differential export with year/month/day folder structure, multiple run profiles
 
 **Parameters:**
-- `-ExportPath <path>`: Export destination (default: `\\lab-hyperv\d\WSUS-Exports`)
-- `-ExportDays <n>`: Days for differential export (default: prompts user, 30)
-- `-SkipExport`: Skip the export step entirely
-- `-SkipUltimateCleanup`: Skip heavy cleanup before backup
+| Parameter | Description |
+|-----------|-------------|
+| `-Unattended` | No prompts, uses defaults - ideal for scheduled tasks |
+| `-Profile` | Preset config: `Quick`, `Full`, or `SyncOnly` |
+| `-Operations` | Run specific phases: `Sync`, `Cleanup`, `UltimateCleanup`, `Backup`, `Export`, `All` |
+| `-ExportPath <path>` | Export destination (default: `\\lab-hyperv\d\WSUS-Exports`) |
+| `-ExportDays <n>` | Days for differential export (default: prompts user, 30) |
+| `-SkipExport` | Skip the export step entirely |
+| `-SkipUltimateCleanup` | Skip heavy cleanup before backup |
+| `-GenerateReport` | Generate HTML report after completion |
 
 ```powershell
-# Run with default export (prompts for days)
+# Interactive mode (prompts for days)
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1
 
-# Run with 14-day differential export
-.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -ExportDays 14
+# Unattended mode for scheduled tasks (no prompts)
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Unattended -ExportDays 30
+
+# Quick profile (sync + basic cleanup only)
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Profile Quick
+
+# Full profile with HTML report
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Profile Full -GenerateReport
+
+# Run specific operations only
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Operations Sync,Backup
 
 # Skip export entirely
 .\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -SkipExport
@@ -252,7 +273,7 @@ The main script handles all WSUS operations via switches or interactive menu.
 | Restore Database | `.\Invoke-WsusManagement.ps1 -Restore` |
 | Copy Exports from Lab | Menu option 3 (interactive only) |
 | Monthly Maintenance | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1` |
-| Monthly Maintenance + Export | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -ExportDays 30` |
+| Monthly Maintenance (Scheduled) | `.\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -Unattended -ExportDays 30` |
 | Export for Airgapped | `.\Invoke-WsusManagement.ps1 -Export` |
 | Health Check | `.\Invoke-WsusManagement.ps1 -Health` |
 | Health + Repair | `.\Invoke-WsusManagement.ps1 -Repair` |
