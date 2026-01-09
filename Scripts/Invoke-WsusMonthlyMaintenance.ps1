@@ -203,28 +203,28 @@ function Test-ExportPathAccess {
 function Show-MainMenu {
     Clear-Host
     Write-Host ""
-    Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "  ║         WSUS Monthly Maintenance v$ScriptVersion                ║" -ForegroundColor Cyan
-    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [1] Full Maintenance                                    ║" -ForegroundColor Cyan
-    Write-Host "  ║      Sync → Cleanup → Ultimate Cleanup → Backup → Export ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [2] Quick Maintenance                                   ║" -ForegroundColor Cyan
-    Write-Host "  ║      Sync → Cleanup → Backup (skip heavy cleanup)        ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [3] Sync Only                                           ║" -ForegroundColor Cyan
-    Write-Host "  ║      Synchronize and approve updates only                ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [4] Backup & Export Only                                ║" -ForegroundColor Cyan
-    Write-Host "  ║      Skip sync/cleanup, just backup and export           ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [5] Database Maintenance Only                           ║" -ForegroundColor Cyan
-    Write-Host "  ║      Cleanup + index optimization (no sync/backup)       ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ║  [Q] Quit                                                ║" -ForegroundColor Cyan
-    Write-Host "  ║                                                          ║" -ForegroundColor Cyan
-    Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "  +==========================================================+" -ForegroundColor Cyan
+    Write-Host "  |         WSUS Monthly Maintenance v$ScriptVersion                |" -ForegroundColor Cyan
+    Write-Host "  +==========================================================+" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [1] Full Maintenance                                    |" -ForegroundColor Cyan
+    Write-Host "  |      Sync -> Cleanup -> Ultimate Cleanup -> Backup -> Export |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [2] Quick Maintenance                                   |" -ForegroundColor Cyan
+    Write-Host "  |      Sync -> Cleanup -> Backup (skip heavy cleanup)      |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [3] Sync Only                                           |" -ForegroundColor Cyan
+    Write-Host "  |      Synchronize and approve updates only                |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [4] Backup & Export Only                                |" -ForegroundColor Cyan
+    Write-Host "  |      Skip sync/cleanup, just backup and export           |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [5] Database Maintenance Only                           |" -ForegroundColor Cyan
+    Write-Host "  |      Cleanup + index optimization (no sync/backup)       |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  |  [Q] Quit                                                |" -ForegroundColor Cyan
+    Write-Host "  |                                                          |" -ForegroundColor Cyan
+    Write-Host "  +==========================================================+" -ForegroundColor Cyan
     Write-Host ""
 
     $choice = Read-Host "  Select option"
@@ -283,9 +283,9 @@ function Show-OperationSummary {
     )
 
     Write-Host ""
-    Write-Host "  ┌────────────────────────────────────────────────────────────┐" -ForegroundColor White
-    Write-Host "  │  WSUS Monthly Maintenance v$ScriptVersion                         │" -ForegroundColor White
-    Write-Host "  └────────────────────────────────────────────────────────────┘" -ForegroundColor White
+    Write-Host "  +------------------------------------------------------------+" -ForegroundColor White
+    Write-Host "  |  WSUS Monthly Maintenance v$ScriptVersion                         |" -ForegroundColor White
+    Write-Host "  +------------------------------------------------------------+" -ForegroundColor White
     Write-Host ""
 
     # Build operation flow
@@ -299,7 +299,7 @@ function Show-OperationSummary {
     if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport) { $flow += "Export" }
 
     Write-Host "  Operations:  " -NoNewline -ForegroundColor Gray
-    Write-Host ($flow -join " → ") -ForegroundColor Cyan
+    Write-Host ($flow -join " -> ") -ForegroundColor Cyan
 
     if (-not $SkipExport -and $ExportPath) {
         $year = (Get-Date).ToString("yyyy")
@@ -724,7 +724,7 @@ if (Test-ShouldRunOperation "Cleanup" $Operations) {
 
         # Additional deep cleanup for declined updates
         Write-Log "Running deep cleanup of old declined update metadata..."
-        $deepCleanupQuery = @"
+        $deepCleanupQuery = @'
 -- Remove update status for old declined updates (keeps DB lean)
 -- Using correct schema: tbProperty has CreationDate (Microsoft's release date)
 -- Join through tbRevision to get to tbProperty
@@ -736,7 +736,7 @@ FROM tbUpdateStatusPerComputer usc
 INNER JOIN tbRevision r ON usc.LocalUpdateID = r.LocalUpdateID
 INNER JOIN tbProperty p ON r.RevisionID = p.RevisionID
 WHERE r.State = 2  -- Declined state
-AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())  -- Microsoft released >6 months ago
+AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())  -- Microsoft released over 6 months ago
 
 SET @Deleted = @@ROWCOUNT
 
@@ -748,7 +748,7 @@ SELECT
      INNER JOIN tbProperty p ON r.RevisionID = p.RevisionID
      WHERE r.State = 2
      AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())) AS TotalOldDeclined
-"@
+'@
 
         try {
             $deepResult = Invoke-Sqlcmd -ServerInstance "localhost\SQLEXPRESS" -Database SUSDB `
@@ -1126,9 +1126,10 @@ if ($MaintenanceResults.Errors.Count -gt 0) {
 
 # === FINAL SUMMARY ===
 Write-Host ""
-Write-Host "  ╔════════════════════════════════════════════════════════════╗" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
-Write-Host "  ║                   MAINTENANCE COMPLETE                      ║" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
-Write-Host "  ╚════════════════════════════════════════════════════════════╝" -ForegroundColor $(if ($MaintenanceResults.Success) { "Green" } else { "Red" })
+$summaryColor = if ($MaintenanceResults.Success) { "Green" } else { "Red" }
+Write-Host "  +============================================================+" -ForegroundColor $summaryColor
+Write-Host "  |                   MAINTENANCE COMPLETE                      |" -ForegroundColor $summaryColor
+Write-Host "  +============================================================+" -ForegroundColor $summaryColor
 Write-Host ""
 Write-Status "Total duration: $totalDuration minutes" -Type Info
 Write-Status "Declined: Expired=$($MaintenanceResults.DeclinedExpired) | Superseded=$($MaintenanceResults.DeclinedSuperseded) | Old=$($MaintenanceResults.DeclinedOld)" -Type Info
