@@ -3,6 +3,7 @@
 Script: Restore-WsusDatabase.ps1
 Purpose: Restore a SUSDB backup and rebind WSUS to SQL/content.
 Overview:
+  - Prompts for export folder location (e.g., C:\WSUS\Backup\2026\Jan or USB path)
   - Validates backup and content directory.
   - Ensures permissions for WSUS.
   - Stops WSUS/IIS to release SUSDB locks.
@@ -11,7 +12,7 @@ Overview:
   - Performs cleanup and basic health checks.
 Notes:
   - Run as Administrator on the WSUS server.
-  - Script auto-detects the newest .bak in C:\WSUS and allows a custom path if needed.
+  - Prompts for export folder path, then auto-detects .bak file within it.
 ===============================================================================
 #>
 
@@ -50,26 +51,89 @@ if (-not $sqlCmdCandidates) {
 $SqlCmdExe = $sqlCmdCandidates
 Write-Log "Using sqlcmd: $SqlCmdExe" "Gray"
 
-# Find newest backup file in content directory
-$latestBackup = Get-ChildItem -Path $ContentDir -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+# === STEP 0: Get Export Path from User ===
+Write-Host ""
+Write-Host "Where is the WSUS export located?" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Examples:" -ForegroundColor Gray
+Write-Host "  C:\WSUS\Backup\2026\Jan     (local backup)"
+Write-Host "  E:\2026\Jan                  (USB/Apricorn drive)"
+Write-Host "  \\server\share\2026\Jan     (network share)"
+Write-Host ""
+
+$exportPath = Read-Host "Enter export folder path"
+
+if (-not $exportPath) {
+    Write-Log "ERROR: No path provided" "Red"
+    exit 1
+}
+
+if (-not (Test-Path $exportPath)) {
+    Write-Log "ERROR: Path not found: $exportPath" "Red"
+    exit 1
+}
+
+Write-Log "Using export path: $exportPath" "Green"
+
+# Look for backup file in the export path
+$latestBackup = Get-ChildItem -Path $exportPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
 if (-not $latestBackup) {
-    Write-Log "ERROR: No .bak files found in $ContentDir" "Red"
-    exit 1
+    Write-Log "No .bak file found in $exportPath" "Yellow"
+    Write-Log "Checking C:\WSUS for backup files..." "Gray"
+
+    # Fallback to C:\WSUS
+    $latestBackup = Get-ChildItem -Path $ContentDir -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if (-not $latestBackup) {
+        Write-Log "ERROR: No .bak files found in $exportPath or $ContentDir" "Red"
+        exit 1
+    }
 }
 
 $BackupFile = $latestBackup.FullName
-Write-Log "Newest backup file detected: $BackupFile" "Yellow"
-$confirmation = Read-Host "Use this backup file? (Y/n) or enter a full path"
+Write-Log "Backup file detected: $BackupFile" "Yellow"
+Write-Log "  Size: $([math]::Round($latestBackup.Length / 1GB, 2)) GB" "Gray"
+Write-Log "  Modified: $($latestBackup.LastWriteTime)" "Gray"
 
-if ($confirmation -and $confirmation -notin @("Y", "y")) {
-    if (Test-Path $confirmation) {
-        $BackupFile = $confirmation
-    } else {
-        Write-Log "ERROR: Provided backup path not found: $confirmation" "Red"
-        exit 1
+$confirmation = Read-Host "Use this backup file? (Y/n)"
+
+if ($confirmation -and $confirmation -notin @("Y", "y", "")) {
+    Write-Log "Cancelled by user" "Yellow"
+    exit 0
+}
+
+# Check for WsusContent folder in export path and offer to copy
+$wsusContentPath = Join-Path $exportPath "WsusContent"
+if (Test-Path $wsusContentPath) {
+    Write-Host ""
+    Write-Host "WsusContent folder found in export!" -ForegroundColor Green
+    $copyContent = Read-Host "Copy content files to C:\WSUS? (Y/n)"
+
+    if ($copyContent -in @("Y", "y", "")) {
+        Write-Log "Copying content files (this may take a while)..." "Yellow"
+        $robocopyArgs = @(
+            "`"$wsusContentPath`""
+            "`"$ContentDir`""
+            "/E"
+            "/MT:16"
+            "/R:2"
+            "/W:5"
+            "/XO"
+            "/NP"
+            "/NDL"
+        )
+        $robocopyProcess = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+
+        if ($robocopyProcess.ExitCode -lt 8) {
+            Write-Log "[OK] Content files copied successfully" "Green"
+        } else {
+            Write-Log "[WARN] Robocopy reported issues (exit code: $($robocopyProcess.ExitCode))" "Yellow"
+        }
     }
 }
 

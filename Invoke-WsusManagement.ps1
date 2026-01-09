@@ -42,15 +42,18 @@ function Show-Menu {
     Write-Host "  3. Monthly Maintenance (Sync, Decline, Cleanup, Backup)"
     Write-Host "  4. Deep Cleanup (Ultimate WSUS Cleanup)"
     Write-Host ""
+    Write-Host "EXPORT & TRANSFER" -ForegroundColor Yellow
+    Write-Host "  5. Export for Airgapped Transfer (Database + New Content)"
+    Write-Host ""
     Write-Host "TROUBLESHOOTING & HEALTH" -ForegroundColor Yellow
-    Write-Host "  5. Test WSUS Health (Run Diagnostics & Repairs)"
-    Write-Host "  6. Reset WSUS Content Download"
+    Write-Host "  6. Test WSUS Health (Run Diagnostics & Repairs)"
+    Write-Host "  7. Reset WSUS Content Download"
     Write-Host ""
     Write-Host "CLIENT OPERATIONS" -ForegroundColor Yellow
-    Write-Host "  7. Force Client Check-In"
+    Write-Host "  8. Force Client Check-In"
     Write-Host ""
     Write-Host "DOMAIN CONTROLLER" -ForegroundColor Yellow
-    Write-Host "  8. Configure WSUS GPOs (Run on DC)"
+    Write-Host "  9. Configure WSUS GPOs (Run on DC)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -125,18 +128,22 @@ do {
                          -Description "Deep Cleanup (Ultimate WSUS Cleanup)"
         }
         '5' {
+            Invoke-Script -ScriptPath (Join-Path $ScriptRoot "Scripts\Export-WsusIncrementalBackup.ps1") `
+                         -Description "Export for Airgapped Transfer"
+        }
+        '6' {
             Invoke-Script -ScriptPath (Join-Path $ScriptRoot "Scripts\Test-WsusHealth.ps1") `
                          -Description "Test WSUS Health"
         }
-        '6' {
+        '7' {
             Invoke-Script -ScriptPath (Join-Path $ScriptRoot "Scripts\Reset-WsusContentDownload.ps1") `
                          -Description "Reset WSUS Content Download"
         }
-        '7' {
+        '8' {
             Invoke-Script -ScriptPath (Join-Path $ScriptRoot "Scripts\Invoke-WsusClientCheckIn.ps1") `
                          -Description "Force Client Check-In"
         }
-        '8' {
+        '9' {
             Show-DcInstructions
         }
         'Q' {
