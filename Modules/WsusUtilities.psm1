@@ -43,7 +43,7 @@ function Write-Success {
     .SYNOPSIS
         Writes success message in green
     #>
-    Write-ColorOutput Green $args
+    Write-ColorOutput -ForegroundColor Green @args
 }
 
 function Write-Failure {
@@ -51,7 +51,7 @@ function Write-Failure {
     .SYNOPSIS
         Writes failure message in red
     #>
-    Write-ColorOutput Red $args
+    Write-ColorOutput -ForegroundColor Red @args
 }
 
 function Write-WsusWarning {
@@ -59,7 +59,7 @@ function Write-WsusWarning {
     .SYNOPSIS
         Writes warning message in yellow (renamed to avoid conflict with built-in Write-Warning)
     #>
-    Write-ColorOutput Yellow $args
+    Write-ColorOutput -ForegroundColor Yellow @args
 }
 
 function Write-Info {
@@ -67,7 +67,7 @@ function Write-Info {
     .SYNOPSIS
         Writes info message in cyan
     #>
-    Write-ColorOutput Cyan $args
+    Write-ColorOutput -ForegroundColor Cyan @args
 }
 
 # ===========================
