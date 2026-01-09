@@ -18,6 +18,66 @@ Date: 2026-01-09
 #>
 
 # ===========================
+# SERVICE WAIT FUNCTIONS
+# ===========================
+
+function Wait-ServiceState {
+    <#
+    .SYNOPSIS
+        Waits for a service to reach a specific state with timeout
+
+    .PARAMETER ServiceName
+        Name of the service to wait for
+
+    .PARAMETER TargetState
+        Target state: Running, Stopped, Paused
+
+    .PARAMETER TimeoutSeconds
+        Maximum seconds to wait (default: 60)
+
+    .PARAMETER PollIntervalMs
+        Milliseconds between status checks (default: 500)
+
+    .OUTPUTS
+        Boolean indicating if target state was reached
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$ServiceName,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('Running', 'Stopped', 'Paused')]
+        [string]$TargetState,
+
+        [int]$TimeoutSeconds = 60,
+
+        [int]$PollIntervalMs = 500
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    while ($stopwatch.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
+        try {
+            $service = Get-Service -Name $ServiceName -ErrorAction Stop
+            if ($service.Status -eq $TargetState) {
+                $stopwatch.Stop()
+                return $true
+            }
+        } catch {
+            # Service not found
+            $stopwatch.Stop()
+            return $false
+        }
+
+        Start-Sleep -Milliseconds $PollIntervalMs
+    }
+
+    $stopwatch.Stop()
+    Write-Warning "Timeout waiting for $ServiceName to reach $TargetState state after $TimeoutSeconds seconds"
+    return $false
+}
+
+# ===========================
 # SERVICE CHECK FUNCTIONS
 # ===========================
 
@@ -81,8 +141,8 @@ function Start-WsusService {
     .PARAMETER ServiceName
         Name of the service to start
 
-    .PARAMETER WaitSeconds
-        Seconds to wait after starting (default: 5)
+    .PARAMETER TimeoutSeconds
+        Maximum seconds to wait for service to start (default: 60)
 
     .OUTPUTS
         Boolean indicating success
@@ -91,7 +151,7 @@ function Start-WsusService {
         [Parameter(Mandatory = $true)]
         [string]$ServiceName,
 
-        [int]$WaitSeconds = 5
+        [int]$TimeoutSeconds = 60
     )
 
     try {
@@ -105,16 +165,14 @@ function Start-WsusService {
         Write-Host "  Starting $ServiceName..." -ForegroundColor Yellow
         Start-Service $ServiceName -ErrorAction Stop
 
-        if ($WaitSeconds -gt 0) {
-            Start-Sleep -Seconds $WaitSeconds
-        }
-
-        $service.Refresh()
-        if ($service.Status -eq "Running") {
+        # Wait for service to actually start using proper polling
+        $started = Wait-ServiceState -ServiceName $ServiceName -TargetState 'Running' -TimeoutSeconds $TimeoutSeconds
+        if ($started) {
             Write-Host "  $ServiceName started successfully" -ForegroundColor Green
             return $true
         } else {
-            Write-Warning "  $ServiceName did not start properly (Status: $($service.Status))"
+            $service.Refresh()
+            Write-Warning "  $ServiceName did not start within $TimeoutSeconds seconds (Status: $($service.Status))"
             return $false
         }
     } catch {
@@ -134,8 +192,8 @@ function Stop-WsusService {
     .PARAMETER Force
         Force stop the service
 
-    .PARAMETER WaitSeconds
-        Seconds to wait after stopping (default: 3)
+    .PARAMETER TimeoutSeconds
+        Maximum seconds to wait for service to stop (default: 60)
 
     .OUTPUTS
         Boolean indicating success
@@ -146,7 +204,7 @@ function Stop-WsusService {
 
         [switch]$Force,
 
-        [int]$WaitSeconds = 3
+        [int]$TimeoutSeconds = 60
     )
 
     try {
@@ -160,21 +218,19 @@ function Stop-WsusService {
         Write-Host "  Stopping $ServiceName..." -ForegroundColor Yellow
 
         if ($Force) {
-            Stop-Service $ServiceName -Force -ErrorAction Stop
+            Stop-Service $ServiceName -Force -ErrorAction Stop -NoWait
         } else {
-            Stop-Service $ServiceName -ErrorAction Stop
+            Stop-Service $ServiceName -ErrorAction Stop -NoWait
         }
 
-        if ($WaitSeconds -gt 0) {
-            Start-Sleep -Seconds $WaitSeconds
-        }
-
-        $service.Refresh()
-        if ($service.Status -eq "Stopped") {
+        # Wait for service to actually stop using proper polling
+        $stopped = Wait-ServiceState -ServiceName $ServiceName -TargetState 'Stopped' -TimeoutSeconds $TimeoutSeconds
+        if ($stopped) {
             Write-Host "  $ServiceName stopped successfully" -ForegroundColor Green
             return $true
         } else {
-            Write-Warning "  $ServiceName did not stop properly (Status: $($service.Status))"
+            $service.Refresh()
+            Write-Warning "  $ServiceName did not stop within $TimeoutSeconds seconds (Status: $($service.Status))"
             return $false
         }
     } catch {
@@ -420,6 +476,7 @@ function Get-WsusServiceStatus {
 
 # Export functions
 Export-ModuleMember -Function @(
+    'Wait-ServiceState',
     'Test-ServiceRunning',
     'Test-ServiceExists',
     'Start-WsusService',
