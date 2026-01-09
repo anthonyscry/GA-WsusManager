@@ -1127,11 +1127,25 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         # STEP 1: Full backup + content to ROOT folder
         # =====================================================================
         Write-Log "[1/4] Copying full database backup to root..."
-        if (Test-Path $backupFile) {
+
+        # If backup file doesn't exist or wasn't set, find the most recent backup
+        if (-not $backupFile -or -not (Test-Path $backupFile)) {
+            $backupFolder = "C:\WSUS"
+            $recentBackup = Get-ChildItem -Path $backupFolder -Filter "SUSDB*.bak" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($recentBackup) {
+                $backupFile = $recentBackup.FullName
+                Write-Log "Using most recent backup: $(Split-Path $backupFile -Leaf) ($(Get-Date $recentBackup.LastWriteTime -Format 'yyyy-MM-dd HH:mm'))"
+            }
+        }
+
+        if ($backupFile -and (Test-Path $backupFile)) {
             Copy-Item -Path $backupFile -Destination $ExportPath -Force
             Write-Log "Database copied to root: $(Split-Path $backupFile -Leaf)"
         } else {
-            Write-Warning "Backup file not found: $backupFile"
+            Write-Warning "No database backup found in C:\WSUS"
         }
 
         # Full content sync to root (mirror mode)
