@@ -1,4 +1,11 @@
 <#
+===============================================================================
+Module: WsusDatabase.psm1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     WSUS database cleanup and optimization functions
 
@@ -9,10 +16,6 @@
     - Index optimization
     - Statistics updates
     - Database size queries
-
-.NOTES
-    Version: 1.0.0
-    Author: WSUS SQL Toolkit
 #>
 
 # ===========================

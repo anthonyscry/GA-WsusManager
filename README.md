@@ -1,5 +1,7 @@
 # WSUS + SQL Express (2022) Automation
 
+**Author:** Tony Tran, ISSO, GA-ASI
+
 This repository contains a set of PowerShell scripts to deploy a **WSUS server backed by SQL Server Express 2022**, validate content paths/permissions, and run ongoing maintenance.
 
 ## First-Time Setup

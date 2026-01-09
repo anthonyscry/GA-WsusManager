@@ -1,4 +1,11 @@
 <#
+===============================================================================
+Module: WsusUtilities.psm1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     Common utility functions for WSUS scripts
 
@@ -8,10 +15,6 @@
     - Logging functions
     - Admin privilege checks
     - Common helper functions
-
-.NOTES
-    Version: 1.0.0
-    Author: WSUS SQL Toolkit
 #>
 
 # ===========================

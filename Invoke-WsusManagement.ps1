@@ -1,6 +1,13 @@
 #Requires -RunAsAdministrator
 
 <#
+===============================================================================
+Script: Invoke-WsusManagement.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 3.0.0
+Date: 2026-01-09
+===============================================================================
+
 .SYNOPSIS
     WSUS Management - Unified script for all WSUS server operations.
 
