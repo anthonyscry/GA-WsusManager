@@ -3,19 +3,19 @@
 <#
 ===============================================================================
 Script: Export-WsusIncrementalBackup.ps1
-Purpose: Export WSUS database and only NEW content files to a dated folder.
+Purpose: Export WSUS database and differential content files to a dated folder.
 Overview:
-  - Creates a dated export folder (e.g., C:\WSUS\Backup\2026\Jan\)
-  - Copies the SUSDB backup file
+  - Creates a dated export folder (e.g., D:\WSUS-Exports\2026\Jan\9_Updates)
+  - Copies the SUSDB database backup
   - Uses robocopy to copy only content files modified since a specified date
   - Generates a ready-to-use robocopy command for the destination server
 Notes:
   - Run as Administrator on the WSUS server
-  - Content is copied incrementally (only new/changed files)
-  - Destination servers can merge without losing existing content
+  - Exports DB + differential content for airgapped server transfers
+  - Users copy the export folder to USB/media for import on airgapped servers
 ===============================================================================
 .PARAMETER ExportRoot
-    Root folder for exports (default: C:\WSUS\Backup)
+    Root folder for exports (default: D:\WSUS-Exports)
 .PARAMETER ContentPath
     WSUS content folder (default: C:\WSUS)
 .PARAMETER SinceDate
@@ -28,18 +28,18 @@ Notes:
     Path to SUSDB backup file (default: auto-detect newest .bak in C:\WSUS)
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1
-    Export database and content modified in the last 30 days to C:\WSUS\Backup\2026\Jan\
+    Export DB + content modified in last 30 days to D:\WSUS-Exports\2026\Jan\9_Updates\
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1 -SinceDays 7
-    Export only content modified in the last 7 days
+    Export DB + content modified in the last 7 days
 .EXAMPLE
-    .\Export-WsusIncrementalBackup.ps1 -SinceDate "2026-01-01"
-    Export content modified since January 1, 2026
+    .\Export-WsusIncrementalBackup.ps1 -SkipDatabase
+    Export only differential content (no database)
 #>
 
 [CmdletBinding()]
 param(
-    [string]$ExportRoot = "C:\WSUS\Backup",
+    [string]$ExportRoot = "D:\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
     [DateTime]$SinceDate,
     [int]$SinceDays = 30,
@@ -73,16 +73,18 @@ if ($PSBoundParameters.ContainsKey('SinceDate')) {
     $filterDate = (Get-Date).AddDays(-$SinceDays)
 }
 
-# Create dated export folder structure (e.g., C:\WSUS\Backup\2026\Jan\)
+# Create dated export folder structure (e.g., D:\WSUS-Exports\2026\Jan\9_Updates)
 $year = (Get-Date).ToString("yyyy")
 $month = (Get-Date).ToString("MMM")
-$exportPath = Join-Path $ExportRoot $year $month
+$day = (Get-Date).ToString("d")
+$exportFolder = "${day}_Updates"
+$exportPath = Join-Path $ExportRoot $year $month $exportFolder
 
 Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Export folder: $exportPath"
 Write-Host "  Content source: $ContentPath"
 Write-Host "  Include files modified since: $($filterDate.ToString('yyyy-MM-dd'))"
-Write-Host "  Include database: $(-not $SkipDatabase)"
+Write-Host "  Include database: $(-not $SkipDatabase.IsPresent)"
 Write-Host ""
 
 # Create export directories
@@ -133,7 +135,7 @@ if (-not $SkipDatabase) {
     }
 } else {
     Write-Host ""
-    Write-Host "[1/3] Skipping database backup (disabled)" -ForegroundColor Gray
+    Write-Host "[1/3] Skipping database (use without -SkipDatabase to include)" -ForegroundColor Gray
 }
 
 # === STEP 2: Copy New Content Files ===
@@ -198,57 +200,40 @@ Write-Host ""
 Write-Host "[3/3] Generating import commands..." -ForegroundColor Yellow
 
 # Create a readme with import instructions
-$exportFolderName = "$year\$month"
+$exportFolderName = "$year\$month\$exportFolder"
 $importInstructions = @"
 ================================================================================
-WSUS INCREMENTAL EXPORT - $year\$month
+WSUS EXPORT - $year\$month\$exportFolder
 Exported: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Source: $env:COMPUTERNAME
 Content modified since: $($filterDate.ToString('yyyy-MM-dd'))
 ================================================================================
 
 FILES INCLUDED:
-- WsusContent\     : WSUS update files (incremental - new files only)
-$(if (-not $SkipDatabase -and $backupFile) { "- $($backupFile.Name) : SUSDB database backup" })
+$(if (-not $SkipDatabase -and $backupFile) { "- $($backupFile.Name) : SUSDB database backup`n" })- WsusContent\     : WSUS update files (differential - files from last $SinceDays days)
 
 --------------------------------------------------------------------------------
-IMPORT INSTRUCTIONS
+IMPORT INSTRUCTIONS (on airgapped WSUS server)
 --------------------------------------------------------------------------------
 
-STEP 1: Copy this export folder to your destination (USB drive, network share, etc.)
+STEP 1: Copy this folder to your airgapped server (USB, network, etc.)
+        Recommended location: C:\WSUS\Backup\$year\$month\$exportFolder
 
-STEP 2: On the destination WSUS server, run ONE of these commands:
+STEP 2: Run the restore script which will auto-detect the folder:
+        .\Scripts\Restore-WsusDatabase.ps1
 
-  OPTION A - Merge content (keeps existing files, adds new ones):
-  -------------------------------------------------------------
-  robocopy "<SOURCE_PATH>\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-
-  OPTION B - From USB/Apricorn drive (replace E: with your drive letter):
-  -----------------------------------------------------------------------
-  robocopy "E:\$year\$month\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-
-  OPTION C - From network share:
-  ------------------------------
-  robocopy "\\SERVER\Share\$year\$month\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+        Or manually merge content (SAFE - keeps existing files):
+        robocopy "E:\$year\$month\$exportFolder\WsusContent" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
   KEY FLAGS:
   - /E    = Copy subdirectories including empty ones
   - /XO   = eXclude Older files (skip if destination is newer) - SAFE MERGE
   - /MT:16 = Multi-threaded (16 threads)
-  - /LOG + /TEE = Log to file and console
 
   DO NOT USE /MIR - it will delete files not in the source!
 
-$(if (-not $SkipDatabase -and $backupFile) {
-@"
-STEP 3: Restore the database (if included):
-  Copy $($backupFile.Name) to C:\WSUS on the destination server, then run:
-  .\Scripts\Restore-WsusDatabase.ps1
-"@
-})
-
-STEP 4: After import, run content reset to verify files:
-  .\Scripts\Reset-WsusContentDownload.ps1
+STEP 3: After import, run content reset to verify files:
+        .\Scripts\Reset-WsusContentDownload.ps1
 
 ================================================================================
 "@
