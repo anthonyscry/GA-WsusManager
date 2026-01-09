@@ -270,71 +270,33 @@ function Invoke-WsusRestore {
         return
     }
 
-    # Find export folder
-    $year = (Get-Date).ToString("yyyy")
-    $month = (Get-Date).ToString("MMM")
-    $searchPaths = @(
-        "C:\WSUS\Backup\$year\$month", "D:\WSUS-Exports\$year\$month",
-        "E:\$year\$month", "F:\$year\$month"
-    )
+    # Find newest .bak file in C:\WSUS
+    Write-Host "Searching for database backups in $ContentPath..." -ForegroundColor Yellow
+    $backupFiles = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending
 
-    $detectedPath = $null
-    foreach ($path in $searchPaths) {
-        if (Test-Path $path) {
-            $folders = Get-ChildItem -Path $path -Directory -ErrorAction SilentlyContinue |
-                Sort-Object Name -Descending | Select-Object -First 1
-            if ($folders -and (Test-Path (Join-Path $folders.FullName "WsusContent"))) {
-                $detectedPath = $folders.FullName
-                break
-            }
-        }
-    }
-
-    if ($detectedPath) {
-        Write-Host "Auto-detected: $detectedPath" -ForegroundColor Green
-        $useDetected = Read-Host "Use this folder? (Y/n)"
-        $exportPath = if ($useDetected -in @("Y", "y", "")) { $detectedPath } else { Read-Host "Enter path" }
-    } else {
-        Write-Host "No export folder auto-detected" -ForegroundColor Yellow
-        $exportPath = Read-Host "Enter export folder path"
-    }
-
-    if (-not $exportPath -or -not (Test-Path $exportPath)) {
-        Write-Log "ERROR: Invalid path" "Red"
+    if (-not $backupFiles -or $backupFiles.Count -eq 0) {
+        Write-Log "ERROR: No .bak files found in $ContentPath" "Red"
         return
     }
 
-    # Find backup file
-    $backupFile = Get-ChildItem -Path $exportPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-
-    if (-not $backupFile) {
-        $backupFile = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    # Show available backups
+    Write-Host ""
+    Write-Host "Available backups:" -ForegroundColor Cyan
+    $backupFiles | Select-Object -First 5 | ForEach-Object {
+        $age = [math]::Round(((Get-Date) - $_.LastWriteTime).TotalDays, 1)
+        Write-Host "  $($_.Name) - $([math]::Round($_.Length / 1GB, 2)) GB - $($_.LastWriteTime.ToString('yyyy-MM-dd HH:mm')) ($age days old)"
     }
 
-    if (-not $backupFile) {
-        Write-Log "ERROR: No .bak file found" "Red"
-        return
-    }
+    $newestBackup = $backupFiles | Select-Object -First 1
+    Write-Host ""
+    Write-Host "Newest backup: $($newestBackup.Name)" -ForegroundColor Green
+    Write-Host "  Size: $([math]::Round($newestBackup.Length / 1GB, 2)) GB"
+    Write-Host "  Date: $($newestBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    Write-Host ""
 
-    Write-Log "Backup: $($backupFile.FullName) ($([math]::Round($backupFile.Length / 1GB, 2)) GB)" "Yellow"
-    $confirm = Read-Host "Use this backup? (Y/n)"
+    $confirm = Read-Host "Restore this backup? (Y/n)"
     if ($confirm -notin @("Y", "y", "")) { return }
-
-    # Copy content if WsusContent exists
-    $wsusContentPath = Join-Path $exportPath "WsusContent"
-    if (Test-Path $wsusContentPath) {
-        Write-Host ""
-        Write-Host "Export folder contents found. Copy to C:\WSUS?" -ForegroundColor Green
-        $copyContent = Read-Host "(Y/n)"
-        if ($copyContent -in @("Y", "y", "")) {
-            Write-Log "Copying content..." "Yellow"
-            $args = @("`"$exportPath`"", "`"$ContentPath`"", "/E", "/MT:16", "/R:2", "/W:5", "/XO", "/NP", "/NDL")
-            Start-Process -FilePath "robocopy.exe" -ArgumentList $args -Wait -NoNewWindow
-            Write-Log "[OK] Content copied" "Green"
-        }
-    }
 
     # Stop services
     Write-Log "Stopping services..." "Yellow"
@@ -346,7 +308,7 @@ function Invoke-WsusRestore {
     # Restore database
     Write-Log "Restoring database..." "Yellow"
     & $SqlCmdExe -S $SqlInstance -Q "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;" -b 2>$null
-    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($backupFile.FullName)' WITH REPLACE, STATS=10" -b
+    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($newestBackup.FullName)' WITH REPLACE, STATS=10" -b
     & $SqlCmdExe -S $SqlInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b 2>$null
 
     # Start services
@@ -368,6 +330,124 @@ function Invoke-WsusRestore {
     Write-Banner "RESTORE COMPLETE"
     Write-Log "[OK] Database restored" "Green"
     Write-Log "[OK] Services started" "Green"
+}
+
+# ============================================================================
+# COPY EXPORTS OPERATION
+# ============================================================================
+
+function Invoke-CopyExports {
+    param(
+        [string]$ExportSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$ContentPath
+    )
+
+    Write-Banner "COPY EXPORTS FROM LAB SERVER"
+
+    # Check if source is accessible
+    if (-not (Test-Path $ExportSource)) {
+        Write-Log "ERROR: Cannot access $ExportSource" "Red"
+        Write-Host "Make sure the network share is accessible." -ForegroundColor Yellow
+        return
+    }
+
+    # Find newest .bak file in export source (recursively)
+    Write-Host "Searching for newest database backup in $ExportSource..." -ForegroundColor Yellow
+    $bakFiles = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending
+
+    if (-not $bakFiles -or $bakFiles.Count -eq 0) {
+        Write-Log "ERROR: No .bak files found in $ExportSource" "Red"
+        return
+    }
+
+    $newestBak = $bakFiles | Select-Object -First 1
+    $sourceFolder = $newestBak.DirectoryName
+
+    Write-Host ""
+    Write-Host "Found newest export:" -ForegroundColor Green
+    Write-Host "  Location: $sourceFolder"
+    Write-Host "  Database: $($newestBak.Name) ($([math]::Round($newestBak.Length / 1GB, 2)) GB)"
+    Write-Host "  Date: $($newestBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+
+    # Check for WsusContent folder
+    $wsusContentSource = Join-Path $sourceFolder "WsusContent"
+    if (Test-Path $wsusContentSource) {
+        $contentFiles = Get-ChildItem -Path $wsusContentSource -Recurse -File -ErrorAction SilentlyContinue
+        $contentSize = [math]::Round(($contentFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+        Write-Host "  Content: $($contentFiles.Count) files ($contentSize GB)"
+    }
+    Write-Host ""
+
+    # Ask for destination
+    Write-Host "Destination options:" -ForegroundColor Yellow
+    Write-Host "  1. C:\WSUS (default)"
+    Write-Host "  2. Custom path"
+    Write-Host ""
+    $destChoice = Read-Host "Select destination (1/2)"
+
+    $destination = if ($destChoice -eq "2") {
+        Read-Host "Enter destination path"
+    } else {
+        $ContentPath
+    }
+
+    if (-not $destination) {
+        Write-Log "ERROR: No destination specified" "Red"
+        return
+    }
+
+    # Create destination if needed
+    if (-not (Test-Path $destination)) {
+        New-Item -Path $destination -ItemType Directory -Force | Out-Null
+    }
+
+    Write-Host ""
+    Write-Host "Configuration:" -ForegroundColor Yellow
+    Write-Host "  Source: $sourceFolder"
+    Write-Host "  Destination: $destination"
+    Write-Host "  Mode: Differential copy (only newer/missing files)"
+    Write-Host ""
+
+    $confirm = Read-Host "Proceed with copy? (Y/n)"
+    if ($confirm -notin @("Y", "y", "")) { return }
+
+    # Copy database file first
+    Write-Log "[1/2] Copying database backup..." "Yellow"
+    $destBakPath = Join-Path $destination $newestBak.Name
+    Copy-Item -Path $newestBak.FullName -Destination $destBakPath -Force
+    Write-Log "[OK] Database copied: $($newestBak.Name)" "Green"
+
+    # Differential copy of content using robocopy
+    if (Test-Path $wsusContentSource) {
+        Write-Log "[2/2] Differential copy of content (this may take a while)..." "Yellow"
+        $destContent = Join-Path $destination "WsusContent"
+
+        # /E = include subdirs, /XO = exclude older files, /MT:16 = 16 threads
+        $robocopyArgs = @(
+            "`"$wsusContentSource`"", "`"$destContent`"",
+            "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+        )
+
+        $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+        if ($proc.ExitCode -lt 8) {
+            Write-Log "[OK] Content copied" "Green"
+        } else {
+            Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+        }
+
+        # Show stats
+        $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+        $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+        Write-Host "  Destination content: $($destFiles.Count) files ($destSize GB)" -ForegroundColor Cyan
+    } else {
+        Write-Log "[2/2] No WsusContent folder in source" "Yellow"
+    }
+
+    Write-Banner "COPY COMPLETE"
+    Write-Host "Database and content copied to: $destination" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
 }
 
 # ============================================================================
@@ -526,22 +606,23 @@ function Show-Menu {
     Write-Host "  1. Install WSUS with SQL Express 2022"
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
-    Write-Host "  2. Restore Database from Backup"
+    Write-Host "  2. Restore Database from C:\WSUS"
+    Write-Host "  3. Copy Exports from Lab Server"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
-    Write-Host "  3. Monthly Maintenance (Sync, Cleanup, Backup)"
-    Write-Host "  4. Deep Cleanup (Aggressive DB cleanup)"
+    Write-Host "  4. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  5. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "EXPORT/TRANSFER" -ForegroundColor Yellow
-    Write-Host "  5. Export for Airgapped Transfer"
+    Write-Host "  6. Export for Airgapped Transfer"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
-    Write-Host "  6. Health Check"
-    Write-Host "  7. Health Check + Repair"
-    Write-Host "  8. Reset Content Download"
+    Write-Host "  7. Health Check"
+    Write-Host "  8. Health Check + Repair"
+    Write-Host "  9. Reset Content Download"
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
-    Write-Host "  9. Force Client Check-In (run on client)"
+    Write-Host "  10. Force Client Check-In (run on client)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -566,13 +647,14 @@ function Start-InteractiveMenu {
         switch ($choice) {
             '1' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '3' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
-            '4' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
-            '5' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
-            '6' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '7' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
-            '8' { Invoke-WsusReset; pause }
-            '9' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '3' { Invoke-CopyExports -ExportSource $ExportRoot -ContentPath $ContentPath; pause }
+            '4' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '5' { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
+            '6' { Invoke-WsusExport -ExportRoot $ExportRoot -ContentPath $ContentPath -SinceDays $SinceDays -SkipDatabase:$SkipDatabase; pause }
+            '7' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '8' { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
+            '9' { Invoke-WsusReset; pause }
+            '10' { Invoke-MenuScript -Path "$ScriptRoot\Scripts\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'Q' { Write-Host "Exiting..." -ForegroundColor Green; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
