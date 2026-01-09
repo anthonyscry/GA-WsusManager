@@ -351,6 +351,91 @@ function Invoke-SqlScalar {
     return $result.Trim()
 }
 
+function Invoke-WsusSqlcmd {
+    <#
+    .SYNOPSIS
+        Wrapper for Invoke-Sqlcmd that handles TrustServerCertificate compatibility
+
+    .DESCRIPTION
+        Executes Invoke-Sqlcmd with automatic handling of the TrustServerCertificate
+        parameter based on SqlServer module version. SqlServer module v21.1+ requires
+        this parameter for encrypted connections.
+
+    .PARAMETER ServerInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+
+    .PARAMETER Database
+        Database name (default: SUSDB)
+
+    .PARAMETER Query
+        SQL query to execute
+
+    .PARAMETER QueryTimeout
+        Query timeout in seconds (default: 30, use 0 for unlimited)
+
+    .PARAMETER Credential
+        Optional PSCredential for SQL authentication
+
+    .PARAMETER Variable
+        Optional variable substitution (for parameterized queries)
+
+    .EXAMPLE
+        Invoke-WsusSqlcmd -Query "SELECT COUNT(*) FROM tbUpdate"
+
+    .EXAMPLE
+        Invoke-WsusSqlcmd -Query "BACKUP DATABASE SUSDB TO DISK=N'C:\WSUS\backup.bak'" -QueryTimeout 0
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$ServerInstance = ".\SQLEXPRESS",
+
+        [string]$Database = "SUSDB",
+
+        [Parameter(Mandatory = $true)]
+        [string]$Query,
+
+        [int]$QueryTimeout = 30,
+
+        [System.Management.Automation.PSCredential]$Credential,
+
+        [string]$Variable
+    )
+
+    # Build base parameters using splatting
+    $sqlParams = @{
+        ServerInstance = $ServerInstance
+        Database = $Database
+        Query = $Query
+        QueryTimeout = $QueryTimeout
+        ErrorAction = 'Stop'
+    }
+
+    # Add optional parameters
+    if ($Credential) {
+        $sqlParams.Credential = $Credential
+    }
+
+    if ($Variable) {
+        $sqlParams.Variable = $Variable
+    }
+
+    # Check if SqlServer module supports TrustServerCertificate (v21.1+)
+    # This parameter is required for newer module versions to avoid certificate trust errors
+    $sqlModule = Get-Module SqlServer -ListAvailable -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+
+    if ($sqlModule) {
+        # TrustServerCertificate was added in SqlServer module v21.1
+        if ($sqlModule.Version -ge [Version]"21.1.0") {
+            $sqlParams.TrustServerCertificate = $true
+        }
+    }
+
+    # Execute the query
+    return Invoke-Sqlcmd @sqlParams
+}
+
 # ===========================
 # PATH HELPER FUNCTIONS
 # ===========================
@@ -617,11 +702,10 @@ function Test-WsusSqlCredential {
     Write-Host "Testing SQL connection as $($Credential.UserName)..." -ForegroundColor Cyan
 
     try {
-        # Test connection using Invoke-Sqlcmd
+        # Test connection using Invoke-WsusSqlcmd wrapper
         $testQuery = "SELECT 1 AS TestResult"
-        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database "SUSDB" `
-            -Query $testQuery -Credential $Credential `
-            -ErrorAction Stop -QueryTimeout 10
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database "SUSDB" `
+            -Query $testQuery -Credential $Credential -QueryTimeout 10
 
         if ($result.TestResult -eq 1) {
             Write-Host "SQL connection successful" -ForegroundColor Green
@@ -694,6 +778,7 @@ Export-ModuleMember -Function @(
     'Stop-WsusLogging',
     'Test-AdminPrivileges',
     'Invoke-SqlScalar',
+    'Invoke-WsusSqlcmd',
     'Get-WsusContentPath',
     'Test-WsusPath',
     'Get-WsusSqlCredentialPath',

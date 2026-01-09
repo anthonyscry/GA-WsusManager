@@ -2,7 +2,7 @@
 ===============================================================================
 Module: WsusDatabase.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
+Version: 1.0.1
 Date: 2026-01-09
 ===============================================================================
 
@@ -17,6 +17,12 @@ Date: 2026-01-09
     - Statistics updates
     - Database size queries
 #>
+
+# Import WsusUtilities for Invoke-WsusSqlcmd wrapper
+$modulePath = $PSScriptRoot
+if (Test-Path (Join-Path $modulePath "WsusUtilities.psm1")) {
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction SilentlyContinue
+}
 
 # ===========================
 # DATABASE SIZE FUNCTIONS
@@ -40,7 +46,7 @@ function Get-WsusDatabaseSize {
     $query = "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
 
     try {
-        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
         return $result.SizeGB
     } catch {
         Write-Warning "Failed to get database size: $($_.Exception.Message)"
@@ -75,7 +81,7 @@ SELECT
 "@
 
     try {
-        return Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB -Query $query -QueryTimeout 30
+        return Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB -Query $query -QueryTimeout 30
     } catch {
         Write-Warning "Failed to get database stats: $($_.Exception.Message)"
         return $null
@@ -115,7 +121,7 @@ SELECT @Deleted AS DeletedDeclined
 "@
 
     try {
-        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
             -Query $query -QueryTimeout 300
         return $result.DeletedDeclined
     } catch {
@@ -176,17 +182,11 @@ SELECT @TotalDeleted AS DeletedSuperseded
 
     try {
         $startTime = Get-Date
-        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
-            -Query $query -QueryTimeout 0 -Verbose 4>&1
-
-        if ($ShowProgress) {
-            $result | Where-Object { $_ -is [string] } | ForEach-Object {
-                Write-Host "  $_" -ForegroundColor DarkGray
-            }
-        }
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+            -Query $query -QueryTimeout 0
 
         $duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)
-        $deleted = ($result | Where-Object { $_.DeletedSuperseded -ne $null }).DeletedSuperseded
+        $deleted = if ($result.DeletedSuperseded) { $result.DeletedSuperseded } else { 0 }
 
         if ($ShowProgress) {
             Write-Host "Removed $deleted supersession records in $duration minutes" -ForegroundColor Green
@@ -287,17 +287,15 @@ SELECT @Rebuilt AS IndexesRebuilt, @Reorganized AS IndexesReorganized
 "@
 
     try {
-        $result = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
-            -Query $query -QueryTimeout 0 -Verbose 4>&1
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+            -Query $query -QueryTimeout 0
+
+        $rebuilt = if ($result.IndexesRebuilt) { $result.IndexesRebuilt } else { 0 }
+        $reorganized = if ($result.IndexesReorganized) { $result.IndexesReorganized } else { 0 }
 
         if ($ShowProgress) {
-            $result | Where-Object { $_ -is [string] } | ForEach-Object {
-                Write-Host "  $_" -ForegroundColor DarkGray
-            }
+            Write-Host "Index optimization complete: Rebuilt=$rebuilt, Reorganized=$reorganized" -ForegroundColor Green
         }
-
-        $rebuilt = ($result | Where-Object { $_.IndexesRebuilt -ne $null }).IndexesRebuilt
-        $reorganized = ($result | Where-Object { $_.IndexesReorganized -ne $null }).IndexesReorganized
 
         return @{
             Rebuilt = $rebuilt
@@ -344,14 +342,12 @@ ELSE
 "@
 
     try {
-        $messages = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
-            -Query $query -QueryTimeout 300 -Verbose 4>&1
+        $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+            -Query $query -QueryTimeout 300
 
-        $messages | Where-Object { $_ -is [string] } | ForEach-Object {
-            Write-Host "  $_" -ForegroundColor Gray
-        }
+        Write-Host "  Performance indexes verified/created" -ForegroundColor Gray
 
-        return $messages
+        return $result
     } catch {
         Write-Warning "Failed to add performance indexes: $($_.Exception.Message)"
         return @()
@@ -378,7 +374,7 @@ function Update-WsusStatistics {
     )
 
     try {
-        Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
             -Query "EXEC sp_updatestats" -QueryTimeout 0 | Out-Null
         return $true
     } catch {
@@ -411,7 +407,7 @@ function Invoke-WsusDatabaseShrink {
     )
 
     try {
-        Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
             -Query "DBCC SHRINKDATABASE(SUSDB, $TargetFreePercent) WITH NO_INFOMSGS" `
             -QueryTimeout 0 | Out-Null
         return $true
@@ -446,7 +442,7 @@ WHERE type = 0
 "@
 
     try {
-        return Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB -Query $query
+        return Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB -Query $query
     } catch {
         Write-Warning "Failed to get database space info: $($_.Exception.Message)"
         return $null
@@ -498,8 +494,8 @@ function Test-WsusBackupIntegrity {
     try {
         # Get backup header information
         $headerQuery = "RESTORE HEADERONLY FROM DISK = N'$BackupPath'"
-        $header = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
-            -Query $headerQuery -QueryTimeout 60 -ErrorAction Stop
+        $header = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $headerQuery -QueryTimeout 60
 
         if ($header) {
             $result.DatabaseName = $header.DatabaseName
@@ -508,8 +504,8 @@ function Test-WsusBackupIntegrity {
 
         # Verify backup integrity using RESTORE VERIFYONLY
         $verifyQuery = "RESTORE VERIFYONLY FROM DISK = N'$BackupPath' WITH CHECKSUM"
-        Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
-            -Query $verifyQuery -QueryTimeout 300 -ErrorAction Stop
+        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $verifyQuery -QueryTimeout 300
 
         $result.IsValid = $true
         $result.Message = "Backup verified successfully"
@@ -669,20 +665,22 @@ function Test-WsusDatabaseConsistency {
 
         # If repair mode, need single user mode
         if ($RepairMode -ne 'None') {
-            Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
                 -Query "ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE" `
-                -QueryTimeout 60 -ErrorAction Stop
+                -QueryTimeout 60
         }
 
         # Run DBCC CHECKDB
-        $checkResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
-            -Query $query -QueryTimeout 0 -ErrorAction Stop
+        $checkResult = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $query -QueryTimeout 0
 
         # Return to multi-user mode if needed
         if ($RepairMode -ne 'None') {
-            Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
-                -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
-                -QueryTimeout 60 -ErrorAction SilentlyContinue
+            try {
+                Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+                    -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
+                    -QueryTimeout 60
+            } catch { }
         }
 
         # Parse results - CHECKDB returns messages
@@ -705,9 +703,9 @@ function Test-WsusDatabaseConsistency {
 
         # Ensure database is back to multi-user mode
         try {
-            Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master `
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
                 -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
-                -QueryTimeout 60 -ErrorAction SilentlyContinue
+                -QueryTimeout 60
         } catch { }
     }
 
