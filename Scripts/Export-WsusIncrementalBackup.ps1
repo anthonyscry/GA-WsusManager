@@ -5,17 +5,16 @@
 Script: Export-WsusIncrementalBackup.ps1
 Purpose: Export WSUS database and differential content files to a dated folder.
 Overview:
-  - Creates a dated export folder (e.g., D:\WSUS-Exports\2026\Jan\9_Updates)
+  - Creates a dated export folder (e.g., \\lab-hyperv\D\WSUS-Exports\2026\Jan\9)
   - Copies the SUSDB database backup
   - Uses robocopy to copy only content files modified since a specified date
-  - Generates a ready-to-use robocopy command for the destination server
+  - User copies the dated folder to C:\WSUS on target server, then runs restore script
 Notes:
   - Run as Administrator on the WSUS server
   - Exports DB + differential content for airgapped server transfers
-  - Users copy the export folder to USB/media for import on airgapped servers
 ===============================================================================
 .PARAMETER ExportRoot
-    Root folder for exports (default: D:\WSUS-Exports)
+    Root folder for exports (default: \\lab-hyperv\D\WSUS-Exports)
 .PARAMETER ContentPath
     WSUS content folder (default: C:\WSUS)
 .PARAMETER SinceDate
@@ -28,7 +27,7 @@ Notes:
     Path to SUSDB backup file (default: auto-detect newest .bak in C:\WSUS)
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1
-    Export DB + content modified in last 30 days to D:\WSUS-Exports\2026\Jan\9_Updates\
+    Export DB + content modified in last 30 days to \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\
 .EXAMPLE
     .\Export-WsusIncrementalBackup.ps1 -SinceDays 7
     Export DB + content modified in the last 7 days
@@ -39,7 +38,7 @@ Notes:
 
 [CmdletBinding()]
 param(
-    [string]$ExportRoot = "D:\WSUS-Exports",
+    [string]$ExportRoot = "\\lab-hyperv\D\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
     [DateTime]$SinceDate,
     [int]$SinceDays = 30,
@@ -73,11 +72,11 @@ if ($PSBoundParameters.ContainsKey('SinceDate')) {
     $filterDate = (Get-Date).AddDays(-$SinceDays)
 }
 
-# Create dated export folder structure (e.g., D:\WSUS-Exports\2026\Jan\9_Updates)
+# Create dated export folder structure (e.g., \\lab-hyperv\D\WSUS-Exports\2026\Jan\9)
 $year = (Get-Date).ToString("yyyy")
 $month = (Get-Date).ToString("MMM")
 $day = (Get-Date).ToString("d")
-$exportFolder = "${day}_Updates"
+$exportFolder = $day
 $exportPath = Join-Path $ExportRoot $year $month $exportFolder
 
 Write-Host "Configuration:" -ForegroundColor Yellow
@@ -217,13 +216,8 @@ $(if (-not $SkipDatabase -and $backupFile) { "- $($backupFile.Name) : SUSDB data
 IMPORT INSTRUCTIONS (on airgapped WSUS server)
 --------------------------------------------------------------------------------
 
-STEP 1: Copy this folder to your airgapped server (USB, network, etc.)
-
-STEP 2: Copy entire export folder INTO C:\WSUS (SAFE MERGE - keeps existing files):
+STEP 1: Copy this folder into C:\WSUS on the target server:
         robocopy "E:\$year\$month\$exportFolder" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-
-        Or run the restore script for guided restore:
-        .\Scripts\Restore-WsusDatabase.ps1
 
   RESULT: This copies everything into C:\WSUS:
           - SUSDB.bak -> C:\WSUS\SUSDB.bak
@@ -236,8 +230,8 @@ STEP 2: Copy entire export folder INTO C:\WSUS (SAFE MERGE - keeps existing file
 
   DO NOT USE /MIR - it will delete files not in the source!
 
-STEP 3: After import, run content reset to verify files:
-        .\Scripts\Reset-WsusContentDownload.ps1
+STEP 2: Run the restore script (auto-detects most recent .bak in C:\WSUS):
+        .\Scripts\Restore-WsusDatabase.ps1
 
 ================================================================================
 "@

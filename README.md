@@ -236,20 +236,20 @@ Each entry includes **what it does**, **why you would use it**, and **where to r
 
 #### `Scripts/Export-WsusIncrementalBackup.ps1`
 - **What it does:** Creates a dated export folder with database and differential content:
-  - Creates folder structure like `D:\WSUS-Exports\2026\Jan\9_Updates\`
+  - Creates folder structure like `\\lab-hyperv\D\WSUS-Exports\2026\Jan\9\`
   - Copies the full SUSDB database backup
   - Uses robocopy with MAXAGE to copy only recently modified content files
   - Generates ready-to-use import commands for destination servers
 - **Why use it:** Monthly export for airgapped servers - includes DB + only new patches.
 - **Where to run it:** On the **online/upstream WSUS server**.
 - **Parameters:**
-  - `-ExportRoot <path>`: Root folder for exports (default: `D:\WSUS-Exports`)
+  - `-ExportRoot <path>`: Root folder for exports (default: `\\lab-hyperv\D\WSUS-Exports`)
   - `-SinceDays <n>`: Copy content modified within the last N days (default: 30)
   - `-SinceDate <date>`: Copy content modified since a specific date
   - `-SkipDatabase`: Skip database backup (export only content)
 
 ```powershell
-# Export DB + differential content from last 30 days to D:\WSUS-Exports\2026\Jan\9_Updates\
+# Export DB + differential content from last 30 days to \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\
 .\Scripts\Export-WsusIncrementalBackup.ps1
 
 # Export DB + only last 7 days of content
@@ -332,10 +332,10 @@ C:\WSUS\wsus-sql\           # This repository
 ```
 
 ## Online WSUS export location
-The **online WSUS server (Server LSJ)** exports the database and content to:
+The **online WSUS server** exports the database and content to:
 
 ```text
-D:\WSUS-Exports
+\\lab-hyperv\D\WSUS-Exports
 ```
 
 Copy from this location when moving updates to **airgapped WSUS servers**.
@@ -402,49 +402,49 @@ cd <DomainController folder location>
 ### Export folder structure
 
 ```
-D:\WSUS-Exports\
+\\lab-hyperv\D\WSUS-Exports\
 ├── 2026\
-│   ├── Full Backup\           # Full DB + all content (one-time initial setup)
-│   │   ├── SUSDB.bak
-│   │   └── WsusContent\       # All WSUS content
 │   ├── Jan\
-│   │   ├── 9_Updates\         # Monthly export (day 9)
+│   │   ├── 9\                 # Export from day 9
 │   │   │   ├── SUSDB.bak      # Full database
 │   │   │   └── WsusContent\   # Only new/changed files
-│   │   └── 15_Updates\        # Another monthly export
+│   │   └── 15\                # Export from day 15
 │   │       ├── SUSDB.bak
 │   │       └── WsusContent\
 │   └── Feb\
-│       └── 5_Updates\
+│       └── 5\
 │           ├── SUSDB.bak
 │           └── WsusContent\
 ```
 
-### Incremental export workflow (recommended)
+### Airgapped WSUS workflow
 
-**Step 1: Export new content on the online WSUS server**
+**Step 1: Run monthly maintenance on online WSUS server**
 ```powershell
-# Creates: D:\WSUS-Exports\2026\Jan\9_Updates\ with only new content
+# Downloads updates and backs up DB to C:\WSUS\
+.\Scripts\Invoke-WsusMonthlyMaintenance.ps1
+```
+
+**Step 2: Export to network share**
+```powershell
+# Exports DB + differential content to \\lab-hyperv\D\WSUS-Exports\2026\Jan\9\
 .\Scripts\Export-WsusIncrementalBackup.ps1
 ```
 
-**Step 2: Copy the incremental folder to USB/Apricorn drive**
+**Step 3: Copy export folder INTO C:\WSUS on airgapped server**
 ```powershell
-robocopy "D:\WSUS-Exports\2026\Jan\9_Updates" "E:\2026\Jan\9_Updates" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\ToUSB.log" /TEE
+# Copy the dated folder into C:\WSUS (SAFE - merges without erasing)
+robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
 
-**Step 3: Import on the airgapped WSUS server**
-```powershell
-# Use the restore script (auto-detects current year/month folder, prompts for confirmation)
-.\Scripts\Restore-WsusDatabase.ps1
-
-# Or manually copy entire export folder INTO C:\WSUS (SAFE - merges without erasing)
-robocopy "E:\2026\Jan\9_Updates" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-```
-
-> **Result:** The entire export folder contents are copied INTO `C:\WSUS`:
+> **Result:**
 > - `SUSDB.bak` → `C:\WSUS\SUSDB.bak`
 > - `WsusContent\` → `C:\WSUS\WsusContent\`
+
+**Step 4: Run restore script (finds most recent .bak in C:\WSUS)**
+```powershell
+.\Scripts\Restore-WsusDatabase.ps1
+```
 
 ### Key robocopy flags
 
@@ -459,18 +459,15 @@ robocopy "E:\2026\Jan\9_Updates" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS
 ### Common transfer examples
 
 ```powershell
-# Copy incremental export to USB drive
-robocopy "D:\WSUS-Exports\2026\Jan\9_Updates" "E:\2026\Jan\9_Updates" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\Export.log" /TEE
+# Copy export from network share to USB drive
+robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "E:\2026\Jan\9" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\ToUSB.log" /TEE
 
-# Import entire export folder INTO C:\WSUS (SAFE - keeps existing files)
+# Import from USB INTO C:\WSUS on airgapped server (SAFE - keeps existing files)
 # Result: DB at C:\WSUS\SUSDB.bak, patches at C:\WSUS\WsusContent\
-robocopy "E:\2026\Jan\9_Updates" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
+robocopy "E:\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 
-# Import from network share (SAFE - keeps existing files)
-robocopy "\\server\share\2026\Jan\9_Updates" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
-
-# Full backup copy (first-time setup only)
-robocopy "D:\WSUS-Exports\2026\Full Backup" "E:\2026\Full Backup" /E /MT:16 /R:2 /W:5 /LOG:"C:\WSUS\Logs\FullBackup.log" /TEE
+# Import directly from network share (if accessible)
+robocopy "\\lab-hyperv\D\WSUS-Exports\2026\Jan\9" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO /LOG:"C:\WSUS\Logs\Import.log" /TEE
 ```
 
 ## Troubleshooting
