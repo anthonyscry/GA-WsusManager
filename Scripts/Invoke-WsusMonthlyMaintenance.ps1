@@ -24,7 +24,6 @@ Changes:
   - Added pre-flight validation checks
   - Added colored status output
   - Added HTML report generation
-  - Added email notification support
   - Improved export path accessibility checking
 ===============================================================================
 Version: 2.3.0
@@ -71,13 +70,7 @@ param(
     [switch]$SkipExport,
 
     # Generate HTML report after completion
-    [switch]$GenerateReport,
-
-    # Email notification settings
-    [string]$NotifyEmail,
-    [string]$SmtpServer,
-    [int]$SmtpPort = 25,
-    [string]$SmtpFrom = "wsus@localhost"
+    [switch]$GenerateReport
 )
 
 # Import shared modules
@@ -482,49 +475,6 @@ function New-MaintenanceReport {
 
     $html | Out-File -FilePath $reportFile -Encoding UTF8
     return $reportFile
-}
-
-# Send email notification
-function Send-MaintenanceNotification {
-    param(
-        [hashtable]$Results,
-        [string]$To,
-        [string]$SmtpServer,
-        [int]$SmtpPort = 25,
-        [string]$From = "wsus@localhost"
-    )
-
-    if (-not $To -or -not $SmtpServer) { return }
-
-    $status = if ($Results.Success) { "SUCCESS" } else { "FAILED" }
-    $subject = "WSUS Maintenance $status - $env:COMPUTERNAME - $(Get-Date -Format 'yyyy-MM-dd')"
-
-    $body = @"
-WSUS Monthly Maintenance Report
-================================
-Server: $env:COMPUTERNAME
-Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Status: $status
-
-Summary:
-- Declined (Expired): $($Results.DeclinedExpired)
-- Declined (Superseded): $($Results.DeclinedSuperseded)
-- Declined (Old): $($Results.DeclinedOld)
-- Approved: $($Results.Approved)
-- Database Size: $($Results.DatabaseSize) GB
-- Backup: $($Results.BackupFile)
-
-$(if ($Results.Warnings.Count -gt 0) { "Warnings:`n" + ($Results.Warnings | ForEach-Object { "- $_" }) -join "`n" })
-
-$(if ($Results.Errors.Count -gt 0) { "Errors:`n" + ($Results.Errors | ForEach-Object { "- $_" }) -join "`n" })
-"@
-
-    try {
-        Send-MailMessage -To $To -From $From -Subject $subject -Body $body -SmtpServer $SmtpServer -Port $SmtpPort
-        Write-Status "Email notification sent to $To" -Type Success
-    } catch {
-        Write-Status "Failed to send email: $($_.Exception.Message)" -Type Warning
-    }
 }
 
 # Initialize results tracking
@@ -1366,12 +1316,6 @@ if ($GenerateReport) {
     $reportFile = New-MaintenanceReport -Results $MaintenanceResults -OutputPath "C:\WSUS\Logs"
     Write-Status "Report saved: $reportFile" -Type Success
     Write-Log "HTML report generated: $reportFile"
-}
-
-# === SEND EMAIL NOTIFICATION ===
-if ($NotifyEmail -and $SmtpServer) {
-    Send-MaintenanceNotification -Results $MaintenanceResults -To $NotifyEmail `
-        -SmtpServer $SmtpServer -SmtpPort $SmtpPort -From $SmtpFrom
 }
 
 Write-Log "Maintenance complete"
