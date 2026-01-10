@@ -1,0 +1,551 @@
+# WSUS-SQL CI/CD Pipeline (Security Hardened)
+# This is a reference implementation with security best practices applied
+# Based on security review dated 2026-01-10
+
+name: WSUS-SQL CI/CD (Secured)
+
+# Restrict default permissions to read-only
+permissions:
+  contents: read
+  actions: read
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable verbose debugging output'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Prevent concurrent runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'GUI/WsusManager.csproj'
+  # Module versions for caching
+  PSSA_VERSION: '1.22.0'
+  PESTER_VERSION: '5.5.0'
+  PS2EXE_VERSION: '1.0.13'
+
+jobs:
+  # PowerShell Code Review and Security Checks
+  powershell-analysis:
+    name: PowerShell Analysis
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+    # Pinned to specific commit SHA for security
+    - name: Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Cache PowerShell Modules
+      id: ps-cache
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: |
+          C:\Users\runneradmin\Documents\PowerShell\Modules\PSScriptAnalyzer
+        key: ${{ runner.os }}-pssa-${{ env.PSSA_VERSION }}
+
+    - name: Install PSScriptAnalyzer
+      if: steps.ps-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -RequiredVersion ${{ env.PSSA_VERSION }}
+
+    - name: Run PSScriptAnalyzer - Code Quality
+      shell: pwsh
+      run: |
+        Import-Module PSScriptAnalyzer
+
+        # Use project settings file if it exists, otherwise use defaults
+        $settingsPath = "./PSScriptAnalyzerSettings.psd1"
+        if (Test-Path $settingsPath) {
+          Write-Host "Using PSScriptAnalyzer settings from: $settingsPath" -ForegroundColor Cyan
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settingsPath
+        } else {
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -ExcludeRule PSAvoidUsingWriteHost -Severity Warning,Error
+        }
+
+        # Export results to JSON for artifact
+        $results | ConvertTo-Json -Depth 5 | Out-File './code-quality-results.json'
+
+        if ($results) {
+          Write-Host "## PSScriptAnalyzer Results" -ForegroundColor Yellow
+          $results | Format-Table -Property RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap
+
+          $errors = $results | Where-Object { $_.Severity -eq 'Error' }
+          if ($errors) {
+            Write-Host "::error::Found $($errors.Count) error-level issues"
+            exit 1
+          }
+
+          Write-Host "::warning::Found $($results.Count) warnings (non-blocking)"
+        } else {
+          Write-Host "No issues found!" -ForegroundColor Green
+        }
+
+    - name: Run PSScriptAnalyzer - Security Rules
+      shell: pwsh
+      run: |
+        Import-Module PSScriptAnalyzer
+
+        $securityRules = @(
+          'PSAvoidUsingPlainTextForPassword',
+          'PSAvoidUsingConvertToSecureStringWithPlainText',
+          'PSAvoidUsingUsernameAndPasswordParams',
+          'PSUsePSCredentialType',
+          'PSAvoidUsingInvokeExpression'
+        )
+
+        $results = Invoke-ScriptAnalyzer -Path . -Recurse -IncludeRule $securityRules
+
+        # Export results for artifact
+        $results | ConvertTo-Json -Depth 5 | Out-File './security-results.json'
+
+        if ($results) {
+          Write-Host "## Security Analysis Results" -ForegroundColor Red
+          $results | Format-Table -Property RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap
+          Write-Host "::error::Found $($results.Count) security issues"
+          exit 1
+        } else {
+          Write-Host "No security issues found!" -ForegroundColor Green
+        }
+
+    - name: Check for Hardcoded Secrets
+      shell: pwsh
+      run: |
+        # Enhanced secret detection patterns
+        $patterns = @(
+          # Basic credential patterns
+          @{ Name = 'Password Assignment'; Pattern = 'password\s*[=:]\s*[''"][^''"]{4,}[''"]' },
+          @{ Name = 'API Key'; Pattern = 'api[_-]?key\s*[=:]\s*[''"][^''"]+[''"]' },
+          @{ Name = 'Secret Assignment'; Pattern = 'secret\s*[=:]\s*[''"][^''"]+[''"]' },
+          @{ Name = 'Connection String Password'; Pattern = 'connectionstring.*password\s*=' },
+          @{ Name = 'PlainText SecureString'; Pattern = 'ConvertTo-SecureString.*-AsPlainText' },
+
+          # Cloud provider patterns
+          @{ Name = 'AWS Access Key'; Pattern = 'AKIA[0-9A-Z]{16}' },
+          @{ Name = 'Azure Client Secret'; Pattern = 'azure.*client.*secret' },
+
+          # Token patterns
+          @{ Name = 'Bearer Token'; Pattern = 'bearer\s+[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+' },
+          @{ Name = 'Private Key Header'; Pattern = '-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----' }
+        )
+
+        $issues = @()
+        Get-ChildItem -Path . -Recurse -Include *.ps1,*.psm1,*.psd1,*.json,*.xml -Exclude node_modules,*.Tests.ps1 | ForEach-Object {
+          $file = $_
+          $content = Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue
+          if ($content) {
+            foreach ($patternDef in $patterns) {
+              if ($content -match $patternDef.Pattern) {
+                $issues += [PSCustomObject]@{
+                  File = $file.FullName -replace [regex]::Escape($PWD.Path), '.'
+                  Type = $patternDef.Name
+                  Pattern = $patternDef.Pattern
+                }
+              }
+            }
+          }
+        }
+
+        # Export findings
+        $issues | ConvertTo-Json | Out-File './secret-scan-results.json'
+
+        if ($issues) {
+          Write-Host "## Potential Hardcoded Secrets Found" -ForegroundColor Red
+          $issues | Format-Table -AutoSize
+          Write-Host "::warning::Found $($issues.Count) potential hardcoded secrets - please review manually"
+        } else {
+          Write-Host "No hardcoded secrets detected!" -ForegroundColor Green
+        }
+
+    - name: Validate Module Structure
+      shell: pwsh
+      run: |
+        $modules = Get-ChildItem -Path ./Modules -Filter *.psm1 -ErrorAction SilentlyContinue
+        $validationResults = @()
+
+        if ($modules) {
+          Write-Host "## Module Validation" -ForegroundColor Cyan
+          foreach ($module in $modules) {
+            Write-Host "Validating: $($module.Name)"
+            try {
+              $tokens = $null
+              $errors = $null
+              $null = [System.Management.Automation.Language.Parser]::ParseFile($module.FullName, [ref]$tokens, [ref]$errors)
+              if ($errors) {
+                Write-Host "  Parse errors found:" -ForegroundColor Red
+                $errors | ForEach-Object { Write-Host "    $_" }
+                $validationResults += @{ Module = $module.Name; Status = 'Failed'; Errors = $errors.Count }
+                exit 1
+              } else {
+                Write-Host "  Syntax OK" -ForegroundColor Green
+                $validationResults += @{ Module = $module.Name; Status = 'OK'; Errors = 0 }
+              }
+            } catch {
+              Write-Host "  Failed to parse: $_" -ForegroundColor Red
+              exit 1
+            }
+          }
+        }
+
+        $validationResults | ConvertTo-Json | Out-File './module-validation.json'
+
+    - name: List Module Exported Functions
+      shell: pwsh
+      run: |
+        Write-Host "## Module Function Inventory" -ForegroundColor Cyan
+        $inventory = @{}
+        $modules = Get-ChildItem -Path ./Modules -Filter *.psm1 -ErrorAction SilentlyContinue
+
+        foreach ($module in $modules) {
+          Write-Host "`n$($module.BaseName):" -ForegroundColor Yellow
+          $content = Get-Content $module.FullName -Raw
+          $functions = [regex]::Matches($content, 'function\s+([\w-]+)')
+          $functionList = $functions | ForEach-Object { $_.Groups[1].Value }
+          $functionList | ForEach-Object { Write-Host "  - $_" }
+          Write-Host "  Total: $($functions.Count) functions"
+          $inventory[$module.BaseName] = $functionList
+        }
+
+        $inventory | ConvertTo-Json | Out-File './module-inventory.json'
+
+    - name: Upload Analysis Results
+      if: always()
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: powershell-analysis-results
+        path: |
+          ./*-results.json
+          ./module-*.json
+        retention-days: 7
+
+  # Run Pester Unit Tests
+  pester-tests:
+    name: Pester Unit Tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    needs: powershell-analysis
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Cache Pester Module
+      id: pester-cache
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: |
+          C:\Users\runneradmin\Documents\PowerShell\Modules\Pester
+        key: ${{ runner.os }}-pester-${{ env.PESTER_VERSION }}
+
+    - name: Install Pester
+      if: steps.pester-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Install-Module -Name Pester -Force -Scope CurrentUser -RequiredVersion ${{ env.PESTER_VERSION }}
+
+    - name: Run Pester Tests
+      shell: pwsh
+      run: |
+        Import-Module Pester
+        Write-Host "Pester version: $((Get-Module Pester).Version)"
+
+        $config = New-PesterConfiguration
+        $config.Run.Path = "./Tests"
+        $config.Run.Exit = $true
+        $config.TestResult.Enabled = $true
+        $config.TestResult.OutputPath = "./TestResults/pester-results.xml"
+        $config.TestResult.OutputFormat = "NUnitXml"
+        $config.Output.Verbosity = "Detailed"
+        $config.CodeCoverage.Enabled = $true
+        $config.CodeCoverage.Path = @("./Modules/*.psm1")
+        $config.CodeCoverage.OutputPath = "./TestResults/coverage.xml"
+        $config.CodeCoverage.OutputFormat = "JaCoCo"
+
+        New-Item -Path "./TestResults" -ItemType Directory -Force | Out-Null
+        Invoke-Pester -Configuration $config
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: pester-test-results
+        path: ./TestResults/
+        retention-days: 30
+
+    - name: Test Summary
+      if: always()
+      shell: pwsh
+      run: |
+        if (Test-Path "./TestResults/pester-results.xml") {
+          [xml]$results = Get-Content "./TestResults/pester-results.xml"
+          $testRun = $results.'test-results'
+
+          Write-Host "## Pester Test Results" -ForegroundColor Cyan
+          Write-Host "Total Tests: $($testRun.total)"
+          Write-Host "Passed: $($testRun.passed)" -ForegroundColor Green
+          Write-Host "Failed: $($testRun.failures)" -ForegroundColor $(if ([int]$testRun.failures -gt 0) { 'Red' } else { 'Green' })
+          Write-Host "Skipped: $($testRun.skipped)" -ForegroundColor Yellow
+
+          $summary = @"
+## Pester Test Results
+
+| Metric | Count |
+|--------|-------|
+| Total Tests | $($testRun.total) |
+| Passed | $($testRun.passed) |
+| Failed | $($testRun.failures) |
+| Skipped | $($testRun.skipped) |
+"@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        } else {
+          Write-Host "No test results file found" -ForegroundColor Yellow
+        }
+
+  # Build the WPF GUI Application
+  build-gui:
+    name: Build GUI Application
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [powershell-analysis, pester-tests]
+
+    # Grant write permission for artifact upload
+    permissions:
+      contents: read
+      actions: write
+
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        fetch-depth: 0
+
+    - name: Cache NuGet packages
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # v4.0.0
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Display .NET Info
+      run: dotnet --info
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+
+    - name: Build
+      run: dotnet build ${{ env.PROJECT_PATH }} --configuration ${{ matrix.configuration }} --no-restore -v normal
+
+    - name: Build Diagnostics
+      if: failure()
+      shell: pwsh
+      run: |
+        Write-Host "## Build Failed - Diagnostic Information" -ForegroundColor Red
+        Write-Host "`n### Project File Contents:" -ForegroundColor Yellow
+        Get-Content GUI/WsusManager.csproj
+        Write-Host "`n### Directory Structure:" -ForegroundColor Yellow
+        Get-ChildItem -Path GUI -Recurse -Name | ForEach-Object { Write-Host "  $_" }
+
+    - name: Publish Self-Contained
+      if: matrix.configuration == 'Release'
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
+
+    - name: Verify Published Executable
+      if: matrix.configuration == 'Release'
+      shell: pwsh
+      run: |
+        Write-Host "## Build Verification" -ForegroundColor Green
+
+        $exe = Get-Item "./publish/WsusManager.exe" -ErrorAction SilentlyContinue
+        if ($exe) {
+          $sizeMB = [math]::Round($exe.Length / 1MB, 2)
+          Write-Host "Executable: WsusManager.exe"
+          Write-Host "Size: $sizeMB MB"
+          Write-Host "Created: $($exe.CreationTime)"
+
+          # Verify it's a valid PE file
+          $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+          if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
+            Write-Host "PE Header: Valid (MZ signature found)" -ForegroundColor Green
+          } else {
+            Write-Host "::error::Invalid PE header - executable may be corrupted"
+            exit 1
+          }
+        } else {
+          Write-Host "::error::WsusManager.exe not found in publish directory"
+          exit 1
+        }
+
+    - name: Create Release Package
+      if: matrix.configuration == 'Release'
+      shell: pwsh
+      run: |
+        $packageDir = "./package"
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+
+        Copy-Item "./publish/WsusManager.exe" $packageDir
+        Copy-Item -Path "./Modules" -Destination "$packageDir/Modules" -Recurse
+        Copy-Item "./Invoke-WsusManagement.ps1" $packageDir
+        Copy-Item -Path "./Scripts" -Destination "$packageDir/Scripts" -Recurse
+
+        $versionInfo = @(
+          "WSUS Manager Package",
+          "====================",
+          "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')",
+          "Git SHA: $env:GITHUB_SHA",
+          "Git Ref: $env:GITHUB_REF",
+          "Runner: $env:RUNNER_OS",
+          "Security: Pipeline hardened with least-privilege permissions",
+          "",
+          "Contents:",
+          "- WsusManager.exe: GUI application (self-contained)",
+          "- Modules/: PowerShell modules for WSUS operations",
+          "- Scripts/: Standalone PowerShell scripts",
+          "- Invoke-WsusManagement.ps1: Main CLI entry point"
+        ) -join "`n"
+        $versionInfo | Out-File "$packageDir/BUILD_INFO.txt"
+
+        Write-Host "Package created successfully"
+
+    - name: Upload Build Artifacts
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: WsusManager-${{ matrix.configuration }}
+        path: ./publish/
+
+    - name: Upload Complete Package
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: WsusManager-Complete-Package
+        path: ./package/
+        retention-days: 30
+
+  # Build PowerShell GUI to standalone EXE using PS2EXE
+  build-powershell-gui:
+    name: Build PowerShell GUI (PS2EXE)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    needs: [powershell-analysis]
+
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Cache PS2EXE Module
+      id: ps2exe-cache
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      with:
+        path: |
+          C:\Users\runneradmin\Documents\PowerShell\Modules\ps2exe
+        key: ${{ runner.os }}-ps2exe-${{ env.PS2EXE_VERSION }}
+
+    - name: Install PS2EXE Module
+      if: steps.ps2exe-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Write-Host "Installing PS2EXE module..." -ForegroundColor Cyan
+        Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
+        Write-Host "PS2EXE installed successfully" -ForegroundColor Green
+
+    - name: Build PowerShell GUI to EXE
+      shell: pwsh
+      run: |
+        Import-Module ps2exe
+        Write-Host "Building WsusManager.exe from WsusManagementGui.ps1..." -ForegroundColor Cyan
+
+        $buildParams = @{
+            InputFile = ".\WsusManagementGui.ps1"
+            OutputFile = ".\WsusManager-PS.exe"
+            NoConsole = $true
+            RequireAdmin = $false
+            Title = "WSUS Manager"
+            Description = "WSUS Manager - Modern GUI for Windows Server Update Services"
+            Company = "GA-ASI"
+            Product = "WSUS Manager"
+            Copyright = "Tony Tran, ISSO"
+            Version = "2.0.0.0"
+            STA = $true
+            x64 = $true
+        }
+
+        Invoke-PS2EXE @buildParams
+
+        if (Test-Path ".\WsusManager-PS.exe") {
+            $exe = Get-Item ".\WsusManager-PS.exe"
+            $sizeMB = [math]::Round($exe.Length / 1MB, 2)
+            Write-Host "Build successful!" -ForegroundColor Green
+            Write-Host "  Output: WsusManager-PS.exe"
+            Write-Host "  Size: $sizeMB MB"
+        } else {
+            Write-Host "::error::Build failed - executable not created"
+            exit 1
+        }
+
+    - name: Upload PowerShell GUI Artifact
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: WsusManager-PowerShell-GUI
+        path: ./WsusManager-PS.exe
+        retention-days: 30
+
+  # Summary job for debugging
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [powershell-analysis, pester-tests, build-gui, build-powershell-gui]
+    if: always()
+
+    steps:
+    - name: Generate Summary
+      run: |
+        echo "## WSUS-SQL CI/CD Summary (Secured Pipeline)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| PowerShell Analysis | ${{ needs.powershell-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Pester Unit Tests | ${{ needs.pester-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| WPF GUI Build | ${{ needs.build-gui.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| PowerShell GUI Build | ${{ needs.build-powershell-gui.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Security Features" >> $GITHUB_STEP_SUMMARY
+        echo "- Least-privilege permissions (read-only default)" >> $GITHUB_STEP_SUMMARY
+        echo "- Pinned action versions (SHA-based)" >> $GITHUB_STEP_SUMMARY
+        echo "- Dependency caching for reproducibility" >> $GITHUB_STEP_SUMMARY
+        echo "- Concurrency controls enabled" >> $GITHUB_STEP_SUMMARY
+        echo "- Job timeouts configured" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- **WsusManager-Release**: WPF GUI" >> $GITHUB_STEP_SUMMARY
+        echo "- **WsusManager-PowerShell-GUI**: PowerShell GUI" >> $GITHUB_STEP_SUMMARY
+        echo "- **WsusManager-Complete-Package**: Full distribution" >> $GITHUB_STEP_SUMMARY
+        echo "- **pester-test-results**: Test results and coverage" >> $GITHUB_STEP_SUMMARY
+        echo "- **powershell-analysis-results**: Code analysis reports (JSON)" >> $GITHUB_STEP_SUMMARY
