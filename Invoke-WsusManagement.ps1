@@ -1185,21 +1185,19 @@ function Show-Menu {
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
     Write-Host "  2. Restore Database from C:\WSUS"
-    Write-Host "  3. Import from External Media (Apricorn/USB/Optical)"
-    Write-Host "  4. Export to External Media (for Air-Gap Transfer)"
-    Write-Host "  5. Export for DVD Burning (split 4.3GB archives)"
+    Write-Host "  3. Copy Data from External Media (Apricorn/USB/Optical)"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
-    Write-Host "  6. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
-    Write-Host "  7. Deep Cleanup (Aggressive DB cleanup)"
+    Write-Host "  4. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  5. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
-    Write-Host "  8. Health Check"
-    Write-Host "  9. Health Check + Repair"
-    Write-Host "  10. Reset Content Download"
+    Write-Host "  6. Health Check"
+    Write-Host "  7. Health Check + Repair"
+    Write-Host "  8. Reset Content Download"
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
-    Write-Host "  11. Force Client Check-In (run on client)"
+    Write-Host "  9. Force Client Check-In (run on client)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -1225,14 +1223,13 @@ function Start-InteractiveMenu {
             '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2'  { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '3'  { Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
-            '4'  { Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
-            '5'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
-            '6'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
-            '7'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
-            '8'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '9'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
-            '10' { Invoke-WsusReset; pause }
-            '11' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '4'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '5'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
+            '6'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '7'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
+            '8'  { Invoke-WsusReset; pause }
+            '9'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            'D'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
             'Q'  { Write-Host "Exiting..." -ForegroundColor Green; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
