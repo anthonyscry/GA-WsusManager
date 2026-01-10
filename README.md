@@ -215,9 +215,65 @@ robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
 ```
 
 ### Imported GPOs
-1. **WSUS Update Policy** - Windows Update client settings
-2. **WSUS Inbound Allow** - Firewall inbound rules
-3. **WSUS Outbound Allow** - Firewall outbound rules
+
+The script imports three pre-configured GPOs. The WSUS server URL is automatically updated to match your environment.
+
+#### 1. WSUS Update Policy
+
+Configures Windows Update client behavior via registry settings under:
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate`
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU`
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| WUServer | `http://<YourServer>:8530` | Intranet update service URL (auto-replaced) |
+| WUStatusServer | `http://<YourServer>:8530` | Intranet statistics server (auto-replaced) |
+| UseWUServer | Enabled | Use intranet WSUS instead of Microsoft Update |
+| DoNotConnectToWindowsUpdateInternetLocations | Enabled | Block direct internet updates (critical for air-gap) |
+| AcceptTrustedPublisherCerts | Enabled | Accept signed updates from intranet |
+| ElevateNonAdmins | Disabled | Only admins receive update notifications |
+| SetDisablePauseUXAccess | Enabled | Remove "Pause updates" option from users |
+| AUPowerManagement | Enabled | Wake system from sleep for scheduled updates |
+| Configure Automatic Updates | 2 - Notify for download and auto install | Users notified before download |
+| AlwaysAutoRebootAtScheduledTime | 15 minutes | Auto-restart warning time |
+| ScheduledInstallDay | 0 - Every day | Check for updates daily |
+| ScheduledInstallTime | 00:00 | Install time (midnight) |
+| NoAUShutdownOption | Disabled | Show "Install Updates and Shut Down" option |
+
+#### 2. WSUS Inbound Allow
+
+Creates Windows Defender Firewall inbound rule:
+
+| Property | Value |
+|----------|-------|
+| Name | WSUS Inbound Allow |
+| Direction | Inbound |
+| Action | Allow |
+| Protocol | TCP |
+| Local Ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows inbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS) |
+
+#### 3. WSUS Outbound Allow
+
+Creates Windows Defender Firewall outbound rule:
+
+| Property | Value |
+|----------|-------|
+| Name | WSUS Outbound Allow |
+| Direction | Outbound |
+| Action | Allow |
+| Protocol | TCP |
+| Remote Ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows outbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS) |
+
+#### GPO Linking
+
+After import, link the GPOs to appropriate OUs:
+- **WSUS Update Policy** → Link to all workstation/server OUs that should receive updates
+- **WSUS Inbound Allow** → Link to WSUS server OU (allows clients to connect to it)
+- **WSUS Outbound Allow** → Link to all client OUs (allows them to reach WSUS server)
 
 ---
 
