@@ -1,13 +1,23 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 
-test('has title', async ({ page }) => {
+test('has title', async () => {
+  // Connect to existing browser via CDP
+  const browser = await chromium.connectOverCDP('http://localhost:9222');
+  const context = browser.contexts()[0];
+  const page = context.pages()[0] || await context.newPage();
+
   await page.goto('https://playwright.dev/');
 
   // Expect a title "to contain" a substring.
   await expect(page).toHaveTitle(/Playwright/);
 });
 
-test('get started link', async ({ page }) => {
+test('get started link', async () => {
+  // Connect to existing browser via CDP
+  const browser = await chromium.connectOverCDP('http://localhost:9222');
+  const context = browser.contexts()[0];
+  const page = context.pages()[0] || await context.newPage();
+
   await page.goto('https://playwright.dev/');
 
   // Click the get started link.
