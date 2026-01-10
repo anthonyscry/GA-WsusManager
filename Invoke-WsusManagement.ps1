@@ -536,6 +536,11 @@ function Invoke-BrowseArchive {
                             $backupFolders += $directBackups
                         }
 
+                        # Check if the month folder itself contains .bak files directly
+                        if ((Get-ChildItem -Path $selectedMonth.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0) {
+                            $backupFolders += $selectedMonth
+                        }
+
                         # Also check for day subfolders (1, 2, 3... or 01, 02, 03...)
                         $dayFolders = Get-ChildItem -Path $selectedMonth.FullName -Directory -ErrorAction SilentlyContinue |
                             Where-Object { $_.Name -match '^\d+$' }
