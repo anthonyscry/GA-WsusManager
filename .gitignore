@@ -111,3 +111,17 @@ TestResults/
 coverage/
 *.coverage
 *.coveragexml
+
+# =========================
+# Playwright
+# =========================
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# =========================
+# Node.js
+# =========================
+node_modules/
+package-lock.json
