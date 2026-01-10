@@ -1,0 +1,256 @@
+<UserControl x:Class="WsusManager.Views.MediaTransferView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1000"
+             Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="Media Transfer" Style="{StaticResource HeaderTextStyle}"/>
+            <TextBlock Text="Import and export WSUS content for air-gapped environments"
+                       Style="{StaticResource CaptionTextStyle}"/>
+        </StackPanel>
+
+        <!-- Main Content - Tabs for Import/Export -->
+        <TabControl Grid.Row="1" Style="{StaticResource ModernTabControlStyle}">
+
+            <!-- Import Tab -->
+            <TabItem Header="Import from Media" Style="{StaticResource ModernTabItemStyle}">
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="350"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left - Archive Browser -->
+                    <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Browse Archive" Style="{StaticResource SubheaderTextStyle}"/>
+
+                            <!-- Archive Path -->
+                            <Grid Grid.Row="1" Margin="0,8,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ModernTextBoxStyle}"/>
+                                <Button Grid.Column="1"
+                                        Content="Refresh"
+                                        Command="{Binding RefreshArchiveCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Margin="8,0,0,0"/>
+                            </Grid>
+
+                            <!-- Hierarchical Selection -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Year Selection -->
+                                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                    <TextBlock Text="Year" Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,4"/>
+                                    <ListBox ItemsSource="{Binding ArchiveYears}"
+                                             SelectedItem="{Binding SelectedYear}"
+                                             DisplayMemberPath="Year"
+                                             Style="{StaticResource ModernListBoxStyle}"
+                                             Height="200"/>
+                                </StackPanel>
+
+                                <!-- Month Selection -->
+                                <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                    <TextBlock Text="Month" Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,4"/>
+                                    <ListBox ItemsSource="{Binding AvailableMonths}"
+                                             SelectedItem="{Binding SelectedMonth}"
+                                             DisplayMemberPath="Name"
+                                             Style="{StaticResource ModernListBoxStyle}"
+                                             Height="200"/>
+                                </StackPanel>
+
+                                <!-- Backup Selection -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Backup" Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,4"/>
+                                    <ListBox ItemsSource="{Binding AvailableBackups}"
+                                             SelectedItem="{Binding SelectedBackup}"
+                                             DisplayMemberPath="Name"
+                                             Style="{StaticResource ModernListBoxStyle}"
+                                             Height="200"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right - Import Options -->
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Import Settings" Style="{StaticResource SubheaderTextStyle}"/>
+
+                            <TextBlock Text="Source Path" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding ImportSourcePath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ModernTextBoxStyle}"/>
+                                <Button Grid.Column="1"
+                                        Content="..."
+                                        Command="{Binding BrowseImportSourceCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Width="40"
+                                        Margin="8,0,0,0"/>
+                            </Grid>
+
+                            <TextBlock Text="Destination Path" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <TextBox Text="{Binding ImportDestinationPath, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"/>
+
+                            <Button Content="Import from Selected Backup"
+                                    Command="{Binding ImportFromArchiveCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Height="40"
+                                    Margin="0,24,0,8"
+                                    HorizontalAlignment="Stretch"/>
+
+                            <Button Content="Import from Custom Path"
+                                    Command="{Binding ImportCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Height="40"
+                                    HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Export Tab -->
+            <TabItem Header="Export to Media" Style="{StaticResource ModernTabItemStyle}">
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="350"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left - Export Options -->
+                    <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Export Settings" Style="{StaticResource SubheaderTextStyle}"/>
+
+                            <TextBlock Text="Source Path (WSUS Content)" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <TextBox Text="{Binding ExportSourcePath, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"/>
+
+                            <TextBlock Text="Destination Path" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding ExportDestinationPath, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ModernTextBoxStyle}"/>
+                                <Button Grid.Column="1"
+                                        Content="..."
+                                        Command="{Binding BrowseExportDestinationCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Width="40"
+                                        Margin="8,0,0,0"/>
+                            </Grid>
+
+                            <TextBlock Text="Export Mode" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <ComboBox ItemsSource="{Binding ExportModes}"
+                                      SelectedItem="{Binding SelectedExportMode}"
+                                      Padding="12,8"
+                                      FontSize="14"/>
+
+                            <TextBlock Text="Files older than (days, 0 for all)" Style="{StaticResource CaptionTextStyle}" Margin="0,16,0,4"/>
+                            <TextBox Text="{Binding ExportDaysOld, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBoxStyle}"/>
+
+                            <Button Content="Start Export"
+                                    Command="{Binding ExportCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Height="40"
+                                    Margin="0,24,0,0"
+                                    HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right - Progress -->
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Export Progress" Style="{StaticResource SubheaderTextStyle}"/>
+
+                            <StackPanel Grid.Row="1" Margin="0,16,0,16">
+                                <TextBlock Text="{Binding CurrentOperation}"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           Margin="0,0,0,8"/>
+                                <ProgressBar Value="{Binding OperationProgress}"
+                                             Maximum="100"
+                                             Height="12"
+                                             Style="{StaticResource ModernProgressBarStyle}"/>
+                                <TextBlock Text="{Binding OperationProgress, StringFormat='{}{0}%'}"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+
+                            <ListBox Grid.Row="2"
+                                     ItemsSource="{Binding OutputLog}"
+                                     Style="{StaticResource ModernListBoxStyle}"
+                                     FontFamily="Consolas"
+                                     FontSize="11"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Margin="0,16,0,0" Padding="12" Background="{StaticResource SurfaceBrush}" CornerRadius="4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding StatusMessage}"
+                           Style="{StaticResource BodyTextStyle}"
+                           VerticalAlignment="Center"/>
+
+                <ProgressBar Grid.Column="1"
+                             IsIndeterminate="True"
+                             Width="100"
+                             Height="6"
+                             Style="{StaticResource ModernProgressBarStyle}"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

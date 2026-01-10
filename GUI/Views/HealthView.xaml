@@ -1,0 +1,219 @@
+<UserControl x:Class="WsusManager.Views.HealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1000"
+             Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="350"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Health Check" Style="{StaticResource HeaderTextStyle}"/>
+                    <TextBlock Text="{Binding LastCheckDisplay, StringFormat='Last check: {0}'}"
+                               Style="{StaticResource CaptionTextStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Run Health Check"
+                            Command="{Binding RunHealthCheckCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Auto-Repair"
+                            Command="{Binding RunRepairCommand}"
+                            Style="{StaticResource SuccessButtonStyle}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Summary Cards -->
+            <Grid Grid.Row="1" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Overall Status -->
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Overall Status" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding OverallStatus}"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{Binding OverallStatus, Converter={StaticResource StatusToColorConverter}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Passed -->
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Passed" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding PassedCount}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource SuccessBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Warnings -->
+                <Border Grid.Column="4" Style="{StaticResource CardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Warnings" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding WarningCount}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Failed -->
+                <Border Grid.Column="6" Style="{StaticResource CardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Failed" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding FailedCount}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource ErrorBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Health Check Results -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Health Check Results" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding HealthChecks}"
+                             Style="{StaticResource ModernListBoxStyle}"
+                             Margin="0,8,0,0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="4,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Status Icon -->
+                                    <Ellipse Grid.Column="0" Width="16" Height="16" Margin="0,0,12,0">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource WarningBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource ErrorBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+
+                                    <!-- Check Name & Message -->
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Name}"
+                                                   Style="{StaticResource BodyTextStyle}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Message}"
+                                                   Style="{StaticResource CaptionTextStyle}"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="{Binding Message, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                    </StackPanel>
+
+                                    <!-- Status Text -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Status}"
+                                               Foreground="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Right Panel - Repair Log -->
+        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock Text="Repair Log" Style="{StaticResource SubheaderTextStyle}"/>
+                    <Button Content="Clear"
+                            Command="{Binding ClearLogCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Right"
+                            Padding="8,4"/>
+                </Grid>
+
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding RepairLog}"
+                         Style="{StaticResource ModernListBoxStyle}"
+                         FontFamily="Consolas"
+                         FontSize="11"/>
+            </Grid>
+        </Border>
+
+        <!-- Loading Overlay -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3"
+                Background="#80FFFFFF"
+                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <ProgressBar IsIndeterminate="True"
+                             Width="200"
+                             Height="8"
+                             Style="{StaticResource ModernProgressBarStyle}"/>
+                <TextBlock Text="{Binding StatusMessage}"
+                           Style="{StaticResource BodyTextStyle}"
+                           HorizontalAlignment="Center"
+                           Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
