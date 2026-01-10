@@ -1,0 +1,217 @@
+<UserControl x:Class="WsusManager.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1000"
+             Background="{StaticResource BackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Settings" Style="{StaticResource HeaderTextStyle}"/>
+                    <TextBlock Text="Configure WSUS Manager settings and paths"
+                               Style="{StaticResource CaptionTextStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Reset to Defaults"
+                            Command="{Binding ResetConfigCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Save Changes"
+                            Command="{Binding SaveConfigCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            IsEnabled="{Binding HasChanges}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Paths Configuration -->
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Text="Paths" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="16"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="16"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="16"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Content Path -->
+                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="Content Path"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding ContentPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"/>
+                        <Button Grid.Row="0" Grid.Column="2"
+                                Content="..."
+                                Command="{Binding BrowseContentPathCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Width="40"
+                                Margin="8,0,0,0"/>
+
+                        <!-- Log Path -->
+                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                   Text="Log Path"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Text="{Binding LogPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"/>
+                        <Button Grid.Row="2" Grid.Column="2"
+                                Content="..."
+                                Command="{Binding BrowseLogPathCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Width="40"
+                                Margin="8,0,0,0"/>
+
+                        <!-- Export Path -->
+                        <TextBlock Grid.Row="4" Grid.Column="0"
+                                   Text="Export Path"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="4" Grid.Column="1"
+                                 Text="{Binding ExportPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"/>
+                        <Button Grid.Row="4" Grid.Column="2"
+                                Content="..."
+                                Command="{Binding BrowseExportPathCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Width="40"
+                                Margin="8,0,0,0"/>
+
+                        <!-- Archive Path -->
+                        <TextBlock Grid.Row="6" Grid.Column="0"
+                                   Text="Archive Path"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="6" Grid.Column="1"
+                                 Text="{Binding ArchivePath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Database Configuration -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="Database" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="SQL Instance"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding SqlInstance, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"/>
+                        <Button Grid.Column="2"
+                                Content="Test Connection"
+                                Command="{Binding TestConnectionCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="8,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- SSL Configuration -->
+            <Border Grid.Row="3" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="SSL/HTTPS" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <CheckBox Content="Enable SSL/HTTPS for WSUS"
+                              IsChecked="{Binding SslEnabled}"
+                              Margin="0,16,0,16"/>
+
+                    <Grid IsEnabled="{Binding SslEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="Certificate Thumbprint"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding SslCertificateThumbprint, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBoxStyle}"
+                                 FontFamily="Consolas"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- About -->
+            <Border Grid.Row="4" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="About" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="8"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="8"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Application" Style="{StaticResource BodyTextStyle}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="WSUS Manager v1.0.0" Style="{StaticResource BodyTextStyle}"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Framework" Style="{StaticResource BodyTextStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text=".NET 6.0 / WPF" Style="{StaticResource BodyTextStyle}"/>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Description" Style="{StaticResource BodyTextStyle}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="1"
+                                   Text="GUI for managing WSUS servers in online and air-gapped environments"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Status -->
+            <TextBlock Grid.Row="5"
+                       Text="{Binding StatusMessage}"
+                       Style="{StaticResource CaptionTextStyle}"
+                       Margin="0,16,0,0"
+                       Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

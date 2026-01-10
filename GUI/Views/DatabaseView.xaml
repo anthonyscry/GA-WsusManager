@@ -1,0 +1,205 @@
+<UserControl x:Class="WsusManager.Views.DatabaseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1000"
+             Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="350"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Panel - Main Content -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,24">
+                <TextBlock Text="Database" Style="{StaticResource HeaderTextStyle}"/>
+                <TextBlock Text="Manage WSUS database operations"
+                           Style="{StaticResource CaptionTextStyle}"/>
+            </StackPanel>
+
+            <!-- Stats Cards -->
+            <Grid Grid.Row="1" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Database Size" Style="{StaticResource CaptionTextStyle}"/>
+                        <TextBlock Text="{Binding Stats.SizeDisplay}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Total Updates" Style="{StaticResource CaptionTextStyle}"/>
+                        <TextBlock Text="{Binding Stats.UpdateCount}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="4" Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Superseded" Style="{StaticResource CaptionTextStyle}"/>
+                        <TextBlock Text="{Binding Stats.SupersededCount}"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource WarningBrush}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Actions -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Text="Database Operations" Style="{StaticResource SubheaderTextStyle}"/>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0"
+                                Content="Optimize Indexes"
+                                Command="{Binding OptimizeCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                Height="40"/>
+
+                        <Button Grid.Column="2"
+                                Content="Shrink Database"
+                                Command="{Binding ShrinkCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                Height="40"/>
+                    </Grid>
+
+                    <!-- Progress -->
+                    <StackPanel Visibility="{Binding IsRestoring, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Margin="0,16,0,0">
+                        <TextBlock Text="{Binding OperationStatus}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Margin="0,0,0,8"/>
+                        <ProgressBar Value="{Binding OperationProgress}"
+                                     Maximum="100"
+                                     Height="8"
+                                     Style="{StaticResource ModernProgressBarStyle}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Output Log -->
+            <Border Grid.Row="3" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="Output Log" Style="{StaticResource SubheaderTextStyle}"/>
+                        <Button Content="Clear"
+                                Command="{Binding ClearLogCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Right"
+                                Padding="8,4"/>
+                    </Grid>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding OutputLog}"
+                             Style="{StaticResource ModernListBoxStyle}"
+                             FontFamily="Consolas"
+                             FontSize="12"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Right Panel - Restore -->
+        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Restore Database" Style="{StaticResource SubheaderTextStyle}"/>
+
+                <!-- Backup Path -->
+                <Grid Grid.Row="1" Margin="0,16,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Text="{Binding BackupPath, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource ModernTextBoxStyle}"/>
+                    <Button Grid.Column="1"
+                            Content="..."
+                            Command="{Binding BrowseBackupPathCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Width="40"
+                            Margin="8,0,0,0"/>
+                </Grid>
+
+                <!-- Backup List -->
+                <ListBox Grid.Row="2"
+                         ItemsSource="{Binding Backups}"
+                         SelectedItem="{Binding SelectedBackup}"
+                         Style="{StaticResource ModernListBoxStyle}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="4">
+                                <TextBlock Text="{Binding Name}"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           FontWeight="SemiBold"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding SizeDisplay}"
+                                               Style="{StaticResource CaptionTextStyle}"/>
+                                    <TextBlock Text=" - "
+                                               Style="{StaticResource CaptionTextStyle}"/>
+                                    <TextBlock Text="{Binding Created, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                               Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Restore Button -->
+                <Button Grid.Row="3"
+                        Content="Restore Selected Backup"
+                        Command="{Binding RestoreCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        HorizontalAlignment="Stretch"
+                        Height="40"
+                        Margin="0,16,0,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
