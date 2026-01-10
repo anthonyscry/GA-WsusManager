@@ -1,23 +1,22 @@
 import { test, expect, chromium } from '@playwright/test';
 
-// Connect to existing Chrome instance via CDP
 test('has title', async () => {
+  // Connect to existing browser via CDP
   const browser = await chromium.connectOverCDP('http://localhost:9222');
-  const context = browser.contexts()[0] || await browser.newContext();
-  const page = await context.newPage();
+  const context = browser.contexts()[0];
+  const page = context.pages()[0] || await context.newPage();
 
   await page.goto('https://playwright.dev/');
 
   // Expect a title "to contain" a substring.
   await expect(page).toHaveTitle(/Playwright/);
-
-  await page.close();
 });
 
 test('get started link', async () => {
+  // Connect to existing browser via CDP
   const browser = await chromium.connectOverCDP('http://localhost:9222');
-  const context = browser.contexts()[0] || await browser.newContext();
-  const page = await context.newPage();
+  const context = browser.contexts()[0];
+  const page = context.pages()[0] || await context.newPage();
 
   await page.goto('https://playwright.dev/');
 
@@ -26,6 +25,4 @@ test('get started link', async () => {
 
   // Expects page to have a heading with the name of Installation.
   await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
-
-  await page.close();
 });
