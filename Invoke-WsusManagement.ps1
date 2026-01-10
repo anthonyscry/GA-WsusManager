@@ -101,31 +101,39 @@ $ErrorActionPreference = 'Continue'
 # 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
 # 2. Flat: All scripts in same folder (user copied main script into Scripts folder)
 # 3. Nested: Script in Scripts\Scripts\ folder
-$ScriptRoot = $PSScriptRoot
-$ScriptsFolder = $PSScriptRoot
+
+# Resolve script location (handles symlinks and dot-sourcing)
+$ScriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ScriptsFolder = $ScriptRoot
 
 # Check flat layout FIRST (scripts in same folder as main script)
 # This prevents double-Scripts path issue when running from Scripts folder
-if (Test-Path (Join-Path $PSScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
+if (Test-Path (Join-Path $ScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
     # Flat layout - all scripts in same folder (or user is running from Scripts folder)
-    $ScriptsFolder = $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
+    $ScriptsFolder = $ScriptRoot
+} elseif (Test-Path (Join-Path $ScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
     # Standard layout - scripts are in Scripts\ subfolder
-    $ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
+    $ScriptsFolder = Join-Path $ScriptRoot "Scripts"
 }
 
 # Find modules folder - search multiple locations for flexibility
 $ModulesFolder = $null
 $moduleSearchPaths = @(
-    (Join-Path $PSScriptRoot "Modules"),                                    # Standard (root\Modules)
-    (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"),               # Parent folder
-    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "Modules")  # Grandparent (nested)
+    (Join-Path $ScriptRoot "Modules"),                                      # Standard (root\Modules)
+    (Join-Path (Split-Path $ScriptRoot -Parent) "Modules"),                 # Parent folder
+    (Join-Path (Split-Path (Split-Path $ScriptRoot -Parent) -Parent) "Modules"),  # Grandparent (nested)
+    $ScriptsFolder                                                           # Same folder as scripts
 )
 
 foreach ($path in $moduleSearchPaths) {
-    if (Test-Path (Join-Path $path "WsusUtilities.psm1")) {
-        $ModulesFolder = $path
-        break
+    $utilPath = Join-Path $path "WsusUtilities.psm1"
+    if (Test-Path $utilPath) {
+        # Verify the module file has expected content
+        $content = Get-Content $utilPath -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -match 'function Start-WsusLogging') {
+            $ModulesFolder = $path
+            break
+        }
     }
 }
 
