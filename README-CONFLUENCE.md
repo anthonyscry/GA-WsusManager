@@ -13,6 +13,10 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 1. [Features](#features)
 2. [Quick Start](#quick-start)
+   - [Prerequisites](#prerequisites)
+   - [Granting SQL Server Sysadmin Privileges](#granting-sql-server-sysadmin-privileges)
+   - [First-Time Setup](#first-time-setup)
+   - [Installation Steps](#installation-steps)
 3. [Command Reference](#command-reference)
 4. [Air-Gapped Network Workflow](#air-gapped-network-workflow)
 5. [Domain Controller Setup](#domain-controller-setup)
@@ -40,10 +44,69 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ### Prerequisites
 
-- Windows Server 2016+ with Administrator access
-- PowerShell 5.0+
-- SQL Server Express 2022 installer (`SQLEXPRADV_x64_ENU.exe`)
-- SQL Server Management Studio installer (`SSMS-Setup-ENU.exe`)
+#### System Requirements
+
+| Requirement | Specification |
+|-------------|---------------|
+| Operating System | Windows Server 2019+ (physical or VM) |
+| CPU | 4 cores minimum |
+| RAM | 16 GB minimum |
+| Disk Space | 125 GB minimum |
+| Network | Valid IPv4 configuration (static IP recommended) |
+| PowerShell | 5.0+ |
+
+#### Required Installers
+
+| File | Location |
+|------|----------|
+| `SQLEXPRADV_x64_ENU.exe` | `C:\WSUS\SQLDB\` |
+| `SSMS-Setup-ENU.exe` | `C:\WSUS\SQLDB\` |
+
+#### Required Privileges
+
+| Privilege | Scope | Purpose |
+|-----------|-------|---------|
+| Local Administrator | WSUS server (source & destination) | Script execution, service management |
+| sysadmin role | `localhost\SQLEXPRESS` | SUSDB backup/restore operations |
+
+---
+
+### Granting SQL Server Sysadmin Privileges
+
+> **Note:** Required for database backup/restore operations. Perform this on both online and air-gapped WSUS servers.
+
+#### Step 1: Connect to SQL Server
+
+| Step | Action |
+|------|--------|
+| 1 | Launch **SQL Server Management Studio (SSMS)** |
+| 2 | Server type: **Database Engine** |
+| 3 | Server name: `localhost\SQLEXPRESS` |
+| 4 | Authentication: **SQL Server Authentication** |
+| 5 | Login: `sa` (or default admin account) |
+| 6 | Check **Trust Server Certificate** |
+| 7 | Click **Connect** |
+
+#### Step 2: Add Login with Sysadmin Role
+
+| Step | Action |
+|------|--------|
+| 1 | In Object Explorer, expand **Security** → **Logins** |
+| 2 | Right-click **Logins** → **New Login...** |
+| 3 | Click **Search...** to locate the account |
+| 4 | Click **Locations...** → select **Entire Directory** |
+| 5 | Enter domain group (e.g., `LSJ.LOCAL\System Administrators`) → **OK** |
+| 6 | Go to **Server Roles** page |
+| 7 | Check **sysadmin** → **OK** |
+
+#### Step 3: Refresh Permissions
+
+| Step | Action |
+|------|--------|
+| 1 | Log out of the WSUS server |
+| 2 | Log back in to refresh group membership |
+
+---
 
 ### First-Time Setup
 
