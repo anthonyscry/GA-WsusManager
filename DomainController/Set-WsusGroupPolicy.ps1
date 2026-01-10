@@ -281,6 +281,44 @@ function Import-WsusGpo {
     Write-Host ""
 }
 
+function Push-GPUpdateToAll {
+    <#
+    .SYNOPSIS
+        Forces Group Policy update on all domain computers.
+    #>
+    param([string]$DomainDN)
+
+    Write-Host ""
+    Write-Host "Pushing GPO to all domain computers..." -ForegroundColor Yellow
+
+    # Get all computer objects
+    $computers = Get-ADComputer -Filter "Enabled -eq `$true" -SearchBase $DomainDN -ErrorAction SilentlyContinue |
+        Where-Object { $_.DistinguishedName -notlike "*OU=Domain Controllers*" }
+
+    $total = $computers.Count
+    $success = 0
+    $failed = 0
+
+    Write-Host "  Found $total computers (excluding DCs)"
+
+    foreach ($computer in $computers) {
+        try {
+            Invoke-GPUpdate -Computer $computer.Name -Force -RandomDelayInMinutes 0 -ErrorAction Stop
+            $success++
+        } catch {
+            $failed++
+        }
+    }
+
+    Write-Host "  Pushed: " -NoNewline
+    Write-Host "$success OK" -ForegroundColor Green -NoNewline
+    if ($failed -gt 0) {
+        Write-Host ", $failed failed (offline/unreachable)" -ForegroundColor DarkGray
+    } else {
+        Write-Host ""
+    }
+}
+
 function Show-Summary {
     <#
     .SYNOPSIS
@@ -300,8 +338,7 @@ function Show-Summary {
     Write-Host ""
     Write-Host "Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Move WSUS server computer object to: Member Servers\WSUS Server"
-    Write-Host "  2. Run 'gpupdate /force' on clients"
-    Write-Host "  3. Verify: wuauclt /detectnow /reportnow"
+    Write-Host "  2. Verify on clients: gpresult /r | findstr WSUS"
     Write-Host ""
     Write-Host "NOTE:" -ForegroundColor Yellow -NoNewline
     Write-Host " Computers outside Domain Controllers, Member Servers, or Workstations"
@@ -367,6 +404,9 @@ try {
                        -WsusUrl $WsusServerUrl `
                        -DomainDN $domainInfo.DomainDN
     }
+
+    # Push GPO to all computers immediately
+    Push-GPUpdateToAll -DomainDN $domainInfo.DomainDN
 
     # Display summary
     Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count
