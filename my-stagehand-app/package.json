@@ -3,14 +3,19 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "start:local": "STAGEHAND_ENV=LOCAL tsx index.ts",
+    "start:cloud": "STAGEHAND_ENV=BROWSERBASE tsx index.ts"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "latest",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "playwright": "^1.57.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@types/node": "^25.0.6"
   }
 }
