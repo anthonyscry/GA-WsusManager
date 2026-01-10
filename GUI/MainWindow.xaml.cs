@@ -10,6 +10,9 @@ namespace WsusManager
         {
             InitializeComponent();
 
+            // Set DataContext here (after App.OnStartup has run and App.ModulesPath is initialized)
+            DataContext = new MainViewModel();
+
             Closed += OnClosed;
         }
 
