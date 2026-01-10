@@ -2,8 +2,11 @@
 <#
 ===============================================================================
 Script: WsusManagementGui.ps1
-Author: Tony Tran, ISSO, GA-ASI
-Version: 2.0.0
+Author: Tony Tran
+        Information Systems Security Officer
+        Classified Computing, GA-ASI
+        tony.tran@ga-asi.com
+Version: 3.2.0
 Date: 2026-01-10
 ===============================================================================
 .SYNOPSIS
@@ -11,64 +14,278 @@ Date: 2026-01-10
 
 .DESCRIPTION
     Provides a clean, modern graphical interface for all WSUS management tasks:
-    - Dashboard with real-time status
+    - Dashboard with real-time service status
     - Installation, restoration, import/export
     - Maintenance and cleanup
     - Health checks and repairs
+    - Dark/Light theme support
+    - Settings persistence
 
-    Can be compiled to portable EXE using PS2EXE.
+    Standalone EXE - no external dependencies required.
 
 .NOTES
-    Run Build-WsusGui.ps1 to compile to standalone EXE.
+    Compile to portable EXE using: .\build.ps1
 #>
+
+param([switch]$SkipAdminCheck)
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 # ============================================================================
-# CONFIGURATION
+# VERSION & AUTHOR INFO
 # ============================================================================
-$script:ScriptRoot = $PSScriptRoot
-if (-not $script:ScriptRoot) {
-    $script:ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$script:AppVersion = "3.2.0"
+$script:AppName = "WSUS Manager"
+$script:BuildDate = "2026-01-10"
+$script:AuthorInfo = @{
+    Name = "Tony Tran"
+    Title = "Information Systems Security Officer"
+    Department = "Classified Computing"
+    Company = "GA-ASI"
+    Email = "tony.tran@ga-asi.com"
 }
 
-$script:ContentPath = "C:\WSUS"
-$script:SqlInstance = ".\SQLEXPRESS"
-$script:ExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+# ============================================================================
+# ADMIN CHECK
+# ============================================================================
+function Test-IsAdmin {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not $SkipAdminCheck -and -not (Test-IsAdmin)) {
+    $result = [System.Windows.Forms.MessageBox]::Show(
+        "WSUS Manager requires Administrator privileges for most operations.`n`nWould you like to restart as Administrator?",
+        "Administrator Required",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning)
+    if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = "powershell.exe"
+        $psi.Arguments = "-ExecutionPolicy Bypass -File `"$PSCommandPath`""
+        $psi.Verb = "runas"
+        $psi.UseShellExecute = $true
+        try { [System.Diagnostics.Process]::Start($psi) | Out-Null; exit }
+        catch { [System.Windows.Forms.MessageBox]::Show("Failed to restart as Administrator.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) }
+    }
+}
+
+# ============================================================================
+# SETTINGS PERSISTENCE
+# ============================================================================
+$script:SettingsPath = Join-Path $env:APPDATA "WsusManager\settings.json"
+$script:ScriptRoot = $PSScriptRoot
+if (-not $script:ScriptRoot) { $script:ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $script:ScriptRoot) { $script:ScriptRoot = "C:\WSUS\Scripts" }
+
+$script:Settings = @{
+    ContentPath = "C:\WSUS"
+    SqlInstance = ".\SQLEXPRESS"
+    ExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+    Theme = "Light"
+    WindowWidth = 1100
+    WindowHeight = 700
+}
+
+function Save-Settings {
+    try {
+        $dir = Split-Path $script:SettingsPath -Parent
+        if (-not (Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
+        $script:Settings.ContentPath = $script:ContentPath
+        $script:Settings.SqlInstance = $script:SqlInstance
+        $script:Settings.ExportRoot = $script:ExportRoot
+        $script:Settings.Theme = $script:CurrentTheme
+        $script:Settings | ConvertTo-Json | Set-Content -Path $script:SettingsPath -Encoding UTF8
+    } catch { }
+}
+
+function Load-Settings {
+    try {
+        if (Test-Path $script:SettingsPath) {
+            $loaded = Get-Content $script:SettingsPath -Raw | ConvertFrom-Json
+            foreach ($prop in $loaded.PSObject.Properties) {
+                if ($script:Settings.ContainsKey($prop.Name)) { $script:Settings[$prop.Name] = $prop.Value }
+            }
+        }
+    } catch { }
+}
+
+Load-Settings
+$script:ContentPath = $script:Settings.ContentPath
+$script:SqlInstance = $script:Settings.SqlInstance
+$script:ExportRoot = $script:Settings.ExportRoot
+$script:CurrentTheme = $script:Settings.Theme
 $script:LogPath = "C:\WSUS\Logs\WsusGui_$(Get-Date -Format 'yyyy-MM-dd').log"
 
 # ============================================================================
-# COLOR SCHEME
+# THEME DEFINITIONS
 # ============================================================================
-$script:Colors = @{
-    # Main colors
-    Background     = [System.Drawing.Color]::FromArgb(250, 250, 252)
-    Surface        = [System.Drawing.Color]::White
-    Sidebar        = [System.Drawing.Color]::FromArgb(32, 36, 45)
-    SidebarHover   = [System.Drawing.Color]::FromArgb(45, 50, 62)
-    SidebarActive  = [System.Drawing.Color]::FromArgb(59, 130, 246)
+$script:Themes = @{
+    Light = @{
+        Background = [System.Drawing.Color]::FromArgb(250, 250, 252)
+        Surface = [System.Drawing.Color]::White
+        Sidebar = [System.Drawing.Color]::FromArgb(32, 36, 45)
+        SidebarHover = [System.Drawing.Color]::FromArgb(45, 50, 62)
+        SidebarActive = [System.Drawing.Color]::FromArgb(59, 130, 246)
+        Primary = [System.Drawing.Color]::FromArgb(59, 130, 246)
+        Success = [System.Drawing.Color]::FromArgb(34, 197, 94)
+        Warning = [System.Drawing.Color]::FromArgb(251, 146, 60)
+        Danger = [System.Drawing.Color]::FromArgb(239, 68, 68)
+        TextPrimary = [System.Drawing.Color]::FromArgb(30, 41, 59)
+        TextSecondary = [System.Drawing.Color]::FromArgb(100, 116, 139)
+        TextLight = [System.Drawing.Color]::White
+        TextMuted = [System.Drawing.Color]::FromArgb(148, 163, 184)
+        Border = [System.Drawing.Color]::FromArgb(226, 232, 240)
+        ConsoleBackground = [System.Drawing.Color]::FromArgb(15, 23, 42)
+        ConsoleText = [System.Drawing.Color]::FromArgb(148, 163, 184)
+    }
+    Dark = @{
+        Background = [System.Drawing.Color]::FromArgb(17, 24, 39)
+        Surface = [System.Drawing.Color]::FromArgb(31, 41, 55)
+        Sidebar = [System.Drawing.Color]::FromArgb(17, 24, 39)
+        SidebarHover = [System.Drawing.Color]::FromArgb(55, 65, 81)
+        SidebarActive = [System.Drawing.Color]::FromArgb(59, 130, 246)
+        Primary = [System.Drawing.Color]::FromArgb(59, 130, 246)
+        Success = [System.Drawing.Color]::FromArgb(34, 197, 94)
+        Warning = [System.Drawing.Color]::FromArgb(251, 146, 60)
+        Danger = [System.Drawing.Color]::FromArgb(239, 68, 68)
+        TextPrimary = [System.Drawing.Color]::FromArgb(243, 244, 246)
+        TextSecondary = [System.Drawing.Color]::FromArgb(156, 163, 175)
+        TextLight = [System.Drawing.Color]::White
+        TextMuted = [System.Drawing.Color]::FromArgb(107, 114, 128)
+        Border = [System.Drawing.Color]::FromArgb(55, 65, 81)
+        ConsoleBackground = [System.Drawing.Color]::FromArgb(0, 0, 0)
+        ConsoleText = [System.Drawing.Color]::FromArgb(156, 163, 175)
+    }
+}
+$script:Colors = $script:Themes[$script:CurrentTheme]
 
-    # Accent colors
-    Primary        = [System.Drawing.Color]::FromArgb(59, 130, 246)
-    PrimaryHover   = [System.Drawing.Color]::FromArgb(37, 99, 235)
-    Success        = [System.Drawing.Color]::FromArgb(34, 197, 94)
-    Warning        = [System.Drawing.Color]::FromArgb(251, 146, 60)
-    Danger         = [System.Drawing.Color]::FromArgb(239, 68, 68)
+# ============================================================================
+# WSUS DETECTION
+# ============================================================================
+function Test-WsusInstalled { try { $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue; return ($null -ne $svc) } catch { return $false } }
+function Test-SqlInstalled { try { $svc = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue; return ($null -ne $svc) } catch { return $false } }
+function Get-WsusStatus {
+    $status = @{ WsusInstalled = Test-WsusInstalled; SqlInstalled = Test-SqlInstalled; WsusRunning = $false; SqlRunning = $false; IisRunning = $false; ContentPathExists = Test-Path $script:ContentPath }
+    if ($status.WsusInstalled) { $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue; $status.WsusRunning = ($svc.Status -eq "Running") }
+    if ($status.SqlInstalled) { $svc = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue; $status.SqlRunning = ($svc.Status -eq "Running") }
+    $iis = Get-Service -Name "W3SVC" -ErrorAction SilentlyContinue; if ($iis) { $status.IisRunning = ($iis.Status -eq "Running") }
+    return $status
+}
 
-    # Text colors
-    TextPrimary    = [System.Drawing.Color]::FromArgb(30, 41, 59)
-    TextSecondary  = [System.Drawing.Color]::FromArgb(100, 116, 139)
-    TextLight      = [System.Drawing.Color]::White
-    TextMuted      = [System.Drawing.Color]::FromArgb(148, 163, 184)
+# Add missing theme keys for compatibility
+$script:Colors.PrimaryHover = $script:Colors.Primary
+$script:Colors.Divider = $script:Colors.Border
 
-    # Border & dividers
-    Border         = [System.Drawing.Color]::FromArgb(226, 232, 240)
-    Divider        = [System.Drawing.Color]::FromArgb(241, 245, 249)
+# ============================================================================
+# ABOUT DIALOG
+# ============================================================================
+function Show-AboutDialog {
+    $dlg = New-Object System.Windows.Forms.Form
+    $dlg.Text = "About $script:AppName"
+    $dlg.Size = New-Object System.Drawing.Size(450, 380)
+    $dlg.StartPosition = "CenterParent"
+    $dlg.FormBorderStyle = "FixedDialog"
+    $dlg.MaximizeBox = $false
+    $dlg.MinimizeBox = $false
+    $dlg.BackColor = $script:Colors.Background
+    $dlg.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 
-    # Console colors
-    ConsoleBackground = [System.Drawing.Color]::FromArgb(15, 23, 42)
-    ConsoleText    = [System.Drawing.Color]::FromArgb(148, 163, 184)
+    $header = New-Object System.Windows.Forms.Panel
+    $header.Location = New-Object System.Drawing.Point(0, 0)
+    $header.Size = New-Object System.Drawing.Size(450, 80)
+    $header.BackColor = $script:Colors.Primary
+    $dlg.Controls.Add($header)
+
+    $titleLbl = New-Object System.Windows.Forms.Label
+    $titleLbl.Text = $script:AppName
+    $titleLbl.Font = New-Object System.Drawing.Font("Segoe UI", 20, [System.Drawing.FontStyle]::Bold)
+    $titleLbl.ForeColor = [System.Drawing.Color]::White
+    $titleLbl.Location = New-Object System.Drawing.Point(24, 18)
+    $titleLbl.AutoSize = $true
+    $header.Controls.Add($titleLbl)
+
+    $verLbl = New-Object System.Windows.Forms.Label
+    $verLbl.Text = "Version $script:AppVersion"
+    $verLbl.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+    $verLbl.ForeColor = [System.Drawing.Color]::FromArgb(200, 255, 255, 255)
+    $verLbl.Location = New-Object System.Drawing.Point(24, 50)
+    $verLbl.AutoSize = $true
+    $header.Controls.Add($verLbl)
+
+    $descLbl = New-Object System.Windows.Forms.Label
+    $descLbl.Text = "A comprehensive GUI for managing Windows Server Update Services (WSUS) with SQL Server Express. Supports online and air-gapped deployments."
+    $descLbl.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $descLbl.ForeColor = $script:Colors.TextSecondary
+    $descLbl.Location = New-Object System.Drawing.Point(24, 95)
+    $descLbl.Size = New-Object System.Drawing.Size(400, 45)
+    $dlg.Controls.Add($descLbl)
+
+    $authHdr = New-Object System.Windows.Forms.Label
+    $authHdr.Text = "AUTHOR"
+    $authHdr.Font = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+    $authHdr.ForeColor = $script:Colors.TextMuted
+    $authHdr.Location = New-Object System.Drawing.Point(24, 150)
+    $authHdr.AutoSize = $true
+    $dlg.Controls.Add($authHdr)
+
+    $authName = New-Object System.Windows.Forms.Label
+    $authName.Text = $script:AuthorInfo.Name
+    $authName.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+    $authName.ForeColor = $script:Colors.TextPrimary
+    $authName.Location = New-Object System.Drawing.Point(24, 170)
+    $authName.AutoSize = $true
+    $dlg.Controls.Add($authName)
+
+    $authTitle = New-Object System.Windows.Forms.Label
+    $authTitle.Text = $script:AuthorInfo.Title
+    $authTitle.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $authTitle.ForeColor = $script:Colors.TextSecondary
+    $authTitle.Location = New-Object System.Drawing.Point(24, 193)
+    $authTitle.AutoSize = $true
+    $dlg.Controls.Add($authTitle)
+
+    $authDept = New-Object System.Windows.Forms.Label
+    $authDept.Text = "$($script:AuthorInfo.Department), $($script:AuthorInfo.Company)"
+    $authDept.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $authDept.ForeColor = $script:Colors.TextSecondary
+    $authDept.Location = New-Object System.Drawing.Point(24, 213)
+    $authDept.AutoSize = $true
+    $dlg.Controls.Add($authDept)
+
+    $emailLink = New-Object System.Windows.Forms.LinkLabel
+    $emailLink.Text = $script:AuthorInfo.Email
+    $emailLink.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $emailLink.Location = New-Object System.Drawing.Point(24, 233)
+    $emailLink.AutoSize = $true
+    $emailLink.LinkColor = $script:Colors.Primary
+    $emailLink.Add_LinkClicked({ Start-Process "mailto:$($script:AuthorInfo.Email)" })
+    $dlg.Controls.Add($emailLink)
+
+    $buildLbl = New-Object System.Windows.Forms.Label
+    $buildLbl.Text = "Build: $script:BuildDate"
+    $buildLbl.Font = New-Object System.Drawing.Font("Segoe UI", 8)
+    $buildLbl.ForeColor = $script:Colors.TextMuted
+    $buildLbl.Location = New-Object System.Drawing.Point(24, 270)
+    $buildLbl.AutoSize = $true
+    $dlg.Controls.Add($buildLbl)
+
+    $closeBtn = New-Object System.Windows.Forms.Button
+    $closeBtn.Text = "Close"
+    $closeBtn.Size = New-Object System.Drawing.Size(100, 36)
+    $closeBtn.Location = New-Object System.Drawing.Point(170, 300)
+    $closeBtn.FlatStyle = "Flat"
+    $closeBtn.FlatAppearance.BorderSize = 0
+    $closeBtn.BackColor = $script:Colors.Primary
+    $closeBtn.ForeColor = [System.Drawing.Color]::White
+    $closeBtn.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $closeBtn.Cursor = "Hand"
+    $closeBtn.Add_Click({ $dlg.Close() })
+    $dlg.Controls.Add($closeBtn)
+
+    $dlg.ShowDialog() | Out-Null
 }
 
 # ============================================================================
@@ -264,6 +481,23 @@ function New-WsusGui {
     }
 
     $sidebar.Controls.Add($navContainer)
+
+    # About button at bottom
+    $aboutBtn = New-Object System.Windows.Forms.Button
+    $aboutBtn.Text = "  About"
+    $aboutBtn.Size = New-Object System.Drawing.Size(204, 38)
+    $aboutBtn.Location = New-Object System.Drawing.Point(8, 500)
+    $aboutBtn.Anchor = "Bottom, Left"
+    $aboutBtn.FlatStyle = "Flat"
+    $aboutBtn.FlatAppearance.BorderSize = 0
+    $aboutBtn.FlatAppearance.MouseOverBackColor = $script:Colors.SidebarHover
+    $aboutBtn.BackColor = $script:Colors.Sidebar
+    $aboutBtn.ForeColor = $script:Colors.TextMuted
+    $aboutBtn.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $aboutBtn.TextAlign = "MiddleLeft"
+    $aboutBtn.Cursor = "Hand"
+    $aboutBtn.Add_Click({ Show-AboutDialog })
+    $sidebar.Controls.Add($aboutBtn)
 
     # Settings button at bottom
     $settingsBtn = New-Object System.Windows.Forms.Button
@@ -906,7 +1140,7 @@ function Stop-CurrentOperation {
 function Show-SettingsDialog {
     $dialog = New-Object System.Windows.Forms.Form
     $dialog.Text = "Settings"
-    $dialog.Size = New-Object System.Drawing.Size(520, 380)
+    $dialog.Size = New-Object System.Drawing.Size(520, 450)
     $dialog.StartPosition = "CenterParent"
     $dialog.FormBorderStyle = "FixedDialog"
     $dialog.MaximizeBox = $false
@@ -1006,7 +1240,27 @@ function Show-SettingsDialog {
     $btnBrowseExport.FlatAppearance.BorderSize = 1
     $btnBrowseExport.FlatAppearance.BorderColor = $script:Colors.Border
     $dialog.Controls.Add($btnBrowseExport)
-    $yPos += 60
+    $yPos += 50
+
+    # Theme selector
+    $lblTheme = New-Object System.Windows.Forms.Label
+    $lblTheme.Text = "Theme"
+    $lblTheme.ForeColor = $script:Colors.TextSecondary
+    $lblTheme.Location = New-Object System.Drawing.Point(24, $yPos)
+    $lblTheme.AutoSize = $true
+    $dialog.Controls.Add($lblTheme)
+    $yPos += 22
+
+    $cmbTheme = New-Object System.Windows.Forms.ComboBox
+    $cmbTheme.DropDownStyle = "DropDownList"
+    $cmbTheme.Location = New-Object System.Drawing.Point(24, $yPos)
+    $cmbTheme.Size = New-Object System.Drawing.Size(200, 28)
+    $cmbTheme.BackColor = $script:Colors.Surface
+    $cmbTheme.ForeColor = $script:Colors.TextPrimary
+    $cmbTheme.Items.AddRange(@("Light", "Dark"))
+    $cmbTheme.SelectedItem = $script:CurrentTheme
+    $dialog.Controls.Add($cmbTheme)
+    $yPos += 50
 
     # Buttons
     $btnSave = New-RoundedButton -Text "Save Changes" -BackColor $script:Colors.Primary -ForeColor $script:Colors.TextLight `
@@ -1015,11 +1269,23 @@ function Show-SettingsDialog {
             $script:ContentPath = $txtContent.Text
             $script:SqlInstance = $txtSql.Text
             $script:ExportRoot = $txtExport.Text
+            $script:CurrentTheme = $cmbTheme.SelectedItem
+
+            # Apply theme colors
+            $script:Colors = $script:Themes[$script:CurrentTheme]
+
+            # Save settings to file
+            Save-Settings
 
             Write-Console "`nSettings updated:`n" -Color $script:Colors.Primary
             Write-Console "  Content: $script:ContentPath`n" -Color $script:Colors.TextMuted
             Write-Console "  SQL: $script:SqlInstance`n" -Color $script:Colors.TextMuted
-            Write-Console "  Export: $script:ExportRoot`n`n" -Color $script:Colors.TextMuted
+            Write-Console "  Export: $script:ExportRoot`n" -Color $script:Colors.TextMuted
+            Write-Console "  Theme: $script:CurrentTheme`n`n" -Color $script:Colors.TextMuted
+
+            if ($cmbTheme.SelectedItem -ne $script:CurrentTheme) {
+                Write-Console "Note: Theme change will fully apply on next launch.`n`n" -Color $script:Colors.Warning
+            }
 
             $dialog.DialogResult = [System.Windows.Forms.DialogResult]::OK
             $dialog.Close()
