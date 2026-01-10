@@ -179,7 +179,11 @@ function Stop-WsusLogging {
     .SYNOPSIS
         Stops transcript logging
     #>
-    Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+    try {
+        Stop-Transcript -ErrorAction Stop | Out-Null
+    } catch {
+        # Ignore error if transcript wasn't running
+    }
 }
 
 # ===========================
@@ -310,7 +314,7 @@ function Invoke-WithErrorHandling {
         return & $ScriptBlock
     } catch {
         if ($ContinueOnError) {
-            Write-LogWarning "$ErrorMessage : $($_.Exception.Message)"
+            $null = Write-LogWarning "$ErrorMessage : $($_.Exception.Message)"
             return $ReturnDefault
         } else {
             Write-LogError $ErrorMessage -Exception $_.Exception -Throw
