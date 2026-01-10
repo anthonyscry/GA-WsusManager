@@ -160,6 +160,13 @@ wsus-sql/
 │  Option 3: Copy for Air-Gap → Browse Archive or Full Copy       │
 │  Option 2: Restore Database                                     │
 └─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  DOMAIN CONTROLLER (one-time setup)                             │
+│  .\DomainController\Set-WsusGroupPolicy.ps1                     │
+│  → Imports GPOs, links to OUs, pushes policy to all clients     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Export Folder Structure
@@ -204,15 +211,19 @@ robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
 ### Usage
 
 ```powershell
-# Interactive (prompts for WSUS server)
+# Interactive (prompts for WSUS server name)
 .\Set-WsusGroupPolicy.ps1
 
-# Specify WSUS server
+# Non-interactive (specify WSUS server URL)
 .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
-
-# Link to specific OU
-.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
+
+The script will:
+1. Auto-detect the domain
+2. Import all 3 GPOs from backup
+3. Create required OUs if they don't exist
+4. Link each GPO to appropriate OUs
+5. Push policy update to all domain computers
 
 ### Imported GPOs
 
