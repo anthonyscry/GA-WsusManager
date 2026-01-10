@@ -693,7 +693,7 @@ function Test-WsusDatabaseConsistency {
                     -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
                     -QueryTimeout 60
             } catch {
-                # Silently ignore - best effort to restore multi-user mode
+                Write-Verbose "Best effort to restore multi-user mode: $($_.Exception.Message)"
             }
         }
 
@@ -721,7 +721,7 @@ function Test-WsusDatabaseConsistency {
                 -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
                 -QueryTimeout 60
         } catch {
-            # Silently ignore - best effort to restore multi-user mode
+            Write-Verbose "Best effort to restore multi-user mode: $($_.Exception.Message)"
         }
     }
 

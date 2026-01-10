@@ -1172,7 +1172,6 @@ function Invoke-WsusHealthCheck {
 
 function Invoke-WsusCleanup {
     param(
-        [string]$SqlInstance,
         [switch]$Force
     )
 
@@ -1306,6 +1305,9 @@ function Invoke-MenuScript {
 }
 
 function Start-InteractiveMenu {
+    param(
+        [string]$MenuExportRoot
+    )
     do {
         Show-Menu
         $choice = Read-Host "Select"
@@ -1316,15 +1318,15 @@ function Start-InteractiveMenu {
         switch ($choice) {
             '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2'  { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '3'  { Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
-            '4'  { Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
+            '3'  { Invoke-CopyForAirGap -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }
+            '4'  { Invoke-ExportToMedia -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }
             '5'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
-            '6'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
+            '6'  { Invoke-WsusCleanup; pause }
             '7'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '8'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
             '9'  { Invoke-WsusReset; pause }
             '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
-            'D'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
+            'D'  { Invoke-ExportToDvd -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
             'Q'  { Write-Log "Exiting WSUS Management" "Green"; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
@@ -1335,11 +1337,17 @@ function Start-InteractiveMenu {
 # MAIN ENTRY POINT
 # ============================================================================
 
-switch ($PSCmdlet.ParameterSetName) {
-    'Restore' { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance }
-    'Health'  { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance }
-    'Repair'  { Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair }
-    'Cleanup' { Invoke-WsusCleanup -SqlInstance $SqlInstance -Force:$Force }
-    'Reset'   { Invoke-WsusReset }
-    default   { Start-InteractiveMenu }
+# Handle CLI switches directly to avoid PSScriptAnalyzer unused parameter warnings
+if ($Restore) {
+    Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance
+} elseif ($Health) {
+    Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
+} elseif ($Repair) {
+    Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair
+} elseif ($Cleanup) {
+    Invoke-WsusCleanup -Force:$Force
+} elseif ($Reset) {
+    Invoke-WsusReset
+} else {
+    Start-InteractiveMenu -MenuExportRoot $ExportRoot
 }
