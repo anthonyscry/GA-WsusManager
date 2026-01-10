@@ -523,73 +523,34 @@ function Invoke-BrowseArchive {
                         Write-Host "=================================================================" -ForegroundColor Cyan
                         Write-Host ""
 
-                        # Find all backup folders (contain .bak files) or day folders
-                        $backupFolders = @()
+                        # Find all .bak files directly in the month folder
+                        $bakFiles = Get-ChildItem -Path $selectedMonth.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+                            Sort-Object Name -Descending
 
-                        # Check for direct backup folders (FULL_YYYYMMDD, DIFF_YYYYMMDD)
-                        $directBackups = Get-ChildItem -Path $selectedMonth.FullName -Directory -ErrorAction SilentlyContinue |
-                            Where-Object {
-                                (Get-ChildItem -Path $_.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0
-                            }
-
-                        if ($directBackups) {
-                            $backupFolders += $directBackups
-                        }
-
-                        # Check if the month folder itself contains .bak files directly
-                        if ((Get-ChildItem -Path $selectedMonth.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0) {
-                            $backupFolders += $selectedMonth
-                        }
-
-                        # Also check for day subfolders (1, 2, 3... or 01, 02, 03...)
-                        $dayFolders = Get-ChildItem -Path $selectedMonth.FullName -Directory -ErrorAction SilentlyContinue |
-                            Where-Object { $_.Name -match '^\d+$' }
-
-                        foreach ($day in $dayFolders) {
-                            $dayBackups = Get-ChildItem -Path $day.FullName -Directory -ErrorAction SilentlyContinue |
-                                Where-Object {
-                                    (Get-ChildItem -Path $_.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0
-                                }
-                            if ($dayBackups) {
-                                $backupFolders += $dayBackups
-                            }
-                            # Also check if the day folder itself contains backups
-                            if ((Get-ChildItem -Path $day.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue).Count -gt 0) {
-                                $backupFolders += $day
-                            }
-                        }
-
-                        # Remove duplicates and sort
-                        $backupFolders = $backupFolders | Sort-Object FullName -Unique | Sort-Object Name -Descending
-
-                        if (-not $backupFolders -or $backupFolders.Count -eq 0) {
+                        if (-not $bakFiles -or $bakFiles.Count -eq 0) {
                             Write-Host "No backups found in $($selectedMonth.FullName)" -ForegroundColor Yellow
                             Read-Host "Press Enter to go back"
                             continue monthLoop
                         }
 
+                        # Check if WsusContent folder exists alongside the backups
+                        $contentPath = Join-Path $selectedMonth.FullName "WsusContent"
+                        $hasContent = Test-Path $contentPath
+
                         $i = 1
                         $backupInfo = @()
-                        foreach ($backup in $backupFolders) {
-                            $bakFile = Get-ChildItem -Path $backup.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue |
-                                Select-Object -First 1
-                            $contentPath = Join-Path $backup.FullName "WsusContent"
-                            $hasContent = Test-Path $contentPath
+                        foreach ($bakFile in $bakFiles) {
+                            $sizeDisplay = Format-SizeDisplay ([math]::Round($bakFile.Length / 1GB, 2))
 
-                            $totalSize = 0
-                            if ($bakFile) { $totalSize += $bakFile.Length }
-                            if ($hasContent) { $totalSize += (Get-FolderSize $contentPath) * 1GB }
-                            $sizeDisplay = Format-SizeDisplay ([math]::Round($totalSize / 1GB, 2))
-
-                            $type = if ($backup.Name -like "FULL*") { "FULL" }
-                                    elseif ($backup.Name -like "DIFF*") { "DIFF" }
+                            $type = if ($bakFile.Name -like "FULL*") { "FULL" }
+                                    elseif ($bakFile.Name -like "DIFF*") { "DIFF" }
                                     else { "    " }
 
                             $contentMarker = if ($hasContent) { "+ Content" } else { "DB only" }
 
-                            Write-Host "  [$i] $($backup.Name) ($sizeDisplay) - $type $contentMarker" -ForegroundColor White
+                            Write-Host "  [$i] $($bakFile.Name) ($sizeDisplay) - $type $contentMarker" -ForegroundColor White
                             $backupInfo += @{
-                                Folder = $backup
+                                Folder = $selectedMonth
                                 BakFile = $bakFile
                                 HasContent = $hasContent
                             }
@@ -610,7 +571,7 @@ function Invoke-BrowseArchive {
                             if (-not $destination) { continue backupLoop }
 
                             Write-Host ""
-                            Write-Host "Will copy $($backupFolders.Count) backup(s) to: $destination" -ForegroundColor Yellow
+                            Write-Host "Will copy $($bakFiles.Count) backup(s) to: $destination" -ForegroundColor Yellow
                             $confirm = Read-Host "Proceed? (Y/n)"
                             if ($confirm -notin @("Y", "y", "")) { continue backupLoop }
 
@@ -630,7 +591,7 @@ function Invoke-BrowseArchive {
                         }
 
                         $backupIndex = 0
-                        if ([int]::TryParse($backupChoice, [ref]$backupIndex) -and $backupIndex -ge 1 -and $backupIndex -le $backupFolders.Count) {
+                        if ([int]::TryParse($backupChoice, [ref]$backupIndex) -and $backupIndex -ge 1 -and $backupIndex -le $bakFiles.Count) {
                             $selected = $backupInfo[$backupIndex - 1]
 
                             # Show details and confirm
