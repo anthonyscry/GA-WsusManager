@@ -302,6 +302,10 @@ function Show-Summary {
     Write-Host "3. Verify client check-in: wuauclt /detectnow /reportnow"
     Write-Host "4. Check WSUS console for client registrations"
     Write-Host ""
+    Write-Host "NOTE: If you have computers in OUs other than Domain Controllers," -ForegroundColor Yellow
+    Write-Host "      Member Servers, or Workstations, manually link the" -ForegroundColor Yellow
+    Write-Host "      'WSUS Outbound Allow' GPO to those OUs in GPMC." -ForegroundColor Yellow
+    Write-Host ""
 }
 
 #endregion
