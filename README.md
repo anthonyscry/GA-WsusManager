@@ -8,20 +8,6 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ---
 
-## Official Documentation
-
-### Microsoft References
-
-- [WSUS Maintenance Guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
-- [WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices)
-- [Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment)
-- [Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus)
-- [SQL Server Installation Guide](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server)
-- [SQL Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration)
-- [SQL Server 2022 Express Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
-
----
-
 ## Features
 
 - **Automated Installation** - One-script deployment of SQL Server Express 2022 + SSMS + WSUS
@@ -469,6 +455,20 @@ SESSION START: 2026-01-10 10:30:00
 - **Install script auto-deletes encrypted SA password file** when complete
 - **Restore command auto-detects** the newest `.bak` file in `C:\WSUS`
 - **GPO script runs on Domain Controller** - Copy files to DC before running
+
+---
+
+## References
+
+### Microsoft Official Documentation
+
+- [WSUS Maintenance Guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
+- [WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices)
+- [Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment)
+- [Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus)
+- [SQL Server Installation Guide](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server)
+- [SQL Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration)
+- [SQL Server 2022 Express Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
 
 ---
 

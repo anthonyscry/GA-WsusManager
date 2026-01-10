@@ -12,15 +12,15 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 ## Table of Contents
 
 1. [File Repository](#file-repository)
-2. [Official Documentation](#official-documentation)
-3. [Prerequisites](#prerequisites)
-4. [Installation](#installation)
-5. [Command Reference](#command-reference)
-6. [Air-Gapped Network Workflow](#air-gapped-network-workflow)
-7. [Domain Controller Setup](#domain-controller-setup)
-8. [HTTPS Configuration (Optional)](#optional-https-configuration)
-9. [Logging](#logging)
-10. [Troubleshooting](#troubleshooting)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Command Reference](#command-reference)
+5. [Air-Gapped Network Workflow](#air-gapped-network-workflow)
+6. [Domain Controller Setup](#domain-controller-setup)
+7. [HTTPS Configuration (Optional)](#optional-https-configuration)
+8. [Logging](#logging)
+9. [Troubleshooting](#troubleshooting)
+10. [References](#references)
 
 ---
 
@@ -46,30 +46,6 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 | Resource | Link |
 |----------|------|
 | GitHub Repository (latest) | *[Insert GitHub URL]* |
-
----
-
-## Official Documentation
-
-### Microsoft References
-
-| Topic | Link |
-|-------|------|
-| WSUS Maintenance Guide | [Microsoft Learn - WSUS Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide) |
-| WSUS Best Practices | [Microsoft Learn - WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices) |
-| WSUS Deployment Planning | [Microsoft Learn - Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment) |
-| WSUS Configuration | [Microsoft Learn - Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus) |
-| SQL Server Installation Guide | [Microsoft Learn - Install SQL Server](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server) |
-| SQL Server Network Configuration | [Microsoft Learn - Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration) |
-| SQL Server 2022 Express Download | [Microsoft Download Center](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
-
-### Additional Resources
-
-| Topic | Link |
-|-------|------|
-| SQL Server Configuration Manager | [Microsoft Learn - Configuration Manager](https://learn.microsoft.com/en-us/sql/tools/configuration-manager/sql-server-configuration-manager) |
-| WSUS Database Maintenance | [Microsoft Learn - WSUS Automatic Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-automatic-maintenance) |
-| Enable/Disable Network Protocols | [Microsoft Learn - Network Protocols](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/enable-or-disable-a-server-network-protocol) |
 
 ---
 
@@ -481,6 +457,30 @@ SESSION START: 2026-01-10 10:30:00
 | Scheduled Maintenance | Unattended mode for Windows Task Scheduler |
 | GPO Deployment | Pre-configured Group Policy Objects for domain-wide client configuration |
 | Modular Architecture | 6 reusable PowerShell modules |
+
+---
+
+## References
+
+### Microsoft Official Documentation
+
+| Topic | Link |
+|-------|------|
+| WSUS Maintenance Guide | [Microsoft Learn - WSUS Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide) |
+| WSUS Best Practices | [Microsoft Learn - WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices) |
+| WSUS Deployment Planning | [Microsoft Learn - Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment) |
+| WSUS Configuration | [Microsoft Learn - Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus) |
+| SQL Server Installation Guide | [Microsoft Learn - Install SQL Server](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server) |
+| SQL Server Network Configuration | [Microsoft Learn - Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration) |
+| SQL Server 2022 Express Download | [Microsoft Download Center](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
+
+### Additional Resources
+
+| Topic | Link |
+|-------|------|
+| SQL Server Configuration Manager | [Microsoft Learn - Configuration Manager](https://learn.microsoft.com/en-us/sql/tools/configuration-manager/sql-server-configuration-manager) |
+| WSUS Database Maintenance | [Microsoft Learn - WSUS Automatic Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-automatic-maintenance) |
+| Enable/Disable Network Protocols | [Microsoft Learn - Network Protocols](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/enable-or-disable-a-server-network-protocol) |
 
 ---
 
