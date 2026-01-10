@@ -196,7 +196,8 @@ SELECT @TotalDeleted AS DeletedSuperseded
             -Query $query -QueryTimeout 0
 
         $duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)
-        $deleted = if ($result.DeletedSuperseded) { $result.DeletedSuperseded } else { 0 }
+        # Add null check before accessing properties to prevent null reference exceptions
+        $deleted = if ($null -ne $result -and $result.DeletedSuperseded) { $result.DeletedSuperseded } else { 0 }
 
         if ($ShowProgress) {
             Write-Host "Removed $deleted supersession records in $duration minutes" -ForegroundColor Green
@@ -300,8 +301,9 @@ SELECT @Rebuilt AS IndexesRebuilt, @Reorganized AS IndexesReorganized
         $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
             -Query $query -QueryTimeout 0
 
-        $rebuilt = if ($result.IndexesRebuilt) { $result.IndexesRebuilt } else { 0 }
-        $reorganized = if ($result.IndexesReorganized) { $result.IndexesReorganized } else { 0 }
+        # Add null check before accessing properties to prevent null reference exceptions
+        $rebuilt = if ($null -ne $result -and $result.IndexesRebuilt) { $result.IndexesRebuilt } else { 0 }
+        $reorganized = if ($null -ne $result -and $result.IndexesReorganized) { $result.IndexesReorganized } else { 0 }
 
         if ($ShowProgress) {
             Write-Host "Index optimization complete: Rebuilt=$rebuilt, Reorganized=$reorganized" -ForegroundColor Green
