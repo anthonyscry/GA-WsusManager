@@ -321,7 +321,7 @@ function Repair-WsusFirewallRules {
         Checks and creates any missing WSUS firewall rules
 
     .OUTPUTS
-        Hashtable with repair results
+        Hashtable with repair results (Created, Failed keys)
     #>
     Write-Host "Checking WSUS firewall rules..." -ForegroundColor Cyan
 
@@ -329,7 +329,7 @@ function Repair-WsusFirewallRules {
 
     if ($check.AllPresent) {
         Write-Host "All WSUS firewall rules are present" -ForegroundColor Green
-        return @{ Repaired = @(); AlreadyPresent = $check.Present }
+        return @{ Created = @(); Failed = @(); AlreadyPresent = $check.Present }
     }
 
     Write-Host "Missing firewall rules detected, creating..." -ForegroundColor Yellow
@@ -346,7 +346,7 @@ function Repair-SqlFirewallRules {
         Checks and creates any missing SQL Server firewall rules
 
     .OUTPUTS
-        Hashtable with repair results
+        Hashtable with repair results (Created, Failed keys)
     #>
     Write-Host "Checking SQL Server firewall rules..." -ForegroundColor Cyan
 
@@ -354,7 +354,7 @@ function Repair-SqlFirewallRules {
 
     if ($check.AllPresent) {
         Write-Host "All SQL Server firewall rules are present" -ForegroundColor Green
-        return @{ Repaired = @(); AlreadyPresent = $check.Present }
+        return @{ Created = @(); Failed = @(); AlreadyPresent = $check.Present }
     }
 
     Write-Host "Missing firewall rules detected, creating..." -ForegroundColor Yellow
