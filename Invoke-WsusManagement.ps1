@@ -97,9 +97,10 @@ param(
 $ErrorActionPreference = 'Continue'
 
 # Determine the project root and scripts folder
-# Handle two deployment scenarios:
+# Handle multiple deployment scenarios:
 # 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
 # 2. Flat: All scripts in same folder (user copied main script into Scripts folder)
+# 3. Nested: Script in Scripts\Scripts\ folder
 $ScriptRoot = $PSScriptRoot
 $ScriptsFolder = $PSScriptRoot
 
@@ -111,6 +112,21 @@ if (Test-Path (Join-Path $PSScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
 } elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
     # Standard layout - scripts are in Scripts\ subfolder
     $ScriptsFolder = Join-Path $PSScriptRoot "Scripts"
+}
+
+# Find modules folder - search multiple locations for flexibility
+$ModulesFolder = $null
+$moduleSearchPaths = @(
+    (Join-Path $PSScriptRoot "Modules"),                                    # Standard (root\Modules)
+    (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"),               # Parent folder
+    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "Modules")  # Grandparent (nested)
+)
+
+foreach ($path in $moduleSearchPaths) {
+    if (Test-Path (Join-Path $path "WsusUtilities.psm1")) {
+        $ModulesFolder = $path
+        break
+    }
 }
 
 # ============================================================================
@@ -1040,10 +1056,15 @@ function Invoke-WsusHealthCheck {
 
     Write-Banner "WSUS HEALTH CHECK"
 
-    $modulePath = Join-Path $ScriptRoot "Modules"
-    if (Test-Path (Join-Path $modulePath "WsusHealth.psm1")) {
-        Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
-        Import-Module (Join-Path $modulePath "WsusHealth.psm1") -Force
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusHealth.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHealth.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
 
         if ($Repair) {
             Write-Host "Running health check with AUTO-REPAIR..." -ForegroundColor Yellow
@@ -1092,11 +1113,16 @@ function Invoke-WsusCleanup {
 
     Write-Banner "WSUS DEEP CLEANUP"
 
-    $modulePath = Join-Path $ScriptRoot "Modules"
-    if (Test-Path (Join-Path $modulePath "WsusDatabase.psm1")) {
-        Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
-        Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force
-        Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusDatabase.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusServices.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
     }
 
     Write-Host "This performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow

@@ -21,11 +21,15 @@ Date: 2026-01-09
     Requires: WsusServices.psm1, WsusFirewall.psm1, WsusPermissions.psm1
 #>
 
-# Import required modules
+# Import required modules with error handling
 $modulePath = Split-Path -Parent $PSCommandPath
-Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
-Import-Module (Join-Path $modulePath "WsusFirewall.psm1") -Force
-Import-Module (Join-Path $modulePath "WsusPermissions.psm1") -Force
+try {
+    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusFirewall.psm1") -Force -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusPermissions.psm1") -Force -ErrorAction Stop
+} catch {
+    throw "Failed to import required modules from $modulePath`: $($_.Exception.Message)"
+}
 
 # ===========================
 # DATABASE HEALTH FUNCTIONS

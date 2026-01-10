@@ -26,8 +26,35 @@ param(
 )
 
 # Import shared modules
-$modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
-Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
+# Support multiple deployment layouts:
+# 1. Standard: Script in Scripts\, Modules in ..\Modules (parent folder)
+# 2. Flat: Everything under one root folder
+# 3. Nested: Script in Scripts\Scripts\, Modules in ..\..\Modules (grandparent)
+$modulePath = $null
+$searchPaths = @(
+    (Join-Path $PSScriptRoot "Modules"),                                    # Flat layout
+    (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"),               # Standard layout (parent)
+    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "Modules")  # Nested layout (grandparent)
+)
+
+foreach ($path in $searchPaths) {
+    if (Test-Path (Join-Path $path "WsusUtilities.psm1")) {
+        $modulePath = $path
+        break
+    }
+}
+
+if (-not $modulePath) {
+    Write-Error "Cannot find Modules folder. Searched: $($searchPaths -join ', ')"
+    exit 1
+}
+
+try {
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction Stop
+} catch {
+    Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
+    exit 1
+}
 
 Write-Info "=========================================="
 Write-Info "Force WSUS Check-In Script"
