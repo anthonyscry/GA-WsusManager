@@ -110,7 +110,10 @@ jobs:
           foreach ($module in $modules) {
             Write-Host "Validating: $($module.Name)"
             try {
-              $null = [System.Management.Automation.Language.Parser]::ParseFile($module.FullName, [ref]$null, [ref]$errors)
+              # Initialize variables before using with [ref]
+              $tokens = $null
+              $errors = $null
+              $null = [System.Management.Automation.Language.Parser]::ParseFile($module.FullName, [ref]$tokens, [ref]$errors)
               if ($errors) {
                 Write-Host "  Parse errors found:" -ForegroundColor Red
                 $errors | ForEach-Object { Write-Host "    $_" }
