@@ -4,8 +4,8 @@
 ===============================================================================
 Script: Set-WsusGroupPolicy.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
-Date: 2026-01-09
+Version: 1.1.0
+Date: 2026-01-10
 ===============================================================================
 
 .SYNOPSIS
@@ -87,6 +87,110 @@ function Get-WsusServerUrl {
         throw "WSUS server name is required."
     }
     return "http://$serverName:8530"
+}
+
+function Get-DomainInfo {
+    <#
+    .SYNOPSIS
+        Auto-detects domain information from Active Directory.
+    #>
+    try {
+        Import-Module ActiveDirectory -ErrorAction Stop
+        $domain = Get-ADDomain -ErrorAction Stop
+        return @{
+            DomainDN = $domain.DistinguishedName
+            DomainName = $domain.DNSRoot
+            NetBIOSName = $domain.NetBIOSName
+        }
+    } catch {
+        # Fallback to environment variable
+        $dnsDomain = $env:USERDNSDOMAIN
+        if ($dnsDomain) {
+            $domainDN = ($dnsDomain.Split('.') | ForEach-Object { "DC=$_" }) -join ','
+            return @{
+                DomainDN = $domainDN
+                DomainName = $dnsDomain
+                NetBIOSName = $env:USERDOMAIN
+            }
+        }
+        return $null
+    }
+}
+
+function Select-TargetOU {
+    <#
+    .SYNOPSIS
+        Prompts user to select an OU for GPO linking.
+    #>
+    param([hashtable]$DomainInfo)
+
+    if (-not $DomainInfo) {
+        Write-Host "Could not auto-detect domain. Skipping OU linking." -ForegroundColor Yellow
+        return $null
+    }
+
+    Write-Host ""
+    Write-Host "Domain detected: $($DomainInfo.DomainName)" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Link GPOs to an OU? (recommended for applying to clients)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  1. Skip linking (link manually in GPMC later)"
+    Write-Host "  2. Link to domain root ($($DomainInfo.DomainDN))"
+    Write-Host "  3. Enter custom OU path"
+    Write-Host "  4. Browse available OUs"
+    Write-Host ""
+
+    $choice = Read-Host "Select option (1-4) [1]"
+    if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
+
+    switch ($choice) {
+        "1" { return $null }
+        "2" { return $DomainInfo.DomainDN }
+        "3" {
+            Write-Host ""
+            Write-Host "Enter OU name (e.g., Workstations or Computers):" -ForegroundColor Yellow
+            $ouName = Read-Host "OU name"
+            if ($ouName) {
+                return "OU=$ouName,$($DomainInfo.DomainDN)"
+            }
+            return $null
+        }
+        "4" {
+            # Browse OUs
+            try {
+                $ous = Get-ADOrganizationalUnit -Filter * -ErrorAction Stop |
+                    Select-Object Name, DistinguishedName |
+                    Sort-Object DistinguishedName
+
+                if ($ous.Count -eq 0) {
+                    Write-Host "No OUs found in domain." -ForegroundColor Yellow
+                    return $null
+                }
+
+                Write-Host ""
+                Write-Host "Available OUs:" -ForegroundColor Cyan
+                $i = 1
+                foreach ($ou in $ous) {
+                    Write-Host "  [$i] $($ou.Name) ($($ou.DistinguishedName))"
+                    $i++
+                }
+                Write-Host ""
+                $ouChoice = Read-Host "Select OU number (or press Enter to skip)"
+
+                if ($ouChoice -and [int]::TryParse($ouChoice, [ref]$null)) {
+                    $index = [int]$ouChoice - 1
+                    if ($index -ge 0 -and $index -lt $ous.Count) {
+                        return $ous[$index].DistinguishedName
+                    }
+                }
+                return $null
+            } catch {
+                Write-Host "Could not enumerate OUs: $($_.Exception.Message)" -ForegroundColor Yellow
+                return $null
+            }
+        }
+        default { return $null }
+    }
 }
 
 function Get-GpoDefinitions {
@@ -225,17 +329,29 @@ try {
     Write-Host "WSUS GPO Configuration"
     Write-Host "==============================================================="
 
+    # Auto-detect domain
+    $domainInfo = Get-DomainInfo
+    if ($domainInfo) {
+        Write-Host "Domain: $($domainInfo.DomainName)" -ForegroundColor Cyan
+    }
+
     # Get WSUS server URL (prompt if not provided)
     $WsusServerUrl = Get-WsusServerUrl -Url $WsusServerUrl
 
     Write-Host "WSUS Server URL: $WsusServerUrl"
     Write-Host "GPO Backup Path: $BackupPath"
-    Write-Host ""
 
     # Verify backup path exists
     if (-not (Test-Path $BackupPath)) {
         throw "GPO backup path not found: $BackupPath"
     }
+
+    # Get target OU (prompt if not provided via parameter)
+    if (-not $TargetOU) {
+        $TargetOU = Select-TargetOU -DomainInfo $domainInfo
+    }
+
+    Write-Host ""
 
     # Load GPO definitions
     $gpoDefinitions = Get-GpoDefinitions
