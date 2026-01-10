@@ -112,16 +112,10 @@ coverage/
 *.coverage
 *.coveragexml
 
-# =========================
 # Playwright
-# =========================
+node_modules/
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-
-# =========================
-# Node.js
-# =========================
-node_modules/
-package-lock.json
+/playwright/.auth/
