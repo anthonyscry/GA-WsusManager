@@ -75,9 +75,14 @@ function New-WsusSelfSignedCert {
 
     Write-Host "Creating self-signed certificate..." -NoNewline
 
-    # Get FQDN
-    $fqdn = [System.Net.Dns]::GetHostEntry($ServerName).HostName
-    if (-not $fqdn) { $fqdn = $ServerName }
+    # Get FQDN with error handling for DNS resolution failures
+    try {
+        $fqdn = [System.Net.Dns]::GetHostEntry($ServerName).HostName
+        if (-not $fqdn) { $fqdn = $ServerName }
+    } catch {
+        # Fall back to server name if DNS resolution fails
+        $fqdn = $ServerName
+    }
 
     # Create certificate valid for 5 years
     $cert = New-SelfSignedCertificate `
@@ -224,9 +229,12 @@ function Set-WsusSSLConfiguration {
     }
 
     # Configure SSL - this enables SSL for client communication
-    $result = & $wsusutil configuressl (hostname) 2>&1
+    # Run command and capture exit code reliably
+    $serverHostname = hostname
+    $result = & $wsusutil configuressl $serverHostname 2>&1
+    $exitCode = $LASTEXITCODE
 
-    if ($LASTEXITCODE -ne 0) {
+    if ($exitCode -ne 0) {
         Write-Host " Warning" -ForegroundColor Yellow
         Write-Host "  wsusutil output: $result"
     } else {
