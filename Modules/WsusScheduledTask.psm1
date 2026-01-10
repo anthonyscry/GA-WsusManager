@@ -156,11 +156,20 @@ function New-WsusMaintenanceTask {
     }
 
     # Auto-detect script path if not provided
+    # Search multiple deployment layouts for flexibility
     if (-not $ScriptPath) {
+        $modulePath = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
         $possiblePaths = @(
+            # Standard deployment: C:\WSUS with Scripts subfolder
             "C:\WSUS\Scripts\Invoke-WsusMonthlyMaintenance.ps1",
-            "C:\wsus-sql\Scripts\Invoke-WsusMonthlyMaintenance.ps1",
-            (Join-Path (Split-Path $PSScriptRoot -Parent) "Scripts\Invoke-WsusMonthlyMaintenance.ps1")
+            # Flat deployment: C:\WSUS\Scripts as root
+            "C:\WSUS\Scripts\Scripts\Invoke-WsusMonthlyMaintenance.ps1",
+            # Parent folder of Modules
+            (Join-Path (Split-Path $modulePath -Parent) "Scripts\Invoke-WsusMonthlyMaintenance.ps1"),
+            # Same level as Modules folder (Scripts folder sibling)
+            (Join-Path (Split-Path $modulePath -Parent) "Scripts\Scripts\Invoke-WsusMonthlyMaintenance.ps1"),
+            # Grandparent folder
+            (Join-Path (Split-Path (Split-Path $modulePath -Parent) -Parent) "Scripts\Invoke-WsusMonthlyMaintenance.ps1")
         )
 
         foreach ($path in $possiblePaths) {
