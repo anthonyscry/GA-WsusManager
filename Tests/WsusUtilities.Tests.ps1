@@ -73,11 +73,8 @@ Describe 'WsusUtilities Module' {
     }
 
     Context 'Test-WsusPath' {
-        BeforeAll {
-            $testDir = Join-Path $TestDrive 'TestPath'
-        }
-
         It 'Should return true for existing path' {
+            $testDir = Join-Path $TestDrive 'TestPath'
             New-Item -Path $testDir -ItemType Directory -Force | Out-Null
             $result = Test-WsusPath -Path $testDir
             $result | Should -Be $true
@@ -104,23 +101,22 @@ Describe 'WsusUtilities Module' {
     }
 
     Context 'Start-WsusLogging and Stop-WsusLogging' {
-        BeforeAll {
-            $testLogDir = Join-Path $TestDrive 'Logs'
-        }
-
         It 'Should create log directory if it does not exist' {
-            $logFile = Start-WsusLogging -ScriptName 'TestScript' -LogDirectory $testLogDir
+            $testLogDir = Join-Path $TestDrive 'Logs'
+            $null = Start-WsusLogging -ScriptName 'TestScript' -LogDirectory $testLogDir
             Test-Path $testLogDir | Should -Be $true
             Stop-WsusLogging
         }
 
         It 'Should return log file path with timestamp' {
+            $testLogDir = Join-Path $TestDrive 'LogsWithTimestamp'
             $logFile = Start-WsusLogging -ScriptName 'TestScript' -LogDirectory $testLogDir -UseTimestamp $true
             $logFile | Should -Match 'TestScript_\d{8}_\d{4}\.log$'
             Stop-WsusLogging
         }
 
         It 'Should return log file path without timestamp when disabled' {
+            $testLogDir = Join-Path $TestDrive 'LogsNoTimestamp'
             $logFile = Start-WsusLogging -ScriptName 'TestScript' -LogDirectory $testLogDir -UseTimestamp $false
             $logFile | Should -Match 'TestScript\.log$'
             Stop-WsusLogging
@@ -207,10 +203,6 @@ Describe 'WsusUtilities Module' {
     }
 
     Context 'SQL Credential Functions - Mocked' {
-        BeforeAll {
-            $testCredPath = Join-Path $TestDrive 'Config\sql_credential.xml'
-        }
-
         It 'Get-WsusSqlCredential should return null when file does not exist' {
             # The actual path won't exist in test environment
             Mock Test-Path { $false } -ModuleName WsusUtilities

@@ -115,7 +115,7 @@ function Get-DomainInfo {
     }
 }
 
-function Ensure-OUExists {
+function Assert-OUExists {
     <#
     .SYNOPSIS
         Creates an OU path if it doesn't exist.
@@ -248,7 +248,7 @@ function Import-WsusGpo {
     # Create and add OUs from paths (e.g., "Member Servers/WSUS Server")
     if ($GpoDefinition.TargetOUPaths) {
         foreach ($ouPath in $GpoDefinition.TargetOUPaths) {
-            $ouDN = Ensure-OUExists -OUPath $ouPath -DomainDN $DomainDN
+            $ouDN = Assert-OUExists -OUPath $ouPath -DomainDN $DomainDN
             $targetOUs += $ouDN
         }
     }
