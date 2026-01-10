@@ -1,8 +1,19 @@
 # WSUS Manager
 
-**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.2.0
+**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.3.0
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports both online and air-gapped networks.
+
+---
+
+## What's New in v3.3.0
+
+- **Auto-Refresh Dashboard** - Status cards update every 30 seconds
+- **Database Size Monitoring** - Alerts when approaching 10GB SQL Express limit
+- **Disk Space Monitoring** - Warnings for low content storage space
+- **Scheduled Task Status** - Shows maintenance task state and next run time
+- **Automatic Service Recovery** - One-click start for stopped services
+- **Enhanced Health Checks** - Aggregated health status with issues/warnings
 
 ---
 
@@ -10,16 +21,17 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 
 ### Option 1: GUI Application (Recommended)
 
-Download and run **`WsusManager.exe`** - no installation required.
+Download and run **`WsusManager-3.3.0.exe`** - no installation required.
 
-- Modern dark-themed interface
+- Modern dark-themed interface with auto-refresh dashboard
 - No PowerShell console window
 - Portable standalone executable
+- Automatic service status monitoring
 
 ### Option 2: PowerShell Scripts
 
 ```powershell
-.\Invoke-WsusManagement.ps1
+.\Scripts\Invoke-WsusManagement.ps1
 ```
 
 ---
@@ -92,7 +104,6 @@ Imports 3 GPOs: Update Policy, Inbound Firewall, Outbound Firewall.
 C:\WSUS\              # Content directory (required path)
 C:\WSUS\SQLDB\        # SQL/SSMS installers
 C:\WSUS\Logs\         # Log files
-C:\WSUS\Scripts\      # This repository
 ```
 
 ---
@@ -100,13 +111,23 @@ C:\WSUS\Scripts\      # This repository
 ## Repository Structure
 
 ```
-wsus-sql/
-├── WsusManager.exe           # GUI Application (RECOMMENDED)
-├── Invoke-WsusManagement.ps1 # CLI (backup option)
-├── Scripts/                  # Automation scripts
-├── DomainController/         # GPO deployment
+GA-WsusManager/
+├── WsusManager-3.3.0.exe     # GUI Application (RECOMMENDED)
+├── WsusManager.exe           # Generic copy (always latest)
+├── build.ps1                 # Build script for EXE
+├── Scripts/                  # All PowerShell scripts
+│   ├── WsusManagementGui.ps1 # GUI source
+│   ├── Invoke-WsusManagement.ps1 # CLI
+│   ├── Install-WsusWithSqlExpress.ps1
+│   ├── Invoke-WsusMonthlyMaintenance.ps1
+│   └── Set-WsusHttps.ps1
 ├── Modules/                  # PowerShell modules
-└── Tests/                    # Unit tests
+│   ├── WsusAutoDetection.psm1 # Enhanced detection (v3.3.0)
+│   ├── WsusDatabase.psm1
+│   ├── WsusHealth.psm1
+│   ├── WsusServices.psm1
+│   └── ...
+└── DomainController/         # GPO deployment scripts
 ```
 
 ---
@@ -118,6 +139,7 @@ wsus-sql/
 | Endless downloads | Use `C:\WSUS` NOT `C:\WSUS\wsuscontent` |
 | Clients not updating | Run `gpupdate /force`, check ports 8530/8531 |
 | Database errors | Grant sysadmin role to your account in SSMS |
+| Services not starting | Use "Start Services" button on dashboard |
 
 ---
 

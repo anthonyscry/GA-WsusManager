@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-FileHash \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager.exe\", \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager-3.2.0.exe\")",
+      "Bash(Format-Table Hash, Path -Wrap)",
+      "Bash(rm:*)"
+    ]
+  }
+}
