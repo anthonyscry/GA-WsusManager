@@ -21,7 +21,9 @@ Date: 2026-01-09
 # Import WsusUtilities for Invoke-WsusSqlcmd wrapper
 $modulePath = $PSScriptRoot
 if (Test-Path (Join-Path $modulePath "WsusUtilities.psm1")) {
-    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction SilentlyContinue
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction Stop
+} else {
+    throw "WsusUtilities.psm1 not found in $modulePath. This module is required for database operations."
 }
 
 # ===========================
