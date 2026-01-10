@@ -881,7 +881,7 @@ function Invoke-ExportToDvd {
     Write-Host ""
 
     # 7z a -v4300m = split into 4300MB volumes
-    $args = @(
+    $sevenZipArgs = @(
         "a",                    # add to archive
         "-v4300m",              # split into 4.3GB volumes (DVD size)
         "-mx=1",                # fast compression (speed over size)
@@ -890,7 +890,7 @@ function Invoke-ExportToDvd {
         "`"$source\*`""         # source files
     )
 
-    $proc = Start-Process -FilePath $sevenZip -ArgumentList $args -Wait -PassThru -NoNewWindow
+    $proc = Start-Process -FilePath $sevenZip -ArgumentList $sevenZipArgs -Wait -PassThru -NoNewWindow
     if ($proc.ExitCode -eq 0) {
         Write-Log "[OK] Archive created successfully" "Green"
     } else {

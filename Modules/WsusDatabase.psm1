@@ -692,7 +692,9 @@ function Test-WsusDatabaseConsistency {
                 Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
                     -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
                     -QueryTimeout 60
-            } catch { }
+            } catch {
+                # Silently ignore - best effort to restore multi-user mode
+            }
         }
 
         # Parse results - CHECKDB returns messages
@@ -718,7 +720,9 @@ function Test-WsusDatabaseConsistency {
             Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
                 -Query "ALTER DATABASE SUSDB SET MULTI_USER" `
                 -QueryTimeout 60
-        } catch { }
+        } catch {
+            # Silently ignore - best effort to restore multi-user mode
+        }
     }
 
     $result.Duration = [math]::Round(((Get-Date) - $startTime).TotalMinutes, 1)

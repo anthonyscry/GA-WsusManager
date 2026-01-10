@@ -113,7 +113,7 @@ function New-WsusMaintenanceTask {
     .PARAMETER Time
         Time to run in HH:mm format (default: 02:00)
 
-    .PARAMETER Profile
+    .PARAMETER MaintenanceProfile
         Maintenance profile to use: Full, Quick, SyncOnly (default: Full)
 
     .PARAMETER RunAsUser
@@ -142,7 +142,7 @@ function New-WsusMaintenanceTask {
         [string]$Time = "01:00",
 
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
-        [string]$Profile = 'Full',
+        [string]$MaintenanceProfile = 'Full',
 
         [string]$RunAsUser = ".\dod_admin",
 
@@ -222,7 +222,7 @@ function New-WsusMaintenanceTask {
     try {
         # Build the action
         $action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-            -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Unattended -Profile $Profile"
+            -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" -Unattended -Profile $MaintenanceProfile"
 
         # Build the trigger based on schedule type
         $trigger = switch ($Schedule) {
