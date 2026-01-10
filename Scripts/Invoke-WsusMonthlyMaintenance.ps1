@@ -116,16 +116,24 @@ foreach ($func in $requiredFunctions) {
 if ($missingFunctions.Count -gt 0) {
     Write-Error "Module import incomplete. Missing functions: $($missingFunctions -join ', ')"
     Write-Error "Module path used: $modulePath"
-    # List what's actually in the module file for debugging
+    # Check module version
     $moduleFile = Join-Path $modulePath "WsusUtilities.psm1"
     if (Test-Path $moduleFile) {
-        $exportedFuncs = Get-Content $moduleFile -Raw | Select-String -Pattern "function\s+(\w+-\w+)" -AllMatches
-        if ($exportedFuncs.Matches) {
-            $funcNames = $exportedFuncs.Matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
-            Write-Error "Functions defined in module: $($funcNames -join ', ')"
+        $moduleContent = Get-Content $moduleFile -Raw -ErrorAction SilentlyContinue
+        # Check for version string
+        if ($moduleContent -match "Version:\s*([\d.]+)") {
+            Write-Error "Installed module version: $($Matches[1])"
+        } else {
+            Write-Error "Installed module version: UNKNOWN (old version without version marker)"
         }
+        Write-Error "Required module version: 1.1.0 or later"
     }
-    Write-Error "Please ensure the Modules folder contains the latest version of WsusUtilities.psm1"
+    Write-Error ""
+    Write-Error "=== HOW TO FIX ==="
+    Write-Error "Your WsusUtilities.psm1 is outdated. Update from the repository:"
+    Write-Error "1. Download latest Modules folder from the repository"
+    Write-Error "2. Copy all .psm1 files to: $modulePath"
+    Write-Error "3. Re-run this script"
     exit 1
 }
 

@@ -2,8 +2,8 @@
 ===============================================================================
 Module: WsusUtilities.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
-Date: 2026-01-09
+Version: 1.1.0
+Date: 2026-01-10
 ===============================================================================
 
 .SYNOPSIS
@@ -12,10 +12,17 @@ Date: 2026-01-09
 .DESCRIPTION
     Provides shared functionality including:
     - Color output functions
-    - Logging functions
+    - Logging functions (Start-WsusLogging, Stop-WsusLogging, Write-Log)
     - Admin privilege checks
+    - SQL command wrapper (Invoke-WsusSqlcmd)
     - Common helper functions
+
+.NOTES
+    Required functions exported: Start-WsusLogging, Stop-WsusLogging, Write-Log, Invoke-WsusSqlcmd
 #>
+
+# Module version for compatibility checking
+$script:WsusUtilitiesVersion = '1.1.0'
 
 # ===========================
 # COLOR OUTPUT FUNCTIONS
