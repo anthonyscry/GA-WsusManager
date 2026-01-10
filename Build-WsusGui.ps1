@@ -3,7 +3,7 @@
 ===============================================================================
 Script: Build-WsusGui.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
+Version: 2.0.0
 ===============================================================================
 .SYNOPSIS
     Compiles WsusManagementGui.ps1 to a portable standalone EXE.
@@ -25,8 +25,8 @@ Version: 1.0.0
 #>
 
 param(
-    [string]$OutputPath = ".\WsusManagement.exe",
-    [switch]$NoConsole,
+    [string]$OutputPath = ".\WsusManager.exe",
+    [switch]$ShowConsole,
     [switch]$RequireAdmin
 )
 
@@ -81,7 +81,7 @@ Write-Host ""
 Write-Host "Build Configuration:" -ForegroundColor Yellow
 Write-Host "  Source: $sourceScript" -ForegroundColor Gray
 Write-Host "  Output: $OutputPath" -ForegroundColor Gray
-Write-Host "  Console: $(if ($NoConsole) { 'Hidden' } else { 'Visible' })" -ForegroundColor Gray
+Write-Host "  Console: $(if ($ShowConsole) { 'Visible' } else { 'Hidden (default)' })" -ForegroundColor Gray
 Write-Host "  Require Admin: $RequireAdmin" -ForegroundColor Gray
 Write-Host ""
 
@@ -89,14 +89,14 @@ Write-Host ""
 $buildParams = @{
     InputFile = $sourceScript
     OutputFile = $OutputPath
-    NoConsole = $NoConsole
+    NoConsole = (-not $ShowConsole)
     RequireAdmin = $RequireAdmin
-    Title = "WSUS Management"
-    Description = "WSUS Management GUI - Windows Server Update Services Administration"
+    Title = "WSUS Manager"
+    Description = "WSUS Manager - Modern GUI for Windows Server Update Services Administration"
     Company = "GA-ASI"
-    Product = "WSUS Management Suite"
+    Product = "WSUS Manager"
     Copyright = "Tony Tran, ISSO"
-    Version = "3.2.0.0"
+    Version = "2.0.0.0"
     STA = $true
     MTA = $false
     ThreadApartment = 'STA'
@@ -119,7 +119,7 @@ try {
         Write-Host "Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB" -ForegroundColor Gray
         Write-Host ""
         Write-Host "Usage:" -ForegroundColor Yellow
-        Write-Host "  Double-click WsusManagement.exe to run" -ForegroundColor Gray
+        Write-Host "  Double-click WsusManager.exe to run" -ForegroundColor Gray
         Write-Host "  Right-click > Run as Administrator for full functionality" -ForegroundColor Gray
         Write-Host ""
     } else {
