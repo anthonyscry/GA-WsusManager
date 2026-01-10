@@ -383,11 +383,70 @@ jobs:
         path: ./package/
         retention-days: 30
 
+  # Build PowerShell GUI to standalone EXE using PS2EXE
+  build-powershell-gui:
+    name: Build PowerShell GUI (PS2EXE)
+    runs-on: windows-latest
+    needs: [powershell-analysis]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install PS2EXE Module
+      shell: pwsh
+      run: |
+        Write-Host "Installing PS2EXE module..." -ForegroundColor Cyan
+        Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
+        Import-Module ps2exe
+        Write-Host "PS2EXE installed successfully" -ForegroundColor Green
+
+    - name: Build PowerShell GUI to EXE
+      shell: pwsh
+      run: |
+        Write-Host "Building WsusManager.exe from WsusManagementGui.ps1..." -ForegroundColor Cyan
+
+        # Build parameters
+        $buildParams = @{
+            InputFile = ".\WsusManagementGui.ps1"
+            OutputFile = ".\WsusManager-PS.exe"
+            NoConsole = $true
+            RequireAdmin = $false
+            Title = "WSUS Manager"
+            Description = "WSUS Manager - Modern GUI for Windows Server Update Services"
+            Company = "GA-ASI"
+            Product = "WSUS Manager"
+            Copyright = "Tony Tran, ISSO"
+            Version = "2.0.0.0"
+            STA = $true
+            x64 = $true
+        }
+
+        Invoke-PS2EXE @buildParams
+
+        if (Test-Path ".\WsusManager-PS.exe") {
+            $exe = Get-Item ".\WsusManager-PS.exe"
+            $sizeMB = [math]::Round($exe.Length / 1MB, 2)
+            Write-Host "Build successful!" -ForegroundColor Green
+            Write-Host "  Output: WsusManager-PS.exe"
+            Write-Host "  Size: $sizeMB MB"
+        } else {
+            Write-Host "::error::Build failed - executable not created"
+            exit 1
+        }
+
+    - name: Upload PowerShell GUI Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WsusManager-PowerShell-GUI
+        path: ./WsusManager-PS.exe
+        retention-days: 30
+
   # Summary job for debugging
   build-summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [powershell-analysis, pester-tests, build-gui]
+    needs: [powershell-analysis, pester-tests, build-gui, build-powershell-gui]
     if: always()
 
     steps:
@@ -399,9 +458,11 @@ jobs:
         echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| PowerShell Analysis | ${{ needs.powershell-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Pester Unit Tests | ${{ needs.pester-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| GUI Build | ${{ needs.build-gui.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| WPF GUI Build | ${{ needs.build-gui.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| PowerShell GUI Build | ${{ needs.build-powershell-gui.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "- **WsusManager-Release**: Self-contained executable" >> $GITHUB_STEP_SUMMARY
+        echo "- **WsusManager-Release**: WPF GUI - Self-contained executable (~150MB with .NET runtime)" >> $GITHUB_STEP_SUMMARY
+        echo "- **WsusManager-PowerShell-GUI**: PowerShell GUI - Lightweight portable executable (~5MB)" >> $GITHUB_STEP_SUMMARY
         echo "- **WsusManager-Complete-Package**: Full distribution package with scripts and modules" >> $GITHUB_STEP_SUMMARY
         echo "- **pester-test-results**: Unit test results and code coverage report" >> $GITHUB_STEP_SUMMARY
