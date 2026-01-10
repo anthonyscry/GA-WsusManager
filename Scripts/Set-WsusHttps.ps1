@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Set-WsusHttps.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
+Version: 1.0.1
 Date: 2026-01-10
 ===============================================================================
 
@@ -40,6 +40,12 @@ Date: 2026-01-10
 param(
     [string]$CertificateThumbprint
 )
+
+# Import WsusUtilities for logging
+$modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\WsusUtilities.psm1"
+if (Test-Path $modulePath) {
+    Import-Module $modulePath -Force -DisableNameChecking -ErrorAction SilentlyContinue
+}
 
 #region Helper Functions
 
@@ -330,6 +336,14 @@ function Show-Summary {
 
 #region Main Script
 
+# Initialize logging if WsusUtilities is available
+$loggingEnabled = $false
+if (Get-Command Start-WsusLogging -ErrorAction SilentlyContinue) {
+    Start-WsusLogging -LogPath "C:\WSUS\Logs\Set-WsusHttps.log"
+    $loggingEnabled = $true
+    Write-Log "HTTPS configuration started"
+}
+
 try {
     # Display banner
     Write-Host ""
@@ -410,11 +424,22 @@ try {
     # Show summary
     Show-Summary -ServerName $serverName -CertExportPath $certExportPath -IsSelfSigned $isSelfSigned
 
+    if ($loggingEnabled) {
+        Write-Log "HTTPS configuration completed successfully"
+    }
+
 } catch {
     Write-Host ""
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
+    if ($loggingEnabled) {
+        Write-Log "ERROR: $($_.Exception.Message)"
+    }
     exit 1
+} finally {
+    if ($loggingEnabled) {
+        Stop-WsusLogging
+    }
 }
 
 #endregion
