@@ -8,6 +8,20 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ---
 
+## Official Documentation
+
+### Microsoft References
+
+- [WSUS Maintenance Guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
+- [WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices)
+- [Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment)
+- [Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus)
+- [SQL Server Installation Guide](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server)
+- [SQL Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration)
+- [SQL Server 2022 Express Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
+
+---
+
 ## Features
 
 - **Automated Installation** - One-script deployment of SQL Server Express 2022 + SSMS + WSUS
@@ -16,7 +30,7 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 - **Health Monitoring** - Automated diagnostics and repair capabilities
 - **Scheduled Maintenance** - Unattended mode for Windows Task Scheduler
 - **GPO Deployment** - Pre-configured Group Policy Objects for domain-wide client configuration
-- **Modular Architecture** - 6 reusable PowerShell modules (~30% code reduction)
+- **Modular Architecture** - 6 reusable PowerShell modules
 
 ---
 
@@ -24,10 +38,47 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ### Prerequisites
 
-- Windows Server 2016+ with Administrator access
-- PowerShell 5.0+
-- SQL Server Express 2022 installer (`SQLEXPRADV_x64_ENU.exe`)
-- SQL Server Management Studio installer (`SSMS-Setup-ENU.exe`)
+#### System Requirements
+
+- **Operating System:** Windows Server 2019+ (physical or VM)
+- **CPU:** 4 cores minimum
+- **RAM:** 16 GB minimum
+- **Disk Space:** 125 GB minimum
+- **Network:** Valid IPv4 configuration (static IP recommended)
+- **PowerShell:** 5.0+
+
+#### Required Installers
+
+Place these in `C:\WSUS\SQLDB\`:
+- `SQLEXPRADV_x64_ENU.exe` - SQL Server Express 2022 with Advanced Services
+- `SSMS-Setup-ENU.exe` - SQL Server Management Studio
+
+#### Required Privileges
+
+- **Local Administrator** on WSUS server (source & destination)
+- **sysadmin role** on `localhost\SQLEXPRESS` (required for SUSDB backup/restore)
+
+### Granting SQL Server Sysadmin Privileges
+
+> Required for database backup/restore operations. Perform on both online and air-gapped WSUS servers.
+
+**Step 1: Connect to SQL Server**
+1. Launch **SQL Server Management Studio (SSMS)**
+2. Server type: **Database Engine**
+3. Server name: `localhost\SQLEXPRESS`
+4. Authentication: **SQL Server Authentication**
+5. Login: `sa` (or default admin account)
+6. Check **Trust Server Certificate** → Click **Connect**
+
+**Step 2: Add Login with Sysadmin Role**
+1. In Object Explorer, expand **Security** → **Logins**
+2. Right-click **Logins** → **New Login...**
+3. Click **Search...** → Click **Locations...** → Select **Entire Directory**
+4. Enter domain group (e.g., `DOMAIN\System Administrators`) → **OK**
+5. Go to **Server Roles** page → Check **sysadmin** → **OK**
+
+**Step 3: Refresh Permissions**
+- Log out of the WSUS server and log back in to refresh group membership
 
 ### First-Time Setup
 
@@ -40,18 +91,13 @@ Get-ChildItem -Path "C:\WSUS\scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-F
 
 ### Installation
 
-1. Place installers in `C:\WSUS\SQLDB\`:
-   ```
-   C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe
-   C:\WSUS\SQLDB\SSMS-Setup-ENU.exe
-   ```
-
-2. Run the interactive menu:
+1. Place installers in `C:\WSUS\SQLDB\`
+2. Extract script bundle to `C:\WSUS\Scripts\`
+3. Run the interactive menu:
    ```powershell
    .\Invoke-WsusManagement.ps1
    ```
-
-3. Select **Option 1** to install WSUS + SQL Express
+4. Select **Option 1** to install WSUS + SQL Express
 
 ---
 
