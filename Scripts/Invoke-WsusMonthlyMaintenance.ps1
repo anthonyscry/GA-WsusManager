@@ -863,17 +863,15 @@ SELECT
 
         try {
             # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
+            # Windows Integrated Authentication works for both interactive and scheduled tasks
             if ($script:UseSqlCredential -and $SqlCredential) {
                 $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300 `
                     -Credential $SqlCredential
-            } elseif (-not $Unattended) {
-                # Interactive mode - use Windows integrated auth
+            } else {
+                # Use Windows Integrated Authentication (works for scheduled tasks too)
                 $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300
-            } else {
-                Write-Log "Skipping deep cleanup - no SQL credential available for unattended mode"
-                $deepResult = $null
             }
             if ($deepResult) {
                 Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
@@ -970,8 +968,9 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
             Select-Object -ExpandProperty Id |
             ForEach-Object { $_.UpdateId })
 
-        # Run SQL operations if: interactive mode (Windows auth) OR unattended with credential
-        $canRunSql = (-not $Unattended) -or ($script:UseSqlCredential -and $SqlCredential)
+        # SQL operations use Windows Integrated Authentication by default
+        # This works for both interactive mode and scheduled tasks running as users with SQL access
+        $canRunSql = $true
 
         if ($declinedIDs.Count -gt 0 -and $canRunSql) {
             Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
@@ -1075,18 +1074,17 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         $MaintenanceResults.DatabaseSize = $dbSize
 
         # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
+        # SQL Server Express uses Windows Integrated Authentication by default,
+        # so scheduled tasks running as users with SQL access don't need explicit credentials
         if ($script:UseSqlCredential -and $SqlCredential) {
             Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 -Credential $SqlCredential | Out-Null
-        } elseif (-not $Unattended) {
-            # Interactive mode - use Windows integrated auth
+        } else {
+            # Use Windows Integrated Authentication (works for both interactive and scheduled tasks)
             Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 | Out-Null
-        } else {
-            Write-Warning "Cannot perform database backup - no SQL credential available for unattended mode"
-            throw "SQL credential required for backup in unattended mode"
         }
 
         $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
