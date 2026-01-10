@@ -22,13 +22,18 @@ Date: 2026-01-09
 #>
 
 # Import required modules with error handling
-$modulePath = Split-Path -Parent $PSCommandPath
-try {
-    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -ErrorAction Stop
-    Import-Module (Join-Path $modulePath "WsusFirewall.psm1") -Force -ErrorAction Stop
-    Import-Module (Join-Path $modulePath "WsusPermissions.psm1") -Force -ErrorAction Stop
-} catch {
-    throw "Failed to import required modules from $modulePath`: $($_.Exception.Message)"
+# Resolve module path (handles symlinks and different invocation methods)
+$modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+
+# Only import if not already loaded (prevents re-import issues)
+$requiredModules = @('WsusServices', 'WsusFirewall', 'WsusPermissions')
+foreach ($modName in $requiredModules) {
+    $modFile = Join-Path $modulePath "$modName.psm1"
+    if (Test-Path $modFile) {
+        Import-Module $modFile -Force -DisableNameChecking -ErrorAction Stop
+    } else {
+        throw "Required module not found: $modFile"
+    }
 }
 
 # ===========================
