@@ -189,10 +189,14 @@ function Get-SqlInstanceName {
     }
 }
 
-function Get-WsusContentPath {
+function Get-WsusContentPathFromConfig {
     <#
     .SYNOPSIS
-        Gets the full WSUS content path from config or registry
+        Gets the full WSUS content path from config or registry (with subfolder option)
+
+    .DESCRIPTION
+        This function is distinct from Get-WsusContentPath in WsusUtilities.psm1.
+        Use this when you need the IncludeSubfolder option.
 
     .PARAMETER IncludeSubfolder
         If true, appends WsusContent subfolder
@@ -393,7 +397,7 @@ Export-ModuleMember -Function @(
     'Get-WsusConfig',
     'Set-WsusConfig',
     'Get-SqlInstanceName',
-    'Get-WsusContentPath',
+    'Get-WsusContentPathFromConfig',
     'Get-WsusLogPath',
     'Get-WsusServiceName',
     'Get-WsusTimeout',

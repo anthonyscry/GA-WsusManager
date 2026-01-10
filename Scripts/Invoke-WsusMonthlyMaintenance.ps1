@@ -274,7 +274,8 @@ function Test-Prerequisites {
     # Check 5: WSUS connection test
     Write-Host "  WSUS Connection   " -NoNewline -ForegroundColor DarkGray
     try {
-        [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
+        # Use Add-Type instead of deprecated LoadWithPartialName
+        Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
         $testWsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
         if ($testWsus) {
             Write-Host "OK" -ForegroundColor Green
@@ -538,7 +539,8 @@ Start-SqlServerExpress | Out-Null
 Start-WsusServer | Out-Null
 
 try {
-    [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
+    # Use Add-Type instead of deprecated LoadWithPartialName
+    Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
     Write-Log "WSUS connection successful"
     Write-Status "WSUS connection successful" -Type Success
