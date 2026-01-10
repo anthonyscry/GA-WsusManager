@@ -170,11 +170,88 @@ jobs:
           **/*.psm1
         retention-days: 7
 
+  # Run Pester Unit Tests
+  pester-tests:
+    name: Pester Unit Tests
+    runs-on: windows-latest
+    needs: powershell-analysis
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        Install-Module -Name Pester -Force -Scope CurrentUser -MinimumVersion 5.0.0
+        Import-Module Pester
+        Write-Host "Pester version: $((Get-Module Pester).Version)"
+
+    - name: Run Pester Tests
+      shell: pwsh
+      run: |
+        $config = New-PesterConfiguration
+        $config.Run.Path = "./Tests"
+        $config.Run.Exit = $true
+        $config.TestResult.Enabled = $true
+        $config.TestResult.OutputPath = "./TestResults/pester-results.xml"
+        $config.TestResult.OutputFormat = "NUnitXml"
+        $config.Output.Verbosity = "Detailed"
+        $config.CodeCoverage.Enabled = $true
+        $config.CodeCoverage.Path = @("./Modules/*.psm1")
+        $config.CodeCoverage.OutputPath = "./TestResults/coverage.xml"
+        $config.CodeCoverage.OutputFormat = "JaCoCo"
+
+        # Create TestResults directory
+        New-Item -Path "./TestResults" -ItemType Directory -Force | Out-Null
+
+        # Run tests
+        Invoke-Pester -Configuration $config
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pester-test-results
+        path: ./TestResults/
+        retention-days: 30
+
+    - name: Test Summary
+      if: always()
+      shell: pwsh
+      run: |
+        if (Test-Path "./TestResults/pester-results.xml") {
+          [xml]$results = Get-Content "./TestResults/pester-results.xml"
+          $testRun = $results.'test-results'
+
+          Write-Host "## Pester Test Results" -ForegroundColor Cyan
+          Write-Host "Total Tests: $($testRun.total)"
+          Write-Host "Passed: $($testRun.passed)" -ForegroundColor Green
+          Write-Host "Failed: $($testRun.failures)" -ForegroundColor $(if ([int]$testRun.failures -gt 0) { 'Red' } else { 'Green' })
+          Write-Host "Skipped: $($testRun.skipped)" -ForegroundColor Yellow
+
+          # Add to GitHub summary
+          $summary = @"
+          ## Pester Test Results
+
+          | Metric | Count |
+          |--------|-------|
+          | Total Tests | $($testRun.total) |
+          | Passed | $($testRun.passed) |
+          | Failed | $($testRun.failures) |
+          | Skipped | $($testRun.skipped) |
+          "@
+
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        } else {
+          Write-Host "No test results file found" -ForegroundColor Yellow
+        }
+
   # Build the WPF GUI Application
   build-gui:
     name: Build GUI Application
     runs-on: windows-latest
-    needs: powershell-analysis
+    needs: [powershell-analysis, pester-tests]
 
     strategy:
       matrix:
@@ -310,7 +387,7 @@ jobs:
   build-summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [powershell-analysis, build-gui]
+    needs: [powershell-analysis, pester-tests, build-gui]
     if: always()
 
     steps:
@@ -321,8 +398,10 @@ jobs:
         echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| PowerShell Analysis | ${{ needs.powershell-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Pester Unit Tests | ${{ needs.pester-tests.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| GUI Build | ${{ needs.build-gui.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
         echo "- **WsusManager-Release**: Self-contained executable" >> $GITHUB_STEP_SUMMARY
         echo "- **WsusManager-Complete-Package**: Full distribution package with scripts and modules" >> $GITHUB_STEP_SUMMARY
+        echo "- **pester-test-results**: Unit test results and code coverage report" >> $GITHUB_STEP_SUMMARY
