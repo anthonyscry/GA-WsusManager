@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Invoke-WsusManagement.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 3.1.0
+Version: 3.2.0
 Date: 2026-01-10
 ===============================================================================
 
@@ -96,6 +96,28 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
+# ============================================================================
+# CENTRALIZED LOGGING SETUP
+# ============================================================================
+# Single daily log file - all operations append to same file
+$script:LogDirectory = "C:\WSUS\Logs"
+$script:LogFileName = "WsusManagement_$(Get-Date -Format 'yyyy-MM-dd').log"
+$script:LogFilePath = Join-Path $script:LogDirectory $script:LogFileName
+
+# Create log directory if needed
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+}
+
+# Write session start marker
+$sessionMarker = @"
+
+================================================================================
+SESSION START: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+================================================================================
+"@
+Add-Content -Path $script:LogFilePath -Value $sessionMarker -ErrorAction SilentlyContinue
+
 # Determine the project root and scripts folder
 # Handle multiple deployment scenarios:
 # 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
@@ -142,15 +164,28 @@ foreach ($path in $moduleSearchPaths) {
 # ============================================================================
 
 function Write-Log($msg, $color = "White") {
-    Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $msg" -ForegroundColor $color
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $logMessage = "$timestamp - $msg"
+
+    # Write to console
+    Write-Host $logMessage -ForegroundColor $color
+
+    # Append to daily log file
+    Add-Content -Path $script:LogFilePath -Value $logMessage -ErrorAction SilentlyContinue
 }
 
 function Write-Banner($title) {
-    Write-Host ""
-    Write-Host "===============================================================================" -ForegroundColor Cyan
-    Write-Host "                    $title" -ForegroundColor Cyan
-    Write-Host "===============================================================================" -ForegroundColor Cyan
-    Write-Host ""
+    $banner = @"
+
+===============================================================================
+                    $title
+===============================================================================
+
+"@
+    Write-Host $banner -ForegroundColor Cyan
+
+    # Also log to file
+    Add-Content -Path $script:LogFilePath -Value $banner -ErrorAction SilentlyContinue
 }
 
 function Get-SqlCmd {
@@ -331,25 +366,31 @@ function Copy-ToDestination {
 function Select-Destination {
     param([string]$DefaultPath)
 
-    Write-Host ""
-    Write-Host "Destination options:" -ForegroundColor Yellow
-    Write-Host "  1. $DefaultPath (default)"
-    Write-Host "  2. Custom path"
-    Write-Host ""
-    $destChoice = Read-Host "Select destination (1/2)"
+    while ($true) {
+        Write-Host ""
+        Write-Host "Destination options:" -ForegroundColor Yellow
+        Write-Host "  1. $DefaultPath (default)"
+        Write-Host "  2. Custom path"
+        Write-Host ""
+        $destChoice = Read-Host "Select destination (1/2)"
 
-    $destination = if ($destChoice -eq "2") {
-        Read-Host "Enter destination path"
-    } else {
-        $DefaultPath
+        # Validate input - only accept 1, 2, or empty (default)
+        if ($destChoice -eq "" -or $destChoice -eq "1") {
+            return $DefaultPath
+        }
+        elseif ($destChoice -eq "2") {
+            $customPath = Read-Host "Enter destination path"
+            if (-not $customPath) {
+                Write-Log "ERROR: No destination specified" "Red"
+                return $null
+            }
+            return $customPath
+        }
+        else {
+            Write-Host "Invalid selection '$destChoice'. Please enter 1 or 2." -ForegroundColor Red
+            # Loop continues to re-prompt
+        }
     }
-
-    if (-not $destination) {
-        Write-Log "ERROR: No destination specified" "Red"
-        return $null
-    }
-
-    return $destination
 }
 
 function Invoke-FullCopy {
@@ -1226,7 +1267,7 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host "=================================================================" -ForegroundColor Cyan
-    Write-Host "              WSUS Management v3.1.0" -ForegroundColor Cyan
+    Write-Host "              WSUS Management v3.2.0" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host "=================================================================" -ForegroundColor Cyan
     Write-Host ""
@@ -1257,9 +1298,8 @@ function Show-Menu {
 
 function Invoke-MenuScript {
     param([string]$Path, [string]$Desc)
-    Write-Host ""
-    Write-Host "Launching: $Desc" -ForegroundColor Green
-    if (Test-Path $Path) { & $Path } else { Write-Host "Script not found: $Path" -ForegroundColor Red }
+    Write-Log "Launching: $Desc" "Green"
+    if (Test-Path $Path) { & $Path } else { Write-Log "Script not found: $Path" "Red" }
     Write-Host ""
     Write-Host "Press any key to continue..." -ForegroundColor Yellow
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -1269,6 +1309,9 @@ function Start-InteractiveMenu {
     do {
         Show-Menu
         $choice = Read-Host "Select"
+
+        # Log user menu selection
+        Add-Content -Path $script:LogFilePath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Menu selection: $choice" -ErrorAction SilentlyContinue
 
         switch ($choice) {
             '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
@@ -1282,7 +1325,7 @@ function Start-InteractiveMenu {
             '9'  { Invoke-WsusReset; pause }
             '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'D'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
-            'Q'  { Write-Host "Exiting..." -ForegroundColor Green; return }
+            'Q'  { Write-Log "Exiting WSUS Management" "Green"; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
     } while ($choice -ne 'Q')
