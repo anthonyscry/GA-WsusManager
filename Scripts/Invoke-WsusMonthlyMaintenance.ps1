@@ -28,7 +28,8 @@ param(
 
     # Preset configuration profiles
     [ValidateSet("Quick", "Full", "SyncOnly")]
-    [string]$Profile,
+    [Alias("Profile")]
+    [string]$MaintenanceProfile,
 
     # Specific operations to run (default: all)
     [ValidateSet("Sync", "Cleanup", "UltimateCleanup", "Backup", "Export", "All")]
@@ -458,13 +459,13 @@ $MaintenanceResults = @{
 
 # === INTERACTIVE MENU MODE ===
 # Show menu if no profile/operations specified and not unattended
-if (-not $Unattended -and -not $Profile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
+if (-not $Unattended -and -not $MaintenanceProfile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
     $menuChoice = Show-MainMenu
 
     switch ($menuChoice) {
-        "1" { $Profile = "Full" }
-        "2" { $Profile = "Quick" }
-        "3" { $Profile = "SyncOnly" }
+        "1" { $MaintenanceProfile = "Full" }
+        "2" { $MaintenanceProfile = "Quick" }
+        "3" { $MaintenanceProfile = "SyncOnly" }
         "4" {
             $Operations = @("Backup", "Export")
         }
@@ -474,13 +475,13 @@ if (-not $Unattended -and -not $Profile -and ($Operations.Count -eq 1 -and $Oper
         }
         "Q" { exit 0 }
         "q" { exit 0 }
-        default { $Profile = "Full" }
+        default { $MaintenanceProfile = "Full" }
     }
 }
 
 # === APPLY PROFILE SETTINGS ===
-if ($Profile) {
-    $profileSettings = Set-ProfileSettings -ProfileName $Profile
+if ($MaintenanceProfile) {
+    $profileSettings = Set-ProfileSettings -ProfileName $MaintenanceProfile
     if (-not $PSBoundParameters.ContainsKey('SkipUltimateCleanup')) {
         $SkipUltimateCleanup = $profileSettings.SkipUltimateCleanup
     }
@@ -1142,7 +1143,9 @@ try {
     $dbSize = Get-WsusDatabaseSize -SqlInstance ".\SQLEXPRESS"
     Write-Log "SUSDB size: $dbSize GB"
     if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
-} catch {}
+} catch {
+    # Silently ignore - database size is informational only
+}
 
 Write-Log "Backup: $backupFile"
 
