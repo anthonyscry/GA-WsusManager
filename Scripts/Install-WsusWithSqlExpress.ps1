@@ -35,7 +35,7 @@ $sqlService = Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
 $sqlInstanceKey = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
 $sqlInstanceExists = $false
 if (Test-Path $sqlInstanceKey) {
-    $sqlInstanceExists = (Get-ItemProperty -Path $sqlInstanceKey -ErrorAction SilentlyContinue).SQLEXPRESS -ne $null
+    $sqlInstanceExists = $null -ne (Get-ItemProperty -Path $sqlInstanceKey -ErrorAction SilentlyContinue).SQLEXPRESS
 }
 $sqlInstalled = ($null -ne $sqlService) -or $sqlInstanceExists
 $ssmsInstalled = $false

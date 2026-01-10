@@ -312,7 +312,7 @@ Describe 'WsusServices Module' {
             Mock Start-IISService { $startOrder += 'IIS'; $true } -ModuleName WsusServices
             Mock Start-WsusServer { $startOrder += 'WSUS'; $true } -ModuleName WsusServices
 
-            $result = Start-AllWsusServices
+            $null = Start-AllWsusServices
 
             # Note: The function runs these in hashtable order (non-deterministic in tests)
             # We just verify all three were called
@@ -340,7 +340,7 @@ Describe 'WsusServices Module' {
             Mock Stop-IISService { $true } -ModuleName WsusServices
             Mock Stop-SqlServerExpress { $true } -ModuleName WsusServices
 
-            $result = Stop-AllWsusServices
+            $null = Stop-AllWsusServices
 
             Should -Invoke Stop-WsusServer -ModuleName WsusServices -Times 1
             Should -Invoke Stop-IISService -ModuleName WsusServices -Times 1
