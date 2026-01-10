@@ -84,7 +84,7 @@ function New-WsusFirewallRule {
     .PARAMETER Action
         Allow or Block
 
-    .PARAMETER Profile
+    .PARAMETER FirewallProfile
         Firewall profiles (Domain, Private, Public)
 
     .PARAMETER Description
@@ -112,7 +112,7 @@ function New-WsusFirewallRule {
         [ValidateSet("Allow", "Block")]
         [string]$Action,
 
-        [string]$Profile = "Domain,Private",
+        [string]$FirewallProfile = "Domain,Private",
 
         [string]$Description = ""
     )
@@ -128,7 +128,7 @@ function New-WsusFirewallRule {
             -Protocol $Protocol `
             -LocalPort $LocalPort `
             -Action $Action `
-            -Profile $Profile `
+            -Profile $FirewallProfile `
             -Description $Description `
             -ErrorAction Stop | Out-Null
 

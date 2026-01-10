@@ -1,0 +1,113 @@
+# .gitignore for WSUS-SQL Project
+
+# =========================
+# .NET / Visual Studio
+# =========================
+bin/
+obj/
+publish/
+package/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.rsuser
+*.csproj.user
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# =========================
+# PowerShell
+# =========================
+*.ps1xml
+*.pssc
+!*.psd1
+
+# =========================
+# IDE / Editors
+# =========================
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+!.vscode/extensions.json
+
+# =========================
+# OS Generated
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# =========================
+# Logs and Databases
+# =========================
+*.log
+*.sql.bak
+*.mdf
+*.ldf
+*.ndf
+
+# =========================
+# Credentials and Secrets
+# =========================
+*.env
+.env.*
+credentials.json
+secrets.json
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json.example
+*.pfx
+*.key
+*.pem
+*.crt
+
+# =========================
+# Temporary Files
+# =========================
+*.tmp
+*.temp
+*.bak
+*.backup
+~$*
+
+# =========================
+# Test Results
+# =========================
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
