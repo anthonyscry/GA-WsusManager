@@ -180,7 +180,7 @@ $script:Colors = $script:Themes[$script:CurrentTheme]
 function Test-WsusInstalled { try { $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue; return ($null -ne $svc) } catch { return $false } }
 function Test-SqlInstalled { try { $svc = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue; return ($null -ne $svc) } catch { return $false } }
 function Get-WsusStatus {
-    $status = @{ WsusInstalled = Test-WsusInstalled; SqlInstalled = Test-SqlInstalled; WsusRunning = $false; SqlRunning = $false; IisRunning = $false; ContentPathExists = Test-Path $script:ContentPath }
+    $status = @{ WsusInstalled = Test-WsusInstalled; SqlInstalled = Test-SqlInstalled; WsusRunning = $false; SqlRunning = $false; IisRunning = $false; ContentPathExists = ($script:ContentPath -and (Test-Path $script:ContentPath -ErrorAction SilentlyContinue)) }
     if ($status.WsusInstalled) { $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue; $status.WsusRunning = ($svc.Status -eq "Running") }
     if ($status.SqlInstalled) { $svc = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue; $status.SqlRunning = ($svc.Status -eq "Running") }
     $iis = Get-Service -Name "W3SVC" -ErrorAction SilentlyContinue; if ($iis) { $status.IisRunning = ($iis.Status -eq "Running") }
@@ -967,7 +967,7 @@ function New-WsusGui {
     $statusBar.Controls.Add($divider)
 
     $script:StatusLabel = New-Object System.Windows.Forms.Label
-    $script.Text = "Ready"
+    $script:StatusLabel.Text = "Ready"
     $script:StatusLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:StatusLabel.ForeColor = $script:Colors.TextSecondary
     $script:StatusLabel.Location = New-Object System.Drawing.Point(240, 8)
