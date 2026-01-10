@@ -1,7 +1,7 @@
 # WSUS + SQL Server Express 2022 Automation Suite
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Last Updated:** 2026-01-10
 
 A production-ready PowerShell automation suite for deploying, managing, and maintaining Windows Server Update Services (WSUS) backed by SQL Server Express 2022. Designed for both online and air-gapped (offline) network environments.
@@ -92,10 +92,10 @@ wsus-sql/
 |--------|-------------|
 | 1 | Install WSUS with SQL Express 2022 |
 | 2 | Restore Database from C:\WSUS |
-| 3 | Copy for Air-Gap Server (Full/Browse Archive) |
-| 4 | Monthly Maintenance |
-| 5 | Deep Cleanup |
-| 6 | Export for Airgapped Transfer |
+| 3 | Copy Data from External Media (import to air-gap server) |
+| 4 | Copy Data to External Media (export for air-gap transfer) |
+| 5 | Monthly Maintenance (Sync, Cleanup, Backup, Export) |
+| 6 | Deep Cleanup (Aggressive DB cleanup) |
 | 7 | Health Check |
 | 8 | Health Check + Repair |
 | 9 | Reset Content Download |
@@ -108,16 +108,13 @@ wsus-sql/
 .\Invoke-WsusManagement.ps1 -Restore              # Restore newest .bak from C:\WSUS
 .\Invoke-WsusManagement.ps1 -Cleanup -Force       # Deep database cleanup
 
-# Export Operations
-.\Invoke-WsusManagement.ps1 -Export               # Export DB + differential content
-.\Invoke-WsusManagement.ps1 -Export -SinceDays 7  # Export last 7 days only
-.\Invoke-WsusManagement.ps1 -Export -SkipDatabase # Content only, skip DB
-
 # Troubleshooting
 .\Invoke-WsusManagement.ps1 -Health               # Read-only health check
 .\Invoke-WsusManagement.ps1 -Repair               # Health check + auto-repair
 .\Invoke-WsusManagement.ps1 -Reset                # Reset content download
 ```
+
+> **Note:** For export operations, use the Monthly Maintenance script or the interactive menu (options 4-5).
 
 ### Monthly Maintenance
 
@@ -145,20 +142,21 @@ wsus-sql/
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  ONLINE WSUS SERVER                                             │
-│  .\Scripts\Invoke-WsusMonthlyMaintenance.ps1                    │
+│  Option 5: Monthly Maintenance                                  │
 │  → Syncs, cleans up, exports to \\lab-hyperv\d\WSUS-Exports\    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  COPY TO USB/APRICORN                                           │
-│  robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\09" "E:\" /E    │
+│  Option 4: Copy Data to External Media                          │
+│  → Or: robocopy "\\lab-hyperv\d\WSUS-Exports" "E:\" /E          │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  AIRGAPPED WSUS SERVER                                          │
-│  Option 3: Copy for Air-Gap → Browse Archive or Full Copy       │
+│  Option 3: Copy Data from External Media                        │
 │  Option 2: Restore Database                                     │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -172,23 +170,33 @@ wsus-sql/
 
 ### Export Folder Structure
 
+Monthly maintenance exports to two locations:
+
 ```
 \\lab-hyperv\d\WSUS-Exports\
-└── 2026/
+├── SUSDB_20260109.bak              # Latest backup at root (for quick access)
+├── WsusContent/                    # Full content mirror at root
+└── 2026/                           # Archive by year/month
     └── Jan/
-        └── 09/
-            ├── SUSDB_20260109.bak   # Full database backup
-            └── WsusContent/         # Differential content (files modified within N days)
+        ├── SUSDB_20260109.bak      # Archived backup
+        ├── SUSDB_20260109_2.bak    # Multiple backups same day get numbered
+        └── WsusContent/            # Differential content (files from last N days)
 ```
+
+- **Root folder**: Always contains the latest backup + full content (mirror sync)
+- **Archive folders**: Year/Month structure for historical backups + differential content
 
 ### Robocopy Commands
 
 ```powershell
-# Copy export to USB
-robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan\09" "E:\2026\Jan\09" /E /MT:16 /R:2 /W:5
+# Copy latest export to USB (from root - includes full backup + content)
+robocopy "\\lab-hyperv\d\WSUS-Exports" "E:\" /E /MT:16 /R:2 /W:5
+
+# Or copy specific month from archive
+robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan" "E:\2026\Jan" /E /MT:16 /R:2 /W:5
 
 # Import to airgapped server (safe - keeps existing files)
-robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
+robocopy "E:\" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
 ```
 
 | Flag | Purpose |
@@ -350,6 +358,35 @@ C:\WSUS\scripts\            # This repository
 <Any location>\DomainController\
 ├── Set-WsusGroupPolicy.ps1
 └── WSUS GPOs\
+```
+
+---
+
+## Logging
+
+All operations are logged to a single daily log file:
+
+```
+C:\WSUS\Logs\WsusManagement_2026-01-10.log
+```
+
+### Features
+
+- **Single daily file** - All sessions and operations append to the same file per day
+- **Session markers** - Each script run is clearly marked with timestamps
+- **Menu selections** - User choices are logged for audit trail
+- **No overwrites** - Logs accumulate throughout the day
+
+### Log Format
+
+```
+================================================================================
+SESSION START: 2026-01-10 10:30:00
+================================================================================
+
+2026-01-10 10:30:01 - Menu selection: 4
+2026-01-10 10:30:02 - [1/2] Copying database backup...
+2026-01-10 10:30:03 - [OK] Database copied
 ```
 
 ---
