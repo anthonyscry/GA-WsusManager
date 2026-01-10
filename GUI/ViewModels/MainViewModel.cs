@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Input;
+using System.Windows.Threading;
 using WsusManager.Helpers;
 using WsusManager.Services;
 
@@ -9,11 +10,13 @@ namespace WsusManager.ViewModels
     {
         private readonly PowerShellService _psService;
         private readonly WsusService _wsusService;
+        private readonly DispatcherTimer _clockTimer;
 
         private ViewModelBase? _currentViewModel;
         private int _selectedTabIndex;
         private string _statusMessage = "Ready";
         private bool _isOperationRunning;
+        private DateTime _currentTime = DateTime.Now;
 
         public MainViewModel()
         {
@@ -40,6 +43,14 @@ namespace WsusManager.ViewModels
             // Initialize commands
             NavigateCommand = new RelayCommand<string>(Navigate);
             RefreshCommand = new AsyncRelayCommand(RefreshCurrentView);
+
+            // Initialize clock timer
+            _clockTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _clockTimer.Tick += (s, e) => CurrentTime = DateTime.Now;
+            _clockTimer.Start();
         }
 
         #region Properties
@@ -80,6 +91,12 @@ namespace WsusManager.ViewModels
         {
             get => _isOperationRunning;
             set => SetProperty(ref _isOperationRunning, value);
+        }
+
+        public DateTime CurrentTime
+        {
+            get => _currentTime;
+            set => SetProperty(ref _currentTime, value);
         }
 
         #endregion
@@ -151,6 +168,7 @@ namespace WsusManager.ViewModels
 
         public void Dispose()
         {
+            _clockTimer.Stop();
             _wsusService.Dispose();
             _psService.Dispose();
         }
