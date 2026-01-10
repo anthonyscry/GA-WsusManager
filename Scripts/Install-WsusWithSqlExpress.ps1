@@ -64,21 +64,35 @@ $ErrorActionPreference = "Stop"
 # SECURE SA PASSWORD (ONLY USER INPUT)
 # =====================================================================
 function Get-SAPassword {
+    <#
+    .SYNOPSIS
+        Prompts for SA password with validation, returns SecureString
+    .OUTPUTS
+        SecureString containing the validated password
+    #>
     while ($true) {
         $pass1 = Read-Host "Enter SA password (15+ chars, 1 number, 1 special)" -AsSecureString
         $pass2 = Read-Host "Re-enter SA password" -AsSecureString
 
-        $p1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pass1))
-        $p2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pass2))
+        # Convert to plain text only for validation (memory cleared after)
+        $bstr1 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pass1)
+        $bstr2 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pass2)
+        try {
+            $p1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr1)
+            $p2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr2)
 
-        if ($p1 -ne $p2) { Write-Host "Passwords do not match."; continue }
-        if ($p1.Length -lt 15) { Write-Host "Must be >=15 chars."; continue }
-        if ($p1 -notmatch "\d") { Write-Host "Must contain number."; continue }
-        if ($p1 -notmatch "[^a-zA-Z0-9]") { Write-Host "Must contain special char."; continue }
+            if ($p1 -ne $p2) { Write-Host "Passwords do not match."; continue }
+            if ($p1.Length -lt 15) { Write-Host "Must be >=15 chars."; continue }
+            if ($p1 -notmatch "\d") { Write-Host "Must contain number."; continue }
+            if ($p1 -notmatch "[^a-zA-Z0-9]") { Write-Host "Must contain special char."; continue }
 
-        return $p1
+            # Return the SecureString, not plain text
+            return $pass1
+        } finally {
+            # Zero out the BSTR memory for security
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr1)
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
+        }
     }
 }
 
@@ -101,18 +115,19 @@ function Stop-SqlExpressSetup {
     }
 }
 
-# Get or retrieve password
+# Get or retrieve password as SecureString
 if (!(Test-Path $PasswordFile)) {
-    $SA_Password = Get-SAPassword
-    # Encrypt and store password
-    $SA_Password | ConvertTo-SecureString -AsPlainText -Force | 
-        ConvertFrom-SecureString | Set-Content $PasswordFile
+    $securePass = Get-SAPassword
+    # Store encrypted SecureString (Get-SAPassword now returns SecureString directly)
+    $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
 } else {
-    # Retrieve stored password
+    # Retrieve stored password as SecureString
     $securePass = Get-Content $PasswordFile | ConvertTo-SecureString
-    $SA_Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePass))
 }
+
+# Convert to plain text only when needed for SQL setup config
+$SA_Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePass))
 
 # =====================================================================
 # 1. EXTRACT SQL EXPRESS ADV PACKAGE
