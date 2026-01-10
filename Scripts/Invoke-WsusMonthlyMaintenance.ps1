@@ -53,23 +53,54 @@ param(
 )
 
 # Import shared modules
-# Support two deployment layouts:
+# Support multiple deployment layouts:
 # 1. Standard: Script in Scripts\, Modules in ..\Modules (parent folder)
 # 2. Flat: Everything under one root folder (e.g., C:\wsus\Scripts as root)
+# 3. Nested: Script in Scripts\Scripts\, Modules in ..\..\Modules (grandparent)
 $modulePath = $null
-if (Test-Path (Join-Path $PSScriptRoot "Modules\WsusUtilities.psm1")) {
-    # Flat layout - Modules folder is alongside script
-    $modulePath = Join-Path $PSScriptRoot "Modules"
-} elseif (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules\WsusUtilities.psm1")) {
-    # Standard layout - Modules folder is in parent directory
-    $modulePath = Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"
-} else {
-    Write-Error "Cannot find Modules folder. Expected at '$PSScriptRoot\Modules' or '$(Split-Path $PSScriptRoot -Parent)\Modules'"
+$searchPaths = @(
+    (Join-Path $PSScriptRoot "Modules"),                                    # Flat layout
+    (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"),               # Standard layout (parent)
+    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "Modules")  # Nested layout (grandparent)
+)
+
+foreach ($path in $searchPaths) {
+    if (Test-Path (Join-Path $path "WsusUtilities.psm1")) {
+        $modulePath = $path
+        break
+    }
+}
+
+if (-not $modulePath) {
+    Write-Error "Cannot find Modules folder. Searched: $($searchPaths -join ', ')"
     exit 1
 }
-Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force
-Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force
-Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force
+
+# Import modules with error handling
+try {
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -ErrorAction Stop
+} catch {
+    Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
+    exit 1
+}
+
+# Verify required functions are available after import
+$requiredFunctions = @('Start-WsusLogging', 'Stop-WsusLogging', 'Write-Log', 'Invoke-WsusSqlcmd', 'Get-WsusDatabaseSize')
+$missingFunctions = @()
+foreach ($func in $requiredFunctions) {
+    if (-not (Get-Command $func -ErrorAction SilentlyContinue)) {
+        $missingFunctions += $func
+    }
+}
+
+if ($missingFunctions.Count -gt 0) {
+    Write-Error "Module import incomplete. Missing functions: $($missingFunctions -join ', ')"
+    Write-Error "Module path used: $modulePath"
+    Write-Error "Please ensure the Modules folder contains the latest version of WsusUtilities.psm1"
+    exit 1
+}
 
 # Suppress prompts
 $ConfirmPreference = 'None'
