@@ -55,32 +55,50 @@ param(
 # Import shared modules
 # Support multiple deployment layouts:
 # 1. Standard: Script in Scripts\, Modules in ..\Modules (parent folder)
-# 2. Flat: Everything under one root folder (e.g., C:\wsus\Scripts as root)
+# 2. Flat: Everything under one root folder (e.g., C:\WSUS\Scripts as root with Modules subfolder)
 # 3. Nested: Script in Scripts\Scripts\, Modules in ..\..\Modules (grandparent)
+# 4. Same folder: Modules copied directly alongside script
+
+# Resolve script location (handles symlinks and dot-sourcing)
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+
 $modulePath = $null
 $searchPaths = @(
-    (Join-Path $PSScriptRoot "Modules"),                                    # Flat layout
-    (Join-Path (Split-Path $PSScriptRoot -Parent) "Modules"),               # Standard layout (parent)
-    (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "Modules")  # Nested layout (grandparent)
+    (Join-Path $scriptDir "Modules"),                                          # Flat layout (Modules subfolder)
+    (Join-Path (Split-Path $scriptDir -Parent) "Modules"),                      # Standard layout (parent\Modules)
+    (Join-Path (Split-Path (Split-Path $scriptDir -Parent) -Parent) "Modules"), # Nested layout (grandparent\Modules)
+    $scriptDir                                                                   # Same folder (modules next to script)
 )
 
 foreach ($path in $searchPaths) {
-    if (Test-Path (Join-Path $path "WsusUtilities.psm1")) {
-        $modulePath = $path
-        break
+    $utilPath = Join-Path $path "WsusUtilities.psm1"
+    if (Test-Path $utilPath) {
+        # Verify the module file is not empty and has expected content
+        $content = Get-Content $utilPath -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -match 'function Start-WsusLogging') {
+            $modulePath = $path
+            break
+        }
     }
 }
 
 if (-not $modulePath) {
-    Write-Error "Cannot find Modules folder. Searched: $($searchPaths -join ', ')"
+    Write-Error "Cannot find Modules folder with valid WsusUtilities.psm1"
+    Write-Error "Script location: $scriptDir"
+    Write-Error "Searched paths:"
+    foreach ($p in $searchPaths) {
+        $exists = if (Test-Path (Join-Path $p "WsusUtilities.psm1")) { "EXISTS" } else { "NOT FOUND" }
+        Write-Error "  $p - $exists"
+    }
     exit 1
 }
 
 # Import modules with error handling
 try {
-    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -ErrorAction Stop
-    Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -ErrorAction Stop
-    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -ErrorAction Stop
+    # Import in dependency order
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -DisableNameChecking -ErrorAction Stop
 } catch {
     Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
     exit 1
@@ -98,6 +116,15 @@ foreach ($func in $requiredFunctions) {
 if ($missingFunctions.Count -gt 0) {
     Write-Error "Module import incomplete. Missing functions: $($missingFunctions -join ', ')"
     Write-Error "Module path used: $modulePath"
+    # List what's actually in the module file for debugging
+    $moduleFile = Join-Path $modulePath "WsusUtilities.psm1"
+    if (Test-Path $moduleFile) {
+        $exportedFuncs = Get-Content $moduleFile -Raw | Select-String -Pattern "function\s+(\w+-\w+)" -AllMatches
+        if ($exportedFuncs.Matches) {
+            $funcNames = $exportedFuncs.Matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+            Write-Error "Functions defined in module: $($funcNames -join ', ')"
+        }
+    }
     Write-Error "Please ensure the Modules folder contains the latest version of WsusUtilities.psm1"
     exit 1
 }
