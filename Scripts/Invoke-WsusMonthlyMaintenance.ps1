@@ -502,7 +502,7 @@ if ($Unattended) {
 }
 
 # Setup logging using module function
-$logFile = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+$null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
 
 Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
 
@@ -1008,7 +1008,7 @@ IF @LocalUpdateID IS NOT NULL
                         }
                         $totalDeleted++
                     } catch {
-                        # Continue on errors to avoid aborting the batch.
+                        Write-Verbose "Skipping update deletion error: $($_.Exception.Message)"
                     }
                 }
 
@@ -1142,7 +1142,7 @@ try {
     Write-Log "SUSDB size: $dbSize GB"
     if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
 } catch {
-    # Silently ignore - database size is informational only
+    Write-Verbose "Could not retrieve database size: $($_.Exception.Message)"
 }
 
 Write-Log "Backup: $backupFile"
