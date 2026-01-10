@@ -84,7 +84,7 @@ $script:Settings = @{
     ContentPath = "C:\WSUS"
     SqlInstance = ".\SQLEXPRESS"
     ExportRoot = "\\lab-hyperv\d\WSUS-Exports"
-    Theme = "Light"
+    Theme = "Dark"
     WindowWidth = 1100
     WindowHeight = 700
 }
@@ -122,42 +122,48 @@ $script:LogPath = "C:\WSUS\Logs\WsusGui_$(Get-Date -Format 'yyyy-MM-dd').log"
 # ============================================================================
 # THEME DEFINITIONS
 # ============================================================================
+# GitHub-style dark theme (matching GA-AppLocker)
 $script:Themes = @{
+    Dark = @{
+        # Main backgrounds - GitHub dark #0D1117
+        Background = [System.Drawing.Color]::FromArgb(13, 17, 23)
+        Surface = [System.Drawing.Color]::FromArgb(33, 38, 45)       # #21262D - Card background
+        Sidebar = [System.Drawing.Color]::FromArgb(22, 27, 34)       # #161B22
+        SidebarHover = [System.Drawing.Color]::FromArgb(33, 38, 45)  # #21262D
+        SidebarActive = [System.Drawing.Color]::FromArgb(88, 166, 255) # #58A6FF
+        # Accent colors
+        Primary = [System.Drawing.Color]::FromArgb(88, 166, 255)     # #58A6FF - Blue
+        Success = [System.Drawing.Color]::FromArgb(63, 185, 80)      # #3FB950 - Green
+        Warning = [System.Drawing.Color]::FromArgb(210, 153, 34)     # #D29922 - Orange
+        Danger = [System.Drawing.Color]::FromArgb(248, 81, 73)       # #F85149 - Red
+        # Text colors
+        TextPrimary = [System.Drawing.Color]::FromArgb(230, 237, 243) # #E6EDF3
+        TextSecondary = [System.Drawing.Color]::FromArgb(139, 148, 158) # #8B949E
+        TextLight = [System.Drawing.Color]::White
+        TextMuted = [System.Drawing.Color]::FromArgb(72, 79, 88)     # #484F58
+        # Borders
+        Border = [System.Drawing.Color]::FromArgb(48, 54, 61)        # #30363D
+        # Console
+        ConsoleBackground = [System.Drawing.Color]::FromArgb(13, 17, 23) # #0D1117
+        ConsoleText = [System.Drawing.Color]::FromArgb(139, 148, 158) # #8B949E
+    }
     Light = @{
         Background = [System.Drawing.Color]::FromArgb(250, 250, 252)
         Surface = [System.Drawing.Color]::White
-        Sidebar = [System.Drawing.Color]::FromArgb(32, 36, 45)
-        SidebarHover = [System.Drawing.Color]::FromArgb(45, 50, 62)
-        SidebarActive = [System.Drawing.Color]::FromArgb(59, 130, 246)
-        Primary = [System.Drawing.Color]::FromArgb(59, 130, 246)
-        Success = [System.Drawing.Color]::FromArgb(34, 197, 94)
-        Warning = [System.Drawing.Color]::FromArgb(251, 146, 60)
-        Danger = [System.Drawing.Color]::FromArgb(239, 68, 68)
-        TextPrimary = [System.Drawing.Color]::FromArgb(30, 41, 59)
-        TextSecondary = [System.Drawing.Color]::FromArgb(100, 116, 139)
+        Sidebar = [System.Drawing.Color]::FromArgb(36, 41, 47)
+        SidebarHover = [System.Drawing.Color]::FromArgb(48, 54, 61)
+        SidebarActive = [System.Drawing.Color]::FromArgb(88, 166, 255)
+        Primary = [System.Drawing.Color]::FromArgb(88, 166, 255)
+        Success = [System.Drawing.Color]::FromArgb(63, 185, 80)
+        Warning = [System.Drawing.Color]::FromArgb(210, 153, 34)
+        Danger = [System.Drawing.Color]::FromArgb(248, 81, 73)
+        TextPrimary = [System.Drawing.Color]::FromArgb(36, 41, 47)
+        TextSecondary = [System.Drawing.Color]::FromArgb(87, 96, 106)
         TextLight = [System.Drawing.Color]::White
-        TextMuted = [System.Drawing.Color]::FromArgb(148, 163, 184)
-        Border = [System.Drawing.Color]::FromArgb(226, 232, 240)
-        ConsoleBackground = [System.Drawing.Color]::FromArgb(15, 23, 42)
-        ConsoleText = [System.Drawing.Color]::FromArgb(148, 163, 184)
-    }
-    Dark = @{
-        Background = [System.Drawing.Color]::FromArgb(17, 24, 39)
-        Surface = [System.Drawing.Color]::FromArgb(31, 41, 55)
-        Sidebar = [System.Drawing.Color]::FromArgb(17, 24, 39)
-        SidebarHover = [System.Drawing.Color]::FromArgb(55, 65, 81)
-        SidebarActive = [System.Drawing.Color]::FromArgb(59, 130, 246)
-        Primary = [System.Drawing.Color]::FromArgb(59, 130, 246)
-        Success = [System.Drawing.Color]::FromArgb(34, 197, 94)
-        Warning = [System.Drawing.Color]::FromArgb(251, 146, 60)
-        Danger = [System.Drawing.Color]::FromArgb(239, 68, 68)
-        TextPrimary = [System.Drawing.Color]::FromArgb(243, 244, 246)
-        TextSecondary = [System.Drawing.Color]::FromArgb(156, 163, 175)
-        TextLight = [System.Drawing.Color]::White
-        TextMuted = [System.Drawing.Color]::FromArgb(107, 114, 128)
-        Border = [System.Drawing.Color]::FromArgb(55, 65, 81)
-        ConsoleBackground = [System.Drawing.Color]::FromArgb(0, 0, 0)
-        ConsoleText = [System.Drawing.Color]::FromArgb(156, 163, 175)
+        TextMuted = [System.Drawing.Color]::FromArgb(139, 148, 158)
+        Border = [System.Drawing.Color]::FromArgb(208, 215, 222)
+        ConsoleBackground = [System.Drawing.Color]::FromArgb(22, 27, 34)
+        ConsoleText = [System.Drawing.Color]::FromArgb(139, 148, 158)
     }
 }
 $script:Colors = $script:Themes[$script:CurrentTheme]
