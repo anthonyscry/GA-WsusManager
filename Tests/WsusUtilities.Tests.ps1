@@ -29,13 +29,21 @@ Describe 'WsusUtilities Module' {
                 'Write-WsusWarning',
                 'Write-Info',
                 'Write-Log',
+                'Write-LogError',
+                'Write-LogWarning',
+                'Invoke-WithErrorHandling',
                 'Start-WsusLogging',
                 'Stop-WsusLogging',
                 'Test-AdminPrivileges',
                 'Invoke-SqlScalar',
                 'Invoke-WsusSqlcmd',
                 'Get-WsusContentPath',
-                'Test-WsusPath'
+                'Test-WsusPath',
+                'Get-WsusSqlCredentialPath',
+                'Set-WsusSqlCredential',
+                'Get-WsusSqlCredential',
+                'Test-WsusSqlCredential',
+                'Remove-WsusSqlCredential'
             )
             foreach ($func in $expectedFunctions) {
                 $exportedFunctions | Should -Contain $func
