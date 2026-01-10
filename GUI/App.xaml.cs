@@ -13,6 +13,10 @@ namespace WsusManager
         {
             base.OnStartup(e);
 
+            // Set up global exception handling first
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+
             // Determine the modules path relative to the application
             var appDir = AppDomain.CurrentDomain.BaseDirectory;
             var projectRoot = Path.GetFullPath(Path.Combine(appDir, "..", "..", "..", ".."));
@@ -26,9 +30,10 @@ namespace WsusManager
                 ModulesPath = Path.Combine(appDir, "Modules");
             }
 
-            // Set up global exception handling
-            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-            DispatcherUnhandledException += OnDispatcherUnhandledException;
+            // Create and show MainWindow AFTER paths are initialized
+            // This prevents the timing issue where MainViewModel tries to use ModulesPath before it's set
+            var mainWindow = new MainWindow();
+            mainWindow.Show();
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
