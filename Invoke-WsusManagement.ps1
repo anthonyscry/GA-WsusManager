@@ -881,28 +881,68 @@ function Invoke-ExportToDvd {
 function Invoke-ExportToMedia {
     <#
     .SYNOPSIS
-        Export WSUS data to external media (Apricorn, optical, USB) for air-gap transfer
+        Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
-        Prompts for source and destination, then uses robocopy for fast differential copy
+        Prompts for source and destination, supports full or differential copy modes
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
         [string]$ContentPath = "C:\WSUS"
     )
 
-    Write-Banner "EXPORT TO EXTERNAL MEDIA"
+    Write-Banner "COPY DATA TO EXTERNAL MEDIA"
 
     Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
     Write-Host ""
 
+    # Prompt for copy mode
+    Write-Host "Copy mode:" -ForegroundColor Cyan
+    Write-Host "  1. Full copy (all files)"
+    Write-Host "  2. Differential copy (files from last 30 days) [Default]"
+    Write-Host "  3. Differential copy (custom days)"
+    Write-Host ""
+    $modeChoice = Read-Host "Select mode (1/2/3) [2]"
+    if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
+
+    $copyMode = "Differential"
+    $maxAgeDays = 30
+
+    switch ($modeChoice) {
+        "1" {
+            $copyMode = "Full"
+            $maxAgeDays = 0
+        }
+        "2" {
+            $copyMode = "Differential"
+            $maxAgeDays = 30
+        }
+        "3" {
+            $copyMode = "Differential"
+            $daysInput = Read-Host "Enter number of days [30]"
+            if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
+            if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
+                if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
+            } else {
+                $maxAgeDays = 30
+            }
+        }
+        default {
+            $copyMode = "Differential"
+            $maxAgeDays = 30
+        }
+    }
+
+    Write-Host ""
+
     # Prompt for source
     Write-Host "Source options:" -ForegroundColor Cyan
-    Write-Host "  1. Network share: $DefaultSource"
+    Write-Host "  1. Network share: $DefaultSource [Default]"
     Write-Host "  2. Local WSUS: $ContentPath"
     Write-Host "  3. Custom path"
     Write-Host ""
-    $sourceChoice = Read-Host "Select source (1/2/3)"
+    $sourceChoice = Read-Host "Select source (1/2/3) [1]"
+    if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
 
     $source = switch ($sourceChoice) {
         "1" { $DefaultSource }
@@ -966,10 +1006,14 @@ function Invoke-ExportToMedia {
     Write-Host "Configuration:" -ForegroundColor Yellow
     Write-Host "  Source:      $source"
     Write-Host "  Destination: $destination"
-    Write-Host "  Mode:        Differential (only newer/missing files)"
+    if ($copyMode -eq "Full") {
+        Write-Host "  Mode:        Full (all files)"
+    } else {
+        Write-Host "  Mode:        Differential (files from last $maxAgeDays days)"
+    }
     Write-Host ""
 
-    $confirm = Read-Host "Proceed with export? (Y/n)"
+    $confirm = Read-Host "Proceed with copy? (Y/n)"
     if ($confirm -notin @("Y", "y", "")) { return }
 
     # Copy database
@@ -986,11 +1030,17 @@ function Invoke-ExportToMedia {
         Write-Log "[2/2] Copying content (this may take a while)..." "Yellow"
         $destContent = Join-Path $destination "WsusContent"
 
-        # /E = include subdirs, /XO = exclude older, /MT:16 = 16 threads
+        # Build robocopy arguments
+        # /E = include subdirs, /MT:16 = 16 threads
         $robocopyArgs = @(
             "`"$sourceContent`"", "`"$destContent`"",
-            "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+            "/E", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
         )
+
+        if ($copyMode -eq "Differential") {
+            # /MAXAGE:n = exclude files older than n days
+            $robocopyArgs += "/MAXAGE:$maxAgeDays"
+        }
 
         $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
         if ($proc.ExitCode -lt 8) {
@@ -1007,13 +1057,13 @@ function Invoke-ExportToMedia {
         Write-Log "[2/2] No content folder to copy" "Yellow"
     }
 
-    Write-Banner "EXPORT COMPLETE"
-    Write-Host "Data exported to: $destination" -ForegroundColor Green
+    Write-Banner "COPY COMPLETE"
+    Write-Host "Data copied to: $destination" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Safely eject the external media"
     Write-Host "  2. Transport to air-gap server"
-    Write-Host "  3. On air-gap server, run option 3 (Import from External Media)"
+    Write-Host "  3. On air-gap server, run option 3 (Copy Data from External Media)"
     Write-Host ""
 }
 
@@ -1185,19 +1235,20 @@ function Show-Menu {
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
     Write-Host "  2. Restore Database from C:\WSUS"
-    Write-Host "  3. Copy Data from External Media (Apricorn/USB/Optical)"
+    Write-Host "  3. Copy Data from External Media (Apricorn)"
+    Write-Host "  4. Copy Data to External Media (Apricorn)"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
-    Write-Host "  4. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
-    Write-Host "  5. Deep Cleanup (Aggressive DB cleanup)"
+    Write-Host "  5. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  6. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
-    Write-Host "  6. Health Check"
-    Write-Host "  7. Health Check + Repair"
-    Write-Host "  8. Reset Content Download"
+    Write-Host "  7. Health Check"
+    Write-Host "  8. Health Check + Repair"
+    Write-Host "  9. Reset Content Download"
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
-    Write-Host "  9. Force Client Check-In (run on client)"
+    Write-Host "  10. Force Client Check-In (run on client)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -1223,12 +1274,13 @@ function Start-InteractiveMenu {
             '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
             '2'  { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '3'  { Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
-            '4'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
-            '5'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
-            '6'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '7'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
-            '8'  { Invoke-WsusReset; pause }
-            '9'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '4'  { Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }
+            '5'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '6'  { Invoke-WsusCleanup -SqlInstance $SqlInstance; pause }
+            '7'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '8'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
+            '9'  { Invoke-WsusReset; pause }
+            '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'D'  { Invoke-ExportToDvd -DefaultSource $ExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
             'Q'  { Write-Host "Exiting..." -ForegroundColor Green; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
