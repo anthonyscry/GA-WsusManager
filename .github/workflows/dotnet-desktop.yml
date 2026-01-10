@@ -17,7 +17,7 @@ on:
         type: boolean
 
 env:
-  DOTNET_VERSION: '6.0.x'
+  DOTNET_VERSION: '8.0.x'
   PROJECT_PATH: 'GUI/WsusManager.csproj'
 
 jobs:
@@ -38,7 +38,14 @@ jobs:
     - name: Run PSScriptAnalyzer - Code Quality
       shell: pwsh
       run: |
-        $results = Invoke-ScriptAnalyzer -Path . -Recurse -ExcludeRule PSAvoidUsingWriteHost -Severity Warning,Error
+        # Use project settings file if it exists, otherwise use defaults
+        $settingsPath = "./PSScriptAnalyzerSettings.psd1"
+        if (Test-Path $settingsPath) {
+          Write-Host "Using PSScriptAnalyzer settings from: $settingsPath" -ForegroundColor Cyan
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settingsPath
+        } else {
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -ExcludeRule PSAvoidUsingWriteHost -Severity Warning,Error
+        }
 
         if ($results) {
           Write-Host "## PSScriptAnalyzer Results" -ForegroundColor Yellow

@@ -28,7 +28,8 @@ param(
 
     # Preset configuration profiles
     [ValidateSet("Quick", "Full", "SyncOnly")]
-    [string]$Profile,
+    [Alias("Profile")]
+    [string]$MaintenanceProfile,
 
     # Specific operations to run (default: all)
     [ValidateSet("Sync", "Cleanup", "UltimateCleanup", "Backup", "Export", "All")]
@@ -458,13 +459,13 @@ $MaintenanceResults = @{
 
 # === INTERACTIVE MENU MODE ===
 # Show menu if no profile/operations specified and not unattended
-if (-not $Unattended -and -not $Profile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
+if (-not $Unattended -and -not $MaintenanceProfile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
     $menuChoice = Show-MainMenu
 
     switch ($menuChoice) {
-        "1" { $Profile = "Full" }
-        "2" { $Profile = "Quick" }
-        "3" { $Profile = "SyncOnly" }
+        "1" { $MaintenanceProfile = "Full" }
+        "2" { $MaintenanceProfile = "Quick" }
+        "3" { $MaintenanceProfile = "SyncOnly" }
         "4" {
             $Operations = @("Backup", "Export")
         }
@@ -474,13 +475,13 @@ if (-not $Unattended -and -not $Profile -and ($Operations.Count -eq 1 -and $Oper
         }
         "Q" { exit 0 }
         "q" { exit 0 }
-        default { $Profile = "Full" }
+        default { $MaintenanceProfile = "Full" }
     }
 }
 
 # === APPLY PROFILE SETTINGS ===
-if ($Profile) {
-    $profileSettings = Set-ProfileSettings -ProfileName $Profile
+if ($MaintenanceProfile) {
+    $profileSettings = Set-ProfileSettings -ProfileName $MaintenanceProfile
     if (-not $PSBoundParameters.ContainsKey('SkipUltimateCleanup')) {
         $SkipUltimateCleanup = $profileSettings.SkipUltimateCleanup
     }
@@ -862,17 +863,15 @@ SELECT
 
         try {
             # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
+            # Windows Integrated Authentication works for both interactive and scheduled tasks
             if ($script:UseSqlCredential -and $SqlCredential) {
                 $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300 `
                     -Credential $SqlCredential
-            } elseif (-not $Unattended) {
-                # Interactive mode - use Windows integrated auth
+            } else {
+                # Use Windows Integrated Authentication (works for scheduled tasks too)
                 $deepResult = Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                     -Query $deepCleanupQuery -QueryTimeout 300
-            } else {
-                Write-Log "Skipping deep cleanup - no SQL credential available for unattended mode"
-                $deepResult = $null
             }
             if ($deepResult) {
                 Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
@@ -969,8 +968,9 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
             Select-Object -ExpandProperty Id |
             ForEach-Object { $_.UpdateId })
 
-        # Run SQL operations if: interactive mode (Windows auth) OR unattended with credential
-        $canRunSql = (-not $Unattended) -or ($script:UseSqlCredential -and $SqlCredential)
+        # SQL operations use Windows Integrated Authentication by default
+        # This works for both interactive mode and scheduled tasks running as users with SQL access
+        $canRunSql = $true
 
         if ($declinedIDs.Count -gt 0 -and $canRunSql) {
             Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
@@ -1074,18 +1074,17 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         $MaintenanceResults.DatabaseSize = $dbSize
 
         # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
+        # SQL Server Express uses Windows Integrated Authentication by default,
+        # so scheduled tasks running as users with SQL access don't need explicit credentials
         if ($script:UseSqlCredential -and $SqlCredential) {
             Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 -Credential $SqlCredential | Out-Null
-        } elseif (-not $Unattended) {
-            # Interactive mode - use Windows integrated auth
+        } else {
+            # Use Windows Integrated Authentication (works for both interactive and scheduled tasks)
             Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                 -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
                 -QueryTimeout 0 | Out-Null
-        } else {
-            Write-Warning "Cannot perform database backup - no SQL credential available for unattended mode"
-            throw "SQL credential required for backup in unattended mode"
         }
 
         $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
@@ -1142,7 +1141,9 @@ try {
     $dbSize = Get-WsusDatabaseSize -SqlInstance ".\SQLEXPRESS"
     Write-Log "SUSDB size: $dbSize GB"
     if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
-} catch {}
+} catch {
+    # Silently ignore - database size is informational only
+}
 
 Write-Log "Backup: $backupFile"
 
