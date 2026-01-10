@@ -11,40 +11,71 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ## Table of Contents
 
-1. [Features](#features)
-2. [Quick Start](#quick-start)
-   - [Prerequisites](#prerequisites)
-   - [Granting SQL Server Sysadmin Privileges](#granting-sql-server-sysadmin-privileges)
-   - [First-Time Setup](#first-time-setup)
-   - [Installation Steps](#installation-steps)
-3. [Command Reference](#command-reference)
-4. [Air-Gapped Network Workflow](#air-gapped-network-workflow)
-5. [Domain Controller Setup](#domain-controller-setup)
-6. [HTTPS Configuration (Optional)](#optional-https-configuration)
-7. [Logging](#logging)
-8. [Troubleshooting](#troubleshooting)
+1. [File Repository](#file-repository)
+2. [Official Documentation](#official-documentation)
+3. [Prerequisites](#prerequisites)
+4. [Installation](#installation)
+5. [Command Reference](#command-reference)
+6. [Air-Gapped Network Workflow](#air-gapped-network-workflow)
+7. [Domain Controller Setup](#domain-controller-setup)
+8. [HTTPS Configuration (Optional)](#optional-https-configuration)
+9. [Logging](#logging)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Features
+## File Repository
 
-| Feature | Description |
-|---------|-------------|
-| Automated Installation | One-script deployment of SQL Server Express 2022 + SSMS + WSUS |
-| Air-Gap Support | Differential content export/import for offline networks |
-| Database Management | Backup, restore, cleanup, and optimization |
-| Health Monitoring | Automated diagnostics and repair capabilities |
-| Scheduled Maintenance | Unattended mode for Windows Task Scheduler |
-| GPO Deployment | Pre-configured Group Policy Objects for domain-wide client configuration |
-| Modular Architecture | 6 reusable PowerShell modules |
+### SQL & WSUS Installers
+
+> **Note:** Save these files to `C:\WSUS\SQLDB\` on the target server before running installation.
+
+| File | Description |
+|------|-------------|
+| `SQLEXPRADV_x64_ENU.exe` | SQL Server Express 2022 with Advanced Services |
+| `SSMS-Setup-ENU.exe` | SQL Server Management Studio |
+
+### Script Bundle
+
+| File | Description |
+|------|-------------|
+| `WSUS_Script_Bundle.zip` | Extract to `C:\WSUS\Scripts\` |
+
+### Source Code
+
+| Resource | Link |
+|----------|------|
+| GitHub Repository (latest) | *[Insert GitHub URL]* |
 
 ---
 
-## Quick Start
+## Official Documentation
 
-### Prerequisites
+### Microsoft References
 
-#### System Requirements
+| Topic | Link |
+|-------|------|
+| WSUS Maintenance Guide | [Microsoft Learn - WSUS Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide) |
+| WSUS Best Practices | [Microsoft Learn - WSUS Best Practices](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/windows-server-update-services-best-practices) |
+| WSUS Deployment Planning | [Microsoft Learn - Plan Your WSUS Deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment) |
+| WSUS Configuration | [Microsoft Learn - Configure WSUS](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus) |
+| SQL Server Installation Guide | [Microsoft Learn - Install SQL Server](https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server) |
+| SQL Server Network Configuration | [Microsoft Learn - Server Network Configuration](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-network-configuration) |
+| SQL Server 2022 Express Download | [Microsoft Download Center](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
+
+### Additional Resources
+
+| Topic | Link |
+|-------|------|
+| SQL Server Configuration Manager | [Microsoft Learn - Configuration Manager](https://learn.microsoft.com/en-us/sql/tools/configuration-manager/sql-server-configuration-manager) |
+| WSUS Database Maintenance | [Microsoft Learn - WSUS Automatic Maintenance](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-automatic-maintenance) |
+| Enable/Disable Network Protocols | [Microsoft Learn - Network Protocols](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/enable-or-disable-a-server-network-protocol) |
+
+---
+
+## Prerequisites
+
+### System Requirements
 
 | Requirement | Specification |
 |-------------|---------------|
@@ -55,14 +86,14 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 | Network | Valid IPv4 configuration (static IP recommended) |
 | PowerShell | 5.0+ |
 
-#### Required Installers
+### Required Installers
 
 | File | Location |
 |------|----------|
 | `SQLEXPRADV_x64_ENU.exe` | `C:\WSUS\SQLDB\` |
 | `SSMS-Setup-ENU.exe` | `C:\WSUS\SQLDB\` |
 
-#### Required Privileges
+### Required Privileges
 
 | Privilege | Scope | Purpose |
 |-----------|-------|---------|
@@ -71,11 +102,11 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 
 ---
 
-### Granting SQL Server Sysadmin Privileges
+## Granting SQL Server Sysadmin Privileges
 
 > **Note:** Required for database backup/restore operations. Perform this on both online and air-gapped WSUS servers.
 
-#### Step 1: Connect to SQL Server
+### Step 1: Connect to SQL Server
 
 | Step | Action |
 |------|--------|
@@ -87,7 +118,7 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 | 6 | Check **Trust Server Certificate** |
 | 7 | Click **Connect** |
 
-#### Step 2: Add Login with Sysadmin Role
+### Step 2: Add Login with Sysadmin Role
 
 | Step | Action |
 |------|--------|
@@ -95,11 +126,11 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 | 2 | Right-click **Logins** → **New Login...** |
 | 3 | Click **Search...** to locate the account |
 | 4 | Click **Locations...** → select **Entire Directory** |
-| 5 | Enter domain group (e.g., `LSJ.LOCAL\System Administrators`) → **OK** |
+| 5 | Enter domain group (e.g., `DOMAIN\System Administrators`) → **OK** |
 | 6 | Go to **Server Roles** page |
 | 7 | Check **sysadmin** → **OK** |
 
-#### Step 3: Refresh Permissions
+### Step 3: Refresh Permissions
 
 | Step | Action |
 |------|--------|
@@ -107,6 +138,8 @@ A production-ready PowerShell automation suite for deploying, managing, and main
 | 2 | Log back in to refresh group membership |
 
 ---
+
+## Installation
 
 ### First-Time Setup
 
@@ -121,9 +154,19 @@ Get-ChildItem -Path "C:\WSUS\scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-F
 
 | Step | Action |
 |------|--------|
-| 1 | Place installers in `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` and `C:\WSUS\SQLDB\SSMS-Setup-ENU.exe` |
-| 2 | Run `.\Invoke-WsusManagement.ps1` |
-| 3 | Select **Option 1** to install WSUS + SQL Express |
+| 1 | Place installers in `C:\WSUS\SQLDB\` |
+| 2 | Extract script bundle to `C:\WSUS\Scripts\` |
+| 3 | Run `.\Invoke-WsusManagement.ps1` |
+| 4 | Select **Option 1** to install WSUS + SQL Express |
+
+### Deployment Layout
+
+| Path | Purpose |
+|------|---------|
+| `C:\WSUS\` | Content directory (MUST be this exact path) |
+| `C:\WSUS\SQLDB\` | SQL + SSMS installers |
+| `C:\WSUS\Logs\` | Log files |
+| `C:\WSUS\Scripts\` | Script repository |
 
 ---
 
@@ -178,8 +221,8 @@ Get-ChildItem -Path "C:\WSUS\scripts" -Recurse -Include *.ps1,*.psm1 | Unblock-F
 
 | Step | Location | Action |
 |------|----------|--------|
-| 1 | **Online WSUS Server** | Run **Option 5: Monthly Maintenance** - Syncs, cleans up, exports to `\\lab-hyperv\d\WSUS-Exports\` |
-| 2 | **Online WSUS Server** | Run **Option 4: Copy Data to External Media** - Or use robocopy manually |
+| 1 | **Online WSUS Server** | Run **Option 5: Monthly Maintenance** - Syncs, cleans up, exports to network share |
+| 2 | **Online WSUS Server** | Run **Option 4: Copy Data to External Media** - Copy to USB/Apricorn |
 | 3 | **Physical Transfer** | Transport USB/Apricorn drive to air-gapped network |
 | 4 | **Air-Gapped WSUS Server** | Run **Option 3: Copy Data from External Media** |
 | 5 | **Air-Gapped WSUS Server** | Run **Option 2: Restore Database** |
@@ -191,12 +234,12 @@ Monthly maintenance exports to two locations:
 
 | Location | Contents | Purpose |
 |----------|----------|---------|
-| `\\lab-hyperv\d\WSUS-Exports\` (root) | `SUSDB_YYYYMMDD.bak` + `WsusContent\` | Latest backup + full content mirror for quick access |
-| `\\lab-hyperv\d\WSUS-Exports\YYYY\Mon\` | `SUSDB_YYYYMMDD.bak` + `WsusContent\` | Archive by year/month with differential content |
+| Root folder | `SUSDB_YYYYMMDD.bak` + `WsusContent\` | Latest backup + full content mirror |
+| `YYYY\Mon\` subfolder | `SUSDB_YYYYMMDD.bak` + `WsusContent\` | Archive by year/month with differential content |
 
 **Example structure:**
 ```
-\\lab-hyperv\d\WSUS-Exports\
+\\server\WSUS-Exports\
 ├── SUSDB_20260109.bak           (latest backup)
 ├── WsusContent\                 (full mirror)
 └── 2026\
@@ -209,11 +252,11 @@ Monthly maintenance exports to two locations:
 
 | Purpose | Command |
 |---------|---------|
-| Copy latest to USB | `robocopy "\\lab-hyperv\d\WSUS-Exports" "E:\" /E /MT:16 /R:2 /W:5` |
-| Copy specific month | `robocopy "\\lab-hyperv\d\WSUS-Exports\2026\Jan" "E:\2026\Jan" /E /MT:16 /R:2 /W:5` |
+| Copy latest to USB | `robocopy "\\server\WSUS-Exports" "E:\" /E /MT:16 /R:2 /W:5` |
+| Copy specific month | `robocopy "\\server\WSUS-Exports\2026\Jan" "E:\2026\Jan" /E /MT:16 /R:2 /W:5` |
 | Import to air-gap server | `robocopy "E:\" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO` |
 
-**Robocopy flags:**
+**Robocopy Flags:**
 
 | Flag | Purpose |
 |------|---------|
@@ -348,25 +391,6 @@ For self-signed certificates, deploy the exported `.cer` file to clients via:
 
 ---
 
-## Deployment Layout
-
-### WSUS Server Paths
-
-| Path | Purpose |
-|------|---------|
-| `C:\WSUS\` | Content directory (MUST be this path) |
-| `C:\WSUS\SQLDB\` | SQL + SSMS installers |
-| `C:\WSUS\Logs\` | Log files |
-| `C:\WSUS\scripts\` | Script repository |
-
-### Domain Controller
-
-| Path | Contents |
-|------|----------|
-| `<Any location>\DomainController\` | `Set-WsusGroupPolicy.ps1` + `WSUS GPOs\` folder |
-
----
-
 ## Logging
 
 All operations are logged to a single daily log file:
@@ -406,6 +430,7 @@ SESSION START: 2026-01-10 10:30:00
 | Clients not checking in | Verify GPOs are linked, run `gpupdate /force`, check firewall ports 8530/8531 |
 | GroupPolicy module not found | Install RSAT: `Install-WindowsFeature GPMC` |
 | GPO backup path not found | Ensure `WSUS GPOs` folder is with the script |
+| Database restore fails | Verify sysadmin privileges on SQL Server (see Prerequisites) |
 
 ### Diagnostic Commands
 
@@ -442,6 +467,20 @@ SESSION START: 2026-01-10 10:30:00
 | `DomainController/Set-WsusGroupPolicy.ps1` | GPO import script |
 | `DomainController/WSUS GPOs/` | Pre-configured GPO backups |
 | `Modules/*.psm1` | Shared PowerShell modules |
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| Automated Installation | One-script deployment of SQL Server Express 2022 + SSMS + WSUS |
+| Air-Gap Support | Differential content export/import for offline networks |
+| Database Management | Backup, restore, cleanup, and optimization |
+| Health Monitoring | Automated diagnostics and repair capabilities |
+| Scheduled Maintenance | Unattended mode for Windows Task Scheduler |
+| GPO Deployment | Pre-configured Group Policy Objects for domain-wide client configuration |
+| Modular Architecture | 6 reusable PowerShell modules |
 
 ---
 
