@@ -141,7 +141,7 @@ function Test-WsusDatabaseConnection {
         $query = "SELECT DB_ID('SUSDB') AS DatabaseID"
         $dbCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 10
 
-        if ($dbCheck.DatabaseID -ne $null) {
+        if ($null -ne $dbCheck.DatabaseID) {
             $result.Connected = $true
             $result.DatabaseExists = $true
             $result.Message = "Successfully connected to SUSDB"
@@ -342,6 +342,9 @@ function Repair-WsusHealth {
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "WSUS Health Repair" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
+
+    # SqlInstance parameter reserved for future database repair functionality
+    Write-Verbose "SQL Instance: $SqlInstance (reserved for future database repairs)"
 
     $results = @{
         ServicesStarted = @()

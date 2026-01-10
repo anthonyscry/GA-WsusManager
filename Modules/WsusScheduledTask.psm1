@@ -371,7 +371,7 @@ function Start-WsusMaintenanceTask {
     }
 
     try {
-        $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+        $null = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
         Start-ScheduledTask -TaskName $TaskName
         $result.Success = $true
         $result.Message = "Scheduled task '$TaskName' started"
