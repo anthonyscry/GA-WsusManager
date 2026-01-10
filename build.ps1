@@ -28,7 +28,7 @@ $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "3.2.0"
+$Version = "3.3.0"
 if (-not $OutputName) { $OutputName = "WsusManager-$Version.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -58,10 +58,10 @@ if (-not $SkipCodeReview) {
     if (-not $SkipCodeReview) {
         Import-Module PSScriptAnalyzer -Force
 
-        # Define scripts to analyze
+        # Define scripts to analyze (in Scripts folder)
         $ScriptsToAnalyze = @(
-            "WsusManagementGui.ps1",
-            "Invoke-WsusManagement.ps1"
+            "Scripts\WsusManagementGui.ps1",
+            "Scripts\Invoke-WsusManagement.ps1"
         )
 
         $TotalIssues = 0
@@ -191,7 +191,7 @@ Write-Host "[*] Preparing build..." -ForegroundColor Yellow
 
 # Build parameters
 $buildParams = @{
-    InputFile = ".\WsusManagementGui.ps1"
+    InputFile = ".\Scripts\WsusManagementGui.ps1"
     OutputFile = ".\$OutputName"
     NoConsole = $true
     RequireAdmin = $true

@@ -2,9 +2,22 @@
 
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
-| **Version** | 3.2.0 |
+| **Version** | 3.3.0 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
+
+---
+
+## What's New in v3.3.0
+
+| Feature | Description |
+|---------|-------------|
+| Auto-Refresh Dashboard | Status cards update every 30 seconds |
+| Database Size Monitoring | Alerts when approaching 10GB SQL Express limit |
+| Disk Space Monitoring | Warnings for low content storage space |
+| Scheduled Task Status | Shows maintenance task state and next run |
+| Service Recovery | One-click start for stopped services |
+| Enhanced Health Checks | Aggregated health with issues/warnings |
 
 ---
 
@@ -14,13 +27,13 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 | File | Description |
 |------|-------------|
-| **`WsusManager.exe`** | Standalone GUI - just download and run |
+| **`WsusManager-3.3.0.exe`** | Standalone GUI - just download and run |
 
 ### Alternative: Script Bundle
 
 | File | Description |
 |------|-------------|
-| `WSUS_Script_Bundle.zip` | PowerShell scripts (extract to `C:\WSUS\Scripts\`) |
+| `Scripts/Invoke-WsusManagement.ps1` | PowerShell CLI version |
 
 ### Required Installers
 
@@ -49,15 +62,16 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 ### GUI Application
 
-1. Download `WsusManager.exe`
-2. Double-click to run
-3. Select operation from menu
+1. Download `WsusManager-3.3.0.exe`
+2. Double-click to run (Admin privileges required)
+3. Dashboard shows real-time service status
+4. Select operation from sidebar menu
 
 ### PowerShell Scripts
 
 ```powershell
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\Invoke-WsusManagement.ps1
+.\Scripts\Invoke-WsusManagement.ps1
 ```
 
 ---
@@ -76,6 +90,23 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 | 8 | Health Check + Repair |
 | 9 | Reset Content Download |
 | 10 | Force Client Check-In |
+
+---
+
+## Dashboard Features (v3.3.0)
+
+| Card | Information |
+|------|-------------|
+| Services | SQL/WSUS/IIS status with color indicators |
+| Database | SUSDB size with 10GB limit warnings |
+| Disk Space | Free space with low-disk alerts |
+| Automation | Scheduled task state and next run time |
+
+**Quick Actions:**
+- Run Health Check
+- Deep Cleanup
+- Maintenance
+- Start Services (auto-recovery)
 
 ---
 
@@ -119,7 +150,17 @@ Imports: Update Policy GPO, Inbound Firewall GPO, Outbound Firewall GPO
 | `C:\WSUS\` | Content directory (required) |
 | `C:\WSUS\SQLDB\` | Installers |
 | `C:\WSUS\Logs\` | Logs |
-| `C:\WSUS\Scripts\` | Scripts |
+
+---
+
+## Repository Structure
+
+| Path | Description |
+|------|-------------|
+| `WsusManager-3.3.0.exe` | GUI Application (portable) |
+| `Scripts/` | All PowerShell scripts |
+| `Modules/` | PowerShell modules |
+| `DomainController/` | GPO deployment scripts |
 
 ---
 
@@ -130,6 +171,7 @@ Imports: Update Policy GPO, Inbound Firewall GPO, Outbound Firewall GPO
 | Endless downloads | Content path must be `C:\WSUS` |
 | Clients not updating | `gpupdate /force`, check ports 8530/8531 |
 | Database errors | Grant sysadmin in SSMS |
+| Services not starting | Use "Start Services" button |
 
 ---
 
