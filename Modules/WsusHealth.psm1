@@ -26,7 +26,7 @@ Date: 2026-01-10
 $modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 
 # Only import if not already loaded (prevents re-import issues)
-$requiredModules = @('WsusServices', 'WsusFirewall', 'WsusPermissions')
+$requiredModules = @('WsusUtilities', 'WsusServices', 'WsusFirewall', 'WsusPermissions')
 foreach ($modName in $requiredModules) {
     $modFile = Join-Path $modulePath "$modName.psm1"
     if (Test-Path $modFile) {
@@ -137,9 +137,9 @@ function Test-WsusDatabaseConnection {
             return $result
         }
 
-        # Try to query the database
+        # Try to query the database using the wrapper for TrustServerCertificate compatibility
         $query = "SELECT DB_ID('SUSDB') AS DatabaseID"
-        $dbCheck = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 10 -ErrorAction Stop
+        $dbCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 10
 
         if ($dbCheck.DatabaseID -ne $null) {
             $result.Connected = $true
