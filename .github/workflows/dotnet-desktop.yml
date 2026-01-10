@@ -265,20 +265,20 @@ jobs:
         Copy-Item -Path "./Scripts" -Destination "$packageDir/Scripts" -Recurse
 
         # Create version info file
-        $versionInfo = @"
-WSUS Manager Package
-====================
-Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')
-Git SHA: $env:GITHUB_SHA
-Git Ref: $env:GITHUB_REF
-Runner: $env:RUNNER_OS
-
-Contents:
-- WsusManager.exe: GUI application (self-contained, no .NET runtime required)
-- Modules/: PowerShell modules for WSUS operations
-- Scripts/: Standalone PowerShell scripts
-- Invoke-WsusManagement.ps1: Main CLI entry point
-"@
+        $versionInfo = @(
+          "WSUS Manager Package",
+          "====================",
+          "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')",
+          "Git SHA: $env:GITHUB_SHA",
+          "Git Ref: $env:GITHUB_REF",
+          "Runner: $env:RUNNER_OS",
+          "",
+          "Contents:",
+          "- WsusManager.exe: GUI application (self-contained, no .NET runtime required)",
+          "- Modules/: PowerShell modules for WSUS operations",
+          "- Scripts/: Standalone PowerShell scripts",
+          "- Invoke-WsusManagement.ps1: Main CLI entry point"
+        ) -join "`n"
         $versionInfo | Out-File "$packageDir/BUILD_INFO.txt"
 
         Write-Host "Package created successfully"
