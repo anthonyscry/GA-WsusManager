@@ -4,8 +4,8 @@
 ===============================================================================
 Script: Set-WsusGroupPolicy.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
-Date: 2026-01-09
+Version: 1.4.0
+Date: 2026-01-10
 ===============================================================================
 
 .SYNOPSIS
@@ -13,12 +13,16 @@ Date: 2026-01-09
 
 .DESCRIPTION
     Automates the deployment of three WSUS GPOs on a Domain Controller:
-    - WSUS Update Policy: Configures Windows Update client settings
-    - WSUS Inbound Allow: Firewall rules for inbound WSUS traffic
-    - WSUS Outbound Allow: Firewall rules for outbound WSUS traffic
+    - WSUS Update Policy: Configures Windows Update client settings (linked to domain root)
+    - WSUS Inbound Allow: Firewall rules for WSUS server (linked to Member Servers\WSUS Server)
+    - WSUS Outbound Allow: Firewall rules for clients (linked to Domain Controllers, Member Servers, Workstations)
 
-    The script automatically replaces hardcoded WSUS server URLs from backups
-    with your environment's WSUS server, ensuring seamless deployment.
+    The script:
+    - Auto-detects the domain
+    - Prompts for WSUS server name (if not provided)
+    - Replaces hardcoded WSUS URLs with your server
+    - Creates required OUs if they don't exist
+    - Links each GPO to its appropriate OU(s)
 
 .PARAMETER WsusServerUrl
     WSUS server URL (e.g., http://WSUSServerName:8530).
@@ -27,9 +31,6 @@ Date: 2026-01-09
 .PARAMETER BackupPath
     Path to GPO backup directory. Defaults to ".\WSUS GPOs" relative to script location.
 
-.PARAMETER TargetOU
-    Optional OU distinguished name to link GPOs (e.g., "OU=Workstations,DC=example,DC=local").
-
 .EXAMPLE
     .\Set-WsusGroupPolicy.ps1
     Prompts for WSUS server name and imports all three GPOs.
@@ -37,10 +38,6 @@ Date: 2026-01-09
 .EXAMPLE
     .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
     Imports GPOs using specified WSUS server URL.
-
-.EXAMPLE
-    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
-    Imports GPOs and links them to the specified OU.
 
 .NOTES
     Requirements:
@@ -52,8 +49,7 @@ Date: 2026-01-09
 [CmdletBinding()]
 param(
     [string]$WsusServerUrl,
-    [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs"),
-    [string]$TargetOU
+    [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs")
 )
 
 #region Helper Functions
@@ -82,33 +78,109 @@ function Get-WsusServerUrl {
         return $Url
     }
 
-    $serverName = Read-Host "Enter WSUS server name (e.g., WSUSServerName)"
+    Write-Host ""
+    Write-Host "WSUS Server Name" -ForegroundColor Yellow
+    $serverName = Read-Host "  Enter hostname (e.g., WSUS01)"
     if (-not $serverName) {
         throw "WSUS server name is required."
     }
     return "http://$serverName:8530"
 }
 
+function Get-DomainInfo {
+    <#
+    .SYNOPSIS
+        Auto-detects domain information from Active Directory.
+    #>
+    try {
+        Import-Module ActiveDirectory -ErrorAction Stop
+        $domain = Get-ADDomain -ErrorAction Stop
+        return @{
+            DomainDN = $domain.DistinguishedName
+            DomainName = $domain.DNSRoot
+            NetBIOSName = $domain.NetBIOSName
+        }
+    } catch {
+        # Fallback to environment variable
+        $dnsDomain = $env:USERDNSDOMAIN
+        if ($dnsDomain) {
+            $domainDN = ($dnsDomain.Split('.') | ForEach-Object { "DC=$_" }) -join ','
+            return @{
+                DomainDN = $domainDN
+                DomainName = $dnsDomain
+                NetBIOSName = $env:USERDOMAIN
+            }
+        }
+        return $null
+    }
+}
+
+function Ensure-OUExists {
+    <#
+    .SYNOPSIS
+        Creates an OU path if it doesn't exist.
+    .DESCRIPTION
+        Takes an OU path like "Member Servers/WSUS Server" and creates each level if needed.
+    #>
+    param(
+        [string]$OUPath,
+        [string]$DomainDN
+    )
+
+    # Split path into parts (e.g., "Member Servers/WSUS Server" -> @("Member Servers", "WSUS Server"))
+    $parts = $OUPath -split '/'
+
+    $currentDN = $DomainDN
+
+    foreach ($part in $parts) {
+        $ouDN = "OU=$part,$currentDN"
+
+        # Check if OU exists
+        $exists = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$ouDN'" -ErrorAction SilentlyContinue
+
+        if (-not $exists) {
+            Write-Host "  Creating OU: $part..." -NoNewline -ForegroundColor Yellow
+            New-ADOrganizationalUnit -Name $part -Path $currentDN -ProtectedFromAccidentalDeletion $false -ErrorAction Stop
+            Write-Host " OK" -ForegroundColor Green
+        }
+
+        $currentDN = $ouDN
+    }
+
+    return $currentDN
+}
+
 function Get-GpoDefinitions {
     <#
     .SYNOPSIS
-        Returns array of GPO definitions to process.
+        Returns array of GPO definitions with their target OUs.
+    .DESCRIPTION
+        Each GPO has specific OUs it should be linked to:
+        - WSUS Update Policy: Domain root (all computers get update settings)
+        - WSUS Inbound Allow: WSUS Server OU only (server needs inbound connections)
+        - WSUS Outbound Allow: All client OUs (clients need outbound to WSUS)
     #>
+    param([string]$DomainDN)
+
     return @(
         @{
             DisplayName = "WSUS Update Policy"
-            Description = "Client update configuration with WSUS server URLs"
+            Description = "Client update configuration - applies to all computers"
             UpdateWsusSettings = $true
+            TargetOUs = @($DomainDN)  # Domain root
         },
         @{
             DisplayName = "WSUS Inbound Allow"
-            Description = "Firewall rules for inbound WSUS traffic"
+            Description = "Firewall inbound rules - applies to WSUS server only"
             UpdateWsusSettings = $false
+            TargetOUPaths = @("Member Servers/WSUS Server")  # Will be created if needed
         },
         @{
             DisplayName = "WSUS Outbound Allow"
-            Description = "Firewall rules for outbound WSUS traffic"
+            Description = "Firewall outbound rules - applies to all clients"
             UpdateWsusSettings = $false
+            TargetOUPaths = @("Member Servers", "Workstations")  # Client OUs
+            IncludeDomainControllers = $true  # Also link to Domain Controllers
         }
     )
 }
@@ -116,7 +188,7 @@ function Get-GpoDefinitions {
 function Import-WsusGpo {
     <#
     .SYNOPSIS
-        Processes a single GPO: creates or updates from backup, updates WSUS URLs, and links to OU.
+        Processes a single GPO: creates or updates from backup, updates WSUS URLs, and links to OUs.
     #>
     param(
         [Parameter(Mandatory)]
@@ -131,55 +203,120 @@ function Import-WsusGpo {
         [Parameter(Mandatory)]
         [string]$WsusUrl,
 
-        [string]$TargetOU
+        [Parameter(Mandatory)]
+        [string]$DomainDN
     )
 
     $gpoName = $GpoDefinition.DisplayName
 
-    Write-Host "-----------------------------------------------------------"
-    Write-Host "Processing: $gpoName"
-    Write-Host "Purpose: $($GpoDefinition.Description)"
-    Write-Host "-----------------------------------------------------------"
+    Write-Host "[$gpoName]" -ForegroundColor Cyan
+    Write-Host "  $($GpoDefinition.Description)" -ForegroundColor Gray
 
     # Create or update GPO from backup
     $existingGpo = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
 
     if ($existingGpo) {
-        Write-Host "GPO already exists. Updating from backup..."
+        Write-Host "  Updating from backup..." -NoNewline
     } else {
-        Write-Host "Creating new GPO from backup..."
+        Write-Host "  Creating from backup..." -NoNewline
         $existingGpo = New-GPO -Name $gpoName -ErrorAction Stop
     }
 
     Import-GPO -BackupId $Backup.Id -Path $BackupPath -TargetName $gpoName -ErrorAction Stop | Out-Null
+    Write-Host " OK" -ForegroundColor Green
 
     # Update WSUS server URLs for Update Policy GPO
     if ($GpoDefinition.UpdateWsusSettings) {
-        Write-Host "Updating WSUS server settings to: $WsusUrl"
+        Write-Host "  Setting WSUS URL..." -NoNewline
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
             -ValueName "WUServer" -Type String -Value $WsusUrl -ErrorAction Stop
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
             -ValueName "WUStatusServer" -Type String -Value $WsusUrl -ErrorAction Stop
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
             -ValueName "UseWUServer" -Type DWord -Value 1 -ErrorAction Stop
+        Write-Host " OK" -ForegroundColor Green
     }
 
-    # Link to target OU if specified
-    if ($TargetOU) {
-        $existingLink = Get-GPInheritance -Target $TargetOU -ErrorAction SilentlyContinue |
+    # Build list of target OUs
+    $targetOUs = @()
+
+    # Add direct OU DNs if specified
+    if ($GpoDefinition.TargetOUs) {
+        $targetOUs += $GpoDefinition.TargetOUs
+    }
+
+    # Create and add OUs from paths (e.g., "Member Servers/WSUS Server")
+    if ($GpoDefinition.TargetOUPaths) {
+        foreach ($ouPath in $GpoDefinition.TargetOUPaths) {
+            $ouDN = Ensure-OUExists -OUPath $ouPath -DomainDN $DomainDN
+            $targetOUs += $ouDN
+        }
+    }
+
+    # Add Domain Controllers OU if specified
+    if ($GpoDefinition.IncludeDomainControllers) {
+        $targetOUs += "OU=Domain Controllers,$DomainDN"
+    }
+
+    # Link to each target OU
+    Write-Host "  Linking:" -ForegroundColor Gray
+    foreach ($targetOU in $targetOUs) {
+        # Shorten the DN for display (show just the OU path, not full DN)
+        $shortOU = ($targetOU -replace ',DC=.*$', '') -replace 'OU=', '' -replace ',', '\'
+        if ($targetOU -eq $DomainDN) { $shortOU = "(Domain Root)" }
+
+        $existingLink = Get-GPInheritance -Target $targetOU -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty GpoLinks |
             Where-Object { $_.DisplayName -eq $gpoName }
 
         if ($existingLink) {
-            Write-Host "GPO already linked to OU: $TargetOU"
+            Write-Host "    $shortOU" -NoNewline
+            Write-Host " (exists)" -ForegroundColor DarkGray
         } else {
-            Write-Host "Linking GPO to OU: $TargetOU"
-            New-GPLink -Name $gpoName -Target $TargetOU -LinkEnabled Yes -ErrorAction Stop | Out-Null
+            Write-Host "    $shortOU" -NoNewline
+            New-GPLink -Name $gpoName -Target $targetOU -LinkEnabled Yes -ErrorAction Stop | Out-Null
+            Write-Host " OK" -ForegroundColor Green
+        }
+    }
+    Write-Host ""
+}
+
+function Push-GPUpdateToAll {
+    <#
+    .SYNOPSIS
+        Forces Group Policy update on all domain computers.
+    #>
+    param([string]$DomainDN)
+
+    Write-Host ""
+    Write-Host "Pushing GPO to all domain computers..." -ForegroundColor Yellow
+
+    # Get all computer objects
+    $computers = Get-ADComputer -Filter "Enabled -eq `$true" -SearchBase $DomainDN -ErrorAction SilentlyContinue |
+        Where-Object { $_.DistinguishedName -notlike "*OU=Domain Controllers*" }
+
+    $total = $computers.Count
+    $success = 0
+    $failed = 0
+
+    Write-Host "  Found $total computers (excluding DCs)"
+
+    foreach ($computer in $computers) {
+        try {
+            Invoke-GPUpdate -Computer $computer.Name -Force -RandomDelayInMinutes 0 -ErrorAction Stop
+            $success++
+        } catch {
+            $failed++
         }
     }
 
-    Write-Host "Successfully configured: $gpoName"
-    Write-Host ""
+    Write-Host "  Pushed: " -NoNewline
+    Write-Host "$success OK" -ForegroundColor Green -NoNewline
+    if ($failed -gt 0) {
+        Write-Host ", $failed failed (offline/unreachable)" -ForegroundColor DarkGray
+    } else {
+        Write-Host ""
+    }
 }
 
 function Show-Summary {
@@ -189,25 +326,23 @@ function Show-Summary {
     #>
     param(
         [string]$WsusUrl,
-        [int]$GpoCount,
-        [string]$TargetOU
+        [int]$GpoCount
     )
 
-    Write-Host "==============================================================="
-    Write-Host "All WSUS GPOs have been configured successfully!"
-    Write-Host "==============================================================="
+    Write-Host "===============================================================" -ForegroundColor Green
+    Write-Host " COMPLETE - $GpoCount GPOs configured" -ForegroundColor Green
+    Write-Host "===============================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Summary:"
-    Write-Host "- WSUS Server URL: $WsusUrl"
-    Write-Host "- GPOs Configured: $GpoCount"
-    if ($TargetOU) {
-        Write-Host "- Linked to OU: $TargetOU"
-    }
+    Write-Host "WSUS Server: " -NoNewline
+    Write-Host $WsusUrl -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Next Steps:"
-    Write-Host "1. Run 'gpupdate /force' on client machines to apply policies"
-    Write-Host "2. Verify client check-in: wuauclt /detectnow /reportnow"
-    Write-Host "3. Check WSUS console for client registrations"
+    Write-Host "Next Steps:" -ForegroundColor Yellow
+    Write-Host "  1. Move WSUS server computer object to: Member Servers\WSUS Server"
+    Write-Host "  2. Verify on clients: gpresult /r | findstr WSUS"
+    Write-Host ""
+    Write-Host "NOTE:" -ForegroundColor Yellow -NoNewline
+    Write-Host " Computers outside Domain Controllers, Member Servers, or Workstations"
+    Write-Host "      need 'WSUS Outbound Allow' linked manually in GPMC."
     Write-Host ""
 }
 
@@ -221,32 +356,37 @@ try {
 
     # Display banner
     Write-Host ""
-    Write-Host "==============================================================="
-    Write-Host "WSUS GPO Configuration"
-    Write-Host "==============================================================="
+    Write-Host "===============================================================" -ForegroundColor Cyan
+    Write-Host " WSUS GPO Configuration" -ForegroundColor Cyan
+    Write-Host "===============================================================" -ForegroundColor Cyan
 
-    # Get WSUS server URL (prompt if not provided)
-    $WsusServerUrl = Get-WsusServerUrl -Url $WsusServerUrl
-
-    Write-Host "WSUS Server URL: $WsusServerUrl"
-    Write-Host "GPO Backup Path: $BackupPath"
-    Write-Host ""
+    # Auto-detect domain
+    $domainInfo = Get-DomainInfo
+    if (-not $domainInfo) {
+        throw "Could not detect domain. Run this script on a Domain Controller."
+    }
+    Write-Host "Domain: $($domainInfo.DomainName)"
 
     # Verify backup path exists
     if (-not (Test-Path $BackupPath)) {
         throw "GPO backup path not found: $BackupPath"
     }
 
-    # Load GPO definitions
-    $gpoDefinitions = Get-GpoDefinitions
-
     # Scan for available backups
-    Write-Host "Scanning for GPO backups..."
     $availableBackups = Get-GPOBackup -Path $BackupPath -ErrorAction SilentlyContinue
     if (-not $availableBackups) {
         throw "No GPO backups found in $BackupPath"
     }
-    Write-Host "Found $($availableBackups.Count) GPO backup(s)"
+    Write-Host "Backups: $($availableBackups.Count) found"
+
+    # Get WSUS server URL (prompt if not provided)
+    $WsusServerUrl = Get-WsusServerUrl -Url $WsusServerUrl
+
+    # Load GPO definitions with domain-specific target OUs
+    $gpoDefinitions = Get-GpoDefinitions -DomainDN $domainInfo.DomainDN
+
+    Write-Host ""
+    Write-Host "Importing GPOs..." -ForegroundColor Yellow
     Write-Host ""
 
     # Process each GPO
@@ -262,11 +402,14 @@ try {
                        -Backup $backup `
                        -BackupPath $BackupPath `
                        -WsusUrl $WsusServerUrl `
-                       -TargetOU $TargetOU
+                       -DomainDN $domainInfo.DomainDN
     }
 
+    # Push GPO to all computers immediately
+    Push-GPUpdateToAll -DomainDN $domainInfo.DomainDN
+
     # Display summary
-    Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count -TargetOU $TargetOU
+    Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count
 
 } catch {
     Write-Host ""

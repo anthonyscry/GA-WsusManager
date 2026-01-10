@@ -2,8 +2,8 @@
 ===============================================================================
 Module: WsusHealth.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
-Date: 2026-01-09
+Version: 1.1.0
+Date: 2026-01-10
 ===============================================================================
 
 .SYNOPSIS
@@ -34,6 +34,72 @@ foreach ($modName in $requiredModules) {
     } else {
         throw "Required module not found: $modFile"
     }
+}
+
+# ===========================
+# SSL/HTTPS STATUS FUNCTION
+# ===========================
+
+function Get-WsusSSLStatus {
+    <#
+    .SYNOPSIS
+        Gets the current SSL/HTTPS configuration status for WSUS
+
+    .OUTPUTS
+        Hashtable with SSL configuration details
+    #>
+
+    $result = @{
+        SSLEnabled = $false
+        Protocol = "HTTP"
+        Port = 8530
+        CertificateThumbprint = $null
+        CertificateExpires = $null
+        Message = ""
+    }
+
+    try {
+        # Check IIS for HTTPS binding on port 8531
+        Import-Module WebAdministration -ErrorAction SilentlyContinue
+
+        if (Get-Module WebAdministration) {
+            $wsussite = Get-Website | Where-Object { $_.Name -like "*WSUS*" } | Select-Object -First 1
+            if (-not $wsussite) {
+                $wsussite = Get-Website | Where-Object { $_.Id -eq 1 } | Select-Object -First 1
+            }
+
+            if ($wsussite) {
+                $httpsBinding = Get-WebBinding -Name $wsussite.Name -Protocol "https" -Port 8531 -ErrorAction SilentlyContinue
+
+                if ($httpsBinding) {
+                    $result.SSLEnabled = $true
+                    $result.Protocol = "HTTPS"
+                    $result.Port = 8531
+
+                    # Try to get certificate info
+                    $certHash = $httpsBinding.certificateHash
+                    if ($certHash) {
+                        $result.CertificateThumbprint = $certHash
+                        $cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -eq $certHash }
+                        if ($cert) {
+                            $result.CertificateExpires = $cert.NotAfter
+                        }
+                    }
+                    $result.Message = "HTTPS enabled on port 8531"
+                } else {
+                    $result.Message = "HTTP only (port 8530)"
+                }
+            } else {
+                $result.Message = "WSUS website not found in IIS"
+            }
+        } else {
+            $result.Message = "WebAdministration module not available"
+        }
+    } catch {
+        $result.Message = "Could not determine SSL status: $($_.Exception.Message)"
+    }
+
+    return $result
 }
 
 # ===========================
@@ -204,10 +270,28 @@ function Test-WsusHealth {
         Write-Host "  [OK] All permissions correct" -ForegroundColor Green
     }
 
+    # Get SSL Status (informational)
+    $sslStatus = Get-WsusSSLStatus
+    $health.SSL = $sslStatus
+
     # Summary
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "Health Check Summary" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
+
+    # Show protocol status
+    if ($sslStatus.SSLEnabled) {
+        Write-Host "Protocol: HTTPS (port 8531)" -ForegroundColor Green
+        if ($sslStatus.CertificateExpires) {
+            $daysUntilExpiry = ($sslStatus.CertificateExpires - (Get-Date)).Days
+            if ($daysUntilExpiry -lt 30) {
+                Write-Host "Certificate expires in $daysUntilExpiry days!" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "Protocol: HTTP (port 8530)" -ForegroundColor Gray
+    }
+    Write-Host ""
 
     switch ($health.Overall) {
         "Healthy" {
@@ -322,6 +406,7 @@ function Repair-WsusHealth {
 
 # Export functions
 Export-ModuleMember -Function @(
+    'Get-WsusSSLStatus',
     'Test-WsusDatabaseConnection',
     'Test-WsusHealth',
     'Repair-WsusHealth'

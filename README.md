@@ -1,8 +1,8 @@
 # WSUS + SQL Server Express 2022 Automation Suite
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Version:** 3.0.0
-**Last Updated:** 2026-01-09
+**Version:** 3.1.0
+**Last Updated:** 2026-01-10
 
 A production-ready PowerShell automation suite for deploying, managing, and maintaining Windows Server Update Services (WSUS) backed by SQL Server Express 2022. Designed for both online and air-gapped (offline) network environments.
 
@@ -63,7 +63,8 @@ wsus-sql/
 ├── Scripts/
 │   ├── Install-WsusWithSqlExpress.ps1  # One-time installation
 │   ├── Invoke-WsusMonthlyMaintenance.ps1  # Scheduled maintenance
-│   └── Invoke-WsusClientCheckIn.ps1    # Client-side check-in
+│   ├── Invoke-WsusClientCheckIn.ps1    # Client-side check-in
+│   └── Set-WsusHttps.ps1               # Optional HTTPS configuration
 ├── DomainController/
 │   ├── Set-WsusGroupPolicy.ps1         # GPO import script
 │   └── WSUS GPOs/                      # Pre-configured GPO backups
@@ -160,6 +161,13 @@ wsus-sql/
 │  Option 3: Copy for Air-Gap → Browse Archive or Full Copy       │
 │  Option 2: Restore Database                                     │
 └─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  DOMAIN CONTROLLER (one-time setup)                             │
+│  .\DomainController\Set-WsusGroupPolicy.ps1                     │
+│  → Imports GPOs, links to OUs, pushes policy to all clients     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Export Folder Structure
@@ -204,20 +212,126 @@ robocopy "E:\2026\Jan\09" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO
 ### Usage
 
 ```powershell
-# Interactive (prompts for WSUS server)
+# Interactive (prompts for WSUS server name)
 .\Set-WsusGroupPolicy.ps1
 
-# Specify WSUS server
+# Non-interactive (specify WSUS server URL)
 .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
-
-# Link to specific OU
-.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -TargetOU "OU=Workstations,DC=example,DC=local"
 ```
 
+The script will:
+1. Auto-detect the domain
+2. Import all 3 GPOs from backup
+3. Create required OUs if they don't exist
+4. Link each GPO to appropriate OUs
+5. Push policy update to all domain computers
+
 ### Imported GPOs
-1. **WSUS Update Policy** - Windows Update client settings
-2. **WSUS Inbound Allow** - Firewall inbound rules
-3. **WSUS Outbound Allow** - Firewall outbound rules
+
+The script imports three pre-configured GPOs. The WSUS server URL is automatically updated to match your environment.
+
+#### 1. WSUS Update Policy
+
+Configures Windows Update client behavior via registry settings under:
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate`
+- `HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU`
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| WUServer | `http://<YourServer>:8530` | Intranet update service URL (auto-replaced) |
+| WUStatusServer | `http://<YourServer>:8530` | Intranet statistics server (auto-replaced) |
+| UseWUServer | Enabled | Use intranet WSUS instead of Microsoft Update |
+| DoNotConnectToWindowsUpdateInternetLocations | Enabled | Block direct internet updates (critical for air-gap) |
+| AcceptTrustedPublisherCerts | Enabled | Accept signed updates from intranet |
+| ElevateNonAdmins | Disabled | Only admins receive update notifications |
+| SetDisablePauseUXAccess | Enabled | Remove "Pause updates" option from users |
+| AUPowerManagement | Enabled | Wake system from sleep for scheduled updates |
+| Configure Automatic Updates | 2 - Notify for download and auto install | Users notified before download |
+| AlwaysAutoRebootAtScheduledTime | 15 minutes | Auto-restart warning time |
+| ScheduledInstallDay | 0 - Every day | Check for updates daily |
+| ScheduledInstallTime | 00:00 | Install time (midnight) |
+| NoAUShutdownOption | Disabled | Show "Install Updates and Shut Down" option |
+
+#### 2. WSUS Inbound Allow
+
+Creates Windows Defender Firewall inbound rule:
+
+| Property | Value |
+|----------|-------|
+| Name | WSUS Inbound Allow |
+| Direction | Inbound |
+| Action | Allow |
+| Protocol | TCP |
+| Local Ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows inbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS) |
+
+#### 3. WSUS Outbound Allow
+
+Creates Windows Defender Firewall outbound rule:
+
+| Property | Value |
+|----------|-------|
+| Name | WSUS Outbound Allow |
+| Direction | Outbound |
+| Action | Allow |
+| Protocol | TCP |
+| Remote Ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows outbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS) |
+
+#### GPO Linking
+
+After import, link the GPOs to appropriate OUs:
+- **WSUS Update Policy** → Link to all workstation/server OUs that should receive updates
+- **WSUS Inbound Allow** → Link to WSUS server OU (allows clients to connect to it)
+- **WSUS Outbound Allow** → Link to all client OUs (allows them to reach WSUS server)
+
+---
+
+## Optional: HTTPS Configuration
+
+The `Scripts/Set-WsusHttps.ps1` script enables HTTPS (SSL/TLS) on your WSUS server. This is optional but recommended for production environments.
+
+### Usage
+
+```powershell
+# Interactive mode (recommended)
+.\Scripts\Set-WsusHttps.ps1
+
+# Use specific certificate by thumbprint
+.\Scripts\Set-WsusHttps.ps1 -CertificateThumbprint "1234567890ABCDEF..."
+```
+
+### Certificate Options
+
+The interactive menu offers:
+
+| Option | Description |
+|--------|-------------|
+| 1 | Create self-signed certificate (valid 5 years) |
+| 2 | Select existing certificate from Local Machine store |
+| 3 | Cancel |
+
+### What It Configures
+
+1. **IIS Binding** - Binds certificate to port 8531 (HTTPS)
+2. **WSUS SSL** - Runs `wsusutil configuressl` to enable client SSL
+3. **Trusted Root** - Adds self-signed certs to local trusted root store
+4. **Export** - Exports certificate to `C:\WSUS\WSUS-SSL-Certificate.cer` for distribution
+
+### After HTTPS Configuration
+
+Update the GPO with the new HTTPS URL:
+
+```powershell
+# On Domain Controller
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "https://WSUS01:8531"
+```
+
+For self-signed certificates, deploy the exported `.cer` file to clients via:
+- GPO: Computer Config > Policies > Windows Settings > Security Settings > Public Key Policies > Trusted Root CAs
+- Or manually import on each client
 
 ---
 

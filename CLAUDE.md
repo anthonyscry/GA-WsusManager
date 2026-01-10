@@ -18,6 +18,7 @@ This is a **WSUS (Windows Server Update Services) + SQL Server Express 2022 auto
 | `Scripts/Install-WsusWithSqlExpress.ps1` | One-time installation | WSUS Server |
 | `Scripts/Invoke-WsusMonthlyMaintenance.ps1` | Scheduled maintenance | Online WSUS Server |
 | `Scripts/Invoke-WsusClientCheckIn.ps1` | Force client check-in | Client Machines |
+| `Scripts/Set-WsusHttps.ps1` | Optional HTTPS/SSL configuration | WSUS Server |
 | `DomainController/Set-WsusGroupPolicy.ps1` | GPO deployment | Domain Controller |
 
 ### Module Architecture
