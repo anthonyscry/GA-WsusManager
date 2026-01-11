@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.7.0
+**Current Version:** 3.8.0
 
 ## Repository Structure
 
@@ -164,8 +164,13 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Use conventional commit messages
 - Run tests before committing: `.\build.ps1 -TestOnly`
 
-## Recent Changes (v3.7.0)
+## Recent Changes (v3.8.0)
 
+- All dialogs now close with ESC key (Settings, Export/Import, Restore, Maintenance, Install, About)
+- Fixed PSScriptAnalyzer warnings (unused parameter, verb naming, empty catch blocks)
+- Code quality improvements for better maintainability
+
+### Previous (v3.7.0)
 - Output log panel now 250px tall and open by default
 - All operations output to bottom log panel (removed separate Operation panel)
 - Unified Export/Import into single Transfer dialog with direction selector
@@ -314,6 +319,22 @@ $script:OperationRunning = $true
 $script:OperationRunning = $false
 ```
 
+### 9. Dialogs Not Closing with ESC Key
+
+**Problem:** Modal dialogs don't respond to ESC key to close.
+
+**Cause:** WPF dialogs don't have default ESC key handling.
+
+**Solution:** Add `KeyDown` event handler to each dialog:
+```powershell
+$dlg.Add_KeyDown({
+    param($s, $e)
+    if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() }
+})
+```
+
+Add this immediately after setting `ResizeMode` on each dialog window.
+
 ## Testing Checklist for GUI Changes
 
 Before committing GUI changes, verify:
@@ -326,5 +347,6 @@ Before committing GUI changes, verify:
 6. [ ] New CLI parameters are added to BOTH GUI and CLI scripts
 7. [ ] Concurrent operation blocking is in place
 8. [ ] Cancel button properly kills running processes
-9. [ ] Build passes: `.\build.ps1`
-10. [ ] Manual test each affected operation
+9. [ ] All dialogs close with ESC key
+10. [ ] Build passes: `.\build.ps1`
+11. [ ] Manual test each affected operation

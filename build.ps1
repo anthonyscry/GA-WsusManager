@@ -42,7 +42,7 @@ $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "3.6.0"
+$Version = "3.8.0"
 if (-not $OutputName) { $OutputName = "WsusManager.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
