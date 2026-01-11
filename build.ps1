@@ -7,7 +7,7 @@
     Includes code review with PSScriptAnalyzer before building.
 
 .PARAMETER OutputName
-    Name of the output executable (default: WsusManager-{version}.exe)
+    Name of the output executable (default: WsusManager.exe)
 
 .PARAMETER SkipCodeReview
     Skip the PSScriptAnalyzer code review step.
@@ -43,7 +43,7 @@ $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
 $Version = "3.5.2"
-if (-not $OutputName) { $OutputName = "WsusManager-$Version.exe" }
+if (-not $OutputName) { $OutputName = "WsusManager.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  WSUS Manager Executable Builder" -ForegroundColor Cyan
@@ -321,13 +321,9 @@ try {
         $exe = Get-Item ".\$OutputName"
         $sizeMB = [math]::Round($exe.Length / 1MB, 2)
 
-        # Also copy to generic name for backwards compatibility
-        Copy-Item ".\$OutputName" ".\WsusManager.exe" -Force
-
         Write-Host "`n[+] Build successful!" -ForegroundColor Green
         Write-Host "    File: $($exe.FullName)" -ForegroundColor White
         Write-Host "    Size: $sizeMB MB" -ForegroundColor White
-        Write-Host "    Also copied to: WsusManager.exe" -ForegroundColor Gray
 
         Write-Host "`n========================================" -ForegroundColor Cyan
         Write-Host "  Build Complete!" -ForegroundColor Cyan
