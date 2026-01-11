@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.6.0
+**Current Version:** 3.7.0
 
 ## Repository Structure
 
@@ -164,9 +164,167 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Use conventional commit messages
 - Run tests before committing: `.\build.ps1 -TestOnly`
 
-## Recent Changes (v3.5.2)
+## Recent Changes (v3.7.0)
 
-- Fixed `Start-WsusAutoRecovery` service refresh error (PSCustomObject compatibility)
-- Added 323 Pester unit tests across 10 test files
-- Security hardening: path validation, SQL injection prevention
-- Performance: batch service queries, refresh guards, module caching
+- Output log panel now 250px tall and open by default
+- All operations output to bottom log panel (removed separate Operation panel)
+- Unified Export/Import into single Transfer dialog with direction selector
+- Restore dialog auto-detects backup files in C:\WSUS
+- Monthly Maintenance shows profile selection dialog
+- Added Cancel button to stop running operations
+- Operations block concurrent execution to prevent conflicts
+- Fixed Install WSUS showing blank window before folder selection
+- Fixed Health Check curly braces output by suppressing return value
+- Fixed dashboard log path showing folder instead of specific file
+
+## Common GUI Issues and Solutions
+
+This section documents bugs encountered during development and how to avoid them in future changes.
+
+### 1. Blank/Empty Operation Windows
+
+**Problem:** Operations show blank windows or no output before dialogs appear.
+
+**Cause:** The GUI switches to an empty operation panel before showing a dialog, giving users a blank screen.
+
+**Solution:** Show dialogs BEFORE switching panels. Only switch to operation view after user confirms dialog:
+```powershell
+# WRONG - shows blank panel, then dialog
+Show-Panel "Operation" "Install WSUS" "BtnInstall"
+$fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+if ($fbd.ShowDialog() -eq "OK") { ... }
+
+# CORRECT - show dialog first, only switch if user proceeds
+$fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+if ($fbd.ShowDialog() -eq "OK") {
+    # Now show operation panel and run
+}
+```
+
+### 2. Curly Braces `{}` in Output
+
+**Problem:** Operations like Health Check show `@{...}` or curly braces in log output.
+
+**Cause:** PowerShell functions return hashtables/objects that get stringified to console.
+
+**Solution:** Suppress return values with `$null =` or `| Out-Null`:
+```powershell
+# WRONG - outputs object representation
+& '$mgmtSafe' -Health -ContentPath '$cp'
+
+# CORRECT - suppress return value
+$null = & '$mgmtSafe' -Health -ContentPath '$cp'
+```
+
+### 3. Event Handler Scope Issues
+
+**Problem:** Event handlers can't access script-scope variables or controls.
+
+**Cause:** `Register-ObjectEvent` handlers run in a different scope and can't access `$script:*` variables.
+
+**Solution:** Pass data via `-MessageData` parameter:
+```powershell
+# WRONG - $script:controls not accessible in handler
+$outputHandler = {
+    $script:controls.LogOutput.AppendText($Event.SourceEventArgs.Data)
+}
+Register-ObjectEvent -InputObject $proc -EventName OutputDataReceived -Action $outputHandler
+
+# CORRECT - pass controls via MessageData
+$eventData = @{ Window = $window; Controls = $controls }
+$outputHandler = {
+    $data = $Event.MessageData
+    $data.Window.Dispatcher.Invoke([Action]{
+        $data.Controls.LogOutput.AppendText($Event.SourceEventArgs.Data)
+    })
+}
+Register-ObjectEvent -InputObject $proc -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData
+```
+
+### 4. UI Updates from Background Threads
+
+**Problem:** UI controls don't update or throw threading errors.
+
+**Cause:** WPF controls can only be modified from the UI thread.
+
+**Solution:** Use `Dispatcher.Invoke()` for all UI updates from event handlers:
+```powershell
+# WRONG - direct access from background thread
+$controls.LogOutput.AppendText($line)
+
+# CORRECT - dispatch to UI thread
+$controls.LogOutput.Dispatcher.Invoke([Action]{
+    $controls.LogOutput.AppendText($line)
+})
+```
+
+### 5. Closure Variable Capture
+
+**Problem:** Click handlers reference stale variable values.
+
+**Cause:** PowerShell closures capture variables by reference, not value.
+
+**Solution:** Use `.GetNewClosure()` to capture current values:
+```powershell
+# WRONG - may use wrong value if $i changes
+$btn.Add_Click({ Write-Host $i })
+
+# CORRECT - captures current value
+$btn.Add_Click({ Write-Host $i }.GetNewClosure())
+```
+
+### 6. Missing CLI Parameters
+
+**Problem:** GUI passes parameters that CLI script doesn't accept.
+
+**Cause:** New GUI features added without updating CLI script parameters.
+
+**Solution:** Always update both files together:
+1. Add parameter to CLI script (`Invoke-WsusManagement.ps1`)
+2. Add parameter handling in CLI script
+3. Update GUI to pass the parameter
+
+Example: Adding `-BackupPath` for restore operation required changes to both scripts.
+
+### 7. Process Output Not Appearing
+
+**Problem:** External process output doesn't show in log panel.
+
+**Cause:** Not calling `BeginOutputReadLine()` / `BeginErrorReadLine()` after starting process.
+
+**Solution:** Always start async reading:
+```powershell
+$proc.Start() | Out-Null
+$proc.BeginOutputReadLine()
+$proc.BeginErrorReadLine()
+```
+
+### 8. Operations Running Concurrently
+
+**Problem:** Users can start multiple operations, causing conflicts.
+
+**Solution:** Use a flag to block concurrent operations:
+```powershell
+if ($script:OperationRunning) {
+    [System.Windows.MessageBox]::Show("An operation is already running.", "Warning")
+    return
+}
+$script:OperationRunning = $true
+# ... run operation ...
+$script:OperationRunning = $false
+```
+
+## Testing Checklist for GUI Changes
+
+Before committing GUI changes, verify:
+
+1. [ ] All operations show dialog BEFORE switching panels (no blank windows)
+2. [ ] All function return values are suppressed (`$null =` or `| Out-Null`)
+3. [ ] Event handlers use `Dispatcher.Invoke()` for UI updates
+4. [ ] Event handlers pass data via `-MessageData`, not script-scope variables
+5. [ ] Click handlers use `.GetNewClosure()` when capturing variables
+6. [ ] New CLI parameters are added to BOTH GUI and CLI scripts
+7. [ ] Concurrent operation blocking is in place
+8. [ ] Cancel button properly kills running processes
+9. [ ] Build passes: `.\build.ps1`
+10. [ ] Manual test each affected operation
