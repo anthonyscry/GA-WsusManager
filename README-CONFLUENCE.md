@@ -3,51 +3,26 @@
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
 | **Version** | 3.5.2 |
+| **Last Updated** | January 2026 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
 
 ---
 
-## What's New in v3.5.2
+## Downloads
 
-### Security Hardening
+### Project Bundle
 
-| Feature | Description |
-|---------|-------------|
-| SQL Injection Prevention | Added input validation in Test-WsusBackupIntegrity |
-| Path Validation | Test-ValidPath and Test-SafePath prevent command injection |
-| Safe Path Escaping | Get-EscapedPath ensures safe command string construction |
-| DPAPI Documentation | Documented credential storage security limitations |
-
-### Performance Optimizations
-
-| Feature | Description |
-|---------|-------------|
-| SQL Module Caching | SqlServer module version checked once at load time |
-| Batch Service Queries | Single batch query instead of 5 individual calls |
-| Dashboard Refresh Guard | Prevents overlapping refresh operations |
-| Test Suite Optimization | Shared module pre-loading reduces test time |
-
-### Code Quality
-
-| Feature | Description |
-|---------|-------------|
-| Pester Unit Tests | 323 unit tests across 10 test files (all passing) |
-| PSScriptAnalyzer | Build runs code analysis before compilation |
-| Approved Verbs | Renamed Load-Settings to Import-WsusSettings |
-
-### Previous (v3.5.0/3.5.1)
-
-| Feature | Description |
-|---------|-------------|
-| Server Mode Toggle | Switch between Online and Air-Gap modes |
-| Modern WPF GUI | Dark theme matching GA-AppLocker |
-| Database Size Indicator | Shows DB size out of 10GB limit with color coding |
-| Export/Import Dialogs | Folder pickers for media transfer operations |
+> **Upload your project bundle here:**
+>
+> **[PLACEHOLDER: Upload WsusManager-v3.5.2.zip here]**
+>
+> The bundle includes:
+> - WsusManager.exe (portable GUI)
+> - All PowerShell scripts and modules
+> - Documentation and tests
 
 ---
-
-## Downloads
 
 ### Recommended: Portable Executable
 
@@ -75,10 +50,56 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 > Save to C:\WSUS\SQLDB\ before installation
 
-| File | Description |
-|------|-------------|
-| SQLEXPRADV_x64_ENU.exe | SQL Server Express 2022 |
-| SSMS-Setup-ENU.exe | SQL Server Management Studio |
+| File | Description | Download Link |
+|------|-------------|---------------|
+| SQLEXPRADV_x64_ENU.exe | SQL Server Express 2022 | [Microsoft Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
+| SSMS-Setup-ENU.exe | SQL Server Management Studio | [SSMS Download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) |
+
+---
+
+## What's New in v3.5.2
+
+### Security Hardening
+
+| Feature | Description |
+|---------|-------------|
+| SQL Injection Prevention | Added input validation in Test-WsusBackupIntegrity |
+| Path Validation | Test-ValidPath and Test-SafePath prevent command injection |
+| Safe Path Escaping | Get-EscapedPath ensures safe command string construction |
+| DPAPI Documentation | Documented credential storage security limitations |
+
+### Bug Fixes
+
+| Feature | Description |
+|---------|-------------|
+| Service Refresh Fix | Fixed Start-WsusAutoRecovery error where $svc.Refresh() failed on PSCustomObject |
+| Improved Service Recovery | Now re-queries service status instead of using Refresh() method |
+
+### Performance Optimizations
+
+| Feature | Description |
+|---------|-------------|
+| SQL Module Caching | SqlServer module version checked once at load time |
+| Batch Service Queries | Single batch query instead of 5 individual calls |
+| Dashboard Refresh Guard | Prevents overlapping refresh operations |
+| Test Suite Optimization | Shared module pre-loading reduces test time |
+
+### Code Quality
+
+| Feature | Description |
+|---------|-------------|
+| Pester Unit Tests | 323 unit tests across 10 test files (all passing) |
+| PSScriptAnalyzer | Build runs code analysis before compilation |
+| Approved Verbs | Renamed Load-Settings to Import-WsusSettings |
+
+### Previous (v3.5.0/3.5.1)
+
+| Feature | Description |
+|---------|-------------|
+| Server Mode Toggle | Switch between Online and Air-Gap modes |
+| Modern WPF GUI | Dark theme matching GA-AppLocker |
+| Database Size Indicator | Shows DB size out of 10GB limit with color coding |
+| Export/Import Dialogs | Folder pickers for media transfer operations |
 
 ---
 
@@ -112,6 +133,19 @@ The dashboard displays four status cards with auto-refresh every 30 seconds:
 - Deep Cleanup
 - Monthly Maintenance
 - Start Services (auto-recovery)
+
+---
+
+## Server Mode Toggle
+
+Toggle between **Online** and **Air-Gap** modes using the switch in the sidebar.
+
+| Mode | Visible Operations | Hidden Operations |
+|------|-------------------|-------------------|
+| **Online** | Export to Media, Monthly Maintenance | Import from Media |
+| **Air-Gap** | Import from Media | Export to Media, Monthly Maintenance |
+
+The mode is saved to user settings and persists across restarts.
 
 ---
 
@@ -200,7 +234,7 @@ Imports three GPOs:
 | WsusManager.exe | Portable GUI Application (RECOMMENDED) |
 | wsus-icon.ico | Application icon |
 | build.ps1 | Build script for EXE (includes tests + code review) |
-| Scripts/ | PowerShell scripts |
+| Scripts/ | PowerShell scripts (6 scripts) |
 | Modules/ | PowerShell modules (10 modules) |
 | Tests/ | Pester unit tests (323 tests) |
 | DomainController/ | GPO deployment scripts |
@@ -217,6 +251,25 @@ Imports three GPOs:
 
 ---
 
+## PowerShell Modules
+
+The application uses a modular architecture with 10 PowerShell modules:
+
+| Module | Description |
+|--------|-------------|
+| WsusUtilities.psm1 | Logging, color output, helpers |
+| WsusDatabase.psm1 | Database operations, cleanup, optimization |
+| WsusHealth.psm1 | Health checks and diagnostics |
+| WsusServices.psm1 | Service management (start/stop/restart) |
+| WsusFirewall.psm1 | Firewall rule management |
+| WsusPermissions.psm1 | Directory permissions |
+| WsusConfig.psm1 | Configuration management |
+| WsusExport.psm1 | Export/import operations |
+| WsusScheduledTask.psm1 | Scheduled task management |
+| WsusAutoDetection.psm1 | Server detection and auto-recovery |
+
+---
+
 ## Troubleshooting
 
 | Issue | Solution |
@@ -227,15 +280,55 @@ Imports three GPOs:
 | Services not starting | Use "Start Services" button on dashboard |
 | Script not found error | Ensure Scripts folder is alongside the EXE |
 | DB size shows "Offline" | SQL Server Express service not running |
+| Service refresh errors | Fixed in v3.5.2 - upgrade to latest version |
 
 ---
 
-## References
+## Helpful Links
+
+### Microsoft Documentation
 
 | Topic | Link |
 |-------|------|
-| WSUS Maintenance | https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide |
-| SQL Express Download | https://www.microsoft.com/en-us/download/details.aspx?id=104781 |
+| WSUS Maintenance Guide | [https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide) |
+| WSUS Deployment Planning | [https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment) |
+| WSUS Administration Guide | [https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/wsus-messages-and-troubleshooting-tips](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/wsus-messages-and-troubleshooting-tips) |
+| WSUS Troubleshooting | [https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-client-fails-to-connect](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-client-fails-to-connect) |
+
+### SQL Server Resources
+
+| Topic | Link |
+|-------|------|
+| SQL Server Express 2022 Download | [https://www.microsoft.com/en-us/download/details.aspx?id=104781](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
+| SSMS Download | [https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) |
+| SQL Express Limitations | [https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2022](https://learn.microsoft.com/en-us/sql/sql-server/editions-and-components-of-sql-server-2022) |
+
+### PowerShell Resources
+
+| Topic | Link |
+|-------|------|
+| PS2EXE Module | [https://www.powershellgallery.com/packages/ps2exe](https://www.powershellgallery.com/packages/ps2exe) |
+| Pester Testing Framework | [https://pester.dev/](https://pester.dev/) |
+| PSScriptAnalyzer | [https://www.powershellgallery.com/packages/PSScriptAnalyzer](https://www.powershellgallery.com/packages/PSScriptAnalyzer) |
+
+### Windows Server Update Services
+
+| Topic | Link |
+|-------|------|
+| WSUS Content Directory | [https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus) |
+| WSUS GPO Settings | [https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/4-configure-group-policy-settings-for-automatic-updates](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/4-configure-group-policy-settings-for-automatic-updates) |
+| WSUS SSL Configuration | [https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus#25-secure-wsus-with-the-secure-sockets-layer-protocol](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus#25-secure-wsus-with-the-secure-sockets-layer-protocol) |
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 3.5.2 | Jan 2026 | Security hardening, service refresh fix, 323 unit tests |
+| 3.5.1 | Jan 2026 | Performance optimizations, batch queries |
+| 3.5.0 | Jan 2026 | Server mode toggle, modern WPF GUI |
+| 3.4.x | Dec 2025 | Database size indicator, export/import dialogs |
 
 ---
 
