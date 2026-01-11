@@ -1,32 +1,37 @@
 # WSUS Manager
 
-**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.3.0
+**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.5.2
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports both online and air-gapped networks.
 
 ---
 
-## What's New in v3.3.0
+## What's New in v3.5.2
 
-- **Auto-Refresh Dashboard** - Status cards update every 30 seconds
-- **Database Size Monitoring** - Alerts when approaching 10GB SQL Express limit
-- **Disk Space Monitoring** - Warnings for low content storage space
-- **Scheduled Task Status** - Shows maintenance task state and next run time
-- **Automatic Service Recovery** - One-click start for stopped services
-- **Enhanced Health Checks** - Aggregated health status with issues/warnings
+- **Server Mode Toggle** - Switch between Online and Air-Gap modes to show only relevant menu items
+- **Context-Aware Menu** - Online mode shows Export/Maintenance; Air-Gap mode shows Import
+- **Cleaner Codebase** - Refactored UI code, removed unused files
+
+### Previous (v3.5.1)
+
+- **Modern WPF GUI** - Complete rewrite with dark theme matching GA-AppLocker
+- **Database Size Indicator** - Shows current DB size out of 10GB limit with color coding
+- **Export/Import Dialogs** - Folder pickers for media transfer operations
+- **General Atomics Icon** - Consistent branding across GA tools
 
 ---
 
 ## Quick Start
 
-### Option 1: GUI Application (Recommended)
+### Option 1: Portable Executable (Recommended)
 
-Download and run **`WsusManager-3.3.0.exe`** - no installation required.
+Download and run **`WsusManager.exe`** - no installation required.
 
-- Modern dark-themed interface with auto-refresh dashboard
+- Modern dark-themed WPF interface
+- Auto-refresh dashboard (30-second interval)
+- Database size monitoring with 10GB limit warnings
 - No PowerShell console window
 - Portable standalone executable
-- Automatic service status monitoring
 
 ### Option 2: PowerShell Scripts
 
@@ -43,8 +48,9 @@ Download and run **`WsusManager-3.3.0.exe`** - no installation required.
 | OS | Windows Server 2019+ |
 | CPU | 4+ cores |
 | RAM | 16+ GB |
-| Disk | 125+ GB |
-| PowerShell | 5.0+ |
+| Disk | 50+ GB for updates |
+| PowerShell | 5.1+ |
+| SQL Server | SQL Server Express 2022 |
 
 ### Required Installers (place in `C:\WSUS\SQLDB\`)
 
@@ -53,36 +59,66 @@ Download and run **`WsusManager-3.3.0.exe`** - no installation required.
 
 ---
 
+## Dashboard
+
+The dashboard displays four status cards with auto-refresh:
+
+| Card | Information | Color Coding |
+|------|-------------|--------------|
+| Services | SQL/WSUS/IIS status | Green=All running, Orange=Partial, Red=Stopped |
+| Database | SUSDB size / 10GB limit | Green=<7GB, Yellow=7-9GB, Red=>9GB |
+| Disk Space | Free space on C: | Green=>50GB, Yellow=10-50GB, Red=<10GB |
+| Automation | Scheduled task status | Green=Ready, Orange=Not Set |
+
+**Quick Actions:** Health Check, Deep Cleanup, Maintenance, Start Services
+
+---
+
+## Server Mode
+
+Toggle between **Online** and **Air-Gap** modes using the switch in the sidebar. This shows only the relevant menu options for your server type.
+
+| Mode | Visible Operations | Hidden |
+|------|-------------------|--------|
+| **Online** | Export to Media, Monthly Maintenance | Import from Media |
+| **Air-Gap** | Import from Media | Export to Media, Monthly Maintenance |
+
+The mode is saved to your user settings and persists across restarts.
+
+---
+
 ## Main Operations
 
-| Option | Description |
-|--------|-------------|
-| 1 | Install WSUS + SQL Express |
-| 2 | Restore Database |
-| 3 | Import from External Media (air-gap) |
-| 4 | Export to External Media (air-gap) |
-| 5 | Monthly Maintenance |
-| 6 | Deep Cleanup |
-| 7 | Health Check |
-| 8 | Health Check + Repair |
-| 9 | Reset Content Download |
-| 10 | Force Client Check-In |
+| Menu Item | Mode | Description |
+|-----------|------|-------------|
+| Install WSUS | Both | Install WSUS + SQL Express from scratch |
+| Restore Database | Both | Restore SUSDB from backup |
+| Export to Media | Online | Export DB and content to USB (Full or Differential) |
+| Import from Media | Air-Gap | Import from USB to air-gapped server |
+| Monthly Maintenance | Online | Sync with Microsoft, cleanup, and backup |
+| Deep Cleanup | Both | Aggressive cleanup for space recovery |
+| Health Check | Both | Verify WSUS configuration and connectivity |
+| Health + Repair | Both | Health check with automatic fixes |
 
 ---
 
 ## Air-Gapped Workflow
 
 ```
-Online WSUS → Option 5 (Monthly Maintenance)
+Online WSUS → Monthly Maintenance
                     ↓
-              Option 4 (Export to USB)
+              Export to Media (Full or Differential)
                     ↓
-            [Physical Transfer]
+            [Physical Transfer via USB]
                     ↓
-Air-Gap WSUS → Option 3 (Import from USB)
+Air-Gap WSUS → Import from Media
                     ↓
-              Option 2 (Restore Database)
+              Restore Database (if full export)
 ```
+
+**Export Options:**
+- **Full Export** - Complete database and all content files
+- **Differential Export** - Only updates from the last N days (default: 30)
 
 ---
 
@@ -104,7 +140,10 @@ Imports 3 GPOs: Update Policy, Inbound Firewall, Outbound Firewall.
 C:\WSUS\              # Content directory (required path)
 C:\WSUS\SQLDB\        # SQL/SSMS installers
 C:\WSUS\Logs\         # Log files
+C:\WSUS\WsusContent\  # Update files (auto-created)
 ```
+
+> **Important:** Content path must be `C:\WSUS` - NOT `C:\WSUS\wsuscontent`
 
 ---
 
@@ -112,22 +151,44 @@ C:\WSUS\Logs\         # Log files
 
 ```
 GA-WsusManager/
-├── WsusManager-3.3.0.exe     # GUI Application (RECOMMENDED)
-├── WsusManager.exe           # Generic copy (always latest)
-├── build.ps1                 # Build script for EXE
-├── Scripts/                  # All PowerShell scripts
-│   ├── WsusManagementGui.ps1 # GUI source
-│   ├── Invoke-WsusManagement.ps1 # CLI
-│   ├── Install-WsusWithSqlExpress.ps1
+├── WsusManager.exe              # Portable GUI (RECOMMENDED)
+├── wsus-icon.ico                # Application icon
+├── build.ps1                    # Build script for EXE
+├── Scripts/
+│   ├── WsusManagementGui.ps1    # GUI source (WPF/XAML)
+│   ├── Invoke-WsusManagement.ps1
 │   ├── Invoke-WsusMonthlyMaintenance.ps1
+│   ├── Install-WsusWithSqlExpress.ps1
+│   ├── Invoke-WsusClientCheckIn.ps1
 │   └── Set-WsusHttps.ps1
-├── Modules/                  # PowerShell modules
-│   ├── WsusAutoDetection.psm1 # Enhanced detection (v3.3.0)
-│   ├── WsusDatabase.psm1
-│   ├── WsusHealth.psm1
-│   ├── WsusServices.psm1
-│   └── ...
-└── DomainController/         # GPO deployment scripts
+├── Modules/
+│   ├── WsusUtilities.psm1       # Logging, colors, helpers
+│   ├── WsusDatabase.psm1        # Database operations
+│   ├── WsusHealth.psm1          # Health checks
+│   ├── WsusServices.psm1        # Service management
+│   ├── WsusFirewall.psm1        # Firewall rules
+│   ├── WsusPermissions.psm1     # Directory permissions
+│   ├── WsusConfig.psm1          # Configuration
+│   ├── WsusExport.psm1          # Export/import
+│   ├── WsusScheduledTask.psm1   # Scheduled tasks
+│   └── WsusAutoDetection.psm1   # Server detection
+├── Tests/                       # Pester unit tests
+└── DomainController/            # GPO deployment scripts
+```
+
+---
+
+## Building from Source
+
+```powershell
+# Full build with tests and code review
+.\build.ps1
+
+# Quick build (skip tests and review)
+.\build.ps1 -SkipTests -SkipCodeReview
+
+# Run tests only
+.\build.ps1 -TestOnly
 ```
 
 ---
@@ -140,6 +201,8 @@ GA-WsusManager/
 | Clients not updating | Run `gpupdate /force`, check ports 8530/8531 |
 | Database errors | Grant sysadmin role to your account in SSMS |
 | Services not starting | Use "Start Services" button on dashboard |
+| Script not found error | Ensure Scripts folder is alongside the EXE |
+| DB size shows "Offline" | SQL Server Express service not running |
 
 ---
 
@@ -150,4 +213,4 @@ GA-WsusManager/
 
 ---
 
-*Internal use - GA-ASI*
+*Internal use - General Atomics Aeronautical Systems, Inc.*

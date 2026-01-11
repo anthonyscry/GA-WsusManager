@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Invoke-WsusManagement.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 3.2.0
+Version: 3.3.0
 Date: 2026-01-10
 ===============================================================================
 
@@ -71,6 +71,12 @@ Date: 2026-01-10
 param(
     [Parameter(ParameterSetName = 'Restore')]
     [switch]$Restore,
+
+    [Parameter(ParameterSetName = 'Import')]
+    [switch]$Import,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [switch]$Export,
 
     [Parameter(ParameterSetName = 'Health')]
     [switch]$Health,
@@ -697,17 +703,28 @@ function Invoke-CopyForAirGap {
     Write-Host "Use this on the AIR-GAP server to import transported data." -ForegroundColor Yellow
     Write-Host ""
 
+    # Validate DefaultSource - use C:\ if empty
+    if ([string]::IsNullOrWhiteSpace($DefaultSource)) {
+        $DefaultSource = "C:\"
+    }
+
     # Prompt for source path
     Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
     Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
-    Write-Host "  Or press Enter for network share: $DefaultSource" -ForegroundColor Gray
+    Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
     Write-Host ""
     $sourceInput = Read-Host "Enter source path (or press Enter for default)"
 
     $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
 
+    # Validate path is not empty
+    if ([string]::IsNullOrWhiteSpace($ExportSource)) {
+        Write-Log "ERROR: No source path specified" "Red"
+        return
+    }
+
     # Check if source is accessible
-    if (-not (Test-Path $ExportSource)) {
+    if (-not (Test-Path $ExportSource -ErrorAction SilentlyContinue)) {
         Write-Log "ERROR: Cannot access $ExportSource" "Red"
         Write-Host "Make sure the path exists and media is connected." -ForegroundColor Yellow
         return
@@ -937,6 +954,14 @@ function Invoke-ExportToMedia {
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
     Write-Host ""
 
+    # Validate paths - use defaults if empty
+    if ([string]::IsNullOrWhiteSpace($DefaultSource)) {
+        $DefaultSource = "C:\"
+    }
+    if ([string]::IsNullOrWhiteSpace($ContentPath)) {
+        $ContentPath = "C:\WSUS"
+    }
+
     # Prompt for copy mode
     Write-Host "Copy mode:" -ForegroundColor Cyan
     Write-Host "  1. Full copy (all files)"
@@ -992,7 +1017,7 @@ function Invoke-ExportToMedia {
         default { $DefaultSource }
     }
 
-    if (-not $source -or -not (Test-Path $source)) {
+    if ([string]::IsNullOrWhiteSpace($source) -or -not (Test-Path $source -ErrorAction SilentlyContinue)) {
         Write-Log "ERROR: Source path not accessible: $source" "Red"
         return
     }
@@ -1001,7 +1026,7 @@ function Invoke-ExportToMedia {
     $sourceBak = Get-ChildItem -Path $source -Filter "*.bak" -File -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     $sourceContent = Join-Path $source "WsusContent"
-    $hasContent = Test-Path $sourceContent
+    $hasContent = Test-Path $sourceContent -ErrorAction SilentlyContinue
 
     Write-Host ""
     Write-Host "Source: $source" -ForegroundColor Cyan
@@ -1266,7 +1291,7 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host "=================================================================" -ForegroundColor Cyan
-    Write-Host "              WSUS Management v3.2.0" -ForegroundColor Cyan
+    Write-Host "              WSUS Management v3.3.0" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host "=================================================================" -ForegroundColor Cyan
     Write-Host ""
@@ -1340,6 +1365,10 @@ function Start-InteractiveMenu {
 # Handle CLI switches directly to avoid PSScriptAnalyzer unused parameter warnings
 if ($Restore) {
     Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance
+} elseif ($Import) {
+    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
+} elseif ($Export) {
+    Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

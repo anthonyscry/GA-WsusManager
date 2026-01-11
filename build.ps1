@@ -15,20 +15,34 @@
 .EXAMPLE
     .\build.ps1
 
+.PARAMETER SkipTests
+    Skip running Pester unit tests.
+
+.PARAMETER TestOnly
+    Only run tests, don't build the executable.
+
 .EXAMPLE
     .\build.ps1 -SkipCodeReview
+
+.EXAMPLE
+    .\build.ps1 -SkipTests
+
+.EXAMPLE
+    .\build.ps1 -TestOnly
 #>
 
 param(
     [string]$OutputName,
-    [switch]$SkipCodeReview
+    [switch]$SkipCodeReview,
+    [switch]$SkipTests,
+    [switch]$TestOnly
 )
 
 $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "3.3.0"
+$Version = "3.5.2"
 if (-not $OutputName) { $OutputName = "WsusManager-$Version.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -164,6 +178,89 @@ if (-not $SkipCodeReview) {
 }
 else {
     Write-Host "[*] Skipping code review (-SkipCodeReview specified)" -ForegroundColor Gray
+}
+
+# ============================================
+# PESTER TESTS
+# ============================================
+
+if (-not $SkipTests) {
+    Write-Host "`n[*] Running Pester tests..." -ForegroundColor Yellow
+
+    # Check if Pester is installed
+    $pesterModule = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+    if (-not $pesterModule) {
+        Write-Host "    Installing Pester..." -ForegroundColor Gray
+        try {
+            Install-Module -Name Pester -Scope CurrentUser -Force -SkipPublisherCheck
+        }
+        catch {
+            Write-Host "[!] Could not install Pester. Skipping tests." -ForegroundColor Yellow
+            $SkipTests = $true
+        }
+    }
+    elseif ($pesterModule.Version -lt [Version]"5.0.0") {
+        Write-Host "    Updating Pester to v5+..." -ForegroundColor Gray
+        try {
+            Install-Module -Name Pester -Scope CurrentUser -Force -SkipPublisherCheck
+        }
+        catch {
+            Write-Host "[!] Could not update Pester. Skipping tests." -ForegroundColor Yellow
+            $SkipTests = $true
+        }
+    }
+
+    if (-not $SkipTests) {
+        Import-Module Pester -Force
+
+        $TestsPath = Join-Path $ScriptRoot "Tests"
+        $TestFiles = Get-ChildItem -Path $TestsPath -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue
+
+        if ($TestFiles) {
+            Write-Host ""
+            $TestFiles | ForEach-Object { Write-Host "    [>] $($_.Name)" -ForegroundColor Gray }
+            Write-Host ""
+
+            # Configure Pester
+            $config = New-PesterConfiguration
+            $config.Run.Path = $TestFiles.FullName
+            $config.Run.Exit = $false
+            $config.Output.Verbosity = 'Normal'
+
+            # Run tests
+            $testResult = Invoke-Pester -Configuration $config
+
+            # Summary
+            Write-Host ""
+            Write-Host "========================================" -ForegroundColor $(if ($testResult.FailedCount -gt 0) { "Red" } else { "Green" })
+            Write-Host "  Test Results" -ForegroundColor $(if ($testResult.FailedCount -gt 0) { "Red" } else { "Green" })
+            Write-Host "========================================" -ForegroundColor $(if ($testResult.FailedCount -gt 0) { "Red" } else { "Green" })
+            Write-Host "  Passed:  $($testResult.PassedCount)" -ForegroundColor $(if ($testResult.PassedCount -gt 0) { "Green" } else { "Gray" })
+            Write-Host "  Failed:  $($testResult.FailedCount)" -ForegroundColor $(if ($testResult.FailedCount -gt 0) { "Red" } else { "Gray" })
+            Write-Host "  Skipped: $($testResult.SkippedCount)" -ForegroundColor $(if ($testResult.SkippedCount -gt 0) { "Yellow" } else { "Gray" })
+            Write-Host "  Duration: $([math]::Round($testResult.Duration.TotalSeconds, 2))s" -ForegroundColor Gray
+            Write-Host ""
+
+            # Block build on test failures
+            if ($testResult.FailedCount -gt 0) {
+                Write-Host "[!] Build blocked: $($testResult.FailedCount) test(s) failed." -ForegroundColor Red
+                Write-Host "    Run with -SkipTests to bypass (not recommended)" -ForegroundColor Gray
+                exit 1
+            }
+        }
+        else {
+            Write-Host "    No test files found in $TestsPath" -ForegroundColor Yellow
+        }
+    }
+}
+else {
+    Write-Host "[*] Skipping tests (-SkipTests specified)" -ForegroundColor Gray
+}
+
+# Exit early if TestOnly mode
+if ($TestOnly) {
+    Write-Host "`n[*] TestOnly mode - skipping build" -ForegroundColor Yellow
+    exit 0
 }
 
 # ============================================
