@@ -168,6 +168,7 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 - All dialogs now close with ESC key (Settings, Export/Import, Restore, Maintenance, Install, About)
 - Fixed PSScriptAnalyzer warnings (unused parameter, verb naming, empty catch blocks)
+- Build script now supports OneDrive module paths for PSScriptAnalyzer and ps2exe
 - Code quality improvements for better maintainability
 
 ### Previous (v3.7.0)
