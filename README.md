@@ -14,6 +14,10 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 - **Safe Path Escaping** - `Get-EscapedPath` ensures safe command string construction
 - **DPAPI Documentation** - Documented credential storage security limitations
 
+### Bug Fixes
+- **Service Refresh Fix** - Fixed `Start-WsusAutoRecovery` error where `$svc.Refresh()` failed on PSCustomObject
+- **Improved Service Recovery** - Now re-queries service status instead of using Refresh() method
+
 ### Performance Optimizations
 - **SQL Module Caching** - SqlServer module version checked once at load time (not per query)
 - **Batch Service Queries** - Service status uses single batch query instead of 5 individual calls
@@ -184,7 +188,7 @@ GA-WsusManager/
 │   ├── WsusExport.psm1          # Export/import
 │   ├── WsusScheduledTask.psm1   # Scheduled tasks
 │   └── WsusAutoDetection.psm1   # Server detection
-├── Tests/                       # Pester unit tests
+├── Tests/                       # Pester unit tests (323 tests)
 └── DomainController/            # GPO deployment scripts
 ```
 
@@ -221,7 +225,9 @@ GA-WsusManager/
 ## References
 
 - [WSUS Maintenance Guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
-- [SQL Server 2022 Express](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
+- [SQL Server 2022 Express Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
+- [WSUS Best Practices](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment)
+- [PowerShell Gallery - PS2EXE](https://www.powershellgallery.com/packages/ps2exe)
 
 ---
 

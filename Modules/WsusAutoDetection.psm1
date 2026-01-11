@@ -457,8 +457,10 @@ function Start-WsusAutoRecovery {
                 Start-Service -Name $svcInfo.ServiceName -ErrorAction Stop
                 Start-Sleep -Seconds 3
 
-                $svc.Refresh()
-                if ($svc.Status -eq "Running") {
+                # Re-query the service to get fresh status instead of using Refresh()
+                # This avoids issues where Get-Service returns a PSCustomObject
+                $svcCheck = Get-Service -Name $svcInfo.ServiceName -ErrorAction SilentlyContinue
+                if ($svcCheck -and $svcCheck.Status -eq "Running") {
                     Write-Host "  $($svcInfo.Name) started successfully" -ForegroundColor Green
                     $recovered = $true
                     break
