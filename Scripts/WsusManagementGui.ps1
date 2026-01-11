@@ -189,8 +189,13 @@ try {
         <Border Background="{StaticResource BgSidebar}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="12,16,12,0">
-                    <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                    <TextBlock x:Name="VersionLabel" Text="v3.6.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                            <TextBlock x:Name="VersionLabel" Text="v3.6.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
 
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,10,0,0" Padding="8,6">
                         <Grid>
@@ -368,10 +373,13 @@ try {
             <ScrollViewer x:Name="AboutPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="AboutVersion" Text="Version 3.6.0" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
-                            <TextBlock Text="Windows Server Update Services Management Tool" FontSize="11" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                                <TextBlock x:Name="AboutVersion" Text="Version 3.6.0" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Windows Server Update Services Management Tool" FontSize="11" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
@@ -1199,6 +1207,37 @@ try {
     if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
     if (Test-Path $iconPath) {
         $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object System.Uri $iconPath))
+    }
+} catch {}
+
+# Load General Atomics logo for sidebar and About page
+try {
+    $logoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico"
+    if (-not (Test-Path $logoPath)) { $logoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
+    if (Test-Path $logoPath) {
+        $logoUri = New-Object System.Uri $logoPath
+        $logoBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+        $logoBitmap.BeginInit()
+        $logoBitmap.UriSource = $logoUri
+        $logoBitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $logoBitmap.EndInit()
+        $controls.SidebarLogo.Source = $logoBitmap
+    }
+} catch {}
+
+try {
+    $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_big.ico"
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_big.ico" }
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico" }
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
+    if (Test-Path $aboutLogoPath) {
+        $aboutUri = New-Object System.Uri $aboutLogoPath
+        $aboutBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+        $aboutBitmap.BeginInit()
+        $aboutBitmap.UriSource = $aboutUri
+        $aboutBitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+        $aboutBitmap.EndInit()
+        $controls.AboutLogo.Source = $aboutBitmap
     }
 } catch {}
 
