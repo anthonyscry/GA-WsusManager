@@ -1091,31 +1091,36 @@ function Run-Operation {
         $script:CurrentProcess.StartInfo = $psi
         $script:CurrentProcess.EnableRaisingEvents = $true
 
+        # Pass window and controls to event handlers via MessageData (required for scope access)
+        $eventData = @{ Window = $window; Controls = $controls }
+
         $outputHandler = {
             $line = $Event.SourceEventArgs.Data
             if ($line) {
-                $window.Dispatcher.Invoke([Action]{
+                $data = $Event.MessageData
+                $data.Window.Dispatcher.Invoke([Action]{
                     $run = New-Object System.Windows.Documents.Run -ArgumentList "$line`n"
                     $run.Foreground = if($line -match 'ERROR|FAIL'){"Crimson"}elseif($line -match 'WARN'){"Orange"}elseif($line -match 'OK|Success'){"ForestGreen"}else{"Gray"}
-                    $controls.ConsoleOutput.Inlines.Add($run)
-                    $controls.ConsoleScroller.ScrollToEnd()
+                    $data.Controls.ConsoleOutput.Inlines.Add($run)
+                    $data.Controls.ConsoleScroller.ScrollToEnd()
                 })
             }
         }
 
         $exitHandler = {
-            $window.Dispatcher.Invoke([Action]{
+            $data = $Event.MessageData
+            $data.Window.Dispatcher.Invoke([Action]{
                 $run = New-Object System.Windows.Documents.Run -ArgumentList "`n=== Complete ==="
                 $run.Foreground = "DodgerBlue"
-                $controls.ConsoleOutput.Inlines.Add($run)
-                $controls.BtnCancel.Visibility = "Collapsed"
-                $controls.StatusLabel.Text = "Completed"
+                $data.Controls.ConsoleOutput.Inlines.Add($run)
+                $data.Controls.BtnCancel.Visibility = "Collapsed"
+                $data.Controls.StatusLabel.Text = "Completed"
             })
         }
 
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler | Out-Null
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData | Out-Null
 
         $script:CurrentProcess.Start() | Out-Null
         $script:CurrentProcess.BeginOutputReadLine()
