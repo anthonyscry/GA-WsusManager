@@ -3,7 +3,17 @@
     "allow": [
       "Bash(Get-FileHash \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager.exe\", \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager-3.2.0.exe\")",
       "Bash(Format-Table Hash, Path -Wrap)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(powershell:*)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.4.2.exe\")",
+      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.4.4.exe\")",
+      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.5.1.exe\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd CLAUDE.md with project documentation for AI assistants\n\nProvides comprehensive guidance including:\n- Project overview and structure\n- Build process documentation\n- Key technical details \\(modules, GUI, paths\\)\n- Development tasks and testing instructions\n- Code style guidelines and important considerations\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
