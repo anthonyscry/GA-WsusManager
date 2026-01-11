@@ -227,6 +227,13 @@ if (-not $SkipTests) {
             $TestFiles | ForEach-Object { Write-Host "    [>] $($_.Name)" -ForegroundColor Gray }
             Write-Host ""
 
+            # Pre-load all modules once (performance optimization)
+            # This avoids repeated Import-Module calls across test files
+            $TestSetupPath = Join-Path $TestsPath "TestSetup.ps1"
+            if (Test-Path $TestSetupPath) {
+                . $TestSetupPath
+            }
+
             # Configure Pester
             $config = New-PesterConfiguration
             $config.Run.Path = $TestFiles.FullName

@@ -25,6 +25,23 @@ Date: 2026-01-10
 $script:WsusUtilitiesVersion = '1.1.0'
 
 # ===========================
+# CACHED MODULE DETECTION (Performance optimization)
+# ===========================
+# Cache SqlServer module version at load time to avoid repeated Get-Module calls
+$script:SqlServerModuleVersion = $null
+$script:SqlServerSupportsTrustCert = $false
+
+$sqlMod = Get-Module SqlServer -ListAvailable -ErrorAction SilentlyContinue |
+    Sort-Object Version -Descending |
+    Select-Object -First 1
+
+if ($sqlMod) {
+    $script:SqlServerModuleVersion = $sqlMod.Version
+    # TrustServerCertificate was added in SqlServer module v21.1
+    $script:SqlServerSupportsTrustCert = ($sqlMod.Version -ge [Version]"21.1.0")
+}
+
+# ===========================
 # COLOR OUTPUT FUNCTIONS
 # ===========================
 
@@ -430,17 +447,10 @@ function Invoke-WsusSqlcmd {
         $sqlParams.Variable = $Variable
     }
 
-    # Check if SqlServer module supports TrustServerCertificate (v21.1+)
-    # This parameter is required for newer module versions to avoid certificate trust errors
-    $sqlModule = Get-Module SqlServer -ListAvailable -ErrorAction SilentlyContinue |
-        Sort-Object Version -Descending |
-        Select-Object -First 1
-
-    if ($sqlModule) {
-        # TrustServerCertificate was added in SqlServer module v21.1
-        if ($sqlModule.Version -ge [Version]"21.1.0") {
-            $sqlParams.TrustServerCertificate = $true
-        }
+    # Use cached SqlServer module version check (performance optimization)
+    # Version is detected once at module load time
+    if ($script:SqlServerSupportsTrustCert) {
+        $sqlParams.TrustServerCertificate = $true
     }
 
     # Execute the query
