@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.5.2
+Version: 3.6.0
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -14,15 +14,11 @@ Version: 3.5.2
 
 param([switch]$SkipAdminCheck)
 
-# Load WPF assemblies
-Add-Type -AssemblyName PresentationFramework
-Add-Type -AssemblyName PresentationCore
-Add-Type -AssemblyName WindowsBase
-Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-$script:AppVersion = "3.5.2"
+$script:AppVersion = "3.6.0"
 
-#region Script Path Detection
+#region Script Path & Settings
 $script:ScriptRoot = $null
 $exePath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
 if ($exePath -and $exePath -notmatch 'powershell\.exe$|pwsh\.exe$') {
@@ -32,20 +28,18 @@ if ($exePath -and $exePath -notmatch 'powershell\.exe$|pwsh\.exe$') {
 } else {
     $script:ScriptRoot = (Get-Location).Path
 }
-#endregion
 
-#region Settings
 $script:LogDir = "C:\WSUS\Logs"
 $script:LogPath = Join-Path $script:LogDir "WsusGui_$(Get-Date -Format 'yyyy-MM-dd').log"
 $script:SettingsFile = Join-Path $env:APPDATA "WsusManager\settings.json"
 $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
 $script:ExportRoot = "C:\"
-$script:ServerMode = "Online"  # "Online" or "AirGap"
-$script:RefreshInProgress = $false  # Guard to prevent overlapping dashboard refreshes
+$script:ServerMode = "Online"
+$script:RefreshInProgress = $false
+$script:CurrentProcess = $null
 
-function Write-Log {
-    param([string]$Msg)
+function Write-Log { param([string]$Msg)
     try {
         if (!(Test-Path $script:LogDir)) { New-Item -Path $script:LogDir -ItemType Directory -Force | Out-Null }
         "[$(Get-Date -Format 'HH:mm:ss')] $Msg" | Add-Content -Path $script:LogPath -ErrorAction SilentlyContinue
@@ -61,10 +55,7 @@ function Import-WsusSettings {
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
         }
-    } catch {
-        # Settings file may be corrupt or inaccessible - use defaults
-        Write-Log "Failed to load settings: $($_.Exception.Message)"
-    }
+    } catch { Write-Log "Failed to load settings: $_" }
 }
 
 function Save-Settings {
@@ -73,114 +64,71 @@ function Save-Settings {
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
         @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
-    } catch {
-        Write-Log "Failed to save settings: $($_.Exception.Message)"
-    }
+    } catch { Write-Log "Failed to save settings: $_" }
 }
 
 Import-WsusSettings
 Write-Log "=== Starting v$script:AppVersion ==="
 #endregion
 
-#region Security Helpers
-function Get-EscapedPath {
-    <#
-    .SYNOPSIS
-        Escapes a file path for safe use in PowerShell command strings
-    .DESCRIPTION
-        Escapes single quotes and validates path format to prevent command injection
-    #>
-    param([string]$Path)
+#region Security & Admin Check
+function Get-EscapedPath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
-    # Escape single quotes by doubling them
     return $Path -replace "'", "''"
 }
 
-function Test-SafePath {
-    <#
-    .SYNOPSIS
-        Validates that a path is safe for use in commands
-    .DESCRIPTION
-        Checks for potentially dangerous characters that could enable command injection
-    #>
-    param([string]$Path)
+function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
-    # Block paths with dangerous PowerShell characters
     if ($Path -match '[`$;|&<>]') { return $false }
-    # Must be a valid Windows path format
     if ($Path -notmatch '^[A-Za-z]:\\') { return $false }
     return $true
 }
-#endregion
 
-#region Admin Check
 $script:IsAdmin = $false
 try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $p = New-Object Security.Principal.WindowsPrincipal($id)
     $script:IsAdmin = $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-} catch {
-    Write-Log "Failed to check admin status: $($_.Exception.Message)"
-}
+} catch { Write-Log "Admin check failed: $_" }
 #endregion
 
-#region XAML Definition
+#region XAML
 [xml]$xaml = @"
-<Window
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="WSUS Manager"
-    Height="700"
-    Width="1100"
-    MinHeight="600"
-    MinWidth="900"
-    WindowStartupLocation="CenterScreen"
-    Background="#0D1117">
-
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WSUS Manager" Height="650" Width="950" MinHeight="550" MinWidth="800"
+        WindowStartupLocation="CenterScreen" Background="#0D1117">
     <Window.Resources>
-        <!-- Color Palette -->
-        <Color x:Key="BgDark">#0D1117</Color>
-        <Color x:Key="BgSidebar">#161B22</Color>
-        <Color x:Key="BgCard">#21262D</Color>
-        <Color x:Key="BorderColor">#30363D</Color>
-        <Color x:Key="AccentBlue">#58A6FF</Color>
-        <Color x:Key="AccentGreen">#3FB950</Color>
-        <Color x:Key="AccentOrange">#D29922</Color>
-        <Color x:Key="AccentRed">#F85149</Color>
-        <Color x:Key="TextPrimary">#E6EDF3</Color>
-        <Color x:Key="TextSecondary">#8B949E</Color>
-        <Color x:Key="TextMuted">#484F58</Color>
+        <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
+        <SolidColorBrush x:Key="BgSidebar" Color="#161B22"/>
+        <SolidColorBrush x:Key="BgCard" Color="#21262D"/>
+        <SolidColorBrush x:Key="Border" Color="#30363D"/>
+        <SolidColorBrush x:Key="Blue" Color="#58A6FF"/>
+        <SolidColorBrush x:Key="Green" Color="#3FB950"/>
+        <SolidColorBrush x:Key="Orange" Color="#D29922"/>
+        <SolidColorBrush x:Key="Red" Color="#F85149"/>
+        <SolidColorBrush x:Key="Text1" Color="#E6EDF3"/>
+        <SolidColorBrush x:Key="Text2" Color="#8B949E"/>
+        <SolidColorBrush x:Key="Text3" Color="#484F58"/>
 
-        <SolidColorBrush x:Key="BgDarkBrush" Color="{StaticResource BgDark}"/>
-        <SolidColorBrush x:Key="BgSidebarBrush" Color="{StaticResource BgSidebar}"/>
-        <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCard}"/>
-        <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
-        <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
-        <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreen}"/>
-        <SolidColorBrush x:Key="AccentOrangeBrush" Color="{StaticResource AccentOrange}"/>
-        <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource AccentRed}"/>
-        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
-        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
-
-        <!-- Navigation Button Style -->
-        <Style x:Key="NavButton" TargetType="Button">
+        <Style x:Key="NavBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+            <Setter Property="Padding" Value="12,10"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4" Margin="4,1">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#21262D"/>
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                <Setter TargetName="bd" Property="Background" Value="#21262D"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text1}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -188,11 +136,10 @@ try {
             </Setter>
         </Style>
 
-        <!-- Primary Button Style -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Blue}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Padding" Value="14,8"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -200,15 +147,15 @@ try {
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#79C0FF"/>
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#30363D"/>
+                                <Setter TargetName="bd" Property="Background" Value="#30363D"/>
                                 <Setter Property="Foreground" Value="#484F58"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -217,146 +164,81 @@ try {
             </Setter>
         </Style>
 
-        <!-- Secondary Button Style -->
-        <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#30363D"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="BtnSec" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="{StaticResource BgCard}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
         </Style>
 
-        <!-- Success Button Style -->
-        <Style x:Key="SuccessButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentGreenBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#56D364"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="BtnGreen" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="{StaticResource Green}"/>
         </Style>
 
-        <!-- Danger Button Style -->
-        <Style x:Key="DangerButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentRedBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#FF6B61"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="BtnRed" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Background" Value="{StaticResource Red}"/>
         </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
-        <Border Grid.Column="0" Background="{StaticResource BgSidebarBrush}">
+        <Border Background="{StaticResource BgSidebar}">
             <DockPanel>
-                <!-- Logo Section -->
-                <StackPanel DockPanel.Dock="Top" Margin="16,20,16,0">
-                    <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                    <TextBlock x:Name="VersionLabel" Text="v3.5.0" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+                <StackPanel DockPanel.Dock="Top" Margin="12,16,12,0">
+                    <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                    <TextBlock x:Name="VersionLabel" Text="v3.6.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
 
-                    <!-- Server Mode Toggle -->
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Margin="0,12,0,0" Padding="8,6">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,10,0,0" Padding="8,6">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock x:Name="ServerModeLabel" Text="Online" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentGreenBrush}"/>
-                                <TextBlock Text="Server Mode" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                            <StackPanel>
+                                <TextBlock x:Name="ServerModeLabel" Text="Online" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
+                                <TextBlock Text="Mode" FontSize="9" Foreground="{StaticResource Text3}"/>
                             </StackPanel>
-                            <Button x:Name="BtnToggleMode" Grid.Column="1" Content="Switch" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="10"/>
+                            <Button x:Name="BtnToggleMode" Grid.Column="1" Content="⇄" Style="{StaticResource BtnSec}" Padding="6,2" FontSize="12" ToolTip="Toggle Server Mode"/>
                         </Grid>
                     </Border>
                 </StackPanel>
 
-                <!-- Settings/About/Help at bottom -->
-                <StackPanel DockPanel.Dock="Bottom" Margin="8,0,8,16">
-                    <Button x:Name="BtnHelp" Content="Help" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}" ToolTip="View built-in documentation"/>
-                    <Button x:Name="BtnSettings" Content="Settings" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}"/>
-                    <Button x:Name="BtnAbout" Content="About" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
+                    <Button x:Name="BtnHelp" Content="? Help" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnSettings" Content="⚙ Settings" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnAbout" Content="ℹ About" Style="{StaticResource NavBtn}"/>
                 </StackPanel>
 
-                <!-- Navigation Menu -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,20,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
                     <StackPanel>
-                        <Button x:Name="BtnDashboard" Content="Dashboard" Style="{StaticResource NavButton}" Margin="8,0" Background="#21262D" Foreground="{StaticResource TextPrimaryBrush}" ToolTip="View system status and metrics"/>
+                        <Button x:Name="BtnDashboard" Content="◉ Dashboard" Style="{StaticResource NavBtn}" Background="#21262D" Foreground="{StaticResource Text1}"/>
 
-                        <TextBlock Text="SETUP" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnInstall" Content="Install WSUS" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Install WSUS with SQL Express"/>
-                        <Button x:Name="BtnRestore" Content="Restore Database" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Restore SUSDB from backup"/>
+                        <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="DATA TRANSFER" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnExport" Content="Export to Media" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Export updates for air-gapped transfer"/>
-                        <Button x:Name="BtnImport" Content="Import from Media" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Import updates from external media"/>
+                        <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <Button x:Name="BtnExport" Content="↑ Export" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnImport" Content="↓ Import" Style="{StaticResource NavBtn}" Visibility="Collapsed"/>
 
-                        <TextBlock Text="MAINTENANCE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnMaintenance" Content="Monthly Maintenance" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Run monthly cleanup and optimization tasks"/>
-                        <Button x:Name="BtnCleanup" Content="Deep Cleanup" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Comprehensive update cleanup and database optimization"/>
+                        <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="TROUBLESHOOTING" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnHealth" Content="Health Check" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Diagnose system issues (read-only)"/>
-                        <Button x:Name="BtnRepair" Content="Health + Repair" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Diagnose and auto-fix system issues"/>
+                        <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <Button x:Name="BtnHealth" Content="🔍 Health Check" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnRepair" Content="🔧 Repair" Style="{StaticResource NavBtn}"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
 
         <!-- Main Content -->
-        <Grid Grid.Column="1" Margin="24,16,24,16">
+        <Grid Grid.Column="1" Margin="20,12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -364,11 +246,11 @@ try {
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <DockPanel Grid.Row="0" Margin="0,0,0,16">
-                <Border DockPanel.Dock="Right" Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <TextBlock x:Name="AdminBadge" Text="Administrator" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentGreenBrush}"/>
+            <DockPanel Margin="0,0,0,12">
+                <Border DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
+                    <TextBlock x:Name="AdminBadge" Text="Admin" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
                 </Border>
-                <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
             </DockPanel>
 
             <!-- Dashboard Panel -->
@@ -376,89 +258,71 @@ try {
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Status Cards -->
-                <Grid Grid.Row="0" Margin="0,0,0,24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Card 1: Services -->
-                    <Border Grid.Column="0" Background="{StaticResource BgCardBrush}" CornerRadius="4">
+                <UniformGrid Rows="1" Margin="0,0,0,16">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,0,8,0">
                         <Grid>
-                            <Border x:Name="Card1Bar" Height="4" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource AccentBlueBrush}"/>
-                            <StackPanel Margin="16,20,16,16">
-                                <TextBlock Text="Services" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock x:Name="Card1Value" Text="..." FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,8,0,0"/>
-                                <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+                            <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
+                            <StackPanel Margin="12,14,12,12">
+                                <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
+                                <TextBlock x:Name="Card1Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-
-                    <!-- Card 2: Database -->
-                    <Border Grid.Column="2" Background="{StaticResource BgCardBrush}" CornerRadius="4">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
-                            <Border x:Name="Card2Bar" Height="4" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource AccentGreenBrush}"/>
-                            <StackPanel Margin="16,20,16,16">
-                                <TextBlock Text="Database" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock x:Name="Card2Value" Text="..." FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,8,0,0"/>
-                                <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+                            <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
+                            <StackPanel Margin="12,14,12,12">
+                                <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
+                                <TextBlock x:Name="Card2Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-
-                    <!-- Card 3: Disk Space -->
-                    <Border Grid.Column="4" Background="{StaticResource BgCardBrush}" CornerRadius="4">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
-                            <Border x:Name="Card3Bar" Height="4" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource AccentOrangeBrush}"/>
-                            <StackPanel Margin="16,20,16,16">
-                                <TextBlock Text="Disk Space" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock x:Name="Card3Value" Text="..." FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,8,0,0"/>
-                                <TextBlock x:Name="Card3Sub" Text="Content storage" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+                            <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
+                            <StackPanel Margin="12,14,12,12">
+                                <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
+                                <TextBlock x:Name="Card3Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-
-                    <!-- Card 4: Automation -->
-                    <Border Grid.Column="6" Background="{StaticResource BgCardBrush}" CornerRadius="4">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="8,0,0,0">
                         <Grid>
-                            <Border x:Name="Card4Bar" Height="4" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource AccentBlueBrush}"/>
-                            <StackPanel Margin="16,20,16,16">
-                                <TextBlock Text="Automation" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock x:Name="Card4Value" Text="..." FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,8,0,0"/>
-                                <TextBlock x:Name="Card4Sub" Text="Scheduled task" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
+                            <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
+                            <StackPanel Margin="12,14,12,12">
+                                <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
+                                <TextBlock x:Name="Card4Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-                </Grid>
+                </UniformGrid>
 
                 <!-- Quick Actions -->
-                <StackPanel Grid.Row="1" Margin="0,0,0,24">
-                    <TextBlock Text="Quick Actions" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+                <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                    <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
-                        <Button x:Name="QBtnHealth" Content="Health Check" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnMaint" Content="Maintenance" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource SuccessButton}" Margin="0,0,8,0"/>
+                        <Button x:Name="QBtnHealth" Content="Health Check" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnMaint" Content="Maintenance" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
 
-                <!-- Configuration -->
-                <StackPanel Grid.Row="2">
-                    <TextBlock Text="Configuration" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="16">
+                <!-- Config -->
+                <Border Grid.Row="2" Background="{StaticResource BgCard}" CornerRadius="4" Padding="14" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Configuration" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,10"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="90"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -467,123 +331,68 @@ try {
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Content Path:" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-                            <TextBlock x:Name="CfgContentPath" Grid.Row="0" Grid.Column="1" Text="C:\WSUS" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="SQL Instance:" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-                            <TextBlock x:Name="CfgSqlInstance" Grid.Row="1" Grid.Column="1" Text=".\SQLEXPRESS" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Export Root:" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-                            <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
-
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Log File:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-                                <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                <Button x:Name="BtnOpenLog" Content="Open" FontSize="10" Padding="8,2" Margin="12,0,0,0" Background="#30363D" Foreground="{StaticResource TextSecondaryBrush}" BorderThickness="0" Cursor="Hand" ToolTip="Open log folder in Explorer"/>
+                            <TextBlock Text="Content:" Foreground="{StaticResource Text2}" FontSize="11"/>
+                            <TextBlock x:Name="CfgContentPath" Grid.Column="1" Text="C:\WSUS" Foreground="{StaticResource Text1}" FontSize="11"/>
+                            <TextBlock Grid.Row="1" Text="SQL:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="CfgSqlInstance" Grid.Row="1" Grid.Column="1" Text=".\SQLEXPRESS" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="2" Text="Export:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="3" Text="Log:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource Text1}" FontSize="11"/>
+                                <Button x:Name="BtnOpenLog" Content="Open" FontSize="9" Padding="6,1" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
-                    </Border>
-                </StackPanel>
+                    </StackPanel>
+                </Border>
             </Grid>
 
-            <!-- Operation Panel (hidden by default) -->
+            <!-- Operation Panel -->
             <Grid x:Name="OperationPanel" Grid.Row="1" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-
-                <Border Grid.Row="0" Background="{StaticResource BgCardBrush}" CornerRadius="4">
-                    <ScrollViewer x:Name="ConsoleScroller" VerticalScrollBarVisibility="Auto" Margin="12">
-                        <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                <Border Background="{StaticResource BgCard}" CornerRadius="4">
+                    <ScrollViewer x:Name="ConsoleScroller" VerticalScrollBarVisibility="Auto" Margin="10">
+                        <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
-
-                <DockPanel Grid.Row="1" Margin="0,12,0,0">
-                    <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource DangerButton}" DockPanel.Dock="Left" Visibility="Collapsed"/>
-                    <Button x:Name="BtnBack" Content="Back to Dashboard" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Right"/>
-                </DockPanel>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
+                    <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
+                </StackPanel>
             </Grid>
 
-            <!-- About Panel (hidden by default) -->
+            <!-- About Panel -->
             <ScrollViewer x:Name="AboutPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel>
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Company Logo -->
-                            <Border Grid.Column="0" Width="80" Height="80" Background="#1A3A6E" CornerRadius="8" Margin="0,0,20,0">
-                                <Image x:Name="AboutLogo" Width="64" Height="64" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="WSUS Manager" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                <TextBlock x:Name="AboutVersion" Text="Version 3.5.1" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Author" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
-                            <TextBlock Text="Tony Tran" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AccentBlueBrush}"/>
-                            <TextBlock Text="Information Systems Security Officer" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                            <TextBlock Text="Classified Computing, GA-ASI" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
-                            <TextBlock Text="tony.tran@ga-asi.com" FontSize="12" Foreground="{StaticResource AccentBlueBrush}" Margin="0,8,0,0"/>
+                            <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                            <TextBlock x:Name="AboutVersion" Text="Version 3.6.0" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                            <TextBlock Text="Windows Server Update Services Management Tool" FontSize="11" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
-
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Description" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="WSUS Manager is a comprehensive toolkit for deploying and managing Windows Server Update Services with SQL Server Express. It provides a modern GUI for server setup, database management, and air-gapped network support."/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,0"
-                                       Text="Features include automated WSUS installation, database backup/restore, export/import for offline networks, monthly maintenance automation, health checks with auto-repair, and deep cleanup operations."/>
+                            <TextBlock Text="Author" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Tony Tran" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Blue}"/>
+                            <TextBlock Text="ISSO, Classified Computing, GA-ASI" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,2,0,0"/>
+                            <TextBlock Text="tony.tran@ga-asi.com" FontSize="11" Foreground="{StaticResource Blue}" Margin="0,6,0,0"/>
                         </StackPanel>
                     </Border>
-
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="System Requirements" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Operating System" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Windows Server 2019+" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="PowerShell" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Version 5.1 or higher" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="SQL Server" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="SQL Server Express 2022" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Disk Space" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Grid.Row="3" Grid.Column="1" Text="50GB+ recommended for updates" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                            </Grid>
+                            <TextBlock Text="Features" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Monthly maintenance automation&#x0a;• Health diagnostics with auto-repair&#x0a;• Deep cleanup and optimization"/>
                         </StackPanel>
                     </Border>
-
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="20">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="License" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
-                            <TextBlock Text="Internal Use Only - General Atomics Aeronautical Systems, Inc." FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                            <TextBlock Text="© 2026 GA-ASI. All rights reserved." FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,0"/>
+                            <TextBlock Text="Requirements" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 50GB+ disk space"/>
+                            <TextBlock Text="© 2026 GA-ASI. Internal use only." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,12,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -595,32 +404,28 @@ try {
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-
-                <!-- Help Navigation -->
-                <Border Grid.Row="0" Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="12" Margin="0,0,0,16">
+                <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
                     <WrapPanel>
-                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap Workflow" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
-                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource BtnSec}" Padding="10,5"/>
                     </WrapPanel>
                 </Border>
-
-                <!-- Help Content -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="24">
-                        <StackPanel x:Name="HelpContent">
-                            <TextBlock x:Name="HelpTitle" Text="WSUS Manager Help" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,16"/>
-                            <TextBlock x:Name="HelpText" TextWrapping="Wrap" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="22"/>
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="20">
+                        <StackPanel>
+                            <TextBlock x:Name="HelpTitle" Text="Help" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                            <TextBlock x:Name="HelpText" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20"/>
                         </StackPanel>
                     </Border>
                 </ScrollViewer>
             </Grid>
 
             <!-- Status Bar -->
-            <Border Grid.Row="2" Background="{StaticResource BgCardBrush}" CornerRadius="4" Margin="0,16,0,0" Padding="12,8">
-                <TextBlock x:Name="StatusLabel" Text="Ready" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+            <Border Grid.Row="2" Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,12,0,0" Padding="10,6">
+                <TextBlock x:Name="StatusLabel" Text="Ready" FontSize="10" Foreground="{StaticResource Text2}"/>
             </Border>
         </Grid>
     </Grid>
@@ -632,11 +437,9 @@ try {
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
-# Get controls
 $controls = @{}
 $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForEach-Object {
-    $name = $_.Name
-    if ($name) { $controls[$name] = $window.FindName($name) }
+    if ($_.Name) { $controls[$_.Name] = $window.FindName($_.Name) }
 }
 #endregion
 
@@ -650,9 +453,7 @@ function Get-ServiceStatus {
                 $result.Running++
                 $result.Names += switch($svc){"MSSQL`$SQLEXPRESS"{"SQL"}"WSUSService"{"WSUS"}"W3SVC"{"IIS"}}
             }
-        } catch {
-            Write-Log "Service check failed for ${svc}: $($_.Exception.Message)"
-        }
+        } catch {}
     }
     return $result
 }
@@ -661,498 +462,295 @@ function Get-DiskFreeGB {
     try {
         $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue
         if ($d.Free) { return [math]::Round($d.Free/1GB,1) }
-    } catch {
-        Write-Log "Disk check failed: $($_.Exception.Message)"
-    }
+    } catch {}
     return 0
 }
 
 function Get-DatabaseSizeGB {
-    # SQL Express has a 10GB limit - get current SUSDB size
     try {
-        $sqlRunning = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
-        if ($sqlRunning -and $sqlRunning.Status -eq "Running") {
-            $query = "SELECT SUM(size * 8 / 1024.0) AS SizeMB FROM sys.master_files WHERE database_id = DB_ID('SUSDB')"
-            $result = Invoke-Sqlcmd -ServerInstance $script:SqlInstance -Query $query -ErrorAction SilentlyContinue
-            if ($result -and $result.SizeMB) {
-                return [math]::Round($result.SizeMB / 1024, 2)
-            }
+        $sql = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if ($sql -and $sql.Status -eq "Running") {
+            $q = "SELECT SUM(size * 8 / 1024.0) AS SizeMB FROM sys.master_files WHERE database_id = DB_ID('SUSDB')"
+            $r = Invoke-Sqlcmd -ServerInstance $script:SqlInstance -Query $q -ErrorAction SilentlyContinue
+            if ($r -and $r.SizeMB) { return [math]::Round($r.SizeMB / 1024, 2) }
         }
-    } catch {
-        Write-Log "Database size check failed: $($_.Exception.Message)"
-    }
-    return -1  # -1 indicates unable to get size
+    } catch {}
+    return -1
 }
 
 function Get-TaskStatus {
     try {
         $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
         if ($t) { return $t.State.ToString() }
-    } catch {
-        Write-Log "Task status check failed: $($_.Exception.Message)"
-    }
+    } catch {}
     return "Not Set"
 }
 
 function Update-Dashboard {
-    # Services card
     $svc = Get-ServiceStatus
-    $controls.Card1Value.Text = if($svc.Running -eq 3){"All Running"}else{"$($svc.Running)/3 Running"}
-    $controls.Card1Sub.Text = if($svc.Names.Count -gt 0){$svc.Names -join ", "}else{"Services stopped"}
-    $controls.Card1Bar.Background = if($svc.Running -eq 3){
-        $window.FindResource("AccentGreenBrush")
-    }elseif($svc.Running -gt 0){
-        $window.FindResource("AccentOrangeBrush")
-    }else{
-        $window.FindResource("AccentRedBrush")
-    }
+    $controls.Card1Value.Text = if($svc.Running -eq 3){"All Running"}else{"$($svc.Running)/3"}
+    $controls.Card1Sub.Text = if($svc.Names.Count -gt 0){$svc.Names -join ", "}else{"Stopped"}
+    $controls.Card1Bar.Background = if($svc.Running -eq 3){"#3FB950"}elseif($svc.Running -gt 0){"#D29922"}else{"#F85149"}
 
-    # Database card - show size out of 10GB limit with color coding
-    $dbSize = Get-DatabaseSizeGB
-    if ($dbSize -ge 0) {
-        $controls.Card2Value.Text = "$dbSize / 10 GB"
-        # Color based on how close to 10GB limit: <7=green, 7-9=yellow, >9=red
-        if ($dbSize -ge 9) {
-            $controls.Card2Sub.Text = "Critical: >9GB - cleanup needed"
-            $controls.Card2Bar.Background = $window.FindResource("AccentRedBrush")
-        } elseif ($dbSize -ge 7) {
-            $controls.Card2Sub.Text = "Warning: 7-9GB - consider cleanup"
-            $controls.Card2Bar.Background = $window.FindResource("AccentOrangeBrush")
-        } else {
-            $controls.Card2Sub.Text = "Healthy: <7GB of 10GB limit"
-            $controls.Card2Bar.Background = $window.FindResource("AccentGreenBrush")
-        }
+    $db = Get-DatabaseSizeGB
+    if ($db -ge 0) {
+        $controls.Card2Value.Text = "$db / 10 GB"
+        $controls.Card2Sub.Text = if($db -ge 9){"Critical!"}elseif($db -ge 7){"Warning"}else{"Healthy"}
+        $controls.Card2Bar.Background = if($db -ge 9){"#F85149"}elseif($db -ge 7){"#D29922"}else{"#3FB950"}
     } else {
         $controls.Card2Value.Text = "Offline"
-        $controls.Card2Sub.Text = "SQL not running"
-        $controls.Card2Bar.Background = $window.FindResource("AccentOrangeBrush")
+        $controls.Card2Sub.Text = "SQL stopped"
+        $controls.Card2Bar.Background = "#D29922"
     }
 
-    # Disk card
     $disk = Get-DiskFreeGB
-    $controls.Card3Value.Text = "$disk GB Free"
-    $controls.Card3Bar.Background = if($disk -lt 10){
-        $window.FindResource("AccentRedBrush")
-    }elseif($disk -lt 50){
-        $window.FindResource("AccentOrangeBrush")
-    }else{
-        $window.FindResource("AccentGreenBrush")
-    }
+    $controls.Card3Value.Text = "$disk GB"
+    $controls.Card3Sub.Text = if($disk -lt 10){"Critical!"}elseif($disk -lt 50){"Low"}else{"OK"}
+    $controls.Card3Bar.Background = if($disk -lt 10){"#F85149"}elseif($disk -lt 50){"#D29922"}else{"#3FB950"}
 
-    # Task card
     $task = Get-TaskStatus
     $controls.Card4Value.Text = $task
-    $controls.Card4Bar.Background = if($task -eq "Ready"){
-        $window.FindResource("AccentGreenBrush")
-    }else{
-        $window.FindResource("AccentOrangeBrush")
-    }
+    $controls.Card4Bar.Background = if($task -eq "Ready"){"#3FB950"}else{"#D29922"}
 
-    # Config
     $controls.CfgContentPath.Text = $script:ContentPath
     $controls.CfgSqlInstance.Text = $script:SqlInstance
     $controls.CfgExportRoot.Text = $script:ExportRoot
     $controls.CfgLogPath.Text = $script:LogPath
-
-    $controls.StatusLabel.Text = "Last refresh: $(Get-Date -Format 'HH:mm:ss')"
+    $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')"
 }
 
 function Set-ActiveNavButton {
-    param([string]$ActiveButton)
-    $navButtons = @("BtnDashboard","BtnInstall","BtnRestore","BtnExport","BtnImport","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
-    foreach ($btn in $navButtons) {
-        if ($controls[$btn]) {
-            $isActive = ($btn -eq $ActiveButton)
-            $controls[$btn].Background = if($isActive){$window.FindResource("BgCardBrush")}else{[System.Windows.Media.Brushes]::Transparent}
-            $controls[$btn].Foreground = if($isActive){$window.FindResource("TextPrimaryBrush")}else{$window.FindResource("TextSecondaryBrush")}
+    param([string]$Active)
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnExport","BtnImport","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    foreach ($b in $navBtns) {
+        if ($controls[$b]) {
+            $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
+            $controls[$b].Foreground = if($b -eq $Active){"#E6EDF3"}else{"#8B949E"}
         }
     }
 }
 
-function Show-Dashboard {
-    $controls.PageTitle.Text = "Dashboard"
-    $controls.DashboardPanel.Visibility = "Visible"
-    $controls.OperationPanel.Visibility = "Collapsed"
-    $controls.AboutPanel.Visibility = "Collapsed"
-    $controls.HelpPanel.Visibility = "Collapsed"
-    Set-ActiveNavButton "BtnDashboard"
-    Update-Dashboard
+function Show-Panel {
+    param([string]$Panel, [string]$Title, [string]$NavBtn)
+    $controls.PageTitle.Text = $Title
+    $controls.DashboardPanel.Visibility = if($Panel -eq "Dashboard"){"Visible"}else{"Collapsed"}
+    $controls.OperationPanel.Visibility = if($Panel -eq "Operation"){"Visible"}else{"Collapsed"}
+    $controls.AboutPanel.Visibility = if($Panel -eq "About"){"Visible"}else{"Collapsed"}
+    $controls.HelpPanel.Visibility = if($Panel -eq "Help"){"Visible"}else{"Collapsed"}
+    Set-ActiveNavButton $NavBtn
+    if ($Panel -eq "Dashboard") { Update-Dashboard }
 }
 
-function Show-About {
-    $controls.PageTitle.Text = "About"
-    $controls.DashboardPanel.Visibility = "Collapsed"
-    $controls.OperationPanel.Visibility = "Collapsed"
-    $controls.AboutPanel.Visibility = "Visible"
-    $controls.HelpPanel.Visibility = "Collapsed"
-    Set-ActiveNavButton "BtnAbout"
+function Update-ServerModeUI {
+    if ($script:ServerMode -eq "Online") {
+        $controls.ServerModeLabel.Text = "Online"
+        $controls.ServerModeLabel.Foreground = "#3FB950"
+        $controls.BtnExport.Visibility = "Visible"
+        $controls.BtnMaintenance.Visibility = "Visible"
+        $controls.BtnImport.Visibility = "Collapsed"
+        $controls.QBtnMaint.Visibility = "Visible"
+    } else {
+        $controls.ServerModeLabel.Text = "Air-Gap"
+        $controls.ServerModeLabel.Foreground = "#D29922"
+        $controls.BtnExport.Visibility = "Collapsed"
+        $controls.BtnMaintenance.Visibility = "Collapsed"
+        $controls.BtnImport.Visibility = "Visible"
+        $controls.QBtnMaint.Visibility = "Collapsed"
+    }
 }
+#endregion
 
-#region Help System
+#region Help Content
 $script:HelpContent = @{
     Overview = @"
-WSUS MANAGER - OVERVIEW
+WSUS MANAGER OVERVIEW
 
-WSUS Manager is a comprehensive toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
+A toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
 
 FEATURES
-- Modern dark-themed GUI with auto-refresh dashboard
-- Air-gapped network support with export/import
-- Automated maintenance and cleanup
-- Health monitoring with auto-repair
-- Database size monitoring (10GB SQL Express limit)
+• Modern dark-themed GUI with auto-refresh
+• Air-gapped network support (export/import)
+• Automated maintenance and cleanup
+• Health monitoring with auto-repair
+• Database size monitoring (10GB limit)
 
 QUICK START
 1. Run WsusManager.exe as Administrator
 2. Use 'Install WSUS' for fresh installation
 3. Dashboard shows real-time status
-4. Toggle Server Mode for Online/Air-Gap operations
+4. Toggle Mode for Online/Air-Gap operations
 
 REQUIREMENTS
-- Windows Server 2019 or later
-- PowerShell 5.1+
-- SQL Server Express 2022
-- Administrator privileges
-- 50+ GB disk space recommended
+• Windows Server 2019+
+• PowerShell 5.1+
+• SQL Server Express 2022
+• 50+ GB disk space
 
-STANDARD PATHS
-- WSUS Content: C:\WSUS\
-- SQL Installers: C:\WSUS\SQLDB\
-- Logs: C:\WSUS\Logs\
-- Settings: %APPDATA%\WsusManager\settings.json
+PATHS
+• Content: C:\WSUS\
+• SQL Installers: C:\WSUS\SQLDB\
+• Logs: C:\WSUS\Logs\
 "@
 
     Dashboard = @"
 DASHBOARD GUIDE
 
-The dashboard displays four color-coded status cards with auto-refresh every 30 seconds.
+Four status cards with 30-second auto-refresh.
 
-STATUS CARDS
+SERVICES CARD
+• Green: All 3 running (SQL, WSUS, IIS)
+• Orange: Partial
+• Red: Critical services stopped
 
-Services Card
-- Shows SQL Server, WSUS, and IIS status
-- Green: All services running
-- Orange: Some services running
-- Red: Critical services stopped
+DATABASE CARD
+• Shows SUSDB vs 10GB SQL Express limit
+• Green: <7GB | Orange: 7-9GB | Red: >9GB
 
-Database Card
-- Shows SUSDB size vs 10GB SQL Express limit
-- Green: Less than 7 GB (healthy)
-- Yellow: 7-9 GB (consider cleanup)
-- Red: Over 9 GB (cleanup required!)
+DISK CARD
+• Green: >50GB | Orange: 10-50GB | Red: <10GB
 
-Disk Space Card
-- Shows free space on content drive
-- Green: More than 50 GB free
-- Yellow: 10-50 GB free
-- Red: Less than 10 GB (critical!)
-
-Automation Card
-- Shows scheduled task status
-- Green: Task configured and ready
-- Orange: No scheduled task set
+TASK CARD
+• Green: Scheduled task ready
+• Orange: Not configured
 
 QUICK ACTIONS
-
-Health Check - Run diagnostics without changes
-Deep Cleanup - Aggressive cleanup for space
-Maintenance - Monthly maintenance routine
-Start Services - Start all WSUS services
-
-AUTO-REFRESH
-Dashboard updates every 30 seconds automatically.
-A refresh guard prevents overlapping operations.
+• Health Check - Diagnostics only
+• Deep Cleanup - Aggressive cleanup
+• Maintenance - Monthly routine
+• Start Services - Start all services
 "@
 
     Operations = @"
 OPERATIONS GUIDE
 
-SETUP OPERATIONS
+SETUP
+• Install WSUS - Fresh installation with SQL Express
+• Restore DB - Restore SUSDB from backup
 
-Install WSUS
-- Installs WSUS with SQL Server Express
-- Requires SQL installers in C:\WSUS\SQLDB\
-- Takes 15-30 minutes to complete
-
-Restore Database
-- Restores SUSDB from backup file
-- Place .bak file in C:\WSUS\
-- Ensure content files are in place first
-
-DATA TRANSFER
-
-Export to Media (Online Mode)
-- Full Export: Complete database and all files
-- Differential: Only updates from last N days
-- Select USB drive as destination
-- Creates backup.bak and WsusContent folder
-
-Import from Media (Air-Gap Mode)
-- Select source folder with export
-- Imports database and content files
-- Use Restore Database after full import
+TRANSFER
+• Export (Online) - Full or differential export to USB
+• Import (Air-Gap) - Import from external media
 
 MAINTENANCE
+• Monthly - Sync, decline superseded, cleanup, backup
+• Deep Cleanup - Remove obsolete, shrink database
 
-Monthly Maintenance
-- Syncs with Microsoft Update
-- Declines superseded updates
-- Runs cleanup wizard
-- Optimizes database indexes
-- Creates backup
-
-Deep Cleanup
-- Removes obsolete updates
-- Cleans superseded content
-- Shrinks database
-- Compacts content directory
-- Use when database is large
-
-TROUBLESHOOTING
-
-Health Check
-- Verifies services, database, firewall
-- Read-only - makes no changes
-- Reports issues found
-
-Health + Repair
-- Runs health check
-- Auto-fixes common issues
-- Starts stopped services
-- Creates missing firewall rules
+DIAGNOSTICS
+• Health Check - Read-only verification
+• Repair - Auto-fix common issues
 "@
 
     AirGap = @"
 AIR-GAP WORKFLOW
 
-ARCHITECTURE
-Air-gapped networks require manual update transfer via USB.
+Two-server model for disconnected networks:
+• Online WSUS: Internet-connected
+• Air-Gap WSUS: Disconnected
 
-Two-server model:
-- Online WSUS: Internet-connected, syncs with Microsoft
-- Air-Gap WSUS: Disconnected, receives imports
-
-WORKFLOW STEPS
-
-On Online Server:
-1. Run Monthly Maintenance (syncs updates)
-2. Click Export to Media
-3. Choose Full or Differential export
-4. Select USB drive destination
-5. Wait for export to complete
-
-Physical Transfer:
-- Scan USB per security policy
-- Transport to air-gapped network
-- Scan again before connecting
-
-On Air-Gap Server:
-1. Connect USB drive
-2. Click Import from Media
-3. Select export folder
-4. Wait for import
-5. Use Restore Database (for full exports)
+WORKFLOW
+1. On Online server: Run Maintenance, then Export
+2. Transfer USB to air-gap network
+3. On Air-Gap server: Import, then Restore DB
 
 EXPORT OPTIONS
+• Full: Complete DB + all files (50+ GB)
+• Differential: Recent updates only (smaller)
 
-Full Export
-- Complete database backup
-- All approved update files
-- Use for initial setup or refresh
-- Size: Can be 50+ GB
-
-Differential Export
-- Only recent updates (default 30 days)
-- Smaller transfer size
-- Use for regular monthly updates
-
-RECOMMENDATIONS
-- Use USB 3.0 drives for speed
-- Format as NTFS (files > 4GB)
-- Keep servers in sync
-- Document all transfers
-- Test on non-production first
+TIPS
+• Use USB 3.0 formatted as NTFS
+• Scan USB per security policy
+• Keep servers synchronized
 "@
 
     Troubleshooting = @"
-TROUBLESHOOTING GUIDE
+TROUBLESHOOTING
 
-COMMON ISSUES
-
-Services Won't Start
-1. Check SQL Server first (required for WSUS)
+SERVICES WON'T START
+1. Start SQL Server first
 2. Use 'Start Services' button
-3. Check Event Viewer for errors
+3. Check Event Viewer
 4. Run Health + Repair
 
-Database Shows 'Offline'
-1. SQL Server may not be running
-2. Start SQL Server Express service
-3. Check disk space on data drive
-4. Run Health Check
+DATABASE OFFLINE
+• Start SQL Server Express service
+• Check disk space
+• Run Health Check
 
-Database Too Large (>9 GB)
-1. Run Deep Cleanup
-2. Decline unneeded updates
-3. Run Monthly Maintenance
-4. Consider shrinking database
+DATABASE >9 GB
+• Run Deep Cleanup
+• Decline unneeded updates
+• Run Monthly Maintenance
 
-Clients Not Updating
-1. Verify GPO is applied (gpresult /h)
-2. Run gpupdate /force on clients
-3. Check firewall ports 8530/8531
-4. Verify WSUS URL in registry
+CLIENTS NOT UPDATING
+• Verify GPO (gpresult /h)
+• Run gpupdate /force
+• Check ports 8530/8531
+• Verify WSUS URL in registry
 
-Endless Download Loop
-- CRITICAL: Content path must be C:\WSUS
-- NOT C:\WSUS\wsuscontent
-- Reconfigure if incorrect
-
-QUICK FIXES
-
-Start All Services:
-  Use 'Start Services' quick action
-
-Reset WSUS:
-  Run Health + Repair
-
-Check Configuration:
-  Run Health Check (read-only)
-
-Free Disk Space:
-  Run Deep Cleanup
-
-LOG FILES
-
-Application Logs: C:\WSUS\Logs\
-WSUS Logs: C:\Program Files\Update Services\LogFiles\
-IIS Logs: C:\inetpub\logs\LogFiles\
-
-ERROR CODES
-
-Port in use: Check IIS bindings
-Access denied: Run as Administrator
-Database error: Check SQL service
-Timeout: SQL may be overloaded
+LOGS
+• App: C:\WSUS\Logs\
+• WSUS: C:\Program Files\Update Services\LogFiles\
+• IIS: C:\inetpub\logs\LogFiles\
 "@
 }
 
 function Show-Help {
     param([string]$Topic = "Overview")
-
-    $controls.PageTitle.Text = "Help"
-    $controls.DashboardPanel.Visibility = "Collapsed"
-    $controls.OperationPanel.Visibility = "Collapsed"
-    $controls.AboutPanel.Visibility = "Collapsed"
-    $controls.HelpPanel.Visibility = "Visible"
-    Set-ActiveNavButton "BtnHelp"
-
-    # Update help content
+    Show-Panel "Help" "Help" "BtnHelp"
     $controls.HelpTitle.Text = $Topic
     $controls.HelpText.Text = $script:HelpContent[$Topic]
 }
 #endregion
 
-function Update-ServerModeUI {
-    # Update the mode label and color
-    if ($script:ServerMode -eq "Online") {
-        $controls.ServerModeLabel.Text = "Online"
-        $controls.ServerModeLabel.Foreground = $window.FindResource("AccentGreenBrush")
-    } else {
-        $controls.ServerModeLabel.Text = "Air-Gap"
-        $controls.ServerModeLabel.Foreground = $window.FindResource("AccentOrangeBrush")
-    }
-
-    # Show/hide menu items based on mode
-    # Online-only: Export, Monthly Maintenance
-    # Air-Gap-only: Import
-    if ($script:ServerMode -eq "Online") {
-        $controls.BtnExport.Visibility = "Visible"
-        $controls.BtnMaintenance.Visibility = "Visible"
-        $controls.BtnImport.Visibility = "Collapsed"
-        # Update Quick Actions
-        $controls.QBtnMaint.Visibility = "Visible"
-    } else {
-        $controls.BtnExport.Visibility = "Collapsed"
-        $controls.BtnMaintenance.Visibility = "Collapsed"
-        $controls.BtnImport.Visibility = "Visible"
-        # Update Quick Actions
-        $controls.QBtnMaint.Visibility = "Collapsed"
-    }
-}
-
-function Write-Console {
-    param([string]$Text, [string]$Color = "Gray")
-    $controls.ConsoleOutput.Inlines.Add((New-Object System.Windows.Documents.Run -ArgumentList "$Text`n"))
-    $controls.ConsoleScroller.ScrollToEnd()
-}
-
+#region Dialogs
 function Show-ExportDialog {
     $result = @{ Cancelled = $true; ExportType = "Full"; DestinationPath = ""; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Export to Media"
-    $dlg.Width = 500
-    $dlg.Height = 400
+    $dlg.Width = 450
+    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
-    $dlg.Background = $window.FindResource("BgDarkBrush")
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
 
     $stack = New-Object System.Windows.Controls.StackPanel
-    $stack.Margin = "24"
+    $stack.Margin = "20"
 
-    # Title
     $title = New-Object System.Windows.Controls.TextBlock
     $title.Text = "Export WSUS Data"
-    $title.FontSize = 16
+    $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = $window.FindResource("TextPrimaryBrush")
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
-    # Description
-    $desc = New-Object System.Windows.Controls.TextBlock
-    $desc.Text = "This will export the WSUS database (SUSDB) and content files to the selected location."
-    $desc.Foreground = $window.FindResource("TextSecondaryBrush")
-    $desc.TextWrapping = "Wrap"
-    $desc.Margin = "0,0,0,16"
-    $stack.Children.Add($desc)
-
-    # Export Type
-    $typeLbl = New-Object System.Windows.Controls.TextBlock
-    $typeLbl.Text = "Export Type:"
-    $typeLbl.Foreground = $window.FindResource("TextSecondaryBrush")
-    $typeLbl.Margin = "0,0,0,8"
-    $stack.Children.Add($typeLbl)
-
     $radioPanel = New-Object System.Windows.Controls.StackPanel
     $radioPanel.Orientation = "Horizontal"
-    $radioPanel.Margin = "0,0,0,16"
+    $radioPanel.Margin = "0,0,0,12"
 
     $radioFull = New-Object System.Windows.Controls.RadioButton
     $radioFull.Content = "Full Export"
-    $radioFull.Foreground = $window.FindResource("TextPrimaryBrush")
+    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioFull.IsChecked = $true
-    $radioFull.Margin = "0,0,24,0"
+    $radioFull.Margin = "0,0,20,0"
     $radioPanel.Children.Add($radioFull)
 
     $radioDiff = New-Object System.Windows.Controls.RadioButton
-    $radioDiff.Content = "Differential Export"
-    $radioDiff.Foreground = $window.FindResource("TextPrimaryBrush")
+    $radioDiff.Content = "Differential"
+    $radioDiff.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioPanel.Children.Add($radioDiff)
-
     $stack.Children.Add($radioPanel)
 
-    # Days Old panel (for differential)
     $daysPanel = New-Object System.Windows.Controls.StackPanel
     $daysPanel.Orientation = "Horizontal"
-    $daysPanel.Margin = "0,0,0,16"
+    $daysPanel.Margin = "0,0,0,12"
     $daysPanel.Visibility = "Collapsed"
 
     $daysLbl = New-Object System.Windows.Controls.TextBlock
-    $daysLbl.Text = "Export updates from the last"
-    $daysLbl.Foreground = $window.FindResource("TextSecondaryBrush")
+    $daysLbl.Text = "Days:"
+    $daysLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $daysLbl.VerticalAlignment = "Center"
     $daysLbl.Margin = "0,0,8,0"
     $daysPanel.Children.Add($daysLbl)
@@ -1160,103 +758,87 @@ function Show-ExportDialog {
     $daysTxt = New-Object System.Windows.Controls.TextBox
     $daysTxt.Text = "30"
     $daysTxt.Width = 50
-    $daysTxt.Background = $window.FindResource("BgCardBrush")
-    $daysTxt.Foreground = $window.FindResource("TextPrimaryBrush")
-    $daysTxt.BorderBrush = $window.FindResource("BorderBrush")
-    $daysTxt.Padding = "6,4"
-    $daysTxt.HorizontalContentAlignment = "Center"
+    $daysTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $daysTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysTxt.Padding = "4"
     $daysPanel.Children.Add($daysTxt)
-
-    $daysLbl2 = New-Object System.Windows.Controls.TextBlock
-    $daysLbl2.Text = "days"
-    $daysLbl2.Foreground = $window.FindResource("TextSecondaryBrush")
-    $daysLbl2.VerticalAlignment = "Center"
-    $daysLbl2.Margin = "8,0,0,0"
-    $daysPanel.Children.Add($daysLbl2)
-
     $stack.Children.Add($daysPanel)
 
-    # Toggle days panel visibility based on radio selection
     $radioDiff.Add_Checked({ $daysPanel.Visibility = "Visible" }.GetNewClosure())
     $radioFull.Add_Checked({ $daysPanel.Visibility = "Collapsed" }.GetNewClosure())
 
-    # Destination
     $destLbl = New-Object System.Windows.Controls.TextBlock
-    $destLbl.Text = "Destination Folder:"
-    $destLbl.Foreground = $window.FindResource("TextSecondaryBrush")
-    $destLbl.Margin = "0,0,0,8"
+    $destLbl.Text = "Destination:"
+    $destLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $destLbl.Margin = "0,0,0,6"
     $stack.Children.Add($destLbl)
 
     $destPanel = New-Object System.Windows.Controls.DockPanel
-    $destPanel.Margin = "0,0,0,24"
+    $destPanel.Margin = "0,0,0,20"
 
     $destBtn = New-Object System.Windows.Controls.Button
-    $destBtn.Content = "Browse..."
-    $destBtn.Style = $window.FindResource("SecondaryButton")
-    $destBtn.Padding = "12,6"
+    $destBtn.Content = "Browse"
+    $destBtn.Padding = "10,4"
+    $destBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $destBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($destBtn, "Right")
     $destPanel.Children.Add($destBtn)
 
     $destTxt = New-Object System.Windows.Controls.TextBox
     $destTxt.Margin = "0,0,8,0"
-    $destTxt.Background = $window.FindResource("BgCardBrush")
-    $destTxt.Foreground = $window.FindResource("TextPrimaryBrush")
-    $destTxt.BorderBrush = $window.FindResource("BorderBrush")
-    $destTxt.Padding = "8,6"
+    $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destTxt.Padding = "6,4"
     $destPanel.Children.Add($destTxt)
 
     $destBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select destination folder for export"
         if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
-
     $stack.Children.Add($destPanel)
 
-    # Buttons
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
 
     $exportBtn = New-Object System.Windows.Controls.Button
     $exportBtn.Content = "Export"
-    $exportBtn.Style = $window.FindResource("PrimaryButton")
+    $exportBtn.Padding = "14,6"
+    $exportBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $exportBtn.Foreground = "White"
+    $exportBtn.BorderThickness = 0
     $exportBtn.Margin = "0,0,8,0"
     $exportBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($destTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Please select a destination folder.", "Export", "OK", "Warning")
+            [System.Windows.MessageBox]::Show("Select destination folder.", "Export", "OK", "Warning")
             return
         }
-        # Validate days input if differential export is selected
-        $daysValue = 30
-        if ($radioDiff.IsChecked) {
-            if (-not [int]::TryParse($daysTxt.Text, [ref]$daysValue)) {
-                [System.Windows.MessageBox]::Show("Days must be a valid number.", "Export", "OK", "Warning")
-                return
-            }
-            if ($daysValue -lt 1 -or $daysValue -gt 365) {
-                [System.Windows.MessageBox]::Show("Days must be between 1 and 365.", "Export", "OK", "Warning")
-                return
-            }
+        $daysVal = 30
+        if ($radioDiff.IsChecked -and -not [int]::TryParse($daysTxt.Text, [ref]$daysVal)) {
+            [System.Windows.MessageBox]::Show("Invalid days value.", "Export", "OK", "Warning")
+            return
         }
         $result.Cancelled = $false
-        $result.ExportType = if ($radioFull.IsChecked) { "Full" } else { "Differential" }
+        $result.ExportType = if($radioFull.IsChecked){"Full"}else{"Differential"}
         $result.DestinationPath = $destTxt.Text
-        $result.DaysOld = $daysValue
+        $result.DaysOld = $daysVal
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($exportBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Style = $window.FindResource("SecondaryButton")
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
     $dlg.Content = $stack
     $dlg.ShowDialog() | Out-Null
-
     return $result
 }
 
@@ -1265,78 +847,69 @@ function Show-ImportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Import from Media"
-    $dlg.Width = 500
-    $dlg.Height = 280
+    $dlg.Width = 450
+    $dlg.Height = 220
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
-    $dlg.Background = $window.FindResource("BgDarkBrush")
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
 
     $stack = New-Object System.Windows.Controls.StackPanel
-    $stack.Margin = "24"
+    $stack.Margin = "20"
 
-    # Title
     $title = New-Object System.Windows.Controls.TextBlock
     $title.Text = "Import WSUS Data"
-    $title.FontSize = 16
+    $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = $window.FindResource("TextPrimaryBrush")
-    $title.Margin = "0,0,0,16"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
-    # Description
-    $desc = New-Object System.Windows.Controls.TextBlock
-    $desc.Text = "Select the folder containing the exported WSUS data (database backup and content files)."
-    $desc.Foreground = $window.FindResource("TextSecondaryBrush")
-    $desc.TextWrapping = "Wrap"
-    $desc.Margin = "0,0,0,20"
-    $stack.Children.Add($desc)
-
-    # Source
     $srcLbl = New-Object System.Windows.Controls.TextBlock
-    $srcLbl.Text = "Source Folder:"
-    $srcLbl.Foreground = $window.FindResource("TextSecondaryBrush")
-    $srcLbl.Margin = "0,0,0,8"
+    $srcLbl.Text = "Source folder:"
+    $srcLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
 
     $srcPanel = New-Object System.Windows.Controls.DockPanel
-    $srcPanel.Margin = "0,0,0,24"
+    $srcPanel.Margin = "0,0,0,20"
 
     $srcBtn = New-Object System.Windows.Controls.Button
-    $srcBtn.Content = "Browse..."
-    $srcBtn.Style = $window.FindResource("SecondaryButton")
-    $srcBtn.Padding = "12,6"
+    $srcBtn.Content = "Browse"
+    $srcBtn.Padding = "10,4"
+    $srcBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $srcBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $srcBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($srcBtn, "Right")
     $srcPanel.Children.Add($srcBtn)
 
     $srcTxt = New-Object System.Windows.Controls.TextBox
     $srcTxt.Margin = "0,0,8,0"
-    $srcTxt.Background = $window.FindResource("BgCardBrush")
-    $srcTxt.Foreground = $window.FindResource("TextPrimaryBrush")
-    $srcTxt.BorderBrush = $window.FindResource("BorderBrush")
-    $srcTxt.Padding = "8,6"
+    $srcTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $srcTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $srcTxt.Padding = "6,4"
     $srcPanel.Children.Add($srcTxt)
 
     $srcBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select folder containing exported WSUS data"
         if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
-
     $stack.Children.Add($srcPanel)
 
-    # Buttons
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
 
     $importBtn = New-Object System.Windows.Controls.Button
     $importBtn.Content = "Import"
-    $importBtn.Style = $window.FindResource("PrimaryButton")
+    $importBtn.Padding = "14,6"
+    $importBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $importBtn.Foreground = "White"
+    $importBtn.BorderThickness = 0
     $importBtn.Margin = "0,0,8,0"
     $importBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($srcTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Please select a source folder.", "Import", "OK", "Warning")
+            [System.Windows.MessageBox]::Show("Select source folder.", "Import", "OK", "Warning")
             return
         }
         $result.Cancelled = $false
@@ -1347,47 +920,110 @@ function Show-ImportDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Style = $window.FindResource("SecondaryButton")
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
     $dlg.Content = $stack
     $dlg.ShowDialog() | Out-Null
-
     return $result
 }
 
-function Show-RestoreWarning {
-    $msg = "IMPORTANT: Before restoring, ensure:`n`n"
-    $msg += "  - Database backup (.bak) is saved to: C:\WSUS`n"
-    $msg += "  - Update files are copied to: C:\WSUS\WsusContent`n`n"
-    $msg += "Do you want to proceed with the restore?"
+function Show-SettingsDialog {
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Settings"
+    $dlg.Width = 400
+    $dlg.Height = 220
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
 
-    $result = [System.Windows.MessageBox]::Show($msg, "Restore Database - Warning", "YesNo", "Warning")
-    return ($result -eq "Yes")
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $lbl1 = New-Object System.Windows.Controls.TextBlock
+    $lbl1.Text = "WSUS Content Path:"
+    $lbl1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $lbl1.Margin = "0,0,0,4"
+    $stack.Children.Add($lbl1)
+
+    $txt1 = New-Object System.Windows.Controls.TextBox
+    $txt1.Text = $script:ContentPath
+    $txt1.Margin = "0,0,0,12"
+    $txt1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $txt1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txt1.Padding = "6,4"
+    $stack.Children.Add($txt1)
+
+    $lbl2 = New-Object System.Windows.Controls.TextBlock
+    $lbl2.Text = "SQL Instance:"
+    $lbl2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $lbl2.Margin = "0,0,0,4"
+    $stack.Children.Add($lbl2)
+
+    $txt2 = New-Object System.Windows.Controls.TextBox
+    $txt2.Text = $script:SqlInstance
+    $txt2.Margin = "0,0,0,16"
+    $txt2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $txt2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txt2.Padding = "6,4"
+    $stack.Children.Add($txt2)
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $saveBtn = New-Object System.Windows.Controls.Button
+    $saveBtn.Content = "Save"
+    $saveBtn.Padding = "14,6"
+    $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $saveBtn.Foreground = "White"
+    $saveBtn.BorderThickness = 0
+    $saveBtn.Margin = "0,0,8,0"
+    $saveBtn.Add_Click({
+        $script:ContentPath = if($txt1.Text){$txt1.Text}else{"C:\WSUS"}
+        $script:SqlInstance = if($txt2.Text){$txt2.Text}else{".\SQLEXPRESS"}
+        Save-Settings
+        Update-Dashboard
+        $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($saveBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
 }
+#endregion
 
+#region Operations
 function Run-Operation {
     param([string]$Id, [string]$Title)
 
     Write-Log "Run-Op: $Id"
-    $controls.PageTitle.Text = $Title
-    $controls.DashboardPanel.Visibility = "Collapsed"
-    $controls.AboutPanel.Visibility = "Collapsed"
-    $controls.HelpPanel.Visibility = "Collapsed"
-    $controls.OperationPanel.Visibility = "Visible"
+    Show-Panel "Operation" $Title ""
     $controls.ConsoleOutput.Inlines.Clear()
     $controls.BtnCancel.Visibility = "Visible"
 
     $sr = $script:ScriptRoot
-    # Scripts are in the same folder when running from source, or in Scripts subfolder when running compiled
     $mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
     if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
     $maint = Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"
     if (-not (Test-Path $maint)) { $maint = Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1" }
 
-    # Escape paths to prevent command injection
     $cp = Get-EscapedPath $script:ContentPath
     $sql = Get-EscapedPath $script:SqlInstance
     $mgmtSafe = Get-EscapedPath $mgmt
@@ -1396,46 +1032,42 @@ function Run-Operation {
     $cmd = switch ($Id) {
         "install" {
             $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-            $fbd.Description = "Select folder containing WSUS setup files"
+            $fbd.Description = "Select folder with WSUS setup files"
             if ($fbd.ShowDialog() -eq "OK") {
-                $selectedPath = $fbd.SelectedPath
-                if (-not (Test-SafePath $selectedPath)) {
-                    [System.Windows.MessageBox]::Show("Invalid path. Path contains unsafe characters.", "Error", "OK", "Error")
-                    Show-Dashboard; return
+                $p = $fbd.SelectedPath
+                if (-not (Test-SafePath $p)) {
+                    [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                    Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
                 }
-                "& '$(Get-EscapedPath (Join-Path $selectedPath 'Install-WsusWithSqlExpress.ps1'))'"
-            } else { Show-Dashboard; return }
+                "& '$(Get-EscapedPath (Join-Path $p 'Install-WsusWithSqlExpress.ps1'))'"
+            } else { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
         }
         "restore" {
-            if (!(Show-RestoreWarning)) { Show-Dashboard; return }
+            $r = [System.Windows.MessageBox]::Show("Ensure backup.bak is in C:\WSUS. Continue?", "Restore", "YesNo", "Warning")
+            if ($r -ne "Yes") { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
             "& '$mgmtSafe' -Restore -ContentPath '$cp' -SqlInstance '$sql'"
         }
         "import" {
-            $importOpts = Show-ImportDialog
-            if ($importOpts.Cancelled) { Show-Dashboard; return }
-            $srcPath = $importOpts.SourcePath
-            if (-not (Test-SafePath $srcPath)) {
-                [System.Windows.MessageBox]::Show("Invalid source path. Path contains unsafe characters.", "Error", "OK", "Error")
-                Show-Dashboard; return
+            $opts = Show-ImportDialog
+            if ($opts.Cancelled) { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
+            if (-not (Test-SafePath $opts.SourcePath)) {
+                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
             }
-            $srcPathSafe = Get-EscapedPath $srcPath
-            "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$srcPathSafe'"
+            "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$(Get-EscapedPath $opts.SourcePath)'"
         }
         "export" {
-            $exportOpts = Show-ExportDialog
-            if ($exportOpts.Cancelled) { Show-Dashboard; return }
-            $destPath = $exportOpts.DestinationPath
-            if (-not (Test-SafePath $destPath)) {
-                [System.Windows.MessageBox]::Show("Invalid destination path. Path contains unsafe characters.", "Error", "OK", "Error")
-                Show-Dashboard; return
+            $opts = Show-ExportDialog
+            if ($opts.Cancelled) { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
+            if (-not (Test-SafePath $opts.DestinationPath)) {
+                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
             }
-            $destPathSafe = Get-EscapedPath $destPath
-            $exportType = $exportOpts.ExportType
-            $daysOld = $exportOpts.DaysOld
-            if ($exportType -eq "Differential") {
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$destPathSafe' -Differential -DaysOld $daysOld"
+            $dest = Get-EscapedPath $opts.DestinationPath
+            if ($opts.ExportType -eq "Differential") {
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$dest' -Differential -DaysOld $($opts.DaysOld)"
             } else {
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$destPathSafe'"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$dest'"
             }
         }
         "maintenance" { "& '$maintSafe'" }
@@ -1445,10 +1077,6 @@ function Run-Operation {
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
-    Write-Console "Command: $cmd" "Gray"
-    Write-Console ""
-
-    $script:CurrentProcess = $null
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
@@ -1468,15 +1096,7 @@ function Run-Operation {
             if ($line) {
                 $window.Dispatcher.Invoke([Action]{
                     $run = New-Object System.Windows.Documents.Run -ArgumentList "$line`n"
-                    if ($line -match 'ERROR|FAIL|Exception') {
-                        $run.Foreground = [System.Windows.Media.Brushes]::Crimson
-                    } elseif ($line -match 'WARN') {
-                        $run.Foreground = [System.Windows.Media.Brushes]::Orange
-                    } elseif ($line -match 'OK|Success|Complete') {
-                        $run.Foreground = [System.Windows.Media.Brushes]::ForestGreen
-                    } else {
-                        $run.Foreground = [System.Windows.Media.Brushes]::Gray
-                    }
+                    $run.Foreground = if($line -match 'ERROR|FAIL'){"Crimson"}elseif($line -match 'WARN'){"Orange"}elseif($line -match 'OK|Success'){"ForestGreen"}else{"Gray"}
                     $controls.ConsoleOutput.Inlines.Add($run)
                     $controls.ConsoleScroller.ScrollToEnd()
                 })
@@ -1485,8 +1105,8 @@ function Run-Operation {
 
         $exitHandler = {
             $window.Dispatcher.Invoke([Action]{
-                $run = New-Object System.Windows.Documents.Run -ArgumentList "`n=== Completed ==="
-                $run.Foreground = [System.Windows.Media.Brushes]::DodgerBlue
+                $run = New-Object System.Windows.Documents.Run -ArgumentList "`n=== Complete ==="
+                $run.Foreground = "DodgerBlue"
                 $controls.ConsoleOutput.Inlines.Add($run)
                 $controls.BtnCancel.Visibility = "Collapsed"
                 $controls.StatusLabel.Text = "Completed"
@@ -1502,248 +1122,99 @@ function Run-Operation {
         $script:CurrentProcess.BeginErrorReadLine()
         $controls.StatusLabel.Text = "Running: $Title"
     } catch {
-        Write-Console "ERROR: $_" "Red"
+        $controls.ConsoleOutput.Inlines.Add((New-Object System.Windows.Documents.Run -ArgumentList "ERROR: $_"))
         $controls.BtnCancel.Visibility = "Collapsed"
     }
 }
 #endregion
 
 #region Event Handlers
-# Navigation
-$controls.BtnDashboard.Add_Click({ Show-Dashboard })
-$controls.BtnInstall.Add_Click({ Run-Operation "install" "Install WSUS + SQL" })
+$controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
+$controls.BtnInstall.Add_Click({ Run-Operation "install" "Install WSUS" })
 $controls.BtnRestore.Add_Click({ Run-Operation "restore" "Restore Database" })
-$controls.BtnExport.Add_Click({ Run-Operation "export" "Export to Media" })
-$controls.BtnImport.Add_Click({ Run-Operation "import" "Import from Media" })
-$controls.BtnMaintenance.Add_Click({ Run-Operation "maintenance" "Monthly Maintenance" })
+$controls.BtnExport.Add_Click({ Run-Operation "export" "Export" })
+$controls.BtnImport.Add_Click({ Run-Operation "import" "Import" })
+$controls.BtnMaintenance.Add_Click({ Run-Operation "maintenance" "Maintenance" })
 $controls.BtnCleanup.Add_Click({ Run-Operation "cleanup" "Deep Cleanup" })
 $controls.BtnHealth.Add_Click({ Run-Operation "health" "Health Check" })
-$controls.BtnRepair.Add_Click({ Run-Operation "repair" "Health + Repair" })
-$controls.BtnAbout.Add_Click({ Show-About })
-$controls.BtnHelp.Add_Click({ Show-Help -Topic "Overview" })
+$controls.BtnRepair.Add_Click({ Run-Operation "repair" "Repair" })
+$controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
+$controls.BtnHelp.Add_Click({ Show-Help "Overview" })
+$controls.BtnSettings.Add_Click({ Show-SettingsDialog })
 
-# Help panel navigation buttons
-$controls.HelpBtnOverview.Add_Click({ Show-Help -Topic "Overview" })
-$controls.HelpBtnDashboard.Add_Click({ Show-Help -Topic "Dashboard" })
-$controls.HelpBtnOperations.Add_Click({ Show-Help -Topic "Operations" })
-$controls.HelpBtnAirGap.Add_Click({ Show-Help -Topic "AirGap" })
-$controls.HelpBtnTroubleshooting.Add_Click({ Show-Help -Topic "Troubleshooting" })
+$controls.HelpBtnOverview.Add_Click({ Show-Help "Overview" })
+$controls.HelpBtnDashboard.Add_Click({ Show-Help "Dashboard" })
+$controls.HelpBtnOperations.Add_Click({ Show-Help "Operations" })
+$controls.HelpBtnAirGap.Add_Click({ Show-Help "AirGap" })
+$controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
-# Server Mode Toggle
 $controls.BtnToggleMode.Add_Click({
-    if ($script:ServerMode -eq "Online") {
-        $script:ServerMode = "AirGap"
-    } else {
-        $script:ServerMode = "Online"
-    }
+    $script:ServerMode = if($script:ServerMode -eq "Online"){"AirGap"}else{"Online"}
     Save-Settings
     Update-ServerModeUI
-    Write-Log "Server mode changed to: $script:ServerMode"
+    Write-Log "Mode: $script:ServerMode"
 })
 
-# Quick actions
 $controls.QBtnHealth.Add_Click({ Run-Operation "health" "Health Check" })
 $controls.QBtnCleanup.Add_Click({ Run-Operation "cleanup" "Deep Cleanup" })
-$controls.QBtnMaint.Add_Click({ Run-Operation "maintenance" "Monthly Maintenance" })
+$controls.QBtnMaint.Add_Click({ Run-Operation "maintenance" "Maintenance" })
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
     $controls.StatusLabel.Text = "Starting services..."
-    $startedCount = 0
-    $failedCount = 0
     @("MSSQL`$SQLEXPRESS","W3SVC","WSUSService") | ForEach-Object {
-        try {
-            $svc = Get-Service -Name $_ -ErrorAction SilentlyContinue
-            if ($svc -and $svc.Status -ne 'Running') {
-                Start-Service -Name $_ -ErrorAction Stop
-                $startedCount++
-            } elseif ($svc -and $svc.Status -eq 'Running') {
-                # Already running, count as success
-                $startedCount++
-            }
-        } catch {
-            Write-Log "Failed to start service ${_}: $($_.Exception.Message)"
-            $failedCount++
-        }
+        try { Start-Service -Name $_ -ErrorAction SilentlyContinue } catch {}
     }
     Start-Sleep -Seconds 2
     Update-Dashboard
-    if ($failedCount -eq 0) {
-        $controls.StatusLabel.Text = "Services started successfully"
-    } else {
-        $controls.StatusLabel.Text = "Started $startedCount services, $failedCount failed"
-    }
     $controls.QBtnStart.Content = "Start Services"
     $controls.QBtnStart.IsEnabled = $true
 })
 
-# Open Log Folder button
 $controls.BtnOpenLog.Add_Click({
-    if (Test-Path $script:LogDir) {
-        Start-Process explorer.exe -ArgumentList $script:LogDir
-    } else {
-        [System.Windows.MessageBox]::Show("Log directory does not exist: $script:LogDir", "Log Folder", "OK", "Warning")
-    }
+    if (Test-Path $script:LogDir) { Start-Process explorer.exe -ArgumentList $script:LogDir }
+    else { [System.Windows.MessageBox]::Show("Log folder not found.", "Log", "OK", "Warning") }
 })
 
-# Back and Cancel
-$controls.BtnBack.Add_Click({ Show-Dashboard })
+$controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) {
-        $script:CurrentProcess.Kill()
-    }
+    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
     $controls.BtnCancel.Visibility = "Collapsed"
-})
-
-# Settings
-$controls.BtnSettings.Add_Click({
-    $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Settings"
-    $dlg.Width = 450
-    $dlg.Height = 280
-    $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
-    $dlg.Background = $window.FindResource("BgDarkBrush")
-    $dlg.ResizeMode = "NoResize"
-
-    $grid = New-Object System.Windows.Controls.Grid
-    $grid.Margin = "20"
-
-    for ($i = 0; $i -lt 5; $i++) {
-        $row = New-Object System.Windows.Controls.RowDefinition
-        $row.Height = "Auto"
-        $grid.RowDefinitions.Add($row)
-    }
-
-    # Content Path
-    $lbl1 = New-Object System.Windows.Controls.TextBlock
-    $lbl1.Text = "WSUS Content Path:"
-    $lbl1.Foreground = $window.FindResource("TextSecondaryBrush")
-    $lbl1.Margin = "0,0,0,8"
-    [System.Windows.Controls.Grid]::SetRow($lbl1, 0)
-    $grid.Children.Add($lbl1)
-
-    $txt1 = New-Object System.Windows.Controls.TextBox
-    $txt1.Text = $script:ContentPath
-    $txt1.Margin = "0,0,0,16"
-    $txt1.Background = $window.FindResource("BgCardBrush")
-    $txt1.Foreground = $window.FindResource("TextPrimaryBrush")
-    $txt1.BorderBrush = $window.FindResource("BorderBrush")
-    $txt1.Padding = "8,6"
-    [System.Windows.Controls.Grid]::SetRow($txt1, 1)
-    $grid.Children.Add($txt1)
-
-    # SQL Instance
-    $lbl2 = New-Object System.Windows.Controls.TextBlock
-    $lbl2.Text = "SQL Instance:"
-    $lbl2.Foreground = $window.FindResource("TextSecondaryBrush")
-    $lbl2.Margin = "0,0,0,8"
-    [System.Windows.Controls.Grid]::SetRow($lbl2, 2)
-    $grid.Children.Add($lbl2)
-
-    $txt2 = New-Object System.Windows.Controls.TextBox
-    $txt2.Text = $script:SqlInstance
-    $txt2.Margin = "0,0,0,16"
-    $txt2.Background = $window.FindResource("BgCardBrush")
-    $txt2.Foreground = $window.FindResource("TextPrimaryBrush")
-    $txt2.BorderBrush = $window.FindResource("BorderBrush")
-    $txt2.Padding = "8,6"
-    [System.Windows.Controls.Grid]::SetRow($txt2, 3)
-    $grid.Children.Add($txt2)
-
-    # Buttons
-    $btnPanel = New-Object System.Windows.Controls.StackPanel
-    $btnPanel.Orientation = "Horizontal"
-    $btnPanel.HorizontalAlignment = "Right"
-    [System.Windows.Controls.Grid]::SetRow($btnPanel, 4)
-
-    $saveBtn = New-Object System.Windows.Controls.Button
-    $saveBtn.Content = "Save"
-    $saveBtn.Style = $window.FindResource("PrimaryButton")
-    $saveBtn.Margin = "0,0,8,0"
-    $saveBtn.Add_Click({
-        $script:ContentPath = if($txt1.Text){$txt1.Text}else{"C:\WSUS"}
-        $script:SqlInstance = if($txt2.Text){$txt2.Text}else{".\SQLEXPRESS"}
-        Save-Settings
-        Update-Dashboard
-        $dlg.Close()
-    }.GetNewClosure())
-    $btnPanel.Children.Add($saveBtn)
-
-    $cancelBtn = New-Object System.Windows.Controls.Button
-    $cancelBtn.Content = "Cancel"
-    $cancelBtn.Style = $window.FindResource("SecondaryButton")
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
-    $btnPanel.Children.Add($cancelBtn)
-
-    $grid.Children.Add($btnPanel)
-    $dlg.Content = $grid
-    $dlg.ShowDialog() | Out-Null
 })
 #endregion
 
 #region Initialize
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
-$controls.AdminBadge.Text = if($script:IsAdmin){"Administrator"}else{"Limited"}
-$controls.AdminBadge.Foreground = if($script:IsAdmin){
-    $window.FindResource("AccentGreenBrush")
-}else{
-    $window.FindResource("AccentOrangeBrush")
-}
+$controls.AdminBadge.Text = if($script:IsAdmin){"Admin"}else{"Limited"}
+$controls.AdminBadge.Foreground = if($script:IsAdmin){"#3FB950"}else{"#D29922"}
 
-# Load window icon and About page logo
 try {
     $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
-    if (-not (Test-Path $iconPath)) {
-        $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico"
-    }
+    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
     if (Test-Path $iconPath) {
-        $iconUri = New-Object System.Uri $iconPath
-        $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create($iconUri)
-
-        # Set About page logo
-        if ($controls['AboutLogo']) {
-            $aboutBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
-            $aboutBitmap.BeginInit()
-            $aboutBitmap.UriSource = $iconUri
-            $aboutBitmap.DecodePixelWidth = 64
-            $aboutBitmap.EndInit()
-            $controls['AboutLogo'].Source = $aboutBitmap
-        }
+        $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object System.Uri $iconPath))
     }
-} catch {
-    # Silently continue if icon loading fails
-}
+} catch {}
 
 Update-Dashboard
 Update-ServerModeUI
 
-# Auto-refresh timer with guard to prevent overlapping operations
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)
 $timer.Add_Tick({
-    # Only refresh if dashboard is visible AND no refresh is already in progress
     if ($controls.DashboardPanel.Visibility -eq "Visible" -and -not $script:RefreshInProgress) {
         $script:RefreshInProgress = $true
-        try {
-            Update-Dashboard
-        } finally {
-            $script:RefreshInProgress = $false
-        }
+        try { Update-Dashboard } finally { $script:RefreshInProgress = $false }
     }
 })
 $timer.Start()
 
 $window.Add_Closing({
     $timer.Stop()
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) {
-        $script:CurrentProcess.Kill()
-    }
+    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
 })
 #endregion
 
-#region Run
 Write-Log "Running WPF form"
 $window.ShowDialog() | Out-Null
-#endregion
