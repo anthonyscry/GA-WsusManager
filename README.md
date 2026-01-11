@@ -8,16 +8,28 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 
 ## What's New in v3.5.2
 
-- **Server Mode Toggle** - Switch between Online and Air-Gap modes to show only relevant menu items
-- **Context-Aware Menu** - Online mode shows Export/Maintenance; Air-Gap mode shows Import
-- **Cleaner Codebase** - Refactored UI code, removed unused files
+### Security Hardening
+- **SQL Injection Prevention** - Added input validation in `Test-WsusBackupIntegrity`
+- **Path Validation** - New `Test-ValidPath` and `Test-SafePath` functions prevent command injection
+- **Safe Path Escaping** - `Get-EscapedPath` ensures safe command string construction
+- **DPAPI Documentation** - Documented credential storage security limitations
 
-### Previous (v3.5.1)
+### Performance Optimizations
+- **SQL Module Caching** - SqlServer module version checked once at load time (not per query)
+- **Batch Service Queries** - Service status uses single batch query instead of 5 individual calls
+- **Dashboard Refresh Guard** - Prevents overlapping refresh operations that could hang UI
+- **Test Suite Optimization** - Shared module pre-loading reduces test time
 
-- **Modern WPF GUI** - Complete rewrite with dark theme matching GA-AppLocker
-- **Database Size Indicator** - Shows current DB size out of 10GB limit with color coding
-- **Export/Import Dialogs** - Folder pickers for media transfer operations
-- **General Atomics Icon** - Consistent branding across GA tools
+### Code Quality
+- **Pester Unit Tests** - Added 323 unit tests across 10 test files (all passing)
+- **PSScriptAnalyzer** - Build now runs code analysis before compilation
+- **Approved Verbs** - Renamed `Load-Settings` to `Import-WsusSettings`
+
+### Previous (v3.5.0/3.5.1)
+- Server Mode Toggle (Online/Air-Gap)
+- Modern WPF GUI with dark theme
+- Database Size Indicator with 10GB limit warnings
+- Export/Import dialogs with folder pickers
 
 ---
 

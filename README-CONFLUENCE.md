@@ -2,23 +2,48 @@
 
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
-| **Version** | 3.5.1 |
+| **Version** | 3.5.2 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
 
 ---
 
-## What's New in v3.5.1
+## What's New in v3.5.2
+
+### Security Hardening
 
 | Feature | Description |
 |---------|-------------|
-| Modern WPF GUI | Complete rewrite with dark theme matching GA-AppLocker |
+| SQL Injection Prevention | Added input validation in Test-WsusBackupIntegrity |
+| Path Validation | Test-ValidPath and Test-SafePath prevent command injection |
+| Safe Path Escaping | Get-EscapedPath ensures safe command string construction |
+| DPAPI Documentation | Documented credential storage security limitations |
+
+### Performance Optimizations
+
+| Feature | Description |
+|---------|-------------|
+| SQL Module Caching | SqlServer module version checked once at load time |
+| Batch Service Queries | Single batch query instead of 5 individual calls |
+| Dashboard Refresh Guard | Prevents overlapping refresh operations |
+| Test Suite Optimization | Shared module pre-loading reduces test time |
+
+### Code Quality
+
+| Feature | Description |
+|---------|-------------|
+| Pester Unit Tests | 323 unit tests across 10 test files (all passing) |
+| PSScriptAnalyzer | Build runs code analysis before compilation |
+| Approved Verbs | Renamed Load-Settings to Import-WsusSettings |
+
+### Previous (v3.5.0/3.5.1)
+
+| Feature | Description |
+|---------|-------------|
+| Server Mode Toggle | Switch between Online and Air-Gap modes |
+| Modern WPF GUI | Dark theme matching GA-AppLocker |
 | Database Size Indicator | Shows DB size out of 10GB limit with color coding |
-| About Page | Company branding and application information |
-| Export Dialog | Full or Differential export with folder picker |
-| Import Dialog | Folder picker for source media location |
-| Restore Warning | Reminds about correct paths before restore |
-| GA Icon | Consistent branding across GA tools |
+| Export/Import Dialogs | Folder pickers for media transfer operations |
 
 ---
 
@@ -28,8 +53,7 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 | File | Description |
 |------|-------------|
-| **WsusManager-3.5.1.exe** | Standalone GUI - just download and run |
-| WsusManager.exe | Generic copy (always latest version) |
+| **WsusManager.exe** | Standalone GUI - just download and run (always latest version) |
 
 - Modern dark-themed WPF interface
 - Auto-refresh dashboard (30-second interval)
@@ -173,13 +197,12 @@ Imports three GPOs:
 
 | Path | Description |
 |------|-------------|
-| WsusManager-3.5.1.exe | Portable GUI Application (RECOMMENDED) |
-| WsusManager.exe | Generic copy (always latest) |
+| WsusManager.exe | Portable GUI Application (RECOMMENDED) |
 | wsus-icon.ico | Application icon |
-| build.ps1 | Build script for EXE |
+| build.ps1 | Build script for EXE (includes tests + code review) |
 | Scripts/ | PowerShell scripts |
-| Modules/ | PowerShell modules |
-| Tests/ | Pester unit tests |
+| Modules/ | PowerShell modules (10 modules) |
+| Tests/ | Pester unit tests (323 tests) |
 | DomainController/ | GPO deployment scripts |
 
 ---
