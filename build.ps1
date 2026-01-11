@@ -56,8 +56,13 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 if (-not $SkipCodeReview) {
     Write-Host "[*] Running code review with PSScriptAnalyzer..." -ForegroundColor Yellow
 
-    # Check if PSScriptAnalyzer is installed
+    # Check if PSScriptAnalyzer is installed (including OneDrive module path)
     $psaModule = Get-Module -ListAvailable -Name PSScriptAnalyzer
+    $oneDriveModulePath = Join-Path $env:USERPROFILE "OneDrive\Documents\WindowsPowerShell\Modules\PSScriptAnalyzer"
+    if (-not $psaModule -and (Test-Path $oneDriveModulePath)) {
+        $psaModule = $oneDriveModulePath
+    }
+
     if (-not $psaModule) {
         Write-Host "    Installing PSScriptAnalyzer..." -ForegroundColor Gray
         try {
@@ -70,7 +75,17 @@ if (-not $SkipCodeReview) {
     }
 
     if (-not $SkipCodeReview) {
-        Import-Module PSScriptAnalyzer -Force
+        # Import from OneDrive path if standard import fails
+        try {
+            Import-Module PSScriptAnalyzer -Force -ErrorAction Stop
+        }
+        catch {
+            if (Test-Path $oneDriveModulePath) {
+                Import-Module $oneDriveModulePath -Force
+            } else {
+                throw $_
+            }
+        }
 
         # Define scripts and modules to analyze
         $ScriptsToAnalyze = @(
@@ -280,8 +295,13 @@ if ($TestOnly) {
 # BUILD PROCESS
 # ============================================
 
-# Check if PS2EXE is installed
+# Check if PS2EXE is installed (including OneDrive module path)
 $ps2exeModule = Get-Module -ListAvailable -Name ps2exe
+$oneDrivePs2exePath = Join-Path $env:USERPROFILE "OneDrive\Documents\WindowsPowerShell\Modules\ps2exe"
+if (-not $ps2exeModule -and (Test-Path $oneDrivePs2exePath)) {
+    $ps2exeModule = $oneDrivePs2exePath
+}
+
 if (-not $ps2exeModule) {
     Write-Host "[*] Installing PS2EXE module..." -ForegroundColor Yellow
     try {
@@ -295,7 +315,17 @@ if (-not $ps2exeModule) {
     }
 }
 
-Import-Module ps2exe -Force
+# Import ps2exe (try standard path first, then OneDrive)
+try {
+    Import-Module ps2exe -Force -ErrorAction Stop
+}
+catch {
+    if (Test-Path $oneDrivePs2exePath) {
+        Import-Module $oneDrivePs2exePath -Force
+    } else {
+        throw $_
+    }
+}
 
 Write-Host "[*] Preparing build..." -ForegroundColor Yellow
 
