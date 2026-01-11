@@ -431,9 +431,35 @@ try {
                 </ScrollViewer>
             </Grid>
 
-            <!-- Status Bar -->
-            <Border Grid.Row="2" Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,12,0,0" Padding="10,6">
-                <TextBlock x:Name="StatusLabel" Text="Ready" FontSize="10" Foreground="{StaticResource Text2}"/>
+            <!-- Log Panel -->
+            <Border x:Name="LogPanel" Grid.Row="2" Background="{StaticResource BgSidebar}" CornerRadius="4" Margin="0,12,0,0" Height="36">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Background="{StaticResource BgCard}" Padding="10,6" CornerRadius="4,4,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Output Log" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button x:Name="BtnToggleLog" Content="Show" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
+                                <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
+                                <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" FontSize="11" Background="{StaticResource BgDark}"
+                             Foreground="{StaticResource Text2}" BorderThickness="0" Padding="10,8"/>
+                </Grid>
             </Border>
         </Grid>
     </Grid>
@@ -452,6 +478,28 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 #endregion
 
 #region Helper Functions
+$script:LogExpanded = $false
+
+function Write-LogOutput {
+    param(
+        [string]$Message,
+        [ValidateSet('Info','Success','Warning','Error')][string]$Level = 'Info'
+    )
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    $prefix = switch ($Level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+    $controls.LogOutput.Dispatcher.Invoke([Action]{
+        $controls.LogOutput.AppendText("[$timestamp] $prefix $Message`r`n")
+        $controls.LogOutput.ScrollToEnd()
+    })
+}
+
+function Set-Status {
+    param([string]$Text)
+    $controls.StatusLabel.Dispatcher.Invoke([Action]{
+        $controls.StatusLabel.Text = " - $Text"
+    })
+}
+
 function Get-ServiceStatus {
     $result = @{Running=0; Names=@()}
     foreach ($svc in @("MSSQL`$SQLEXPRESS","WSUSService","W3SVC")) {
@@ -1018,6 +1066,95 @@ function Show-SettingsDialog {
 #endregion
 
 #region Operations
+# Run operation with output to bottom log panel (stays on current view)
+function Run-LogOperation {
+    param([string]$Id, [string]$Title)
+
+    Write-Log "Run-LogOp: $Id"
+
+    # Expand log panel to show output
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 180
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    Write-LogOutput "Starting $Title..." -Level Info
+    Set-Status "Running: $Title"
+
+    $sr = $script:ScriptRoot
+    $mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
+    if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
+    $maint = Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"
+    if (-not (Test-Path $maint)) { $maint = Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1" }
+
+    $cp = Get-EscapedPath $script:ContentPath
+    $sql = Get-EscapedPath $script:SqlInstance
+    $mgmtSafe = Get-EscapedPath $mgmt
+    $maintSafe = Get-EscapedPath $maint
+
+    $cmd = switch ($Id) {
+        "maintenance" { "& '$maintSafe'" }
+        "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
+        "health"      { "& '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
+        "repair"      { "& '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
+        default       { "Write-Host 'Unknown: $Id'" }
+    }
+
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = "powershell.exe"
+        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        $psi.WorkingDirectory = $sr
+
+        $script:CurrentProcess = New-Object System.Diagnostics.Process
+        $script:CurrentProcess.StartInfo = $psi
+        $script:CurrentProcess.EnableRaisingEvents = $true
+
+        $eventData = @{ Window = $window; Controls = $controls; Title = $Title }
+
+        $outputHandler = {
+            $line = $Event.SourceEventArgs.Data
+            if ($line) {
+                $data = $Event.MessageData
+                $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
+                $data.Window.Dispatcher.Invoke([Action]{
+                    $timestamp = Get-Date -Format "HH:mm:ss"
+                    $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+                    $data.Controls.LogOutput.AppendText("[$timestamp] $prefix $line`r`n")
+                    $data.Controls.LogOutput.ScrollToEnd()
+                })
+            }
+        }
+
+        $exitHandler = {
+            $data = $Event.MessageData
+            $data.Window.Dispatcher.Invoke([Action]{
+                $timestamp = Get-Date -Format "HH:mm:ss"
+                $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
+                $data.Controls.LogOutput.ScrollToEnd()
+                $data.Controls.StatusLabel.Text = " - Ready"
+            })
+        }
+
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
+        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData | Out-Null
+
+        $script:CurrentProcess.Start() | Out-Null
+        $script:CurrentProcess.BeginOutputReadLine()
+        $script:CurrentProcess.BeginErrorReadLine()
+    } catch {
+        Write-LogOutput "ERROR: $_" -Level Error
+        Set-Status "Ready"
+    }
+}
+
+# Run operation with full-screen console panel (for wizard-style operations)
 function Run-Operation {
     param([string]$Id, [string]$Title)
 
@@ -1078,11 +1215,7 @@ function Run-Operation {
                 "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$dest'"
             }
         }
-        "maintenance" { "& '$maintSafe'" }
-        "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
-        "health"      { "& '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
-        "repair"      { "& '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
-        default       { "Write-Host 'Unknown: $Id'" }
+        default { "Write-Host 'Unknown: $Id'" }
     }
 
     try {
@@ -1122,7 +1255,7 @@ function Run-Operation {
                 $run.Foreground = "DodgerBlue"
                 $data.Controls.ConsoleOutput.Inlines.Add($run)
                 $data.Controls.BtnCancel.Visibility = "Collapsed"
-                $data.Controls.StatusLabel.Text = "Completed"
+                $data.Controls.StatusLabel.Text = " - Completed"
             })
         }
 
@@ -1133,7 +1266,7 @@ function Run-Operation {
         $script:CurrentProcess.Start() | Out-Null
         $script:CurrentProcess.BeginOutputReadLine()
         $script:CurrentProcess.BeginErrorReadLine()
-        $controls.StatusLabel.Text = "Running: $Title"
+        Set-Status "Running: $Title"
     } catch {
         $controls.ConsoleOutput.Inlines.Add((New-Object System.Windows.Documents.Run -ArgumentList "ERROR: $_"))
         $controls.BtnCancel.Visibility = "Collapsed"
@@ -1147,10 +1280,10 @@ $controls.BtnInstall.Add_Click({ Run-Operation "install" "Install WSUS" })
 $controls.BtnRestore.Add_Click({ Run-Operation "restore" "Restore Database" })
 $controls.BtnExport.Add_Click({ Run-Operation "export" "Export" })
 $controls.BtnImport.Add_Click({ Run-Operation "import" "Import" })
-$controls.BtnMaintenance.Add_Click({ Run-Operation "maintenance" "Maintenance" })
-$controls.BtnCleanup.Add_Click({ Run-Operation "cleanup" "Deep Cleanup" })
-$controls.BtnHealth.Add_Click({ Run-Operation "health" "Health Check" })
-$controls.BtnRepair.Add_Click({ Run-Operation "repair" "Repair" })
+$controls.BtnMaintenance.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
+$controls.BtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
+$controls.BtnRepair.Add_Click({ Run-LogOperation "repair" "Repair" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
@@ -1168,18 +1301,38 @@ $controls.BtnToggleMode.Add_Click({
     Write-Log "Mode: $script:ServerMode"
 })
 
-$controls.QBtnHealth.Add_Click({ Run-Operation "health" "Health Check" })
-$controls.QBtnCleanup.Add_Click({ Run-Operation "cleanup" "Deep Cleanup" })
-$controls.QBtnMaint.Add_Click({ Run-Operation "maintenance" "Maintenance" })
+$controls.QBtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
+$controls.QBtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
+$controls.QBtnMaint.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
-    $controls.StatusLabel.Text = "Starting services..."
-    @("MSSQL`$SQLEXPRESS","W3SVC","WSUSService") | ForEach-Object {
-        try { Start-Service -Name $_ -ErrorAction SilentlyContinue } catch {}
+    Set-Status "Starting services..."
+
+    # Expand log panel
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 180
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    Write-LogOutput "Starting WSUS services..." -Level Info
+    @(
+        @{Name="MSSQL`$SQLEXPRESS"; Display="SQL Server Express"},
+        @{Name="W3SVC"; Display="IIS"},
+        @{Name="WSUSService"; Display="WSUS Service"}
+    ) | ForEach-Object {
+        try {
+            Start-Service -Name $_.Name -ErrorAction Stop
+            Write-LogOutput "$($_.Display) started" -Level Success
+        } catch {
+            Write-LogOutput "Failed to start $($_.Display): $_" -Level Warning
+        }
     }
     Start-Sleep -Seconds 2
     Update-Dashboard
+    Write-LogOutput "Service startup complete" -Level Success
+    Set-Status "Ready"
     $controls.QBtnStart.Content = "Start Services"
     $controls.QBtnStart.IsEnabled = $true
 })
@@ -1187,6 +1340,31 @@ $controls.QBtnStart.Add_Click({
 $controls.BtnOpenLog.Add_Click({
     if (Test-Path $script:LogDir) { Start-Process explorer.exe -ArgumentList $script:LogDir }
     else { [System.Windows.MessageBox]::Show("Log folder not found.", "Log", "OK", "Warning") }
+})
+
+# Log panel buttons
+$controls.BtnToggleLog.Add_Click({
+    if ($script:LogExpanded) {
+        $controls.LogPanel.Height = 36
+        $controls.BtnToggleLog.Content = "Show"
+        $script:LogExpanded = $false
+    } else {
+        $controls.LogPanel.Height = 180
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+})
+
+$controls.BtnClearLog.Add_Click({ $controls.LogOutput.Clear() })
+
+$controls.BtnSaveLog.Add_Click({
+    $dialog = New-Object Microsoft.Win32.SaveFileDialog
+    $dialog.Filter = "Text Files (*.txt)|*.txt"
+    $dialog.FileName = "WsusManager-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+    if ($dialog.ShowDialog() -eq $true) {
+        $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
+        Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
+    }
 })
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
