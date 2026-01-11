@@ -506,9 +506,28 @@ function New-WsusGui {
     $form.FormBorderStyle = "Sizable"
     $form.MinimumSize = New-Object System.Drawing.Size(900, 600)
 
+    # Load custom icon - try multiple locations
+    $customIcon = $null
+    $iconPaths = @(
+        (Join-Path $PSScriptRoot "..\wsus-icon.ico"),
+        (Join-Path $PSScriptRoot "wsus-icon.ico"),
+        "C:\Projects\GA-WsusManager\wsus-icon.ico"
+    )
+    foreach ($iconPath in $iconPaths) {
+        if (Test-Path $iconPath) {
+            try {
+                $customIcon = [System.Drawing.Icon]::new($iconPath)
+                break
+            } catch { }
+        }
+    }
+    if ($customIcon) {
+        $form.Icon = $customIcon
+    }
+
     # System tray icon
     $script:NotifyIcon = New-Object System.Windows.Forms.NotifyIcon
-    $script:NotifyIcon.Icon = [System.Drawing.SystemIcons]::Application
+    $script:NotifyIcon.Icon = if ($customIcon) { $customIcon } else { [System.Drawing.SystemIcons]::Application }
     $script:NotifyIcon.Text = "WSUS Manager"
     $script:NotifyIcon.Visible = $true
 
