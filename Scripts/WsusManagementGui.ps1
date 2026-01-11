@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.6.0
+Version: 3.7.0
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -16,7 +16,7 @@ param([switch]$SkipAdminCheck)
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-$script:AppVersion = "3.6.0"
+$script:AppVersion = "3.7.0"
 
 #region Script Path & Settings
 $script:ScriptRoot = $null
@@ -38,6 +38,7 @@ $script:ExportRoot = "C:\"
 $script:ServerMode = "Online"
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
+$script:OperationRunning = $false
 
 function Write-Log { param([string]$Msg)
     try {
@@ -227,8 +228,7 @@ try {
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnExport" Content="↑ Export" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnImport" Content="↓ Import" Style="{StaticResource NavBtn}" Visibility="Collapsed"/>
+                        <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
@@ -342,7 +342,7 @@ try {
                             <TextBlock x:Name="CfgSqlInstance" Grid.Row="1" Grid.Column="1" Text=".\SQLEXPRESS" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
                             <TextBlock Grid.Row="2" Text="Export:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
                             <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="3" Text="Log:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="3" Text="Logs:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
                             <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource Text1}" FontSize="11"/>
                                 <Button x:Name="BtnOpenLog" Content="Open" FontSize="9" Padding="6,1" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
@@ -432,7 +432,7 @@ try {
             </Grid>
 
             <!-- Log Panel -->
-            <Border x:Name="LogPanel" Grid.Row="2" Background="{StaticResource BgSidebar}" CornerRadius="4" Margin="0,12,0,0" Height="36">
+            <Border x:Name="LogPanel" Grid.Row="2" Background="{StaticResource BgSidebar}" CornerRadius="4" Margin="0,12,0,0" Height="250">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -449,7 +449,8 @@ try {
                                 <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="BtnToggleLog" Content="Show" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
+                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
+                                <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
                             </StackPanel>
@@ -478,7 +479,7 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 #endregion
 
 #region Helper Functions
-$script:LogExpanded = $false
+$script:LogExpanded = $true
 
 function Write-LogOutput {
     param(
@@ -571,13 +572,13 @@ function Update-Dashboard {
     $controls.CfgContentPath.Text = $script:ContentPath
     $controls.CfgSqlInstance.Text = $script:SqlInstance
     $controls.CfgExportRoot.Text = $script:ExportRoot
-    $controls.CfgLogPath.Text = $script:LogPath
+    $controls.CfgLogPath.Text = $script:LogDir
     $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')"
 }
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnExport","BtnImport","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -598,20 +599,13 @@ function Show-Panel {
 }
 
 function Update-ServerModeUI {
+    # Simplified UI - all features available regardless of mode
     if ($script:ServerMode -eq "Online") {
         $controls.ServerModeLabel.Text = "Online"
         $controls.ServerModeLabel.Foreground = "#3FB950"
-        $controls.BtnExport.Visibility = "Visible"
-        $controls.BtnMaintenance.Visibility = "Visible"
-        $controls.BtnImport.Visibility = "Collapsed"
-        $controls.QBtnMaint.Visibility = "Visible"
     } else {
         $controls.ServerModeLabel.Text = "Air-Gap"
         $controls.ServerModeLabel.Foreground = "#D29922"
-        $controls.BtnExport.Visibility = "Collapsed"
-        $controls.BtnMaintenance.Visibility = "Collapsed"
-        $controls.BtnImport.Visibility = "Visible"
-        $controls.QBtnMaint.Visibility = "Collapsed"
     }
 }
 #endregion
@@ -989,6 +983,434 @@ function Show-ImportDialog {
     return $result
 }
 
+function Show-RestoreDialog {
+    $result = @{ Cancelled = $true; BackupPath = "" }
+
+    # Find backup files in C:\WSUS
+    $backupPath = "C:\WSUS"
+    $backupFiles = @()
+    if (Test-Path $backupPath) {
+        $backupFiles = Get-ChildItem -Path $backupPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
+    }
+
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Restore Database"
+    $dlg.Width = 550
+    $dlg.Height = 320
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $title = New-Object System.Windows.Controls.TextBlock
+    $title.Text = "Restore WSUS Database"
+    $title.FontSize = 14
+    $title.FontWeight = "Bold"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,12"
+    $stack.Children.Add($title)
+
+    # Backup file selection
+    $fileLbl = New-Object System.Windows.Controls.TextBlock
+    $fileLbl.Text = "Backup file:"
+    $fileLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $fileLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($fileLbl)
+
+    $filePanel = New-Object System.Windows.Controls.DockPanel
+    $filePanel.Margin = "0,0,0,12"
+
+    $browseBtn = New-Object System.Windows.Controls.Button
+    $browseBtn.Content = "Browse"
+    $browseBtn.Padding = "10,4"
+    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
+    $filePanel.Children.Add($browseBtn)
+
+    $fileTxt = New-Object System.Windows.Controls.TextBox
+    $fileTxt.Margin = "0,0,8,0"
+    $fileTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $fileTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $fileTxt.Padding = "6,4"
+    # Pre-fill with most recent backup if found
+    if ($backupFiles.Count -gt 0) {
+        $fileTxt.Text = $backupFiles[0].FullName
+    }
+    $filePanel.Children.Add($fileTxt)
+
+    $browseBtn.Add_Click({
+        $ofd = New-Object Microsoft.Win32.OpenFileDialog
+        $ofd.Filter = "Backup Files (*.bak)|*.bak|All Files (*.*)|*.*"
+        $ofd.InitialDirectory = "C:\WSUS"
+        if ($ofd.ShowDialog() -eq $true) { $fileTxt.Text = $ofd.FileName }
+    }.GetNewClosure())
+    $stack.Children.Add($filePanel)
+
+    # Show recent backups if any found
+    if ($backupFiles.Count -gt 0) {
+        $recentLbl = New-Object System.Windows.Controls.TextBlock
+        $recentLbl.Text = "Recent backups found in C:\WSUS:"
+        $recentLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $recentLbl.Margin = "0,0,0,6"
+        $stack.Children.Add($recentLbl)
+
+        $listBox = New-Object System.Windows.Controls.ListBox
+        $listBox.MaxHeight = 100
+        $listBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $listBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+        $listBox.BorderThickness = 0
+        $listBox.Margin = "0,0,0,12"
+
+        foreach ($bf in ($backupFiles | Select-Object -First 5)) {
+            $size = [math]::Round($bf.Length / 1MB, 1)
+            $item = "$($bf.Name) - $($bf.LastWriteTime.ToString('yyyy-MM-dd HH:mm')) - ${size}MB"
+            $listBox.Items.Add($item) | Out-Null
+        }
+        $listBox.SelectedIndex = 0
+
+        $listBox.Add_SelectionChanged({
+            if ($listBox.SelectedIndex -ge 0 -and $listBox.SelectedIndex -lt $backupFiles.Count) {
+                $fileTxt.Text = $backupFiles[$listBox.SelectedIndex].FullName
+            }
+        }.GetNewClosure())
+        $stack.Children.Add($listBox)
+    } else {
+        $noFilesLbl = New-Object System.Windows.Controls.TextBlock
+        $noFilesLbl.Text = "No backup files found in C:\WSUS. Use Browse to select a backup file."
+        $noFilesLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#D29922")
+        $noFilesLbl.TextWrapping = "Wrap"
+        $noFilesLbl.Margin = "0,0,0,12"
+        $stack.Children.Add($noFilesLbl)
+    }
+
+    # Warning message
+    $warnLbl = New-Object System.Windows.Controls.TextBlock
+    $warnLbl.Text = "Warning: This will replace the current SUSDB database!"
+    $warnLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+    $warnLbl.FontWeight = "SemiBold"
+    $warnLbl.Margin = "0,0,0,16"
+    $stack.Children.Add($warnLbl)
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $restoreBtn = New-Object System.Windows.Controls.Button
+    $restoreBtn.Content = "Restore"
+    $restoreBtn.Padding = "14,6"
+    $restoreBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+    $restoreBtn.Foreground = "White"
+    $restoreBtn.BorderThickness = 0
+    $restoreBtn.Margin = "0,0,8,0"
+    $restoreBtn.Add_Click({
+        if ([string]::IsNullOrWhiteSpace($fileTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select a backup file.", "Restore", "OK", "Warning")
+            return
+        }
+        if (-not (Test-Path $fileTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Backup file not found: $($fileTxt.Text)", "Restore", "OK", "Error")
+            return
+        }
+        $confirm = [System.Windows.MessageBox]::Show("Are you sure you want to restore from:`n$($fileTxt.Text)`n`nThis will replace the current database!", "Confirm Restore", "YesNo", "Warning")
+        if ($confirm -eq "Yes") {
+            $result.Cancelled = $false
+            $result.BackupPath = $fileTxt.Text
+            $dlg.Close()
+        }
+    }.GetNewClosure())
+    $btnPanel.Children.Add($restoreBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+    return $result
+}
+
+function Show-MaintenanceDialog {
+    $result = @{ Cancelled = $true; Profile = "" }
+
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Monthly Maintenance"
+    $dlg.Width = 450
+    $dlg.Height = 340
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $title = New-Object System.Windows.Controls.TextBlock
+    $title.Text = "Select Maintenance Type"
+    $title.FontSize = 14
+    $title.FontWeight = "Bold"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,16"
+    $stack.Children.Add($title)
+
+    # Radio buttons for maintenance options
+    $radioFull = New-Object System.Windows.Controls.RadioButton
+    $radioFull.Content = "Full Maintenance"
+    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Margin = "0,0,0,4"
+    $radioFull.IsChecked = $true
+    $stack.Children.Add($radioFull)
+
+    $fullDesc = New-Object System.Windows.Controls.TextBlock
+    $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup > Export"
+    $fullDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $fullDesc.FontSize = 11
+    $fullDesc.Margin = "20,0,0,12"
+    $stack.Children.Add($fullDesc)
+
+    $radioQuick = New-Object System.Windows.Controls.RadioButton
+    $radioQuick.Content = "Quick Maintenance"
+    $radioQuick.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioQuick.Margin = "0,0,0,4"
+    $stack.Children.Add($radioQuick)
+
+    $quickDesc = New-Object System.Windows.Controls.TextBlock
+    $quickDesc.Text = "Sync > Cleanup > Backup (skip heavy cleanup)"
+    $quickDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $quickDesc.FontSize = 11
+    $quickDesc.Margin = "20,0,0,12"
+    $stack.Children.Add($quickDesc)
+
+    $radioSync = New-Object System.Windows.Controls.RadioButton
+    $radioSync.Content = "Sync Only"
+    $radioSync.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioSync.Margin = "0,0,0,4"
+    $stack.Children.Add($radioSync)
+
+    $syncDesc = New-Object System.Windows.Controls.TextBlock
+    $syncDesc.Text = "Synchronize and approve updates only"
+    $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $syncDesc.FontSize = 11
+    $syncDesc.Margin = "20,0,0,20"
+    $stack.Children.Add($syncDesc)
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $runBtn = New-Object System.Windows.Controls.Button
+    $runBtn.Content = "Run Maintenance"
+    $runBtn.Padding = "14,6"
+    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $runBtn.Foreground = "White"
+    $runBtn.BorderThickness = 0
+    $runBtn.Margin = "0,0,8,0"
+    $runBtn.Add_Click({
+        $result.Cancelled = $false
+        if ($radioFull.IsChecked) { $result.Profile = "Full" }
+        elseif ($radioQuick.IsChecked) { $result.Profile = "Quick" }
+        else { $result.Profile = "SyncOnly" }
+        $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($runBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+    return $result
+}
+
+function Show-TransferDialog {
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportType = "Full"; DaysOld = 30 }
+
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Transfer Data"
+    $dlg.Width = 500
+    $dlg.Height = 400
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $title = New-Object System.Windows.Controls.TextBlock
+    $title.Text = "Transfer WSUS Data"
+    $title.FontSize = 14
+    $title.FontWeight = "Bold"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,16"
+    $stack.Children.Add($title)
+
+    # Direction selection
+    $dirLbl = New-Object System.Windows.Controls.TextBlock
+    $dirLbl.Text = "Transfer Direction:"
+    $dirLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dirLbl.Margin = "0,0,0,8"
+    $stack.Children.Add($dirLbl)
+
+    $radioExport = New-Object System.Windows.Controls.RadioButton
+    $radioExport.Content = "Export (Online server to media)"
+    $radioExport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioExport.Margin = "0,0,0,4"
+    $radioExport.IsChecked = $true
+    $stack.Children.Add($radioExport)
+
+    $radioImport = New-Object System.Windows.Controls.RadioButton
+    $radioImport.Content = "Import (Media to air-gapped server)"
+    $radioImport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioImport.Margin = "0,0,0,16"
+    $stack.Children.Add($radioImport)
+
+    # Path selection
+    $pathLbl = New-Object System.Windows.Controls.TextBlock
+    $pathLbl.Text = "Folder path:"
+    $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $pathLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($pathLbl)
+
+    $pathPanel = New-Object System.Windows.Controls.DockPanel
+    $pathPanel.Margin = "0,0,0,16"
+
+    $browseBtn = New-Object System.Windows.Controls.Button
+    $browseBtn.Content = "Browse"
+    $browseBtn.Padding = "10,4"
+    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
+    $pathPanel.Children.Add($browseBtn)
+
+    $pathTxt = New-Object System.Windows.Controls.TextBox
+    $pathTxt.Margin = "0,0,8,0"
+    $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $pathTxt.Padding = "6,4"
+    $pathPanel.Children.Add($pathTxt)
+
+    $browseBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder for import" }
+        if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $stack.Children.Add($pathPanel)
+
+    # Export options (only visible for export)
+    $exportOptPanel = New-Object System.Windows.Controls.StackPanel
+    $exportOptPanel.Margin = "0,0,0,16"
+
+    $exportOptLbl = New-Object System.Windows.Controls.TextBlock
+    $exportOptLbl.Text = "Export Type:"
+    $exportOptLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $exportOptLbl.Margin = "0,0,0,8"
+    $exportOptPanel.Children.Add($exportOptLbl)
+
+    $radioFull = New-Object System.Windows.Controls.RadioButton
+    $radioFull.GroupName = "ExportType"
+    $radioFull.Content = "Full Export (all content)"
+    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Margin = "0,0,0,4"
+    $radioFull.IsChecked = $true
+    $exportOptPanel.Children.Add($radioFull)
+
+    $diffPanel = New-Object System.Windows.Controls.StackPanel
+    $diffPanel.Orientation = "Horizontal"
+    $diffPanel.Margin = "0,0,0,4"
+
+    $radioDiff = New-Object System.Windows.Controls.RadioButton
+    $radioDiff.GroupName = "ExportType"
+    $radioDiff.Content = "Differential (last"
+    $radioDiff.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $diffPanel.Children.Add($radioDiff)
+
+    $daysTxt = New-Object System.Windows.Controls.TextBox
+    $daysTxt.Text = "30"
+    $daysTxt.Width = 40
+    $daysTxt.Margin = "6,0,6,0"
+    $daysTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $daysTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysTxt.Padding = "4,2"
+    $diffPanel.Children.Add($daysTxt)
+
+    $daysLbl2 = New-Object System.Windows.Controls.TextBlock
+    $daysLbl2.Text = "days)"
+    $daysLbl2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysLbl2.VerticalAlignment = "Center"
+    $diffPanel.Children.Add($daysLbl2)
+    $exportOptPanel.Children.Add($diffPanel)
+
+    $stack.Children.Add($exportOptPanel)
+
+    # Show/hide export options based on direction
+    $radioExport.Add_Checked({ $exportOptPanel.Visibility = "Visible" }.GetNewClosure())
+    $radioImport.Add_Checked({ $exportOptPanel.Visibility = "Collapsed" }.GetNewClosure())
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $runBtn = New-Object System.Windows.Controls.Button
+    $runBtn.Content = "Start Transfer"
+    $runBtn.Padding = "14,6"
+    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $runBtn.Foreground = "White"
+    $runBtn.BorderThickness = 0
+    $runBtn.Margin = "0,0,8,0"
+    $runBtn.Add_Click({
+        if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select a folder path.", "Transfer", "OK", "Warning")
+            return
+        }
+        $daysVal = 30
+        if ($radioExport.IsChecked -and $radioDiff.IsChecked -and -not [int]::TryParse($daysTxt.Text, [ref]$daysVal)) {
+            [System.Windows.MessageBox]::Show("Invalid days value.", "Transfer", "OK", "Warning")
+            return
+        }
+        $result.Cancelled = $false
+        $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
+        $result.Path = $pathTxt.Text
+        $result.ExportType = if ($radioFull.IsChecked) { "Full" } else { "Differential" }
+        $result.DaysOld = $daysVal
+        $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($runBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+    return $result
+}
+
 function Show-SettingsDialog {
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Settings"
@@ -1070,17 +1492,13 @@ function Show-SettingsDialog {
 function Run-LogOperation {
     param([string]$Id, [string]$Title)
 
-    Write-Log "Run-LogOp: $Id"
-
-    # Expand log panel to show output
-    if (-not $script:LogExpanded) {
-        $controls.LogPanel.Height = 180
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
+    # Block if operation is already running
+    if ($script:OperationRunning) {
+        [System.Windows.MessageBox]::Show("An operation is already running. Please wait for it to complete or cancel it.", "Operation In Progress", "OK", "Warning")
+        return
     }
 
-    Write-LogOutput "Starting $Title..." -Level Info
-    Set-Status "Running: $Title"
+    Write-Log "Run-LogOp: $Id"
 
     $sr = $script:ScriptRoot
     $mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
@@ -1093,13 +1511,79 @@ function Run-LogOperation {
     $mgmtSafe = Get-EscapedPath $mgmt
     $maintSafe = Get-EscapedPath $maint
 
+    # Handle dialog-based operations
     $cmd = switch ($Id) {
-        "maintenance" { "& '$maintSafe'" }
+        "install" {
+            $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+            $fbd.Description = "Select folder with WSUS setup files (must contain Install-WsusWithSqlExpress.ps1)"
+            if ($fbd.ShowDialog() -eq "OK") {
+                $p = $fbd.SelectedPath
+                if (-not (Test-SafePath $p)) {
+                    [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                    return
+                }
+                $installScript = Join-Path $p 'Install-WsusWithSqlExpress.ps1'
+                if (-not (Test-Path $installScript)) {
+                    [System.Windows.MessageBox]::Show("Install-WsusWithSqlExpress.ps1 not found in selected folder.`n`nPlease select the folder containing the WSUS installation scripts.", "Error", "OK", "Error")
+                    return
+                }
+                "& '$(Get-EscapedPath $installScript)'"
+            } else { return }
+        }
+        "restore" {
+            $opts = Show-RestoreDialog
+            if ($opts.Cancelled) { return }
+            if (-not (Test-SafePath $opts.BackupPath)) {
+                [System.Windows.MessageBox]::Show("Invalid backup path.", "Error", "OK", "Error")
+                return
+            }
+            $bkp = Get-EscapedPath $opts.BackupPath
+            "& '$mgmtSafe' -Restore -ContentPath '$cp' -SqlInstance '$sql' -BackupPath '$bkp'"
+        }
+        "transfer" {
+            $opts = Show-TransferDialog
+            if ($opts.Cancelled) { return }
+            if (-not (Test-SafePath $opts.Path)) {
+                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                return
+            }
+            $path = Get-EscapedPath $opts.Path
+            $Title = $opts.Direction
+            if ($opts.Direction -eq "Export") {
+                if ($opts.ExportType -eq "Differential") {
+                    "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path' -Differential -DaysOld $($opts.DaysOld)"
+                } else {
+                    "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path'"
+                }
+            } else {
+                "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
+            }
+        }
+        "maintenance" {
+            $opts = Show-MaintenanceDialog
+            if ($opts.Cancelled) { return }
+            $Title = "$Title ($($opts.Profile))"
+            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)'"
+        }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
-        "health"      { "& '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
-        "repair"      { "& '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
+        "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
+        "repair"      { "`$null = & '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
         default       { "Write-Host 'Unknown: $Id'" }
     }
+
+    # Expand log panel to show output
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 250
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    # Mark operation as running and show cancel button
+    $script:OperationRunning = $true
+    $controls.BtnCancelOp.Visibility = "Visible"
+
+    Write-LogOutput "Starting $Title..." -Level Info
+    Set-Status "Running: $Title"
 
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -1138,7 +1622,9 @@ function Run-LogOperation {
                 $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
                 $data.Controls.LogOutput.ScrollToEnd()
                 $data.Controls.StatusLabel.Text = " - Ready"
+                $data.Controls.BtnCancelOp.Visibility = "Collapsed"
             })
+            # Note: OperationRunning flag is reset via a separate mechanism since we can't access script scope here
         }
 
         Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
@@ -1148,138 +1634,38 @@ function Run-LogOperation {
         $script:CurrentProcess.Start() | Out-Null
         $script:CurrentProcess.BeginOutputReadLine()
         $script:CurrentProcess.BeginErrorReadLine()
+
+        # Wait for process exit in background and reset flag
+        $bgJob = {
+            param($proc)
+            $proc.WaitForExit()
+        }
+        $null = Start-Job -ScriptBlock $bgJob -ArgumentList $script:CurrentProcess
+        # Use a timer to check process status and reset flag
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds(500)
+        $timer.Add_Tick({
+            if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
+                $script:OperationRunning = $false
+                $this.Stop()
+            }
+        }.GetNewClosure())
+        $timer.Start()
     } catch {
         Write-LogOutput "ERROR: $_" -Level Error
         Set-Status "Ready"
+        $script:OperationRunning = $false
+        $controls.BtnCancelOp.Visibility = "Collapsed"
     }
 }
 
-# Run operation with full-screen console panel (for wizard-style operations)
-function Run-Operation {
-    param([string]$Id, [string]$Title)
-
-    Write-Log "Run-Op: $Id"
-    Show-Panel "Operation" $Title ""
-    $controls.ConsoleOutput.Inlines.Clear()
-    $controls.BtnCancel.Visibility = "Visible"
-
-    $sr = $script:ScriptRoot
-    $mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
-    if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
-    $maint = Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"
-    if (-not (Test-Path $maint)) { $maint = Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1" }
-
-    $cp = Get-EscapedPath $script:ContentPath
-    $sql = Get-EscapedPath $script:SqlInstance
-    $mgmtSafe = Get-EscapedPath $mgmt
-    $maintSafe = Get-EscapedPath $maint
-
-    $cmd = switch ($Id) {
-        "install" {
-            $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-            $fbd.Description = "Select folder with WSUS setup files"
-            if ($fbd.ShowDialog() -eq "OK") {
-                $p = $fbd.SelectedPath
-                if (-not (Test-SafePath $p)) {
-                    [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                    Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
-                }
-                "& '$(Get-EscapedPath (Join-Path $p 'Install-WsusWithSqlExpress.ps1'))'"
-            } else { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
-        }
-        "restore" {
-            $r = [System.Windows.MessageBox]::Show("Ensure backup.bak is in C:\WSUS. Continue?", "Restore", "YesNo", "Warning")
-            if ($r -ne "Yes") { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
-            "& '$mgmtSafe' -Restore -ContentPath '$cp' -SqlInstance '$sql'"
-        }
-        "import" {
-            $opts = Show-ImportDialog
-            if ($opts.Cancelled) { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
-            if (-not (Test-SafePath $opts.SourcePath)) {
-                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
-            }
-            "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$(Get-EscapedPath $opts.SourcePath)'"
-        }
-        "export" {
-            $opts = Show-ExportDialog
-            if ($opts.Cancelled) { Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return }
-            if (-not (Test-SafePath $opts.DestinationPath)) {
-                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                Show-Panel "Dashboard" "Dashboard" "BtnDashboard"; return
-            }
-            $dest = Get-EscapedPath $opts.DestinationPath
-            if ($opts.ExportType -eq "Differential") {
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$dest' -Differential -DaysOld $($opts.DaysOld)"
-            } else {
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$dest'"
-            }
-        }
-        default { "Write-Host 'Unknown: $Id'" }
-    }
-
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
-        $psi.UseShellExecute = $false
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.CreateNoWindow = $true
-        $psi.WorkingDirectory = $sr
-
-        $script:CurrentProcess = New-Object System.Diagnostics.Process
-        $script:CurrentProcess.StartInfo = $psi
-        $script:CurrentProcess.EnableRaisingEvents = $true
-
-        # Pass window and controls to event handlers via MessageData (required for scope access)
-        $eventData = @{ Window = $window; Controls = $controls }
-
-        $outputHandler = {
-            $line = $Event.SourceEventArgs.Data
-            if ($line) {
-                $data = $Event.MessageData
-                $data.Window.Dispatcher.Invoke([Action]{
-                    $run = New-Object System.Windows.Documents.Run -ArgumentList "$line`n"
-                    $run.Foreground = if($line -match 'ERROR|FAIL'){"Crimson"}elseif($line -match 'WARN'){"Orange"}elseif($line -match 'OK|Success'){"ForestGreen"}else{"Gray"}
-                    $data.Controls.ConsoleOutput.Inlines.Add($run)
-                    $data.Controls.ConsoleScroller.ScrollToEnd()
-                })
-            }
-        }
-
-        $exitHandler = {
-            $data = $Event.MessageData
-            $data.Window.Dispatcher.Invoke([Action]{
-                $run = New-Object System.Windows.Documents.Run -ArgumentList "`n=== Complete ==="
-                $run.Foreground = "DodgerBlue"
-                $data.Controls.ConsoleOutput.Inlines.Add($run)
-                $data.Controls.BtnCancel.Visibility = "Collapsed"
-                $data.Controls.StatusLabel.Text = " - Completed"
-            })
-        }
-
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData | Out-Null
-
-        $script:CurrentProcess.Start() | Out-Null
-        $script:CurrentProcess.BeginOutputReadLine()
-        $script:CurrentProcess.BeginErrorReadLine()
-        Set-Status "Running: $Title"
-    } catch {
-        $controls.ConsoleOutput.Inlines.Add((New-Object System.Windows.Documents.Run -ArgumentList "ERROR: $_"))
-        $controls.BtnCancel.Visibility = "Collapsed"
-    }
-}
 #endregion
 
 #region Event Handlers
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
-$controls.BtnInstall.Add_Click({ Run-Operation "install" "Install WSUS" })
-$controls.BtnRestore.Add_Click({ Run-Operation "restore" "Restore Database" })
-$controls.BtnExport.Add_Click({ Run-Operation "export" "Export" })
-$controls.BtnImport.Add_Click({ Run-Operation "import" "Import" })
+$controls.BtnInstall.Add_Click({ Run-LogOperation "install" "Install WSUS" })
+$controls.BtnRestore.Add_Click({ Run-LogOperation "restore" "Restore Database" })
+$controls.BtnTransfer.Add_Click({ Run-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.BtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
@@ -1287,6 +1673,21 @@ $controls.BtnRepair.Add_Click({ Run-LogOperation "repair" "Repair" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
+
+# Cancel operation button
+$controls.BtnCancelOp.Add_Click({
+    if ($script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+        try {
+            $script:CurrentProcess.Kill()
+            Write-LogOutput "Operation cancelled by user" -Level Warning
+        } catch {
+            Write-LogOutput "Failed to cancel operation: $_" -Level Error
+        }
+    }
+    $script:OperationRunning = $false
+    $controls.BtnCancelOp.Visibility = "Collapsed"
+    Set-Status "Ready"
+})
 
 $controls.HelpBtnOverview.Add_Click({ Show-Help "Overview" })
 $controls.HelpBtnDashboard.Add_Click({ Show-Help "Dashboard" })
@@ -1311,7 +1712,7 @@ $controls.QBtnStart.Add_Click({
 
     # Expand log panel
     if (-not $script:LogExpanded) {
-        $controls.LogPanel.Height = 180
+        $controls.LogPanel.Height = 250
         $controls.BtnToggleLog.Content = "Hide"
         $script:LogExpanded = $true
     }
@@ -1349,7 +1750,7 @@ $controls.BtnToggleLog.Add_Click({
         $controls.BtnToggleLog.Content = "Show"
         $script:LogExpanded = $false
     } else {
-        $controls.LogPanel.Height = 180
+        $controls.LogPanel.Height = 250
         $controls.BtnToggleLog.Content = "Hide"
         $script:LogExpanded = $true
     }

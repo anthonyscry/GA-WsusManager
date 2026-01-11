@@ -94,6 +94,10 @@ param(
     [Parameter(ParameterSetName = 'Cleanup')]
     [switch]$Force,
 
+    # Restore parameters
+    [Parameter(ParameterSetName = 'Restore')]
+    [string]$BackupPath,
+
     # Common
     [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
@@ -281,7 +285,8 @@ function Test-ValidPath {
 function Invoke-WsusRestore {
     param(
         [string]$ContentPath,
-        [string]$SqlInstance
+        [string]$SqlInstance,
+        [string]$BackupPath
     )
 
     Write-Banner "WSUS DATABASE RESTORE"
@@ -292,33 +297,43 @@ function Invoke-WsusRestore {
         return
     }
 
-    # Find newest .bak file in C:\WSUS
-    Write-Host "Searching for database backups in $ContentPath..." -ForegroundColor Yellow
-    $backupFiles = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending
+    # If specific backup path provided, use it directly
+    if ($BackupPath -and (Test-Path $BackupPath)) {
+        $selectedBackup = Get-Item $BackupPath
+        Write-Host "Using specified backup file:" -ForegroundColor Cyan
+        Write-Host "  $($selectedBackup.Name)" -ForegroundColor Green
+        Write-Host "  Size: $([math]::Round($selectedBackup.Length / 1GB, 2)) GB"
+        Write-Host "  Date: $($selectedBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+        Write-Host ""
+    } else {
+        # Find newest .bak file in C:\WSUS
+        Write-Host "Searching for database backups in $ContentPath..." -ForegroundColor Yellow
+        $backupFiles = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
 
-    if (-not $backupFiles -or $backupFiles.Count -eq 0) {
-        Write-Log "ERROR: No .bak files found in $ContentPath" "Red"
-        return
+        if (-not $backupFiles -or $backupFiles.Count -eq 0) {
+            Write-Log "ERROR: No .bak files found in $ContentPath" "Red"
+            return
+        }
+
+        # Show available backups
+        Write-Host ""
+        Write-Host "Available backups:" -ForegroundColor Cyan
+        $backupFiles | Select-Object -First 5 | ForEach-Object {
+            $age = [math]::Round(((Get-Date) - $_.LastWriteTime).TotalDays, 1)
+            Write-Host "  $($_.Name) - $([math]::Round($_.Length / 1GB, 2)) GB - $($_.LastWriteTime.ToString('yyyy-MM-dd HH:mm')) ($age days old)"
+        }
+
+        $selectedBackup = $backupFiles | Select-Object -First 1
+        Write-Host ""
+        Write-Host "Newest backup: $($selectedBackup.Name)" -ForegroundColor Green
+        Write-Host "  Size: $([math]::Round($selectedBackup.Length / 1GB, 2)) GB"
+        Write-Host "  Date: $($selectedBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+        Write-Host ""
+
+        $confirm = Read-Host "Restore this backup? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
     }
-
-    # Show available backups
-    Write-Host ""
-    Write-Host "Available backups:" -ForegroundColor Cyan
-    $backupFiles | Select-Object -First 5 | ForEach-Object {
-        $age = [math]::Round(((Get-Date) - $_.LastWriteTime).TotalDays, 1)
-        Write-Host "  $($_.Name) - $([math]::Round($_.Length / 1GB, 2)) GB - $($_.LastWriteTime.ToString('yyyy-MM-dd HH:mm')) ($age days old)"
-    }
-
-    $newestBackup = $backupFiles | Select-Object -First 1
-    Write-Host ""
-    Write-Host "Newest backup: $($newestBackup.Name)" -ForegroundColor Green
-    Write-Host "  Size: $([math]::Round($newestBackup.Length / 1GB, 2)) GB"
-    Write-Host "  Date: $($newestBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
-    Write-Host ""
-
-    $confirm = Read-Host "Restore this backup? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) { return }
 
     # Stop services
     Write-Log "Stopping services..." "Yellow"
@@ -330,7 +345,7 @@ function Invoke-WsusRestore {
     # Restore database
     Write-Log "Restoring database..." "Yellow"
     & $SqlCmdExe -S $SqlInstance -Q "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;" -b 2>$null
-    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($newestBackup.FullName)' WITH REPLACE, STATS=10" -b
+    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($selectedBackup.FullName)' WITH REPLACE, STATS=10" -b
     & $SqlCmdExe -S $SqlInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b 2>$null
 
     # Start services
@@ -1455,7 +1470,7 @@ function Start-InteractiveMenu {
 
 # Handle CLI switches directly to avoid PSScriptAnalyzer unused parameter warnings
 if ($Restore) {
-    Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance
+    Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance -BackupPath $BackupPath
 } elseif ($Import) {
     Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
 } elseif ($Export) {
