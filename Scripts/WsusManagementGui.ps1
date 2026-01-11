@@ -433,10 +433,10 @@ try {
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Output Log" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
+                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" IsEnabled="False"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
@@ -1557,7 +1557,7 @@ function Run-LogOperation {
 
     # Mark operation as running and show cancel button
     $script:OperationRunning = $true
-    $controls.BtnCancelOp.Visibility = "Visible"
+    $controls.BtnCancelOp.IsEnabled = $true
 
     Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
@@ -1598,10 +1598,9 @@ function Run-LogOperation {
                 $timestamp = Get-Date -Format "HH:mm:ss"
                 $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
                 $data.Controls.LogOutput.ScrollToEnd()
-                $data.Controls.StatusLabel.Text = " - Ready"
-                $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
+                $data.Controls.BtnCancelOp.IsEnabled = $false
             })
-            # Note: OperationRunning flag is reset via a separate mechanism since we can't access script scope here
         }
 
         Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
@@ -1612,27 +1611,26 @@ function Run-LogOperation {
         $script:CurrentProcess.BeginOutputReadLine()
         $script:CurrentProcess.BeginErrorReadLine()
 
-        # Wait for process exit in background and reset flag
-        $bgJob = {
-            param($proc)
-            $proc.WaitForExit()
-        }
-        $null = Start-Job -ScriptBlock $bgJob -ArgumentList $script:CurrentProcess
-        # Use a timer to check process status and reset flag
-        $timer = New-Object System.Windows.Threading.DispatcherTimer
-        $timer.Interval = [TimeSpan]::FromMilliseconds(500)
-        $timer.Add_Tick({
+        # Use a timer to check process status, reset flag, and force UI refresh
+        $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
+        $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+        $script:OpCheckTimer.Add_Tick({
+            # Force UI to process pending events (keeps log responsive)
+            [System.Windows.Forms.Application]::DoEvents()
+
             if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                 $script:OperationRunning = $false
+                $controls.BtnCancelOp.IsEnabled = $false
+                $controls.StatusLabel.Text = " - Ready"
                 $this.Stop()
             }
         }.GetNewClosure())
-        $timer.Start()
+        $script:OpCheckTimer.Start()
     } catch {
         Write-LogOutput "ERROR: $_" -Level Error
         Set-Status "Ready"
         $script:OperationRunning = $false
-        $controls.BtnCancelOp.Visibility = "Collapsed"
+        $controls.BtnCancelOp.IsEnabled = $false
     }
 }
 
@@ -1662,7 +1660,7 @@ $controls.BtnCancelOp.Add_Click({
         }
     }
     $script:OperationRunning = $false
-    $controls.BtnCancelOp.Visibility = "Collapsed"
+    $controls.BtnCancelOp.IsEnabled = $false
     Set-Status "Ready"
 })
 
