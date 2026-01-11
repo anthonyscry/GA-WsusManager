@@ -436,7 +436,7 @@ try {
                                 <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" IsEnabled="False"/>
+                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
@@ -1557,7 +1557,7 @@ function Run-LogOperation {
 
     # Mark operation as running and show cancel button
     $script:OperationRunning = $true
-    $controls.BtnCancelOp.IsEnabled = $true
+    $controls.BtnCancelOp.Visibility = "Visible"
 
     Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
@@ -1599,7 +1599,7 @@ function Run-LogOperation {
                 $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
                 $data.Controls.LogOutput.ScrollToEnd()
                 $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
-                $data.Controls.BtnCancelOp.IsEnabled = $false
+                $data.Controls.BtnCancelOp.Visibility = "Collapsed"
             })
         }
 
@@ -1620,7 +1620,7 @@ function Run-LogOperation {
 
             if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                 $script:OperationRunning = $false
-                $controls.BtnCancelOp.IsEnabled = $false
+                $controls.BtnCancelOp.Visibility = "Collapsed"
                 $controls.StatusLabel.Text = " - Ready"
                 $this.Stop()
             }
@@ -1630,7 +1630,7 @@ function Run-LogOperation {
         Write-LogOutput "ERROR: $_" -Level Error
         Set-Status "Ready"
         $script:OperationRunning = $false
-        $controls.BtnCancelOp.IsEnabled = $false
+        $controls.BtnCancelOp.Visibility = "Collapsed"
     }
 }
 
@@ -1660,7 +1660,7 @@ $controls.BtnCancelOp.Add_Click({
         }
     }
     $script:OperationRunning = $false
-    $controls.BtnCancelOp.IsEnabled = $false
+    $controls.BtnCancelOp.Visibility = "Collapsed"
     Set-Status "Ready"
 })
 
