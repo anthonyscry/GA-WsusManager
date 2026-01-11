@@ -72,11 +72,17 @@ if (-not $SkipCodeReview) {
     if (-not $SkipCodeReview) {
         Import-Module PSScriptAnalyzer -Force
 
-        # Define scripts to analyze (in Scripts folder)
+        # Define scripts and modules to analyze
         $ScriptsToAnalyze = @(
             "Scripts\WsusManagementGui.ps1",
             "Scripts\Invoke-WsusManagement.ps1"
         )
+
+        # Add all modules to analysis
+        $ModuleFiles = Get-ChildItem -Path (Join-Path $ScriptRoot "Modules") -Filter "*.psm1" -ErrorAction SilentlyContinue
+        if ($ModuleFiles) {
+            $ScriptsToAnalyze += $ModuleFiles | ForEach-Object { "Modules\$($_.Name)" }
+        }
 
         $TotalIssues = 0
         $ErrorCount = 0
@@ -313,6 +319,12 @@ Write-Host "    Output: $OutputName" -ForegroundColor Gray
 Write-Host "    NoConsole: True (GUI mode)" -ForegroundColor Gray
 Write-Host "    RequireAdmin: True" -ForegroundColor Gray
 Write-Host "    x64: True" -ForegroundColor Gray
+
+# Clean up previous build artifact
+if (Test-Path ".\$OutputName") {
+    Write-Host "[*] Removing previous build..." -ForegroundColor Gray
+    Remove-Item ".\$OutputName" -Force
+}
 
 try {
     Invoke-PS2EXE @buildParams

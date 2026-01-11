@@ -210,6 +210,70 @@ function Get-SqlCmd {
     return $candidates
 }
 
+function Test-ValidPath {
+    <#
+    .SYNOPSIS
+        Validates a user-provided path for safety and existence
+    .PARAMETER Path
+        The path to validate
+    .PARAMETER MustExist
+        If true, the path must already exist
+    .PARAMETER PathType
+        Expected type: 'Container' (directory), 'Leaf' (file), or 'Any'
+    .OUTPUTS
+        Hashtable with IsValid, Message, and CleanPath properties
+    #>
+    param(
+        [string]$Path,
+        [switch]$MustExist,
+        [ValidateSet('Container', 'Leaf', 'Any')]
+        [string]$PathType = 'Any'
+    )
+
+    $result = @{ IsValid = $false; Message = ""; CleanPath = "" }
+
+    # Check for empty/null
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        $result.Message = "Path cannot be empty"
+        return $result
+    }
+
+    # Trim whitespace
+    $Path = $Path.Trim()
+
+    # Check for dangerous characters that could enable injection
+    if ($Path -match '[`$;|&<>]') {
+        $result.Message = "Path contains invalid characters"
+        return $result
+    }
+
+    # Must start with valid drive letter or UNC path
+    if ($Path -notmatch '^[A-Za-z]:\\' -and $Path -notmatch '^\\\\[^\\]+\\') {
+        $result.Message = "Path must be a valid Windows path (e.g., C:\folder or \\server\share)"
+        return $result
+    }
+
+    # Check existence if required
+    if ($MustExist) {
+        if (-not (Test-Path $Path)) {
+            $result.Message = "Path does not exist: $Path"
+            return $result
+        }
+
+        if ($PathType -ne 'Any') {
+            if (-not (Test-Path $Path -PathType $PathType)) {
+                $typeDesc = if ($PathType -eq 'Container') { 'directory' } else { 'file' }
+                $result.Message = "Path is not a $typeDesc`: $Path"
+                return $result
+            }
+        }
+    }
+
+    $result.IsValid = $true
+    $result.CleanPath = $Path
+    return $result
+}
+
 # ============================================================================
 # RESTORE OPERATION
 # ============================================================================
@@ -386,11 +450,13 @@ function Select-Destination {
         }
         elseif ($destChoice -eq "2") {
             $customPath = Read-Host "Enter destination path"
-            if (-not $customPath) {
-                Write-Log "ERROR: No destination specified" "Red"
+            # Validate the custom path
+            $validation = Test-ValidPath -Path $customPath
+            if (-not $validation.IsValid) {
+                Write-Log "ERROR: $($validation.Message)" "Red"
                 return $null
             }
-            return $customPath
+            return $validation.CleanPath
         }
         else {
             Write-Host "Invalid selection '$destChoice'. Please enter 1 or 2." -ForegroundColor Red
@@ -717,18 +783,14 @@ function Invoke-CopyForAirGap {
 
     $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
 
-    # Validate path is not empty
-    if ([string]::IsNullOrWhiteSpace($ExportSource)) {
-        Write-Log "ERROR: No source path specified" "Red"
-        return
-    }
-
-    # Check if source is accessible
-    if (-not (Test-Path $ExportSource -ErrorAction SilentlyContinue)) {
-        Write-Log "ERROR: Cannot access $ExportSource" "Red"
+    # Validate the source path
+    $validation = Test-ValidPath -Path $ExportSource -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
         Write-Host "Make sure the path exists and media is connected." -ForegroundColor Yellow
         return
     }
+    $ExportSource = $validation.CleanPath
 
     :mainLoop while ($true) {
         Clear-Host
@@ -774,10 +836,11 @@ function Invoke-CopyForAirGap {
             'C' {
                 Write-Host ""
                 $newSource = Read-Host "Enter new source path"
-                if ($newSource -and (Test-Path $newSource)) {
-                    $ExportSource = $newSource
+                $validation = Test-ValidPath -Path $newSource -MustExist -PathType Container
+                if ($validation.IsValid) {
+                    $ExportSource = $validation.CleanPath
                 } else {
-                    Write-Host "Invalid path or not accessible" -ForegroundColor Red
+                    Write-Host "$($validation.Message)" -ForegroundColor Red
                     Start-Sleep -Seconds 2
                 }
             }
@@ -840,14 +903,25 @@ function Invoke-ExportToDvd {
     $source = switch ($sourceChoice) {
         "1" { $DefaultSource }
         "2" { $ContentPath }
-        "3" { Read-Host "Enter source path" }
+        "3" {
+            $customSource = Read-Host "Enter source path"
+            $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+            if ($validation.IsValid) { $validation.CleanPath } else { $null }
+        }
         default { $DefaultSource }
     }
 
-    if (-not $source -or -not (Test-Path $source)) {
-        Write-Log "ERROR: Source path not accessible: $source" "Red"
+    if (-not $source) {
+        Write-Log "ERROR: Invalid source path" "Red"
         return
     }
+
+    $validation = Test-ValidPath -Path $source -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $source = $validation.CleanPath
 
     # Calculate source size
     Write-Host ""
@@ -865,10 +939,13 @@ function Invoke-ExportToDvd {
     Write-Host ""
     $outputPath = Read-Host "Enter output path"
 
-    if (-not $outputPath) {
-        Write-Log "ERROR: No output path specified" "Red"
+    # Validate output path format (doesn't need to exist yet)
+    $validation = Test-ValidPath -Path $outputPath
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
         return
     }
+    $outputPath = $validation.CleanPath
 
     # Create output if needed
     if (-not (Test-Path $outputPath)) {
@@ -1013,14 +1090,25 @@ function Invoke-ExportToMedia {
     $source = switch ($sourceChoice) {
         "1" { $DefaultSource }
         "2" { $ContentPath }
-        "3" { Read-Host "Enter source path" }
+        "3" {
+            $customSource = Read-Host "Enter source path"
+            $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+            if ($validation.IsValid) { $validation.CleanPath } else { $null }
+        }
         default { $DefaultSource }
     }
 
-    if ([string]::IsNullOrWhiteSpace($source) -or -not (Test-Path $source -ErrorAction SilentlyContinue)) {
-        Write-Log "ERROR: Source path not accessible: $source" "Red"
+    # Validate source path
+    if (-not $source) {
+        Write-Log "ERROR: Invalid source path" "Red"
         return
     }
+    $validation = Test-ValidPath -Path $source -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $source = $validation.CleanPath
 
     # Check what's in source
     $sourceBak = Get-ChildItem -Path $source -Filter "*.bak" -File -ErrorAction SilentlyContinue |
@@ -1051,10 +1139,13 @@ function Invoke-ExportToMedia {
     Write-Host ""
     $destination = Read-Host "Enter destination path"
 
-    if (-not $destination) {
-        Write-Log "ERROR: No destination specified" "Red"
+    # Validate destination path format
+    $validation = Test-ValidPath -Path $destination
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
         return
     }
+    $destination = $validation.CleanPath
 
     # Create destination if needed
     if (-not (Test-Path $destination)) {

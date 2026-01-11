@@ -613,6 +613,10 @@ function Set-WsusSqlCredential {
 
     try {
         # Export credential (encrypted with DPAPI - user/machine specific)
+        # IMPORTANT: DPAPI encryption is per-user. Credentials stored by one user
+        # cannot be decrypted by another user account, including SYSTEM.
+        # If you need to use credentials in scheduled tasks running as SYSTEM,
+        # store them while running as SYSTEM, or use Windows Credential Manager instead.
         $Credential | Export-Clixml -Path $credFile -Force -ErrorAction Stop
 
         # Restrict file permissions
@@ -627,7 +631,8 @@ function Set-WsusSqlCredential {
         Set-Acl -Path $credFile -AclObject $acl -ErrorAction Stop
 
         Write-Host "SQL credentials stored at: $credFile" -ForegroundColor Green
-        Write-Host "Note: Credentials are encrypted and can only be used by administrators on this machine." -ForegroundColor Cyan
+        Write-Host "Note: Credentials are encrypted with DPAPI and can only be decrypted by the same user account on this machine." -ForegroundColor Cyan
+        Write-Host "      Scheduled tasks running as SYSTEM will not be able to use these credentials." -ForegroundColor Yellow
         return $true
     } catch {
         Write-Warning "Failed to store credentials: $($_.Exception.Message)"

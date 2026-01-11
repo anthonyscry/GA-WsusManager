@@ -495,17 +495,27 @@ function Test-WsusBackupIntegrity {
         Message = ""
     }
 
+    # Validate backup path to prevent SQL injection
+    # Must be a valid file path with .bak extension
+    if ($BackupPath -notmatch '^[A-Za-z]:\\[^<>:"|?*]+\.bak$') {
+        $result.Message = "Invalid backup path format. Must be a valid Windows path ending in .bak"
+        return $result
+    }
+
     # Check if file exists
-    if (-not (Test-Path $BackupPath)) {
+    if (-not (Test-Path $BackupPath -PathType Leaf)) {
         $result.Message = "Backup file not found: $BackupPath"
         return $result
     }
+
+    # Escape single quotes in path to prevent SQL injection
+    $safePath = $BackupPath -replace "'", "''"
 
     $result.BackupSizeMB = [math]::Round((Get-Item $BackupPath).Length / 1MB, 2)
 
     try {
         # Get backup header information
-        $headerQuery = "RESTORE HEADERONLY FROM DISK = N'$BackupPath'"
+        $headerQuery = "RESTORE HEADERONLY FROM DISK = N'$safePath'"
         $header = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
             -Query $headerQuery -QueryTimeout 60
 
@@ -515,7 +525,7 @@ function Test-WsusBackupIntegrity {
         }
 
         # Verify backup integrity using RESTORE VERIFYONLY
-        $verifyQuery = "RESTORE VERIFYONLY FROM DISK = N'$BackupPath' WITH CHECKSUM"
+        $verifyQuery = "RESTORE VERIFYONLY FROM DISK = N'$safePath' WITH CHECKSUM"
         Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
             -Query $verifyQuery -QueryTimeout 300
 

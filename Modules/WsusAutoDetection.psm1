@@ -84,7 +84,9 @@ function Get-WsusScheduledTaskStatus {
                 MissedRuns = if ($taskInfo) { $taskInfo.NumberOfMissedRuns } else { 0 }
             }
         }
-    } catch { }
+    } catch {
+        Write-Warning "Failed to get scheduled task status: $($_.Exception.Message)"
+    }
     return @{ Exists = $false; TaskName = $TaskName }
 }
 
@@ -156,7 +158,9 @@ function Get-DatabaseSizeStatus {
                 }
             }
         }
-    } catch { }
+    } catch {
+        Write-Warning "Failed to query database size: $($_.Exception.Message)"
+    }
 
     return $result
 }
@@ -224,7 +228,9 @@ function Get-WsusCertificateStatus {
                 }
             }
         }
-    } catch { }
+    } catch {
+        Write-Warning "Failed to get certificate status: $($_.Exception.Message)"
+    }
 
     return $result
 }
@@ -283,7 +289,9 @@ function Get-WsusDiskSpaceStatus {
                 }
             }
         }
-    } catch { }
+    } catch {
+        Write-Warning "Failed to check disk space: $($_.Exception.Message)"
+    }
 
     return $result
 }

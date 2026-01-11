@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.5.0
+Version: 3.5.2
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -51,7 +51,7 @@ function Write-Log {
     } catch {}
 }
 
-function Load-Settings {
+function Import-WsusSettings {
     try {
         if (Test-Path $script:SettingsFile) {
             $s = Get-Content $script:SettingsFile -Raw | ConvertFrom-Json
@@ -60,7 +60,10 @@ function Load-Settings {
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
         }
-    } catch {}
+    } catch {
+        # Settings file may be corrupt or inaccessible - use defaults
+        Write-Log "Failed to load settings: $($_.Exception.Message)"
+    }
 }
 
 function Save-Settings {
@@ -69,11 +72,44 @@ function Save-Settings {
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
         @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
-    } catch {}
+    } catch {
+        Write-Log "Failed to save settings: $($_.Exception.Message)"
+    }
 }
 
-Load-Settings
+Import-WsusSettings
 Write-Log "=== Starting v$script:AppVersion ==="
+#endregion
+
+#region Security Helpers
+function Get-EscapedPath {
+    <#
+    .SYNOPSIS
+        Escapes a file path for safe use in PowerShell command strings
+    .DESCRIPTION
+        Escapes single quotes and validates path format to prevent command injection
+    #>
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
+    # Escape single quotes by doubling them
+    return $Path -replace "'", "''"
+}
+
+function Test-SafePath {
+    <#
+    .SYNOPSIS
+        Validates that a path is safe for use in commands
+    .DESCRIPTION
+        Checks for potentially dangerous characters that could enable command injection
+    #>
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    # Block paths with dangerous PowerShell characters
+    if ($Path -match '[`$;|&<>]') { return $false }
+    # Must be a valid Windows path format
+    if ($Path -notmatch '^[A-Za-z]:\\') { return $false }
+    return $true
+}
 #endregion
 
 #region Admin Check
@@ -82,7 +118,9 @@ try {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     $p = New-Object Security.Principal.WindowsPrincipal($id)
     $script:IsAdmin = $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-} catch {}
+} catch {
+    Write-Log "Failed to check admin status: $($_.Exception.Message)"
+}
 #endregion
 
 #region XAML Definition
@@ -293,23 +331,23 @@ try {
                 <!-- Navigation Menu -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,20,0,0">
                     <StackPanel>
-                        <Button x:Name="BtnDashboard" Content="Dashboard" Style="{StaticResource NavButton}" Margin="8,0" Background="#21262D" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <Button x:Name="BtnDashboard" Content="Dashboard" Style="{StaticResource NavButton}" Margin="8,0" Background="#21262D" Foreground="{StaticResource TextPrimaryBrush}" ToolTip="View system status and metrics"/>
 
                         <TextBlock Text="SETUP" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnInstall" Content="Install WSUS" Style="{StaticResource NavButton}" Margin="8,0"/>
-                        <Button x:Name="BtnRestore" Content="Restore Database" Style="{StaticResource NavButton}" Margin="8,0"/>
+                        <Button x:Name="BtnInstall" Content="Install WSUS" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Install WSUS with SQL Express"/>
+                        <Button x:Name="BtnRestore" Content="Restore Database" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Restore SUSDB from backup"/>
 
                         <TextBlock Text="DATA TRANSFER" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnExport" Content="Export to Media" Style="{StaticResource NavButton}" Margin="8,0"/>
-                        <Button x:Name="BtnImport" Content="Import from Media" Style="{StaticResource NavButton}" Margin="8,0"/>
+                        <Button x:Name="BtnExport" Content="Export to Media" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Export updates for air-gapped transfer"/>
+                        <Button x:Name="BtnImport" Content="Import from Media" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Import updates from external media"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnMaintenance" Content="Monthly Maintenance" Style="{StaticResource NavButton}" Margin="8,0"/>
-                        <Button x:Name="BtnCleanup" Content="Deep Cleanup" Style="{StaticResource NavButton}" Margin="8,0"/>
+                        <Button x:Name="BtnMaintenance" Content="Monthly Maintenance" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Run monthly cleanup and optimization tasks"/>
+                        <Button x:Name="BtnCleanup" Content="Deep Cleanup" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Comprehensive update cleanup and database optimization"/>
 
                         <TextBlock Text="TROUBLESHOOTING" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentBlueBrush}" Margin="16,20,0,8"/>
-                        <Button x:Name="BtnHealth" Content="Health Check" Style="{StaticResource NavButton}" Margin="8,0"/>
-                        <Button x:Name="BtnRepair" Content="Health + Repair" Style="{StaticResource NavButton}" Margin="8,0"/>
+                        <Button x:Name="BtnHealth" Content="Health Check" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Diagnose system issues (read-only)"/>
+                        <Button x:Name="BtnRepair" Content="Health + Repair" Style="{StaticResource NavButton}" Margin="8,0" ToolTip="Diagnose and auto-fix system issues"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -437,8 +475,11 @@ try {
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Export Root:" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
                             <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Log File:" Foreground="{StaticResource TextSecondaryBrush}"/>
-                            <TextBlock x:Name="CfgLogPath" Grid.Row="3" Grid.Column="1" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Log File:" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Button x:Name="BtnOpenLog" Content="Open" FontSize="10" Padding="8,2" Margin="12,0,0,0" Background="#30363D" Foreground="{StaticResource TextSecondaryBrush}" BorderThickness="0" Cursor="Hand" ToolTip="Open log folder in Explorer"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -578,7 +619,9 @@ function Get-ServiceStatus {
                 $result.Running++
                 $result.Names += switch($svc){"MSSQL`$SQLEXPRESS"{"SQL"}"WSUSService"{"WSUS"}"W3SVC"{"IIS"}}
             }
-        } catch {}
+        } catch {
+            Write-Log "Service check failed for ${svc}: $($_.Exception.Message)"
+        }
     }
     return $result
 }
@@ -587,7 +630,9 @@ function Get-DiskFreeGB {
     try {
         $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue
         if ($d.Free) { return [math]::Round($d.Free/1GB,1) }
-    } catch {}
+    } catch {
+        Write-Log "Disk check failed: $($_.Exception.Message)"
+    }
     return 0
 }
 
@@ -602,7 +647,9 @@ function Get-DatabaseSizeGB {
                 return [math]::Round($result.SizeMB / 1024, 2)
             }
         }
-    } catch {}
+    } catch {
+        Write-Log "Database size check failed: $($_.Exception.Message)"
+    }
     return -1  # -1 indicates unable to get size
 }
 
@@ -610,7 +657,9 @@ function Get-TaskStatus {
     try {
         $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
         if ($t) { return $t.State.ToString() }
-    } catch {}
+    } catch {
+        Write-Log "Task status check failed: $($_.Exception.Message)"
+    }
     return "Not Set"
 }
 
@@ -631,14 +680,16 @@ function Update-Dashboard {
     $dbSize = Get-DatabaseSizeGB
     if ($dbSize -ge 0) {
         $controls.Card2Value.Text = "$dbSize / 10 GB"
-        $controls.Card2Sub.Text = "SUSDB (SQL Express)"
         # Color based on how close to 10GB limit: <7=green, 7-9=yellow, >9=red
-        $controls.Card2Bar.Background = if($dbSize -ge 9){
-            $window.FindResource("AccentRedBrush")
-        }elseif($dbSize -ge 7){
-            $window.FindResource("AccentOrangeBrush")
-        }else{
-            $window.FindResource("AccentGreenBrush")
+        if ($dbSize -ge 9) {
+            $controls.Card2Sub.Text = "Critical: >9GB - cleanup needed"
+            $controls.Card2Bar.Background = $window.FindResource("AccentRedBrush")
+        } elseif ($dbSize -ge 7) {
+            $controls.Card2Sub.Text = "Warning: 7-9GB - consider cleanup"
+            $controls.Card2Bar.Background = $window.FindResource("AccentOrangeBrush")
+        } else {
+            $controls.Card2Sub.Text = "Healthy: <7GB of 10GB limit"
+            $controls.Card2Bar.Background = $window.FindResource("AccentGreenBrush")
         }
     } else {
         $controls.Card2Value.Text = "Offline"
@@ -878,10 +929,22 @@ function Show-ExportDialog {
             [System.Windows.MessageBox]::Show("Please select a destination folder.", "Export", "OK", "Warning")
             return
         }
+        # Validate days input if differential export is selected
+        $daysValue = 30
+        if ($radioDiff.IsChecked) {
+            if (-not [int]::TryParse($daysTxt.Text, [ref]$daysValue)) {
+                [System.Windows.MessageBox]::Show("Days must be a valid number.", "Export", "OK", "Warning")
+                return
+            }
+            if ($daysValue -lt 1 -or $daysValue -gt 365) {
+                [System.Windows.MessageBox]::Show("Days must be between 1 and 365.", "Export", "OK", "Warning")
+                return
+            }
+        }
         $result.Cancelled = $false
         $result.ExportType = if ($radioFull.IsChecked) { "Full" } else { "Differential" }
         $result.DestinationPath = $destTxt.Text
-        $result.DaysOld = [int]$daysTxt.Text
+        $result.DaysOld = $daysValue
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($exportBtn)
@@ -1023,44 +1086,62 @@ function Run-Operation {
     if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
     $maint = Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"
     if (-not (Test-Path $maint)) { $maint = Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1" }
-    $cp = $script:ContentPath
-    $sql = $script:SqlInstance
-    $exp = $script:ExportRoot
+
+    # Escape paths to prevent command injection
+    $cp = Get-EscapedPath $script:ContentPath
+    $sql = Get-EscapedPath $script:SqlInstance
+    $mgmtSafe = Get-EscapedPath $mgmt
+    $maintSafe = Get-EscapedPath $maint
 
     $cmd = switch ($Id) {
         "install" {
             $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
             $fbd.Description = "Select folder containing WSUS setup files"
             if ($fbd.ShowDialog() -eq "OK") {
-                "& '$($fbd.SelectedPath)\Install-WsusWithSqlExpress.ps1'"
+                $selectedPath = $fbd.SelectedPath
+                if (-not (Test-SafePath $selectedPath)) {
+                    [System.Windows.MessageBox]::Show("Invalid path. Path contains unsafe characters.", "Error", "OK", "Error")
+                    Show-Dashboard; return
+                }
+                "& '$(Get-EscapedPath (Join-Path $selectedPath 'Install-WsusWithSqlExpress.ps1'))'"
             } else { Show-Dashboard; return }
         }
         "restore" {
             if (!(Show-RestoreWarning)) { Show-Dashboard; return }
-            "& '$mgmt' -Restore -ContentPath '$cp' -SqlInstance '$sql'"
+            "& '$mgmtSafe' -Restore -ContentPath '$cp' -SqlInstance '$sql'"
         }
         "import" {
             $importOpts = Show-ImportDialog
             if ($importOpts.Cancelled) { Show-Dashboard; return }
             $srcPath = $importOpts.SourcePath
-            "& '$mgmt' -Import -ContentPath '$cp' -ExportRoot '$srcPath'"
+            if (-not (Test-SafePath $srcPath)) {
+                [System.Windows.MessageBox]::Show("Invalid source path. Path contains unsafe characters.", "Error", "OK", "Error")
+                Show-Dashboard; return
+            }
+            $srcPathSafe = Get-EscapedPath $srcPath
+            "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$srcPathSafe'"
         }
         "export" {
             $exportOpts = Show-ExportDialog
             if ($exportOpts.Cancelled) { Show-Dashboard; return }
             $destPath = $exportOpts.DestinationPath
+            if (-not (Test-SafePath $destPath)) {
+                [System.Windows.MessageBox]::Show("Invalid destination path. Path contains unsafe characters.", "Error", "OK", "Error")
+                Show-Dashboard; return
+            }
+            $destPathSafe = Get-EscapedPath $destPath
             $exportType = $exportOpts.ExportType
             $daysOld = $exportOpts.DaysOld
             if ($exportType -eq "Differential") {
-                "& '$mgmt' -Export -ContentPath '$cp' -ExportRoot '$destPath' -Differential -DaysOld $daysOld"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$destPathSafe' -Differential -DaysOld $daysOld"
             } else {
-                "& '$mgmt' -Export -ContentPath '$cp' -ExportRoot '$destPath'"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$destPathSafe'"
             }
         }
-        "maintenance" { "& '$maint'" }
-        "cleanup"     { "& '$mgmt' -Cleanup -Force -SqlInstance '$sql'" }
-        "health"      { "& '$mgmt' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
-        "repair"      { "& '$mgmt' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
+        "maintenance" { "& '$maintSafe'" }
+        "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
+        "health"      { "& '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
+        "repair"      { "& '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
@@ -1159,13 +1240,42 @@ $controls.QBtnMaint.Add_Click({ Run-Operation "maintenance" "Monthly Maintenance
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
+    $controls.StatusLabel.Text = "Starting services..."
+    $startedCount = 0
+    $failedCount = 0
     @("MSSQL`$SQLEXPRESS","W3SVC","WSUSService") | ForEach-Object {
-        try { Start-Service -Name $_ -ErrorAction SilentlyContinue } catch {}
+        try {
+            $svc = Get-Service -Name $_ -ErrorAction SilentlyContinue
+            if ($svc -and $svc.Status -ne 'Running') {
+                Start-Service -Name $_ -ErrorAction Stop
+                $startedCount++
+            } elseif ($svc -and $svc.Status -eq 'Running') {
+                # Already running, count as success
+                $startedCount++
+            }
+        } catch {
+            Write-Log "Failed to start service ${_}: $($_.Exception.Message)"
+            $failedCount++
+        }
     }
     Start-Sleep -Seconds 2
     Update-Dashboard
+    if ($failedCount -eq 0) {
+        $controls.StatusLabel.Text = "Services started successfully"
+    } else {
+        $controls.StatusLabel.Text = "Started $startedCount services, $failedCount failed"
+    }
     $controls.QBtnStart.Content = "Start Services"
     $controls.QBtnStart.IsEnabled = $true
+})
+
+# Open Log Folder button
+$controls.BtnOpenLog.Add_Click({
+    if (Test-Path $script:LogDir) {
+        Start-Process explorer.exe -ArgumentList $script:LogDir
+    } else {
+        [System.Windows.MessageBox]::Show("Log directory does not exist: $script:LogDir", "Log Folder", "OK", "Warning")
+    }
 })
 
 # Back and Cancel
