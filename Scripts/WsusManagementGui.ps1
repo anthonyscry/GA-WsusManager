@@ -323,8 +323,9 @@ try {
                     </Border>
                 </StackPanel>
 
-                <!-- Settings/About at bottom -->
+                <!-- Settings/About/Help at bottom -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="8,0,8,16">
+                    <Button x:Name="BtnHelp" Content="Help" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}" ToolTip="View built-in documentation"/>
                     <Button x:Name="BtnSettings" Content="Settings" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}"/>
                     <Button x:Name="BtnAbout" Content="About" Style="{StaticResource NavButton}" Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
@@ -588,6 +589,35 @@ try {
                 </StackPanel>
             </ScrollViewer>
 
+            <!-- Help Panel -->
+            <Grid x:Name="HelpPanel" Grid.Row="1" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Help Navigation -->
+                <Border Grid.Row="0" Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="12" Margin="0,0,0,16">
+                    <WrapPanel>
+                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap Workflow" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="12,6"/>
+                    </WrapPanel>
+                </Border>
+
+                <!-- Help Content -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <Border Background="{StaticResource BgCardBrush}" CornerRadius="4" Padding="24">
+                        <StackPanel x:Name="HelpContent">
+                            <TextBlock x:Name="HelpTitle" Text="WSUS Manager Help" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,16"/>
+                            <TextBlock x:Name="HelpText" TextWrapping="Wrap" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="22"/>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </Grid>
+
             <!-- Status Bar -->
             <Border Grid.Row="2" Background="{StaticResource BgCardBrush}" CornerRadius="4" Margin="0,16,0,0" Padding="12,8">
                 <TextBlock x:Name="StatusLabel" Text="Ready" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
@@ -729,7 +759,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$ActiveButton)
-    $navButtons = @("BtnDashboard","BtnInstall","BtnRestore","BtnExport","BtnImport","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout")
+    $navButtons = @("BtnDashboard","BtnInstall","BtnRestore","BtnExport","BtnImport","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($btn in $navButtons) {
         if ($controls[$btn]) {
             $isActive = ($btn -eq $ActiveButton)
@@ -744,6 +774,7 @@ function Show-Dashboard {
     $controls.DashboardPanel.Visibility = "Visible"
     $controls.OperationPanel.Visibility = "Collapsed"
     $controls.AboutPanel.Visibility = "Collapsed"
+    $controls.HelpPanel.Visibility = "Collapsed"
     Set-ActiveNavButton "BtnDashboard"
     Update-Dashboard
 }
@@ -753,8 +784,274 @@ function Show-About {
     $controls.DashboardPanel.Visibility = "Collapsed"
     $controls.OperationPanel.Visibility = "Collapsed"
     $controls.AboutPanel.Visibility = "Visible"
+    $controls.HelpPanel.Visibility = "Collapsed"
     Set-ActiveNavButton "BtnAbout"
 }
+
+#region Help System
+$script:HelpContent = @{
+    Overview = @"
+WSUS MANAGER - OVERVIEW
+
+WSUS Manager is a comprehensive toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
+
+FEATURES
+- Modern dark-themed GUI with auto-refresh dashboard
+- Air-gapped network support with export/import
+- Automated maintenance and cleanup
+- Health monitoring with auto-repair
+- Database size monitoring (10GB SQL Express limit)
+
+QUICK START
+1. Run WsusManager.exe as Administrator
+2. Use 'Install WSUS' for fresh installation
+3. Dashboard shows real-time status
+4. Toggle Server Mode for Online/Air-Gap operations
+
+REQUIREMENTS
+- Windows Server 2019 or later
+- PowerShell 5.1+
+- SQL Server Express 2022
+- Administrator privileges
+- 50+ GB disk space recommended
+
+STANDARD PATHS
+- WSUS Content: C:\WSUS\
+- SQL Installers: C:\WSUS\SQLDB\
+- Logs: C:\WSUS\Logs\
+- Settings: %APPDATA%\WsusManager\settings.json
+"@
+
+    Dashboard = @"
+DASHBOARD GUIDE
+
+The dashboard displays four color-coded status cards with auto-refresh every 30 seconds.
+
+STATUS CARDS
+
+Services Card
+- Shows SQL Server, WSUS, and IIS status
+- Green: All services running
+- Orange: Some services running
+- Red: Critical services stopped
+
+Database Card
+- Shows SUSDB size vs 10GB SQL Express limit
+- Green: Less than 7 GB (healthy)
+- Yellow: 7-9 GB (consider cleanup)
+- Red: Over 9 GB (cleanup required!)
+
+Disk Space Card
+- Shows free space on content drive
+- Green: More than 50 GB free
+- Yellow: 10-50 GB free
+- Red: Less than 10 GB (critical!)
+
+Automation Card
+- Shows scheduled task status
+- Green: Task configured and ready
+- Orange: No scheduled task set
+
+QUICK ACTIONS
+
+Health Check - Run diagnostics without changes
+Deep Cleanup - Aggressive cleanup for space
+Maintenance - Monthly maintenance routine
+Start Services - Start all WSUS services
+
+AUTO-REFRESH
+Dashboard updates every 30 seconds automatically.
+A refresh guard prevents overlapping operations.
+"@
+
+    Operations = @"
+OPERATIONS GUIDE
+
+SETUP OPERATIONS
+
+Install WSUS
+- Installs WSUS with SQL Server Express
+- Requires SQL installers in C:\WSUS\SQLDB\
+- Takes 15-30 minutes to complete
+
+Restore Database
+- Restores SUSDB from backup file
+- Place .bak file in C:\WSUS\
+- Ensure content files are in place first
+
+DATA TRANSFER
+
+Export to Media (Online Mode)
+- Full Export: Complete database and all files
+- Differential: Only updates from last N days
+- Select USB drive as destination
+- Creates backup.bak and WsusContent folder
+
+Import from Media (Air-Gap Mode)
+- Select source folder with export
+- Imports database and content files
+- Use Restore Database after full import
+
+MAINTENANCE
+
+Monthly Maintenance
+- Syncs with Microsoft Update
+- Declines superseded updates
+- Runs cleanup wizard
+- Optimizes database indexes
+- Creates backup
+
+Deep Cleanup
+- Removes obsolete updates
+- Cleans superseded content
+- Shrinks database
+- Compacts content directory
+- Use when database is large
+
+TROUBLESHOOTING
+
+Health Check
+- Verifies services, database, firewall
+- Read-only - makes no changes
+- Reports issues found
+
+Health + Repair
+- Runs health check
+- Auto-fixes common issues
+- Starts stopped services
+- Creates missing firewall rules
+"@
+
+    AirGap = @"
+AIR-GAP WORKFLOW
+
+ARCHITECTURE
+Air-gapped networks require manual update transfer via USB.
+
+Two-server model:
+- Online WSUS: Internet-connected, syncs with Microsoft
+- Air-Gap WSUS: Disconnected, receives imports
+
+WORKFLOW STEPS
+
+On Online Server:
+1. Run Monthly Maintenance (syncs updates)
+2. Click Export to Media
+3. Choose Full or Differential export
+4. Select USB drive destination
+5. Wait for export to complete
+
+Physical Transfer:
+- Scan USB per security policy
+- Transport to air-gapped network
+- Scan again before connecting
+
+On Air-Gap Server:
+1. Connect USB drive
+2. Click Import from Media
+3. Select export folder
+4. Wait for import
+5. Use Restore Database (for full exports)
+
+EXPORT OPTIONS
+
+Full Export
+- Complete database backup
+- All approved update files
+- Use for initial setup or refresh
+- Size: Can be 50+ GB
+
+Differential Export
+- Only recent updates (default 30 days)
+- Smaller transfer size
+- Use for regular monthly updates
+
+RECOMMENDATIONS
+- Use USB 3.0 drives for speed
+- Format as NTFS (files > 4GB)
+- Keep servers in sync
+- Document all transfers
+- Test on non-production first
+"@
+
+    Troubleshooting = @"
+TROUBLESHOOTING GUIDE
+
+COMMON ISSUES
+
+Services Won't Start
+1. Check SQL Server first (required for WSUS)
+2. Use 'Start Services' button
+3. Check Event Viewer for errors
+4. Run Health + Repair
+
+Database Shows 'Offline'
+1. SQL Server may not be running
+2. Start SQL Server Express service
+3. Check disk space on data drive
+4. Run Health Check
+
+Database Too Large (>9 GB)
+1. Run Deep Cleanup
+2. Decline unneeded updates
+3. Run Monthly Maintenance
+4. Consider shrinking database
+
+Clients Not Updating
+1. Verify GPO is applied (gpresult /h)
+2. Run gpupdate /force on clients
+3. Check firewall ports 8530/8531
+4. Verify WSUS URL in registry
+
+Endless Download Loop
+- CRITICAL: Content path must be C:\WSUS
+- NOT C:\WSUS\wsuscontent
+- Reconfigure if incorrect
+
+QUICK FIXES
+
+Start All Services:
+  Use 'Start Services' quick action
+
+Reset WSUS:
+  Run Health + Repair
+
+Check Configuration:
+  Run Health Check (read-only)
+
+Free Disk Space:
+  Run Deep Cleanup
+
+LOG FILES
+
+Application Logs: C:\WSUS\Logs\
+WSUS Logs: C:\Program Files\Update Services\LogFiles\
+IIS Logs: C:\inetpub\logs\LogFiles\
+
+ERROR CODES
+
+Port in use: Check IIS bindings
+Access denied: Run as Administrator
+Database error: Check SQL service
+Timeout: SQL may be overloaded
+"@
+}
+
+function Show-Help {
+    param([string]$Topic = "Overview")
+
+    $controls.PageTitle.Text = "Help"
+    $controls.DashboardPanel.Visibility = "Collapsed"
+    $controls.OperationPanel.Visibility = "Collapsed"
+    $controls.AboutPanel.Visibility = "Collapsed"
+    $controls.HelpPanel.Visibility = "Visible"
+    Set-ActiveNavButton "BtnHelp"
+
+    # Update help content
+    $controls.HelpTitle.Text = $Topic
+    $controls.HelpText.Text = $script:HelpContent[$Topic]
+}
+#endregion
 
 function Update-ServerModeUI {
     # Update the mode label and color
@@ -1077,6 +1374,8 @@ function Run-Operation {
     Write-Log "Run-Op: $Id"
     $controls.PageTitle.Text = $Title
     $controls.DashboardPanel.Visibility = "Collapsed"
+    $controls.AboutPanel.Visibility = "Collapsed"
+    $controls.HelpPanel.Visibility = "Collapsed"
     $controls.OperationPanel.Visibility = "Visible"
     $controls.ConsoleOutput.Inlines.Clear()
     $controls.BtnCancel.Visibility = "Visible"
@@ -1221,6 +1520,14 @@ $controls.BtnCleanup.Add_Click({ Run-Operation "cleanup" "Deep Cleanup" })
 $controls.BtnHealth.Add_Click({ Run-Operation "health" "Health Check" })
 $controls.BtnRepair.Add_Click({ Run-Operation "repair" "Health + Repair" })
 $controls.BtnAbout.Add_Click({ Show-About })
+$controls.BtnHelp.Add_Click({ Show-Help -Topic "Overview" })
+
+# Help panel navigation buttons
+$controls.HelpBtnOverview.Add_Click({ Show-Help -Topic "Overview" })
+$controls.HelpBtnDashboard.Add_Click({ Show-Help -Topic "Dashboard" })
+$controls.HelpBtnOperations.Add_Click({ Show-Help -Topic "Operations" })
+$controls.HelpBtnAirGap.Add_Click({ Show-Help -Topic "AirGap" })
+$controls.HelpBtnTroubleshooting.Add_Click({ Show-Help -Topic "Troubleshooting" })
 
 # Server Mode Toggle
 $controls.BtnToggleMode.Add_Click({
