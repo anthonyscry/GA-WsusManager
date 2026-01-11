@@ -23,24 +23,39 @@ Date: 2026-01-10
 # ============================================================================
 # DETAILED SERVICE STATUS
 # ============================================================================
+
+# Service definitions (cached at module level)
+$script:WsusServiceDefinitions = @(
+    @{ Name = "SQL Server Express"; ServiceName = "MSSQL`$SQLEXPRESS"; Critical = $true },
+    @{ Name = "WSUS Service"; ServiceName = "WSUSService"; Critical = $true },
+    @{ Name = "IIS (W3SVC)"; ServiceName = "W3SVC"; Critical = $true },
+    @{ Name = "Windows Update"; ServiceName = "wuauserv"; Critical = $false },
+    @{ Name = "BITS"; ServiceName = "bits"; Critical = $false }
+)
+
 function Get-DetailedServiceStatus {
     <#
     .SYNOPSIS
         Gets detailed status of all WSUS-related services with health indicators
+    .DESCRIPTION
+        Optimized to batch-query all services at once instead of individual calls.
+        This reduces RPC calls to Service Control Manager from 5 to 1.
     .OUTPUTS
         Array of hashtables with service details
     #>
-    $services = @(
-        @{ Name = "SQL Server Express"; ServiceName = "MSSQL`$SQLEXPRESS"; Critical = $true },
-        @{ Name = "WSUS Service"; ServiceName = "WSUSService"; Critical = $true },
-        @{ Name = "IIS (W3SVC)"; ServiceName = "W3SVC"; Critical = $true },
-        @{ Name = "Windows Update"; ServiceName = "wuauserv"; Critical = $false },
-        @{ Name = "BITS"; ServiceName = "bits"; Critical = $false }
-    )
+
+    # Batch query all services at once (performance optimization)
+    # This is faster than calling Get-Service 5 times individually
+    $serviceNames = $script:WsusServiceDefinitions | ForEach-Object { $_.ServiceName }
+    $allServices = @{}
+
+    Get-Service -Name $serviceNames -ErrorAction SilentlyContinue | ForEach-Object {
+        $allServices[$_.Name] = $_
+    }
 
     $results = @()
-    foreach ($svcInfo in $services) {
-        $svc = Get-Service -Name $svcInfo.ServiceName -ErrorAction SilentlyContinue
+    foreach ($svcInfo in $script:WsusServiceDefinitions) {
+        $svc = $allServices[$svcInfo.ServiceName]
         $result = @{
             Name = $svcInfo.Name
             ServiceName = $svcInfo.ServiceName

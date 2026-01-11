@@ -42,6 +42,7 @@ $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
 $script:ExportRoot = "C:\"
 $script:ServerMode = "Online"  # "Online" or "AirGap"
+$script:RefreshInProgress = $false  # Guard to prevent overlapping dashboard refreshes
 
 function Write-Log {
     param([string]$Msg)
@@ -1411,10 +1412,20 @@ try {
 Update-Dashboard
 Update-ServerModeUI
 
-# Auto-refresh timer
+# Auto-refresh timer with guard to prevent overlapping operations
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)
-$timer.Add_Tick({ if ($controls.DashboardPanel.Visibility -eq "Visible") { Update-Dashboard } })
+$timer.Add_Tick({
+    # Only refresh if dashboard is visible AND no refresh is already in progress
+    if ($controls.DashboardPanel.Visibility -eq "Visible" -and -not $script:RefreshInProgress) {
+        $script:RefreshInProgress = $true
+        try {
+            Update-Dashboard
+        } finally {
+            $script:RefreshInProgress = $false
+        }
+    }
+})
 $timer.Start()
 
 $window.Add_Closing({
