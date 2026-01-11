@@ -56,31 +56,31 @@ Describe "Test-WsusContentPermissions" {
             $result | Should -BeOfType [hashtable]
         }
 
-        It "Should contain Valid key" {
+        It "Should contain AllCorrect key" {
             $result = Test-WsusContentPermissions -ContentPath "C:\WSUS"
-            $result.Keys | Should -Contain "Valid"
+            $result.Keys | Should -Contain "AllCorrect"
         }
 
-        It "Should contain Path key" {
+        It "Should contain Found key" {
             $result = Test-WsusContentPermissions -ContentPath "C:\WSUS"
-            $result.Keys | Should -Contain "Path"
+            $result.Keys | Should -Contain "Found"
         }
 
-        It "Should contain Message key" {
+        It "Should contain Missing key" {
             $result = Test-WsusContentPermissions -ContentPath "C:\WSUS"
-            $result.Keys | Should -Contain "Message"
+            $result.Keys | Should -Contain "Missing"
         }
 
-        It "Valid should be boolean" {
+        It "AllCorrect should be boolean" {
             $result = Test-WsusContentPermissions -ContentPath "C:\WSUS"
-            $result.Valid | Should -BeOfType [bool]
+            $result.AllCorrect | Should -BeOfType [bool]
         }
     }
 
     Context "With non-existent path" {
-        It "Should return Valid=false for non-existent path" {
+        It "Should return AllCorrect=false for non-existent path" {
             $result = Test-WsusContentPermissions -ContentPath "C:\NonExistentPath12345"
-            $result.Valid | Should -Be $false
+            $result.AllCorrect | Should -Be $false
         }
     }
 }
@@ -128,36 +128,25 @@ Describe "Repair-WsusContentPermissions" {
 }
 
 Describe "Initialize-WsusDirectories" {
-    Context "Return structure validation" {
-        BeforeAll {
-            Mock New-Item { } -ModuleName WsusPermissions
-            Mock Test-Path { $false } -ModuleName WsusPermissions
+    Context "Parameter validation" {
+        It "Should have WSUSRoot parameter" {
+            (Get-Command Initialize-WsusDirectories).Parameters.Keys | Should -Contain "WSUSRoot"
         }
 
-        It "Should return a hashtable" {
-            $result = Initialize-WsusDirectories -ContentPath "C:\WSUS"
-            $result | Should -BeOfType [hashtable]
-        }
-
-        It "Should contain Success key" {
-            $result = Initialize-WsusDirectories -ContentPath "C:\WSUS"
-            $result.Keys | Should -Contain "Success"
-        }
-
-        It "Should contain DirectoriesCreated key" {
-            $result = Initialize-WsusDirectories -ContentPath "C:\WSUS"
-            $result.Keys | Should -Contain "DirectoriesCreated"
+        It "Should have CreateSubdirectories parameter" {
+            (Get-Command Initialize-WsusDirectories).Parameters.Keys | Should -Contain "CreateSubdirectories"
         }
     }
 
-    Context "With existing directories" {
+    Context "Return type validation" {
         BeforeAll {
-            Mock Test-Path { $true } -ModuleName WsusPermissions
+            Mock New-Item { } -ModuleName WsusPermissions
+            Mock Set-WsusContentPermissions { $true } -ModuleName WsusPermissions
         }
 
-        It "Should succeed when directories exist" {
-            $result = Initialize-WsusDirectories -ContentPath "C:\WSUS"
-            $result.Success | Should -Be $true
+        It "Should return a boolean" {
+            $result = Initialize-WsusDirectories -WSUSRoot "C:\WSUS"
+            $result | Should -BeOfType [bool]
         }
     }
 }

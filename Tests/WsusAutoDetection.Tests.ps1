@@ -254,7 +254,8 @@ Describe "Get-WsusOverallHealth" {
     Context "Status values" {
         It "Status should be one of known values" {
             $result = Get-WsusOverallHealth
-            $validStatuses = @("Healthy", "Warning", "Critical", "Unknown", "Degraded")
+            # Module uses: Healthy, Unhealthy, Degraded, Warning, Critical, Unknown, Moderate
+            $validStatuses = @("Healthy", "Unhealthy", "Degraded", "Warning", "Critical", "Unknown", "Moderate")
             $validStatuses | Should -Contain $result.Status
         }
     }
