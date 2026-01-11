@@ -13,7 +13,9 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd CLAUDE.md with project documentation for AI assistants\n\nProvides comprehensive guidance including:\n- Project overview and structure\n- Build process documentation\n- Key technical details \\(modules, GUI, paths\\)\n- Development tasks and testing instructions\n- Code style guidelines and important considerations\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nv3.5.2: Update WSUS Manager with tests and documentation\n\nChanges:\n- Add Pester unit tests for modules \\(Tests/\\)\n- Update README and Confluence documentation\n- Update build script with test support\n- Refactor GUI and CLI scripts\n- Remove unused MCP/TypeScript scripts\n- Add versioned executables \\(3.5.0, 3.5.1, 3.5.2\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -56,8 +56,7 @@ The build process:
 1. Runs PSScriptAnalyzer on `Scripts\WsusManagementGui.ps1` and `Scripts\Invoke-WsusManagement.ps1`
 2. Blocks build if errors are found
 3. Warns but continues if only warnings exist
-4. Compiles `WsusManagementGui.ps1` to executable using PS2EXE
-5. Creates both versioned (`WsusManager-{version}.exe`) and generic (`WsusManager.exe`) copies
+4. Compiles `WsusManagementGui.ps1` to `WsusManager.exe` using PS2EXE
 
 **Version:** Update in `build.ps1` and `Scripts\WsusManagementGui.ps1` (`$script:AppVersion`)
 
@@ -133,5 +132,5 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 ## Git Workflow
 
 - Main branch: `main`
-- Versioned executables should be committed for distribution
+- Only the generic `WsusManager.exe` is committed (version is in About dialog)
 - Use conventional commit messages
