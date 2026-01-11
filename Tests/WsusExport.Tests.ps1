@@ -88,21 +88,16 @@ Describe "Get-ExportFolderStats" {
 
 Describe "Get-ArchiveStructure" {
     Context "Return structure validation" {
-        It "Should return a hashtable" {
-            $result = Get-ArchiveStructure -Path "C:\Export"
-            $result | Should -BeOfType [hashtable]
-        }
-
-        It "Should contain required keys" {
-            $result = Get-ArchiveStructure -Path "C:\Export"
-            $result.Keys | Should -Contain "Exists"
+        It "Should return empty collection for non-existent path" {
+            $result = Get-ArchiveStructure -BasePath "C:\NonExistentPath12345"
+            # Empty array returns as $null in PowerShell pipeline, so check count
+            @($result).Count | Should -Be 0
         }
     }
 
-    Context "Path validation" {
-        It "Should accept Path parameter" {
-            $result = Get-ArchiveStructure -Path "D:\MyExport"
-            $result | Should -BeOfType [hashtable]
+    Context "Parameter validation" {
+        It "Should have BasePath parameter" {
+            (Get-Command Get-ArchiveStructure).Parameters.Keys | Should -Contain "BasePath"
         }
     }
 }

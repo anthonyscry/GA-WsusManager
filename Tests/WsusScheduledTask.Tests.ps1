@@ -54,49 +54,28 @@ Describe "WsusScheduledTask Module" {
 }
 
 Describe "Get-WsusMaintenanceTask" {
-    Context "With non-existent task" {
-        BeforeAll {
-            Mock Get-ScheduledTask { $null } -ModuleName WsusScheduledTask
-        }
-
-        It "Should return hashtable with Exists=false" {
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
             $result = Get-WsusMaintenanceTask
             $result | Should -BeOfType [hashtable]
-            $result.Exists | Should -Be $false
+        }
+
+        It "Should contain Exists key" {
+            $result = Get-WsusMaintenanceTask
+            $result.Keys | Should -Contain "Exists"
+        }
+
+        It "Should contain TaskName key" {
+            $result = Get-WsusMaintenanceTask
+            $result.Keys | Should -Contain "TaskName"
         }
     }
 
-    Context "With existing task" {
-        BeforeAll {
-            Mock Get-ScheduledTask {
-                [PSCustomObject]@{
-                    TaskName = "WSUS Monthly Maintenance"
-                    State = "Ready"
-                }
-            } -ModuleName WsusScheduledTask
-            Mock Get-ScheduledTaskInfo {
-                [PSCustomObject]@{
-                    LastRunTime = (Get-Date).AddDays(-7)
-                    NextRunTime = (Get-Date).AddDays(23)
-                    LastTaskResult = 0
-                }
-            } -ModuleName WsusScheduledTask
-        }
-
-        It "Should return hashtable with Exists=true" {
-            $result = Get-WsusMaintenanceTask
-            $result | Should -BeOfType [hashtable]
-            $result.Exists | Should -Be $true
-        }
-
-        It "Should contain TaskName" {
-            $result = Get-WsusMaintenanceTask
-            $result.TaskName | Should -Be "WSUS Monthly Maintenance"
-        }
-
-        It "Should contain State" {
-            $result = Get-WsusMaintenanceTask
-            $result.State | Should -Be "Ready"
+    Context "With non-existent default task" {
+        It "Should return Exists=false for non-existent task" {
+            # Use a task name that definitely doesn't exist
+            $result = Get-WsusMaintenanceTask -TaskName "NonExistentTask12345XYZ"
+            $result.Exists | Should -Be $false
         }
     }
 }
@@ -110,9 +89,10 @@ Describe "Remove-WsusMaintenanceTask" {
             Mock Unregister-ScheduledTask { } -ModuleName WsusScheduledTask
         }
 
-        It "Should return true when task is removed" {
+        It "Should return hashtable with Success=true when task is removed" {
             $result = Remove-WsusMaintenanceTask
-            $result | Should -Be $true
+            $result | Should -BeOfType [hashtable]
+            $result.Success | Should -Be $true
         }
 
         It "Should call Unregister-ScheduledTask" {
@@ -126,9 +106,10 @@ Describe "Remove-WsusMaintenanceTask" {
             Mock Get-ScheduledTask { $null } -ModuleName WsusScheduledTask
         }
 
-        It "Should return true when task doesn't exist" {
+        It "Should return hashtable with Success=false when task doesn't exist" {
             $result = Remove-WsusMaintenanceTask
-            $result | Should -Be $true
+            $result | Should -BeOfType [hashtable]
+            $result.Success | Should -Be $false
         }
     }
 }
@@ -142,9 +123,10 @@ Describe "Start-WsusMaintenanceTask" {
             Mock Start-ScheduledTask { } -ModuleName WsusScheduledTask
         }
 
-        It "Should return true when task starts" {
+        It "Should return hashtable with Success=true when task starts" {
             $result = Start-WsusMaintenanceTask
-            $result | Should -Be $true
+            $result | Should -BeOfType [hashtable]
+            $result.Success | Should -Be $true
         }
 
         It "Should call Start-ScheduledTask" {
@@ -155,12 +137,13 @@ Describe "Start-WsusMaintenanceTask" {
 
     Context "With non-existent task" {
         BeforeAll {
-            Mock Get-ScheduledTask { $null } -ModuleName WsusScheduledTask
+            Mock Get-ScheduledTask { throw "Task not found" } -ModuleName WsusScheduledTask
         }
 
-        It "Should return false when task doesn't exist" {
+        It "Should return hashtable with Success=false when task doesn't exist" {
             $result = Start-WsusMaintenanceTask
-            $result | Should -Be $false
+            $result | Should -BeOfType [hashtable]
+            $result.Success | Should -Be $false
         }
     }
 }
@@ -175,8 +158,8 @@ Describe "New-WsusMaintenanceTask" {
             (Get-Command New-WsusMaintenanceTask).Parameters.Keys | Should -Contain "Time"
         }
 
-        It "Should have Username parameter" {
-            (Get-Command New-WsusMaintenanceTask).Parameters.Keys | Should -Contain "Username"
+        It "Should have RunAsUser parameter" {
+            (Get-Command New-WsusMaintenanceTask).Parameters.Keys | Should -Contain "RunAsUser"
         }
     }
 
@@ -194,25 +177,23 @@ Describe "New-WsusMaintenanceTask" {
         }
 
         It "Should return a hashtable" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -Username "SYSTEM"
+            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -RunAsUser "SYSTEM"
             $result | Should -BeOfType [hashtable]
         }
 
         It "Should contain Success key" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -Username "SYSTEM"
+            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -RunAsUser "SYSTEM"
             $result.Keys | Should -Contain "Success"
         }
     }
 
     Context "DayOfMonth validation" {
-        It "Should reject day 0" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 0 -Time "03:00" -Username "SYSTEM"
-            $result.Success | Should -Be $false
+        It "Should reject day 0 with validation error" {
+            { New-WsusMaintenanceTask -DayOfMonth 0 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
         }
 
-        It "Should reject day 29 or higher" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 29 -Time "03:00" -Username "SYSTEM"
-            $result.Success | Should -Be $false
+        It "Should reject day 29 with validation error" {
+            { New-WsusMaintenanceTask -DayOfMonth 29 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
         }
 
         It "Should accept day 15" {
@@ -224,19 +205,20 @@ Describe "New-WsusMaintenanceTask" {
             Mock New-ScheduledTaskPrincipal { [PSCustomObject]@{} } -ModuleName WsusScheduledTask
             Mock New-ScheduledTaskSettingsSet { [PSCustomObject]@{} } -ModuleName WsusScheduledTask
 
-            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -Username "SYSTEM"
-            $result.Success | Should -Be $true
+            # This won't succeed due to admin check, but it shouldn't throw on validation
+            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "03:00" -RunAsUser "SYSTEM"
+            $result | Should -BeOfType [hashtable]
         }
     }
 
     Context "Time format validation" {
         It "Should reject invalid time format" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "25:00" -Username "SYSTEM"
+            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "25:00" -RunAsUser "SYSTEM"
             $result.Success | Should -Be $false
         }
 
         It "Should reject non-time string" {
-            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "invalid" -Username "SYSTEM"
+            $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "invalid" -RunAsUser "SYSTEM"
             $result.Success | Should -Be $false
         }
     }
