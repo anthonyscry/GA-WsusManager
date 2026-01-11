@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.7.0
+Version: 3.8.0
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -12,11 +12,11 @@ Version: 3.7.0
     Features: Dashboard, Health checks, Maintenance, Import/Export
 #>
 
-param([switch]$SkipAdminCheck)
+# No parameters - admin check always runs
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-$script:AppVersion = "3.7.0"
+$script:AppVersion = "3.8.0"
 
 #region Script Path & Settings
 $script:ScriptRoot = $null
@@ -44,7 +44,7 @@ function Write-Log { param([string]$Msg)
     try {
         if (!(Test-Path $script:LogDir)) { New-Item -Path $script:LogDir -ItemType Directory -Force | Out-Null }
         "[$(Get-Date -Format 'HH:mm:ss')] $Msg" | Add-Content -Path $script:LogPath -ErrorAction SilentlyContinue
-    } catch {}
+    } catch { <# Silently ignore logging failures #> }
 }
 
 function Import-WsusSettings {
@@ -497,7 +497,7 @@ function Get-ServiceStatus {
                 $result.Running++
                 $result.Names += switch($svc){"MSSQL`$SQLEXPRESS"{"SQL"}"WSUSService"{"WSUS"}"W3SVC"{"IIS"}}
             }
-        } catch {}
+        } catch { <# Service not found or inaccessible #> }
     }
     return $result
 }
@@ -506,7 +506,7 @@ function Get-DiskFreeGB {
     try {
         $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue
         if ($d.Free) { return [math]::Round($d.Free/1GB,1) }
-    } catch {}
+    } catch { <# Drive access failed #> }
     return 0
 }
 
@@ -518,7 +518,7 @@ function Get-DatabaseSizeGB {
             $r = Invoke-Sqlcmd -ServerInstance $script:SqlInstance -Query $q -ErrorAction SilentlyContinue
             if ($r -and $r.SizeMB) { return [math]::Round($r.SizeMB / 1024, 2) }
         }
-    } catch {}
+    } catch { <# SQL query failed #> }
     return -1
 }
 
@@ -526,7 +526,7 @@ function Get-TaskStatus {
     try {
         $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
         if ($t) { return $t.State.ToString() }
-    } catch {}
+    } catch { <# Task not found #> }
     return "Not Set"
 }
 
@@ -741,6 +741,7 @@ function Show-ExportDialog {
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
@@ -880,6 +881,7 @@ function Show-ImportDialog {
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
@@ -979,6 +981,7 @@ function Show-RestoreDialog {
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
@@ -1129,6 +1132,7 @@ function Show-MaintenanceDialog {
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
@@ -1228,6 +1232,7 @@ function Show-TransferDialog {
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
@@ -1398,6 +1403,12 @@ function Show-SettingsDialog {
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
 
+    # Close dialog on ESC key
+    $dlg.Add_KeyDown({
+        param($sender, $e)
+        if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $sender.Close() }
+    })
+
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
 
@@ -1466,7 +1477,7 @@ function Show-SettingsDialog {
 
 #region Operations
 # Run operation with output to bottom log panel (stays on current view)
-function Run-LogOperation {
+function Invoke-LogOperation {
     param([string]$Id, [string]$Title)
 
     # Block if operation is already running
@@ -1638,13 +1649,13 @@ function Run-LogOperation {
 
 #region Event Handlers
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
-$controls.BtnInstall.Add_Click({ Run-LogOperation "install" "Install WSUS" })
-$controls.BtnRestore.Add_Click({ Run-LogOperation "restore" "Restore Database" })
-$controls.BtnTransfer.Add_Click({ Run-LogOperation "transfer" "Transfer" })
-$controls.BtnMaintenance.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
-$controls.BtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
-$controls.BtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
-$controls.BtnRepair.Add_Click({ Run-LogOperation "repair" "Repair" })
+$controls.BtnInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
+$controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
+$controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
+$controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
+$controls.BtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
+$controls.BtnRepair.Add_Click({ Invoke-LogOperation "repair" "Repair" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
@@ -1670,9 +1681,9 @@ $controls.HelpBtnOperations.Add_Click({ Show-Help "Operations" })
 $controls.HelpBtnAirGap.Add_Click({ Show-Help "AirGap" })
 $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
-$controls.QBtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
-$controls.QBtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
-$controls.QBtnMaint.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.QBtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
+$controls.QBtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
+$controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
@@ -1755,7 +1766,7 @@ try {
     if (Test-Path $iconPath) {
         $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object System.Uri $iconPath))
     }
-} catch {}
+} catch { <# Icon load failed - using default #> }
 
 # Load General Atomics logo for sidebar and About page
 try {
@@ -1770,7 +1781,7 @@ try {
         $logoBitmap.EndInit()
         $controls.SidebarLogo.Source = $logoBitmap
     }
-} catch {}
+} catch { <# Sidebar logo load failed #> }
 
 try {
     $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_big.ico"
@@ -1786,7 +1797,7 @@ try {
         $aboutBitmap.EndInit()
         $controls.AboutLogo.Source = $aboutBitmap
     }
-} catch {}
+} catch { <# About logo load failed #> }
 
 Update-Dashboard
 

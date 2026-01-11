@@ -1,39 +1,30 @@
 # WSUS Manager
 
-**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.5.2
+**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.8.0
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports both online and air-gapped networks.
 
 ---
 
-## What's New in v3.5.2
+## What's New in v3.8.0
 
-### Security Hardening
-- **SQL Injection Prevention** - Added input validation in `Test-WsusBackupIntegrity`
-- **Path Validation** - New `Test-ValidPath` and `Test-SafePath` functions prevent command injection
-- **Safe Path Escaping** - `Get-EscapedPath` ensures safe command string construction
-- **DPAPI Documentation** - Documented credential storage security limitations
+### UX Improvements
+- **ESC Key Support** - All dialogs now close with ESC key (Settings, Export/Import, Restore, Maintenance, Install, About)
+- **Code Quality** - Fixed PSScriptAnalyzer warnings (unused parameters, verb naming, empty catch blocks)
 
-### Bug Fixes
-- **Service Refresh Fix** - Fixed `Start-WsusAutoRecovery` error where `$svc.Refresh()` failed on PSCustomObject
-- **Improved Service Recovery** - Now re-queries service status instead of using Refresh() method
+### Previous (v3.7.0)
+- Output log panel 250px tall and open by default
+- Unified Export/Import into single Transfer dialog
+- Restore dialog auto-detects backup files
+- Cancel button to stop running operations
+- Concurrent operation blocking
 
-### Performance Optimizations
-- **SQL Module Caching** - SqlServer module version checked once at load time (not per query)
-- **Batch Service Queries** - Service status uses single batch query instead of 5 individual calls
-- **Dashboard Refresh Guard** - Prevents overlapping refresh operations that could hang UI
-- **Test Suite Optimization** - Shared module pre-loading reduces test time
-
-### Code Quality
-- **Pester Unit Tests** - Added 323 unit tests across 10 test files (all passing)
-- **PSScriptAnalyzer** - Build now runs code analysis before compilation
-- **Approved Verbs** - Renamed `Load-Settings` to `Import-WsusSettings`
-
-### Previous (v3.5.0/3.5.1)
+### Previous (v3.5.x)
 - Server Mode Toggle (Online/Air-Gap)
 - Modern WPF GUI with dark theme
 - Database Size Indicator with 10GB limit warnings
-- Export/Import dialogs with folder pickers
+- 323 Pester unit tests
+- PSScriptAnalyzer integration in build
 
 ---
 
