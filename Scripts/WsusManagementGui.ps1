@@ -97,7 +97,7 @@ try {
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WSUS Manager" Height="650" Width="950" MinHeight="550" MinWidth="800"
+        Title="WSUS Manager" Height="720" Width="950" MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen" Background="#0D1117">
     <Window.Resources>
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
@@ -194,23 +194,10 @@ try {
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v3.6.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v3.7.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,10,0,0" Padding="8,6">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock x:Name="ServerModeLabel" Text="Online" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
-                                <TextBlock Text="Mode" FontSize="9" Foreground="{StaticResource Text3}"/>
-                            </StackPanel>
-                            <Button x:Name="BtnToggleMode" Grid.Column="1" Content="⇄" Style="{StaticResource BtnSec}" Padding="6,2" FontSize="12" ToolTip="Toggle Server Mode"/>
-                        </Grid>
-                    </Border>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
@@ -598,16 +585,6 @@ function Show-Panel {
     if ($Panel -eq "Dashboard") { Update-Dashboard }
 }
 
-function Update-ServerModeUI {
-    # Simplified UI - all features available regardless of mode
-    if ($script:ServerMode -eq "Online") {
-        $controls.ServerModeLabel.Text = "Online"
-        $controls.ServerModeLabel.Foreground = "#3FB950"
-    } else {
-        $controls.ServerModeLabel.Text = "Air-Gap"
-        $controls.ServerModeLabel.Foreground = "#D29922"
-    }
-}
 #endregion
 
 #region Help Content
@@ -1695,13 +1672,6 @@ $controls.HelpBtnOperations.Add_Click({ Show-Help "Operations" })
 $controls.HelpBtnAirGap.Add_Click({ Show-Help "AirGap" })
 $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
-$controls.BtnToggleMode.Add_Click({
-    $script:ServerMode = if($script:ServerMode -eq "Online"){"AirGap"}else{"Online"}
-    Save-Settings
-    Update-ServerModeUI
-    Write-Log "Mode: $script:ServerMode"
-})
-
 $controls.QBtnHealth.Add_Click({ Run-LogOperation "health" "Health Check" })
 $controls.QBtnCleanup.Add_Click({ Run-LogOperation "cleanup" "Deep Cleanup" })
 $controls.QBtnMaint.Add_Click({ Run-LogOperation "maintenance" "Monthly Maintenance" })
@@ -1821,7 +1791,6 @@ try {
 } catch {}
 
 Update-Dashboard
-Update-ServerModeUI
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)
