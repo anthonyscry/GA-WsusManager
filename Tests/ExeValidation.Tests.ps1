@@ -14,8 +14,9 @@
 
 BeforeAll {
     $script:RepoRoot = Split-Path -Parent $PSScriptRoot
-    $script:ExePath = Join-Path $script:RepoRoot "WsusManager.exe"
-    $script:DistExePath = Join-Path $script:RepoRoot "dist\WsusManager.exe"
+    $script:ExeName = "GA-WsusManager.exe"
+    $script:ExePath = Join-Path $script:RepoRoot $script:ExeName
+    $script:DistExePath = Join-Path $script:RepoRoot "dist\$script:ExeName"
 
     # Use dist version if main doesn't exist
     if (-not (Test-Path $script:ExePath) -and (Test-Path $script:DistExePath)) {
@@ -25,7 +26,7 @@ BeforeAll {
 
 Describe "EXE Validation Tests" {
     Context "File Existence and Basic Properties" {
-        It "Should have WsusManager.exe in repo root or dist folder" {
+        It "Should have GA-WsusManager.exe in repo root or dist folder" {
             (Test-Path $script:ExePath) | Should -Be $true -Because "The compiled executable should exist"
         }
 

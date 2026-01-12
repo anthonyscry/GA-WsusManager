@@ -174,6 +174,8 @@ Describe "New-WsusMaintenanceTask" {
             Mock New-ScheduledTaskPrincipal { [PSCustomObject]@{} } -ModuleName WsusScheduledTask
             Mock New-ScheduledTaskSettingsSet { [PSCustomObject]@{} } -ModuleName WsusScheduledTask
             Mock Test-Path { $true } -ModuleName WsusScheduledTask
+            # Mock Read-Host to prevent interactive password prompts
+            Mock Read-Host { ConvertTo-SecureString "TestPassword123!" -AsPlainText -Force } -ModuleName WsusScheduledTask
         }
 
         It "Should return a hashtable" {
@@ -188,6 +190,11 @@ Describe "New-WsusMaintenanceTask" {
     }
 
     Context "DayOfMonth validation" {
+        BeforeAll {
+            # Mock Read-Host to prevent interactive password prompts
+            Mock Read-Host { ConvertTo-SecureString "TestPassword123!" -AsPlainText -Force } -ModuleName WsusScheduledTask
+        }
+
         It "Should reject day 0 with validation error" {
             { New-WsusMaintenanceTask -DayOfMonth 0 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
         }
@@ -212,6 +219,11 @@ Describe "New-WsusMaintenanceTask" {
     }
 
     Context "Time format validation" {
+        BeforeAll {
+            # Mock Read-Host to prevent interactive password prompts
+            Mock Read-Host { ConvertTo-SecureString "TestPassword123!" -AsPlainText -Force } -ModuleName WsusScheduledTask
+        }
+
         It "Should reject invalid time format" {
             $result = New-WsusMaintenanceTask -DayOfMonth 15 -Time "25:00" -RunAsUser "SYSTEM"
             $result.Success | Should -Be $false
