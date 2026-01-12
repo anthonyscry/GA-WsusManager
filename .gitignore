@@ -121,3 +121,6 @@ node_modules/
 /playwright/.auth/
 test-logs/
 tmp/
+
+# FlaUI Test Screenshots
+Tests/Screenshots/

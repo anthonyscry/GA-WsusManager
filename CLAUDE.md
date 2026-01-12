@@ -445,6 +445,45 @@ function Enable-OperationButtons {
 # Call Disable at start, Enable at end (including error/cancel paths)
 ```
 
+### 12. Operation Status Flag Not Resetting After Completion
+
+**Problem:** After an operation completes, clicking another operation shows "An operation is already running" even though no operation is running.
+
+**Cause:** The `exitHandler` event handler only updates UI text but doesn't reset `$script:OperationRunning` or re-enable buttons. Event handlers run in a different scope so they can't directly call script functions.
+
+**Solution:**
+1. Pass the operation buttons list in the eventData
+2. Reset `$script:OperationRunning = $false` outside the Dispatcher.Invoke (in event handler scope)
+3. Re-enable buttons inside the Dispatcher.Invoke using the passed button list
+
+```powershell
+# Include buttons list in eventData
+$eventData = @{
+    Window = $window
+    Controls = $controls
+    Title = $Title
+    OperationButtons = $script:OperationButtons  # Add this
+}
+
+$exitHandler = {
+    $data = $Event.MessageData
+    $data.Window.Dispatcher.Invoke([Action]{
+        # ... update UI ...
+        # Re-enable buttons using passed list
+        foreach ($btnName in $data.OperationButtons) {
+            if ($data.Controls[$btnName]) {
+                $data.Controls[$btnName].IsEnabled = $true
+                $data.Controls[$btnName].Opacity = 1.0
+            }
+        }
+    })
+    # Reset flag OUTSIDE Dispatcher.Invoke (script scope accessible here)
+    $script:OperationRunning = $false
+}
+```
+
+**Also:** Don't use `.GetNewClosure()` on timer handlers - it captures stale variable values.
+
 ## Testing Checklist for GUI Changes
 
 Before committing GUI changes, verify:
