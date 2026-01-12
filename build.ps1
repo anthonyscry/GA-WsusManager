@@ -442,6 +442,16 @@ try {
         if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
 
+        # Copy logo files for sidebar and About page
+        if (Test-Path ".\general_atomics_logo_small.ico") {
+            Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+            Write-Host "    Included sidebar logo" -ForegroundColor Gray
+        }
+        if (Test-Path ".\general_atomics_logo_big.ico") {
+            Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+            Write-Host "    Included About page logo" -ForegroundColor Gray
+        }
+
         # Copy Scripts folder (required for operations)
         if (Test-Path ".\Scripts") {
             Copy-Item ".\Scripts\*.ps1" -Destination (Join-Path $packageDir "Scripts")
@@ -529,9 +539,11 @@ Author: Tony Tran, ISSO, GA-ASI
             New-Item -ItemType Directory -Path $distDir -Force | Out-Null
         }
 
-        # Copy exe and zip to dist
+        # Copy exe, zip, and logo files to dist
         Copy-Item ".\$OutputName" -Destination $distDir -Force
         Copy-Item ".\$zipFileName" -Destination $distDir -Force
+        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir -Force }
+        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir -Force }
         Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 
