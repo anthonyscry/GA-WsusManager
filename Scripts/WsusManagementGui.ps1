@@ -670,13 +670,22 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+# Input fields that should be disabled during operations
+$script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
         if ($controls[$b]) {
             $controls[$b].IsEnabled = $false
             $controls[$b].Opacity = 0.5
+        }
+    }
+    # Also disable input fields during operations
+    foreach ($i in $script:OperationInputs) {
+        if ($controls[$i]) {
+            $controls[$i].IsEnabled = $false
+            $controls[$i].Opacity = 0.5
         }
     }
 }
@@ -686,6 +695,13 @@ function Enable-OperationButtons {
         if ($controls[$b]) {
             $controls[$b].IsEnabled = $true
             $controls[$b].Opacity = 1.0
+        }
+    }
+    # Also re-enable input fields
+    foreach ($i in $script:OperationInputs) {
+        if ($controls[$i]) {
+            $controls[$i].IsEnabled = $true
+            $controls[$i].Opacity = 1.0
         }
     }
 }
@@ -2092,7 +2108,9 @@ function Invoke-LogOperation {
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
+        # Redirect all PowerShell streams (including Write-Host/Information) to stdout using *>&1
+        # Also disable progress bar which can cause buffering issues
+        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"`$ProgressPreference='SilentlyContinue'; $cmd *>&1`""
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
@@ -2109,6 +2127,7 @@ function Invoke-LogOperation {
             Controls = $controls
             Title = $Title
             OperationButtons = $script:OperationButtons
+            OperationInputs = $script:OperationInputs
         }
 
         $outputHandler = {
@@ -2139,6 +2158,13 @@ function Invoke-LogOperation {
                     if ($data.Controls[$btnName]) {
                         $data.Controls[$btnName].IsEnabled = $true
                         $data.Controls[$btnName].Opacity = 1.0
+                    }
+                }
+                # Re-enable all operation input fields
+                foreach ($inputName in $data.OperationInputs) {
+                    if ($data.Controls[$inputName]) {
+                        $data.Controls[$inputName].IsEnabled = $true
+                        $data.Controls[$inputName].Opacity = 1.0
                     }
                 }
             })
