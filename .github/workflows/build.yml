@@ -427,19 +427,45 @@ jobs:
         $stagingDir = ".\staging\$packageName"
 
         New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
-        New-Item -ItemType Directory -Path "$stagingDir\DomainController" -Force | Out-Null
 
+        # Copy main executable
         Copy-Item ".\WsusManager.exe" -Destination $stagingDir
+
+        # Copy required folders (Scripts and Modules are REQUIRED for the EXE to work)
+        if (Test-Path ".\Scripts") {
+          Copy-Item ".\Scripts" -Destination "$stagingDir\Scripts" -Recurse
+          Write-Host "Copied Scripts folder" -ForegroundColor Green
+        } else {
+          Write-Host "WARNING: Scripts folder not found!" -ForegroundColor Red
+        }
+
+        if (Test-Path ".\Modules") {
+          Copy-Item ".\Modules" -Destination "$stagingDir\Modules" -Recurse
+          Write-Host "Copied Modules folder" -ForegroundColor Green
+        } else {
+          Write-Host "WARNING: Modules folder not found!" -ForegroundColor Red
+        }
+
+        # Copy optional files/folders
+        if (Test-Path ".\DomainController") {
+          Copy-Item ".\DomainController" -Destination "$stagingDir\DomainController" -Recurse
+          Write-Host "Copied DomainController folder" -ForegroundColor Green
+        }
         if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $stagingDir }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $stagingDir }
-        if (Test-Path ".\DomainController") {
-          Copy-Item ".\DomainController\*" -Destination "$stagingDir\DomainController" -Recurse
+        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $stagingDir }
+
+        # List contents for verification
+        Write-Host "`nPackage contents:" -ForegroundColor Cyan
+        Get-ChildItem -Path $stagingDir -Recurse | ForEach-Object {
+          $relativePath = $_.FullName.Replace((Get-Item $stagingDir).FullName, "")
+          Write-Host "  $relativePath"
         }
 
         # Create zip
         Compress-Archive -Path "$stagingDir\*" -DestinationPath ".\$packageName.zip" -Force
 
-        Write-Host "Created: $packageName.zip" -ForegroundColor Green
+        Write-Host "`nCreated: $packageName.zip" -ForegroundColor Green
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
