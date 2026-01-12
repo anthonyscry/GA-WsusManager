@@ -98,6 +98,20 @@ param(
     [Parameter(ParameterSetName = 'Restore')]
     [string]$BackupPath,
 
+    # Export parameters (for non-interactive mode)
+    [Parameter(ParameterSetName = 'Export')]
+    [string]$SourcePath,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [string]$DestinationPath,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [ValidateSet('Full', 'Differential')]
+    [string]$CopyMode = "Full",
+
+    [Parameter(ParameterSetName = 'Export')]
+    [int]$DaysOld = 30,
+
     # Common
     [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
@@ -1033,17 +1047,29 @@ function Invoke-ExportToMedia {
     .SYNOPSIS
         Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
-        Prompts for source and destination, supports full or differential copy modes
+        Prompts for source and destination, supports full or differential copy modes.
+        When DestinationPath is provided, runs in non-interactive mode (for GUI).
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath = "C:\WSUS"
+        [string]$ContentPath = "C:\WSUS",
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [ValidateSet('Full', 'Differential')]
+        [string]$ExportCopyMode = "Full",
+        [int]$ExportDaysOld = 30
     )
+
+    # Determine if running in non-interactive mode (GUI mode)
+    $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
 
     Write-Banner "COPY DATA TO EXTERNAL MEDIA"
 
     Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
+    if ($nonInteractive) {
+        Write-Host "Copy mode: $ExportCopyMode$(if($ExportCopyMode -eq 'Differential'){" (last $ExportDaysOld days)"})" -ForegroundColor Cyan
+    }
     Write-Host ""
 
     # Validate paths - use defaults if empty
@@ -1054,63 +1080,71 @@ function Invoke-ExportToMedia {
         $ContentPath = "C:\WSUS"
     }
 
-    # Prompt for copy mode
-    Write-Host "Copy mode:" -ForegroundColor Cyan
-    Write-Host "  1. Full copy (all files)"
-    Write-Host "  2. Differential copy (files from last 30 days) [Default]"
-    Write-Host "  3. Differential copy (custom days)"
-    Write-Host ""
-    $modeChoice = Read-Host "Select mode (1/2/3) [2]"
-    if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
+    # Set copy mode variables
+    $copyMode = $ExportCopyMode
+    $maxAgeDays = $ExportDaysOld
 
-    $copyMode = "Differential"
-    $maxAgeDays = 30
+    if (-not $nonInteractive) {
+        # Interactive mode: Prompt for copy mode
+        Write-Host "Copy mode:" -ForegroundColor Cyan
+        Write-Host "  1. Full copy (all files)"
+        Write-Host "  2. Differential copy (files from last 30 days) [Default]"
+        Write-Host "  3. Differential copy (custom days)"
+        Write-Host ""
+        $modeChoice = Read-Host "Select mode (1/2/3) [2]"
+        if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
 
-    switch ($modeChoice) {
-        "1" {
-            $copyMode = "Full"
-            $maxAgeDays = 0
-        }
-        "2" {
-            $copyMode = "Differential"
-            $maxAgeDays = 30
-        }
-        "3" {
-            $copyMode = "Differential"
-            $daysInput = Read-Host "Enter number of days [30]"
-            if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
-            if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
-                if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
-            } else {
+        switch ($modeChoice) {
+            "1" {
+                $copyMode = "Full"
+                $maxAgeDays = 0
+            }
+            "2" {
+                $copyMode = "Differential"
+                $maxAgeDays = 30
+            }
+            "3" {
+                $copyMode = "Differential"
+                $daysInput = Read-Host "Enter number of days [30]"
+                if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
+                if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
+                    if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
+                } else {
+                    $maxAgeDays = 30
+                }
+            }
+            default {
+                $copyMode = "Differential"
                 $maxAgeDays = 30
             }
         }
-        default {
-            $copyMode = "Differential"
-            $maxAgeDays = 30
-        }
+        Write-Host ""
     }
 
-    Write-Host ""
+    # Determine source path
+    if ($nonInteractive) {
+        # Non-interactive: Use SourcePath if provided, otherwise use ContentPath (local WSUS)
+        $source = if (-not [string]::IsNullOrWhiteSpace($SourcePath)) { $SourcePath } else { $ContentPath }
+    } else {
+        # Interactive mode: Prompt for source
+        Write-Host "Source options:" -ForegroundColor Cyan
+        Write-Host "  1. Network share: $DefaultSource [Default]"
+        Write-Host "  2. Local WSUS: $ContentPath"
+        Write-Host "  3. Custom path"
+        Write-Host ""
+        $sourceChoice = Read-Host "Select source (1/2/3) [1]"
+        if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
 
-    # Prompt for source
-    Write-Host "Source options:" -ForegroundColor Cyan
-    Write-Host "  1. Network share: $DefaultSource [Default]"
-    Write-Host "  2. Local WSUS: $ContentPath"
-    Write-Host "  3. Custom path"
-    Write-Host ""
-    $sourceChoice = Read-Host "Select source (1/2/3) [1]"
-    if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
-
-    $source = switch ($sourceChoice) {
-        "1" { $DefaultSource }
-        "2" { $ContentPath }
-        "3" {
-            $customSource = Read-Host "Enter source path"
-            $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
-            if ($validation.IsValid) { $validation.CleanPath } else { $null }
+        $source = switch ($sourceChoice) {
+            "1" { $DefaultSource }
+            "2" { $ContentPath }
+            "3" {
+                $customSource = Read-Host "Enter source path"
+                $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+                if ($validation.IsValid) { $validation.CleanPath } else { $null }
+            }
+            default { $DefaultSource }
         }
-        default { $DefaultSource }
     }
 
     # Validate source path
@@ -1148,11 +1182,17 @@ function Invoke-ExportToMedia {
     }
     Write-Host ""
 
-    # Prompt for destination
-    Write-Host "Destination (external media path):" -ForegroundColor Cyan
-    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
-    Write-Host ""
-    $destination = Read-Host "Enter destination path"
+    # Determine destination path
+    if ($nonInteractive) {
+        # Non-interactive: Use provided DestinationPath
+        $destination = $DestinationPath
+    } else {
+        # Interactive mode: Prompt for destination
+        Write-Host "Destination (external media path):" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host ""
+        $destination = Read-Host "Enter destination path"
+    }
 
     # Validate destination path format
     $validation = Test-ValidPath -Path $destination
@@ -1185,8 +1225,11 @@ function Invoke-ExportToMedia {
     }
     Write-Host ""
 
-    $confirm = Read-Host "Proceed with copy? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) { return }
+    # Skip confirmation in non-interactive mode
+    if (-not $nonInteractive) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
 
     # Copy database
     if ($sourceBak) {
@@ -1474,7 +1517,22 @@ if ($Restore) {
 } elseif ($Import) {
     Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
 } elseif ($Export) {
-    Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath
+    # For backward compatibility with current GUI:
+    # - If DestinationPath is set explicitly, use it
+    # - Otherwise, if ExportRoot differs from default, interpret it as the destination
+    $actualDestination = $DestinationPath
+    $actualSource = $SourcePath
+    $defaultExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+
+    if ([string]::IsNullOrWhiteSpace($actualDestination) -and $ExportRoot -ne $defaultExportRoot) {
+        # GUI is passing destination as ExportRoot - use it as destination, use ContentPath as source
+        $actualDestination = $ExportRoot
+        $actualSource = $ContentPath
+    }
+
+    Invoke-ExportToMedia -DefaultSource $defaultExportRoot -ContentPath $ContentPath `
+        -SourcePath $actualSource -DestinationPath $actualDestination `
+        -ExportCopyMode $CopyMode -ExportDaysOld $DaysOld
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

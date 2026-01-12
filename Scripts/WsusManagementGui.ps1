@@ -1275,12 +1275,12 @@ function Show-MaintenanceDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = "" }
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Full"; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
     $dlg.Width = 500
-    $dlg.Height = 280
+    $dlg.Height = 380
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1315,8 +1315,59 @@ function Show-TransferDialog {
     $radioImport = New-Object System.Windows.Controls.RadioButton
     $radioImport.Content = "Import (Media to air-gapped server)"
     $radioImport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $radioImport.Margin = "0,0,0,16"
+    $radioImport.Margin = "0,0,0,12"
     $stack.Children.Add($radioImport)
+
+    # Export Mode section (only visible when Export is selected)
+    $exportModePanel = New-Object System.Windows.Controls.StackPanel
+    $exportModePanel.Margin = "0,0,0,12"
+
+    $modeLbl = New-Object System.Windows.Controls.TextBlock
+    $modeLbl.Text = "Export Mode:"
+    $modeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $modeLbl.Margin = "0,0,0,8"
+    $exportModePanel.Children.Add($modeLbl)
+
+    $radioFull = New-Object System.Windows.Controls.RadioButton
+    $radioFull.Content = "Full copy (all files)"
+    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Margin = "0,0,0,4"
+    $radioFull.GroupName = "ExportMode"
+    $exportModePanel.Children.Add($radioFull)
+
+    $radioDiff30 = New-Object System.Windows.Controls.RadioButton
+    $radioDiff30.Content = "Differential (files from last 30 days)"
+    $radioDiff30.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiff30.Margin = "0,0,0,4"
+    $radioDiff30.GroupName = "ExportMode"
+    $radioDiff30.IsChecked = $true
+    $exportModePanel.Children.Add($radioDiff30)
+
+    $diffCustomPanel = New-Object System.Windows.Controls.StackPanel
+    $diffCustomPanel.Orientation = "Horizontal"
+    $diffCustomPanel.Margin = "0,0,0,4"
+
+    $radioDiffCustom = New-Object System.Windows.Controls.RadioButton
+    $radioDiffCustom.Content = "Differential (custom days):"
+    $radioDiffCustom.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiffCustom.GroupName = "ExportMode"
+    $radioDiffCustom.Margin = "0,0,8,0"
+    $diffCustomPanel.Children.Add($radioDiffCustom)
+
+    $txtDays = New-Object System.Windows.Controls.TextBox
+    $txtDays.Text = "30"
+    $txtDays.Width = 50
+    $txtDays.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $txtDays.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txtDays.Padding = "4,2"
+    $diffCustomPanel.Children.Add($txtDays)
+
+    $exportModePanel.Children.Add($diffCustomPanel)
+    $stack.Children.Add($exportModePanel)
+
+    # Show/hide export mode based on direction
+    $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
+    $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
 
     # Path selection
     $pathLbl = New-Object System.Windows.Controls.TextBlock
@@ -1370,6 +1421,22 @@ function Show-TransferDialog {
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
+        # Determine export mode
+        if ($radioFull.IsChecked) {
+            $result.ExportMode = "Full"
+            $result.DaysOld = 0
+        } elseif ($radioDiff30.IsChecked) {
+            $result.ExportMode = "Differential"
+            $result.DaysOld = 30
+        } else {
+            $result.ExportMode = "Differential"
+            $daysVal = 30
+            if ([int]::TryParse($txtDays.Text, [ref]$daysVal) -and $daysVal -gt 0) {
+                $result.DaysOld = $daysVal
+            } else {
+                $result.DaysOld = 30
+            }
+        }
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -1600,11 +1667,13 @@ function Invoke-LogOperation {
                 return
             }
             $path = Get-EscapedPath $opts.Path
-            $Title = $opts.Direction
             if ($opts.Direction -eq "Export") {
-                # Note: CLI Export always does full export (differential is interactive-only)
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path'"
+                # Build title with export mode info
+                $modeDesc = if ($opts.ExportMode -eq "Full") { "Full" } else { "Differential, $($opts.DaysOld) days" }
+                $Title = "Export ($modeDesc)"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -DestinationPath '$path' -CopyMode '$($opts.ExportMode)' -DaysOld $($opts.DaysOld)"
             } else {
+                $Title = "Import"
                 "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
             }
         }
