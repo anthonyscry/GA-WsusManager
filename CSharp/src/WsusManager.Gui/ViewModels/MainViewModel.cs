@@ -6,6 +6,7 @@ using WsusManager.Core.Utilities;
 using WsusManager.Core.Operations;
 using WsusManager.Gui.Views;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace WsusManager.Gui.ViewModels;
 
