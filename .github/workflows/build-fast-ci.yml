@@ -2,7 +2,9 @@ name: Build GA-WsusManager (Fast CI)
 
 on:
   push:
-  pull_request:
+    branches:
+      - main
+      - master
 
 permissions:
   contents: read
