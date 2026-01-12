@@ -100,6 +100,7 @@ try {
     Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusScheduledTask.psm1") -Force -DisableNameChecking -ErrorAction Stop
 } catch {
     Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
     exit 1
@@ -503,10 +504,28 @@ if ($Unattended) {
     if ($ExportDays -eq 0) { $ExportDays = 30 }
 }
 
+# Ensure scheduled task exists in unattended runs (default to SYSTEM account).
+if ($Unattended) {
+    $taskInfo = Get-WsusMaintenanceTask -TaskName "WSUS Monthly Maintenance"
+    if (-not $taskInfo.Exists) {
+        $taskProfile = if ($MaintenanceProfile) { $MaintenanceProfile } else { "Full" }
+        Write-Status "Scheduled task not found. Creating task as SYSTEM (Profile: $taskProfile)..." -Type Warning
+        $taskResult = New-WsusMaintenanceTask -MaintenanceProfile $taskProfile -RunAsUser "SYSTEM"
+        if ($taskResult.Success) {
+            Write-Status $taskResult.Message -Type Success
+        } else {
+            Write-Status $taskResult.Message -Type Warning
+        }
+    }
+}
+
 # Setup logging using module function
 $null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
 
 Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
+
+# UI note: some phases are long-running and may appear idle in the GUI log.
+Write-Status "Heads-up: some maintenance phases can take several minutes with minimal output. GUI status refreshes every ~30 seconds." -Type Info
 
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
