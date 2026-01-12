@@ -4,6 +4,24 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.6] - January 2026
+
+### Bug Fixes
+- **Fixed**: Live output streaming in GUI operations
+  - Redirect all PowerShell streams (`*>&1`) to capture Write-Host output
+  - Added `Write-HostFlush` wrapper for immediate output flushing
+  - Disabled progress bar to prevent buffering issues
+- **Fixed**: Input fields not greyed out during install
+  - Password boxes and path textbox now disabled during operations
+  - Fields re-enabled when operation completes or is cancelled
+
+### Code Quality
+- **Removed**: Duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies → 1)
+- **Streamlined**: GitHub workflows with concurrency settings
+- **Removed**: Codacy and release-drafter workflows
+
+---
+
 ## [3.8.5] - January 2026
 
 ### Bug Fixes
