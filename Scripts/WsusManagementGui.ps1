@@ -68,6 +68,7 @@ $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
 $script:ExportRoot = "C:\"
 $script:InstallPath = "C:\WSUS\SQLDB"
+$script:SaUser = "sa"
 $script:ServerMode = "Online"
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
@@ -395,6 +396,11 @@ try {
                             <TextBox x:Name="InstallPathBox" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
                             <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="10,6" Margin="8,0,0,0"/>
                         </Grid>
+                        <TextBlock Text="SA Username:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <TextBox x:Name="InstallSaUser" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                             <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
                             <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
@@ -1926,9 +1932,31 @@ function Invoke-LogOperation {
             }
             $script:InstallPath = $installerPath
 
+            $saUser = if ($controls.InstallSaUser) { $controls.InstallSaUser.Text } else { $script:SaUser }
+            $saUser = $saUser.Trim()
+            if ([string]::IsNullOrWhiteSpace($saUser)) {
+                [System.Windows.MessageBox]::Show("SA username is required.", "Error", "OK", "Error")
+                return
+            }
+            $script:SaUser = $saUser
+
+            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPassword)) {
+                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
+                return
+            }
+            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
+            if (-not (Test-Path $sqlInstaller)) {
+                [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
+                return
+            }
+            $script:InstallPath = $installerPath
+
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
-            "& '$installScriptSafe' -InstallerPath '$installerPathSafe'"
+            $saUserSafe = $saUser -replace "'", "''"
+            $saPasswordSafe = $saPassword -replace "'", "''"
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe'"
         }
         "restore" {
             $opts = Show-RestoreDialog
@@ -2100,6 +2128,8 @@ function Invoke-LogOperation {
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnInstall.Add_Click({
     $controls.InstallPathBox.Text = $script:InstallPath
+    $controls.InstallSaUser.Text = $script:SaUser
+    if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password = "" }
     Show-Panel "Install" "Install WSUS" "BtnInstall"
 })
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })

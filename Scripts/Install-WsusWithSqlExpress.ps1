@@ -20,7 +20,11 @@ Notes:
 
 param(
     [Parameter(HelpMessage = "Path to folder containing SQL Express and SSMS installers")]
-    [string]$InstallerPath = "C:\WSUS\SQLDB"
+    [string]$InstallerPath = "C:\WSUS\SQLDB",
+    [Parameter(HelpMessage = "SQL sa username")]
+    [string]$SaUsername = "sa",
+    [Parameter(HelpMessage = "SQL sa password (plain text)")]
+    [string]$SaPassword
 )
 
 # -------------------------
@@ -109,6 +113,15 @@ $ErrorActionPreference = "Stop"
 # =====================================================================
 # SECURE SA PASSWORD (ONLY USER INPUT)
 # =====================================================================
+function Test-SAPasswordStrength {
+    param([string]$Password)
+    if ([string]::IsNullOrWhiteSpace($Password)) { return "Password is required." }
+    if ($Password.Length -lt 15) { return "Must be >=15 chars." }
+    if ($Password -notmatch "\d") { return "Must contain number." }
+    if ($Password -notmatch "[^a-zA-Z0-9]") { return "Must contain special char." }
+    return $null
+}
+
 function Get-SAPassword {
     <#
     .SYNOPSIS
@@ -128,9 +141,8 @@ function Get-SAPassword {
             $p2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr2)
 
             if ($p1 -ne $p2) { Write-Host "Passwords do not match."; continue }
-            if ($p1.Length -lt 15) { Write-Host "Must be >=15 chars."; continue }
-            if ($p1 -notmatch "\d") { Write-Host "Must contain number."; continue }
-            if ($p1 -notmatch "[^a-zA-Z0-9]") { Write-Host "Must contain special char."; continue }
+            $validationError = Test-SAPasswordStrength -Password $p1
+            if ($validationError) { Write-Host $validationError; continue }
 
             # Return the SecureString, not plain text
             return $pass1
@@ -162,7 +174,15 @@ function Stop-SqlExpressSetup {
 }
 
 # Get or retrieve password as SecureString
-if (!(Test-Path $PasswordFile)) {
+if ($SaPassword) {
+    $validationError = Test-SAPasswordStrength -Password $SaPassword
+    if ($validationError) {
+        Write-Host "    Invalid SA password: $validationError" -ForegroundColor Red
+        exit 1
+    }
+    $securePass = ConvertTo-SecureString $SaPassword -AsPlainText -Force
+    $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
+} elseif (!(Test-Path $PasswordFile)) {
     $securePass = Get-SAPassword
     # Store encrypted SecureString (Get-SAPassword now returns SecureString directly)
     $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
