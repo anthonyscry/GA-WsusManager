@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>WsusManager.Core</AssemblyName>
+    <RootNamespace>WsusManager.Core</RootNamespace>
+    <Version>4.0.0</Version>
+    <Authors>Tony Tran, ISSO, GA-ASI</Authors>
+    <Company>GA-ASI</Company>
+    <Product>WSUS Manager</Product>
+    <Description>Core library for WSUS Manager - database operations, service management, health checks</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
