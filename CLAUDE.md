@@ -7,14 +7,16 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.3
+**Current Version:** 3.8.4
 
 ## Repository Structure
 
 ```
 GA-WsusManager/
-├── WsusManager.exe              # Compiled GUI executable
 ├── build.ps1                    # Build script using PS2EXE
+├── dist/                        # Build output folder (gitignored)
+│   ├── WsusManager.exe          # Compiled executable
+│   └── WsusManager-vX.X.X.zip   # Distribution package
 ├── Scripts/
 │   ├── WsusManagementGui.ps1    # Main GUI source (WPF/XAML)
 │   ├── Invoke-WsusManagement.ps1
@@ -187,11 +189,36 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 ## Git Workflow
 
 - Main branch: `main`
-- Only the generic `WsusManager.exe` is committed (version is in About dialog)
+- Build artifacts (exe, zip) are NOT committed - they go to `dist/` folder (gitignored)
 - Use conventional commit messages
 - Run tests before committing: `.\build.ps1 -TestOnly`
+- GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.3)
+## Recent Changes (v3.8.4)
+
+- **Fixed Export hanging for input when called from GUI:**
+  - Added non-interactive mode to `Invoke-ExportToMedia` function
+  - New CLI parameters: `-SourcePath`, `-DestinationPath`, `-CopyMode`, `-DaysOld`
+  - When `DestinationPath` is provided, skips all interactive prompts
+  - Backward compatibility: `ExportRoot` parameter can be used as destination
+- **Added Export Mode options to Transfer dialog:**
+  - Full copy (all files)
+  - Differential copy (files from last N days)
+  - Custom days option for differential exports
+- **Fixed GitHub Actions workflow:**
+  - Distribution package now includes Scripts/ and Modules/ folders (required for EXE)
+  - Build artifacts saved to `dist/` folder
+  - ExeValidation tests run AFTER build step (not before)
+  - ExeValidation tests excluded from pre-build test job
+- **Fixed Pester tests:**
+  - ExeValidation tests properly skip when exe doesn't exist
+  - Uses `-Skip` on Context blocks for reliable Pester 5 behavior
+  - Uses `BeforeDiscovery` for discovery-time variable evaluation
+- **Cleaned up repository:**
+  - Build artifacts (exe, zip) excluded from git via `.gitignore`
+  - All build output goes to `dist/` folder
+
+### Previous (v3.8.3)
 
 - **Fixed script not found error:** Added proper validation before running operations
   - GUI now checks if Scripts exist before attempting to run them
@@ -484,6 +511,81 @@ $exitHandler = {
 
 **Also:** Don't use `.GetNewClosure()` on timer handlers - it captures stale variable values.
 
+### 13. Pester Tests Not Skipping Properly
+
+**Problem:** Using `-Skip:$condition` on a `Describe` block doesn't skip all child tests in Pester 5.
+
+**Cause:** Pester 5 has inconsistent behavior with `-Skip` on `Describe` blocks - it may only mark the first test as skipped while running (and failing) subsequent tests.
+
+**Solution:** Use `-Skip` on individual `Context` blocks instead of `Describe`:
+```powershell
+# WRONG - Skip on Describe doesn't propagate reliably
+Describe "Tests requiring EXE" -Skip:(-not $script:ExeExists) {
+    Context "File Tests" {
+        It "Test 1" { ... }  # May still run and fail!
+    }
+}
+
+# CORRECT - Skip on each Context block
+Describe "Tests requiring EXE" {
+    Context "File Tests" -Skip:(-not $script:ExeExists) {
+        It "Test 1" { ... }  # Properly skipped
+    }
+    Context "Other Tests" -Skip:(-not $script:ExeExists) {
+        It "Test 2" { ... }  # Properly skipped
+    }
+}
+```
+
+**Also:** Use `BeforeDiscovery` for variables that `-Skip` depends on:
+```powershell
+# BeforeDiscovery runs BEFORE test discovery, so -Skip can use the variable
+BeforeDiscovery {
+    $script:ExeExists = Test-Path ".\WsusManager.exe"
+}
+
+# BeforeAll runs AFTER discovery, so variables set here aren't available for -Skip
+BeforeAll {
+    $script:ExePath = ".\WsusManager.exe"  # Available during tests, not for -Skip
+}
+```
+
+### 14. CLI Export Hanging for User Input
+
+**Problem:** Export operation hangs waiting for keyboard input when called from GUI.
+
+**Cause:** The CLI script's `Invoke-ExportToMedia` function prompts interactively for source, destination, and copy mode, but GUI passes parameters expecting non-interactive mode.
+
+**Solution:** Check if destination is provided and skip prompts:
+```powershell
+function Invoke-ExportToMedia {
+    param(
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [string]$CopyMode = "Full",
+        [int]$DaysOld = 30
+    )
+
+    # Detect non-interactive mode when DestinationPath is provided
+    $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
+
+    if (-not $nonInteractive) {
+        # Interactive prompts for source, mode, destination
+        $source = Read-Host "Enter source"
+        # ... etc
+    } else {
+        # Use provided parameters directly
+        $source = $SourcePath
+    }
+}
+```
+
+**GUI side:** Always pass all required parameters:
+```powershell
+# Pass all export parameters to avoid interactive prompts
+"& '$mgmt' -Export -DestinationPath '$dest' -SourcePath '$src' -CopyMode '$mode' -DaysOld $days"
+```
+
 ## Testing Checklist for GUI Changes
 
 Before committing GUI changes, verify:
@@ -565,11 +667,14 @@ Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 ### 5. CI Pipeline Features (`.github\workflows\build.yml`)
 - **Code Review:** PSScriptAnalyzer with custom settings
 - **Security Scan:** Specific security-focused rules
-- **Pester Tests:** Unit tests with NUnit XML output
+- **Pester Tests:** Unit tests with NUnit XML output (excludes ExeValidation.Tests.ps1)
 - **Build:** PS2EXE compilation with version embedding
+- **EXE Validation:** Runs AFTER build - PE header, 64-bit architecture, version info checks
 - **Startup Benchmark:** Parse time, module import time, EXE size validation
-- **EXE Validation:** PE header, 64-bit architecture, version info checks
-- **Release Automation:** GitHub release with artifacts
+- **Distribution Package:** Creates `dist/` folder with exe, Scripts/, Modules/, zip
+- **Release Automation:** GitHub release with artifacts from `dist/` folder
+
+**Important:** EXE validation tests are excluded from the main test job and run separately in the build job after the exe is created. This prevents test failures when no exe exists.
 
 ### 6. EXE Validation Tests (`Tests\ExeValidation.Tests.ps1`)
 - PE header validation (MZ signature, PE signature)

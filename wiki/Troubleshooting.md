@@ -367,6 +367,30 @@ The Health Check verifies:
   └── (all .psm1 files)
   ```
 
+**Note:** If you downloaded just the EXE, you must extract the full distribution zip. The EXE requires Scripts/ and Modules/ folders to function.
+
+### Folder Structure Error
+
+**Symptoms:**
+- Operations fail with "cannot find module" or "script not recognized"
+- Works in dev environment but not from extracted zip
+
+**Cause:** EXE deployed without required folders
+
+**Solution:**
+1. Download the full distribution package (`WsusManager-vX.X.X.zip`)
+2. Extract ALL contents, maintaining folder structure:
+   ```
+   WsusManager-vX.X.X/
+   ├── WsusManager.exe      # Main application
+   ├── Scripts/             # REQUIRED - operation scripts
+   ├── Modules/             # REQUIRED - PowerShell modules
+   └── DomainController/    # Optional - GPO scripts
+   ```
+3. Run `WsusManager.exe` from this folder
+
+**Important:** Do not move `WsusManager.exe` to a different location without also moving the Scripts/ and Modules/ folders.
+
 ---
 
 ## Performance Issues
@@ -438,6 +462,31 @@ The Health Check verifies:
 ---
 
 ## Export/Import Issues
+
+### Export Hangs (No Progress)
+
+**Symptoms:**
+- Export operation starts but hangs with no output
+- Script waiting for input
+- GUI appears frozen
+
+**Cause:** Old CLI script version prompting for interactive input
+
+**Solutions:**
+
+1. **Update to v3.8.4+**
+   - Download latest release from GitHub
+   - Extract and replace all files
+
+2. **Verify Scripts folder**
+   - Ensure `Scripts\Invoke-WsusManagement.ps1` is from v3.8.4+
+   - Check file date is recent
+
+3. **Manual CLI test**
+   ```powershell
+   # Test non-interactive mode directly
+   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export" -CopyMode "Full"
+   ```
 
 ### Export Fails
 
