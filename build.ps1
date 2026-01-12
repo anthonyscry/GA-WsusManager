@@ -50,7 +50,7 @@ $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
 $Version = "3.8.3"
-if (-not $OutputName) { $OutputName = "WsusManager.exe" }
+if (-not $OutputName) { $OutputName = "GA-WsusManager.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  WSUS Manager Executable Builder" -ForegroundColor Cyan
@@ -474,17 +474,17 @@ INSTALLATION
 1. Extract the entire folder to your WSUS server (e.g., C:\WSUS\WsusManager)
 2. Keep the folder structure intact:
    WsusManager-v$Version\
-   ├── WsusManager.exe      (main application)
+   ├── GA-WsusManager.exe   (main application)
    ├── Scripts\             (required - operation scripts)
    ├── Modules\             (required - PowerShell modules)
    └── DomainController\    (optional - GPO scripts)
-3. Right-click WsusManager.exe and select "Run as administrator"
+3. Right-click GA-WsusManager.exe and select "Run as administrator"
 
-IMPORTANT: Do not move WsusManager.exe without its Scripts and Modules folders!
+IMPORTANT: Do not move GA-WsusManager.exe without its Scripts and Modules folders!
 
 FIRST RUN
 ---------
-1. Launch WsusManager.exe as Administrator
+1. Launch GA-WsusManager.exe as Administrator
 2. The dashboard will auto-detect your WSUS configuration
 3. Use the menu for WSUS operations
 
