@@ -1609,7 +1609,13 @@ function Invoke-LogOperation {
         $script:CurrentProcess.StartInfo = $psi
         $script:CurrentProcess.EnableRaisingEvents = $true
 
-        $eventData = @{ Window = $window; Controls = $controls; Title = $Title }
+        # Create shared state object that can be modified from event handlers
+        $eventData = @{
+            Window = $window
+            Controls = $controls
+            Title = $Title
+            OperationButtons = $script:OperationButtons
+        }
 
         $outputHandler = {
             $line = $Event.SourceEventArgs.Data
@@ -1633,7 +1639,16 @@ function Invoke-LogOperation {
                 $data.Controls.LogOutput.ScrollToEnd()
                 $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
                 $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                # Re-enable all operation buttons
+                foreach ($btnName in $data.OperationButtons) {
+                    if ($data.Controls[$btnName]) {
+                        $data.Controls[$btnName].IsEnabled = $true
+                        $data.Controls[$btnName].Opacity = 1.0
+                    }
+                }
             })
+            # Reset the operation running flag (script scope accessible from event handler)
+            $script:OperationRunning = $false
         }
 
         Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
@@ -1644,7 +1659,8 @@ function Invoke-LogOperation {
         $script:CurrentProcess.BeginOutputReadLine()
         $script:CurrentProcess.BeginErrorReadLine()
 
-        # Use a timer to check process status, reset flag, and force UI refresh
+        # Use a timer as backup to check process status and force UI refresh
+        # Note: Primary reset happens in exitHandler, timer is backup for edge cases
         $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
         $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
         $script:OpCheckTimer.Add_Tick({
@@ -1658,7 +1674,7 @@ function Invoke-LogOperation {
                 $controls.StatusLabel.Text = " - Ready"
                 $this.Stop()
             }
-        }.GetNewClosure())
+        })
         $script:OpCheckTimer.Start()
     } catch {
         Write-LogOutput "ERROR: $_" -Level Error
