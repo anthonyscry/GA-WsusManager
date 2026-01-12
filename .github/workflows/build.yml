@@ -187,7 +187,9 @@ jobs:
       run: |
         Write-Host "=== Running Pester Tests ===" -ForegroundColor Cyan
 
-        $testFiles = Get-ChildItem -Path ./Tests -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue
+        # Exclude ExeValidation.Tests.ps1 - those tests require the exe which is built AFTER tests run
+        $testFiles = Get-ChildItem -Path ./Tests -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -ne "ExeValidation.Tests.ps1" }
 
         if (-not $testFiles -or $testFiles.Count -eq 0) {
           Write-Host "No test files found" -ForegroundColor Yellow
@@ -418,6 +420,33 @@ jobs:
         }
 
         Write-Host "::endgroup::"
+
+    - name: Run EXE Validation Tests
+      shell: pwsh
+      run: |
+        Write-Host "=== Running EXE Validation Tests ===" -ForegroundColor Cyan
+
+        # Install Pester if not present
+        if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge '5.0.0' })) {
+          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
+        }
+        Import-Module Pester -MinimumVersion 5.0.0 -Force
+
+        $config = New-PesterConfiguration
+        $config.Run.Path = "./Tests/ExeValidation.Tests.ps1"
+        $config.Run.Exit = $false
+        $config.Output.Verbosity = 'Detailed'
+
+        $results = Invoke-Pester -Configuration $config
+
+        Write-Host "`n=== EXE Validation Summary ===" -ForegroundColor Cyan
+        Write-Host "Passed: $($results.PassedCount)" -ForegroundColor Green
+        Write-Host "Failed: $($results.FailedCount)" -ForegroundColor $(if ($results.FailedCount -gt 0) { 'Red' } else { 'Green' })
+        Write-Host "Skipped: $($results.SkippedCount)" -ForegroundColor Yellow
+
+        if ($results.FailedCount -gt 0) {
+          Write-Host "::warning::$($results.FailedCount) EXE validation test(s) failed"
+        }
 
     - name: Create distribution package
       shell: pwsh
