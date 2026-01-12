@@ -27,6 +27,7 @@ $script:WsusModules = @(
     "WsusExport"
     "WsusScheduledTask"
     "WsusAutoDetection"
+    "AsyncHelpers"
 )
 
 # Pre-load all modules if not already loaded
@@ -43,4 +44,35 @@ foreach ($moduleName in $script:WsusModules) {
 function Get-WsusTestModulePath {
     param([string]$ModuleName)
     return Join-Path $script:ModulesPath "$ModuleName.psm1"
+}
+
+# Test configuration settings
+$script:TestConfig = @{
+    # Timeouts (in seconds)
+    DefaultTimeout = 30
+    ServiceStartTimeout = 5      # Reduced from default - services may not exist on dev machines
+    AppStartTimeout = 10
+    ElementSearchTimeout = 5
+
+    # Skip conditions
+    SkipServiceTests = -not (Get-Service -Name 'W3SVC' -ErrorAction SilentlyContinue)
+    SkipFlaUITests = -not (Test-Path "C:\projects\FlaUI-TestHarness\FlaUITestHarness.psm1")
+    SkipInteractiveTests = $true  # Always skip tests requiring user input
+
+    # Paths
+    ProjectRoot = Split-Path -Parent $PSScriptRoot
+    ExeName = "GA-WsusManager.exe"
+}
+
+# Helper to check if test should be skipped
+function Test-ShouldSkipServiceTest {
+    return $script:TestConfig.SkipServiceTests
+}
+
+function Test-ShouldSkipFlaUITest {
+    return $script:TestConfig.SkipFlaUITests
+}
+
+function Test-ShouldSkipInteractiveTest {
+    return $script:TestConfig.SkipInteractiveTests
 }
