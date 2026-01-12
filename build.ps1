@@ -27,22 +27,29 @@
 .EXAMPLE
     .\build.ps1 -SkipTests
 
+.PARAMETER NoPush
+    Skip git commit and push after successful build.
+
 .EXAMPLE
     .\build.ps1 -TestOnly
+
+.EXAMPLE
+    .\build.ps1 -NoPush
 #>
 
 param(
     [string]$OutputName,
     [switch]$SkipCodeReview,
     [switch]$SkipTests,
-    [switch]$TestOnly
+    [switch]$TestOnly,
+    [switch]$NoPush
 )
 
 $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "3.8.0"
+$Version = "3.8.3"
 if (-not $OutputName) { $OutputName = "WsusManager.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -221,8 +228,21 @@ else {
 if (-not $SkipTests) {
     Write-Host "`n[*] Running Pester tests..." -ForegroundColor Yellow
 
-    # Check if Pester is installed
+    # Check if Pester is installed (including OneDrive module path)
     $pesterModule = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+    $oneDrivePesterPath = Join-Path $env:USERPROFILE "OneDrive\Documents\WindowsPowerShell\Modules\Pester"
+
+    # Check OneDrive path for newer versions
+    if (Test-Path $oneDrivePesterPath) {
+        $oneDriveVersions = Get-ChildItem -Path $oneDrivePesterPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^\d+\.' } |
+            Sort-Object { [Version]$_.Name } -Descending |
+            Select-Object -First 1
+        if ($oneDriveVersions -and (!$pesterModule -or [Version]$oneDriveVersions.Name -gt $pesterModule.Version)) {
+            $pesterModule = @{ Version = [Version]$oneDriveVersions.Name; ModuleBase = $oneDriveVersions.FullName }
+        }
+    }
+
     if (-not $pesterModule) {
         Write-Host "    Installing Pester..." -ForegroundColor Gray
         try {
@@ -245,7 +265,20 @@ if (-not $SkipTests) {
     }
 
     if (-not $SkipTests) {
-        Import-Module Pester -Force
+        # Import Pester - try OneDrive path first if available
+        if ($pesterModule.ModuleBase -and (Test-Path (Join-Path $pesterModule.ModuleBase "Pester.psd1"))) {
+            Import-Module (Join-Path $pesterModule.ModuleBase "Pester.psd1") -Force
+        } else {
+            Import-Module Pester -MinimumVersion 5.0.0 -Force -ErrorAction SilentlyContinue
+            if (-not (Get-Command New-PesterConfiguration -ErrorAction SilentlyContinue)) {
+                # Fallback: try OneDrive path directly
+                $fallbackPath = Get-ChildItem -Path $oneDrivePesterPath -Directory -ErrorAction SilentlyContinue |
+                    Sort-Object { [Version]$_.Name } -Descending | Select-Object -First 1
+                if ($fallbackPath) {
+                    Import-Module (Join-Path $fallbackPath.FullName "Pester.psd1") -Force
+                }
+            }
+        }
 
         $TestsPath = Join-Path $ScriptRoot "Tests"
         $TestFiles = Get-ChildItem -Path $TestsPath -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue
@@ -400,12 +433,27 @@ try {
 
         # Create staging directory structure
         New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $packageDir "Scripts") -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $packageDir "Modules") -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $packageDir "DomainController") -Force | Out-Null
 
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
         if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+
+        # Copy Scripts folder (required for operations)
+        if (Test-Path ".\Scripts") {
+            Copy-Item ".\Scripts\*.ps1" -Destination (Join-Path $packageDir "Scripts")
+            Write-Host "    Included Scripts folder" -ForegroundColor Gray
+        }
+
+        # Copy Modules folder (required for scripts)
+        if (Test-Path ".\Modules") {
+            Copy-Item ".\Modules\*.psm1" -Destination (Join-Path $packageDir "Modules")
+            Write-Host "    Included Modules folder" -ForegroundColor Gray
+        }
+
         if (Test-Path ".\DomainController") {
             Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
         }
@@ -423,9 +471,16 @@ REQUIREMENTS
 
 INSTALLATION
 ------------
-1. Copy WsusManager.exe to your WSUS server
-2. Right-click and select "Run as administrator"
-3. No installation required - fully portable!
+1. Extract the entire folder to your WSUS server (e.g., C:\WSUS\WsusManager)
+2. Keep the folder structure intact:
+   WsusManager-v$Version\
+   ├── WsusManager.exe      (main application)
+   ├── Scripts\             (required - operation scripts)
+   ├── Modules\             (required - PowerShell modules)
+   └── DomainController\    (optional - GPO scripts)
+3. Right-click WsusManager.exe and select "Run as administrator"
+
+IMPORTANT: Do not move WsusManager.exe without its Scripts and Modules folders!
 
 FIRST RUN
 ---------
@@ -481,40 +536,45 @@ Author: Tony Tran, ISSO, GA-ASI
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 
         # Git operations
-        Write-Host "`n[*] Committing to git..." -ForegroundColor Yellow
-
-        # Check if we're in a git repo
-        $gitDir = Join-Path $ScriptRoot ".git"
-        if (Test-Path $gitDir) {
-            try {
-                # Add dist folder
-                & git add "dist\*" 2>$null
-
-                # Check if there are changes to commit
-                $gitStatus = & git status --porcelain "dist\" 2>$null
-                if ($gitStatus) {
-                    & git commit -m "Build v$Version - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" 2>$null
-                    Write-Host "[+] Committed dist folder to git" -ForegroundColor Green
-
-                    # Push to remote
-                    & git push 2>$null
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "[+] Pushed to remote repository" -ForegroundColor Green
-                    }
-                    else {
-                        Write-Host "[!] Push failed - you may need to push manually" -ForegroundColor Yellow
-                    }
-                }
-                else {
-                    Write-Host "[*] No changes to commit in dist folder" -ForegroundColor Gray
-                }
-            }
-            catch {
-                Write-Host "[!] Git operations failed: $_" -ForegroundColor Yellow
-            }
+        if ($NoPush) {
+            Write-Host "`n[*] Skipping git operations (-NoPush specified)" -ForegroundColor Gray
         }
         else {
-            Write-Host "[*] Not a git repository - skipping git operations" -ForegroundColor Gray
+            Write-Host "`n[*] Committing to git..." -ForegroundColor Yellow
+
+            # Check if we're in a git repo
+            $gitDir = Join-Path $ScriptRoot ".git"
+            if (Test-Path $gitDir) {
+                try {
+                    # Add dist folder
+                    & git add "dist\*" 2>$null
+
+                    # Check if there are changes to commit
+                    $gitStatus = & git status --porcelain "dist\" 2>$null
+                    if ($gitStatus) {
+                        & git commit -m "Build v$Version - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" 2>$null
+                        Write-Host "[+] Committed dist folder to git" -ForegroundColor Green
+
+                        # Push to remote
+                        & git push 2>$null
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host "[+] Pushed to remote repository" -ForegroundColor Green
+                        }
+                        else {
+                            Write-Host "[!] Push failed - you may need to push manually" -ForegroundColor Yellow
+                        }
+                    }
+                    else {
+                        Write-Host "[*] No changes to commit in dist folder" -ForegroundColor Gray
+                    }
+                }
+                catch {
+                    Write-Host "[!] Git operations failed: $_" -ForegroundColor Yellow
+                }
+            }
+            else {
+                Write-Host "[*] Not a git repository - skipping git operations" -ForegroundColor Gray
+            }
         }
 
         Write-Host "`n========================================" -ForegroundColor Cyan

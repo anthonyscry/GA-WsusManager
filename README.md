@@ -1,16 +1,28 @@
 # WSUS Manager
 
-**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.8.0
+**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.8.3
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports both online and air-gapped networks.
 
 ---
 
-## What's New in v3.8.0
+## What's New in v3.8.3
 
-### UX Improvements
-- **ESC Key Support** - All dialogs now close with ESC key (Settings, Export/Import, Restore, Maintenance, Install, About)
-- **Code Quality** - Fixed PSScriptAnalyzer warnings (unused parameters, verb naming, empty catch blocks)
+### Bug Fixes
+- **Fixed script not found error** - GUI now validates scripts exist before running operations
+- **Fixed buttons not disabling** - Operation buttons are now disabled (grayed out) while an operation is running
+- **Fixed OperationRunning flag** - Flag now properly resets in all code paths (completion, error, cancel)
+- **Fixed Export parameters** - Removed invalid CLI parameters that were causing errors
+- **Fixed distribution package** - Zip now includes required Scripts/ and Modules/ folders
+
+### Previous (v3.8.1)
+- DPI awareness for high-resolution displays
+- Global error handling with user-friendly dialogs
+- Startup time logging for performance monitoring
+
+### Previous (v3.8.0)
+- ESC key support for all dialogs
+- PSScriptAnalyzer code quality improvements
 
 ### Previous (v3.7.0)
 - Output log panel 250px tall and open by default
@@ -32,13 +44,26 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 
 ### Option 1: Portable Executable (Recommended)
 
-Download and run **`WsusManager.exe`** - no installation required.
+1. Download the latest `WsusManager-vX.X.X.zip`
+2. **Extract the entire folder** to your WSUS server (e.g., `C:\WSUS\WsusManager`)
+3. Run **`WsusManager.exe`** as Administrator
 
+**Important:** Keep the folder structure intact:
+```
+WsusManager-vX.X.X/
+├── WsusManager.exe      # Main application
+├── Scripts/             # Required - do not delete!
+├── Modules/             # Required - do not delete!
+└── DomainController/    # Optional - GPO scripts
+```
+
+> ⚠️ **Do not move WsusManager.exe without its Scripts and Modules folders!**
+
+Features:
 - Modern dark-themed WPF interface
 - Auto-refresh dashboard (30-second interval)
 - Database size monitoring with 10GB limit warnings
-- No PowerShell console window
-- Portable standalone executable
+- Buttons disabled during operations to prevent conflicts
 
 ### Option 2: PowerShell Scripts
 
