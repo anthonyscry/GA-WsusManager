@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.0
+**Current Version:** 3.8.3
 
 ## Repository Structure
 
@@ -22,7 +22,7 @@ GA-WsusManager/
 │   ├── Install-WsusWithSqlExpress.ps1
 │   ├── Invoke-WsusClientCheckIn.ps1
 │   └── Set-WsusHttps.ps1
-├── Modules/                     # Reusable PowerShell modules (10 modules)
+├── Modules/                     # Reusable PowerShell modules (11 modules)
 │   ├── WsusUtilities.psm1       # Logging, colors, helpers
 │   ├── WsusDatabase.psm1        # Database operations
 │   ├── WsusHealth.psm1          # Health checks and repair
@@ -32,8 +32,9 @@ GA-WsusManager/
 │   ├── WsusConfig.psm1          # Configuration
 │   ├── WsusExport.psm1          # Export/import
 │   ├── WsusScheduledTask.psm1   # Scheduled tasks
-│   └── WsusAutoDetection.psm1   # Server detection and auto-recovery
-├── Tests/                       # Pester unit tests (323 tests)
+│   ├── WsusAutoDetection.psm1   # Server detection and auto-recovery
+│   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
+├── Tests/                       # Pester unit tests
 └── DomainController/            # GPO deployment scripts
 ```
 
@@ -64,8 +65,31 @@ The build process:
 3. Blocks build if errors are found
 4. Warns but continues if only warnings exist
 5. Compiles `WsusManagementGui.ps1` to `WsusManager.exe` using PS2EXE
+6. Creates distribution zip with Scripts/, Modules/, and DomainController/ folders
 
 **Version:** Update in `build.ps1` and `Scripts\WsusManagementGui.ps1` (`$script:AppVersion`)
+
+### Distribution Package Structure
+
+The build creates a complete distribution zip (`WsusManager-vX.X.X.zip`) containing:
+```
+WsusManager-vX.X.X/
+├── WsusManager.exe           # Main GUI application
+├── Scripts/                  # Required - operation scripts
+│   ├── Invoke-WsusManagement.ps1
+│   ├── Invoke-WsusMonthlyMaintenance.ps1
+│   ├── Install-WsusWithSqlExpress.ps1
+│   └── ...
+├── Modules/                  # Required - PowerShell modules
+│   ├── WsusUtilities.psm1
+│   ├── WsusHealth.psm1
+│   └── ...
+├── DomainController/         # Optional - GPO scripts
+├── QUICK-START.txt
+└── README.md
+```
+
+**IMPORTANT:** The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.
 
 ## Key Technical Details
 
@@ -84,6 +108,9 @@ The build process:
 - Custom icon: `wsus-icon.ico` (if present)
 - Requires admin privileges
 - Settings stored in `%APPDATA%\WsusManager\settings.json`
+- DPI-aware rendering (Windows 8.1+ per-monitor, Vista+ system fallback)
+- Global error handling with user-friendly error dialogs
+- Startup time logging for performance monitoring
 
 ### Standard Paths
 - WSUS Content: `C:\WSUS\`
@@ -164,8 +191,31 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Use conventional commit messages
 - Run tests before committing: `.\build.ps1 -TestOnly`
 
-## Recent Changes (v3.8.0)
+## Recent Changes (v3.8.3)
 
+- **Fixed script not found error:** Added proper validation before running operations
+  - GUI now checks if Scripts exist before attempting to run them
+  - Shows clear error dialog with search paths if scripts are missing
+- **Fixed buttons staying enabled during operations:** Added `Disable-OperationButtons` / `Enable-OperationButtons`
+  - All operation buttons (nav + quick action) are disabled while an operation runs
+  - Buttons show 50% opacity when disabled for visual feedback
+  - Buttons re-enable when operation completes, errors, or is cancelled
+- **Fixed OperationRunning flag not resetting:** Flag now resets in all code paths
+- **Fixed Export using invalid CLI parameters:** Removed `-Differential` and `-DaysOld` (not supported by CLI)
+- **Fixed distribution package:** Zip now includes Scripts/ and Modules/ folders (was missing before)
+- **Updated QUICK-START.txt:** Documents folder structure requirement
+
+### Previous (v3.8.1)
+
+- Added `AsyncHelpers.psm1` module for background operations in WPF apps
+- Added DPI awareness (per-monitor on Win 8.1+, system DPI on Vista+)
+- Added global error handling wrapper with user-friendly error dialogs
+- Added startup time logging (`$script:StartupTime`, `$script:StartupDuration`)
+- Added EXE validation Pester tests (`Tests\ExeValidation.Tests.ps1`)
+- Added startup benchmark to CI pipeline (parse time, module import, EXE size)
+- CI now validates PE header, version info, and 64-bit architecture
+
+### Previous (v3.8.0)
 - All dialogs now close with ESC key (Settings, Export/Import, Restore, Maintenance, Install, About)
 - Fixed PSScriptAnalyzer warnings (unused parameter, verb naming, empty catch blocks)
 - Build script now supports OneDrive module paths for PSScriptAnalyzer and ps2exe
@@ -336,6 +386,65 @@ $dlg.Add_KeyDown({
 
 Add this immediately after setting `ResizeMode` on each dialog window.
 
+### 10. Script Not Found Errors
+
+**Problem:** Operations fail with "script is not recognized" error.
+
+**Cause:** GUI builds script path without validating it exists first.
+
+**Solution:** Always validate script paths before using them:
+```powershell
+# WRONG - uses path even if it doesn't exist
+$mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
+if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
+# Still uses $mgmt even if second path doesn't exist either!
+
+# CORRECT - validate and show error if not found
+$mgmt = $null
+$locations = @(
+    (Join-Path $sr "Invoke-WsusManagement.ps1"),
+    (Join-Path $sr "Scripts\Invoke-WsusManagement.ps1")
+)
+foreach ($loc in $locations) {
+    if (Test-Path $loc) { $mgmt = $loc; break }
+}
+if (-not $mgmt) {
+    [System.Windows.MessageBox]::Show("Script not found!", "Error", "OK", "Error")
+    return
+}
+```
+
+### 11. Buttons Not Disabled During Operations
+
+**Problem:** Users can click operation buttons while another operation is running.
+
+**Cause:** Only showing a message box but buttons remain clickable.
+
+**Solution:** Disable all operation buttons when an operation starts:
+```powershell
+$script:OperationButtons = @("BtnInstall","BtnHealth","QBtnHealth",...)
+
+function Disable-OperationButtons {
+    foreach ($b in $script:OperationButtons) {
+        if ($controls[$b]) {
+            $controls[$b].IsEnabled = $false
+            $controls[$b].Opacity = 0.5
+        }
+    }
+}
+
+function Enable-OperationButtons {
+    foreach ($b in $script:OperationButtons) {
+        if ($controls[$b]) {
+            $controls[$b].IsEnabled = $true
+            $controls[$b].Opacity = 1.0
+        }
+    }
+}
+
+# Call Disable at start, Enable at end (including error/cancel paths)
+```
+
 ## Testing Checklist for GUI Changes
 
 Before committing GUI changes, verify:
@@ -349,5 +458,83 @@ Before committing GUI changes, verify:
 7. [ ] Concurrent operation blocking is in place
 8. [ ] Cancel button properly kills running processes
 9. [ ] All dialogs close with ESC key
-10. [ ] Build passes: `.\build.ps1`
-11. [ ] Manual test each affected operation
+10. [ ] **Script paths are validated before use** (show error if not found)
+11. [ ] **Buttons are disabled during operations** (and re-enabled on completion/error/cancel)
+12. [ ] Build passes: `.\build.ps1`
+13. [ ] Manual test each affected operation
+14. [ ] **Test from extracted zip** (not just dev environment)
+
+## PowerShell-to-EXE GUI Template Features
+
+This project serves as a template for building portable PowerShell GUI applications. Key reusable components:
+
+### 1. DPI Awareness (GUI Header)
+```powershell
+#region DPI Awareness - Enable crisp rendering on high-DPI displays
+try {
+    Add-Type -TypeDefinition @"
+        using System;
+        using System.Runtime.InteropServices;
+        public class DpiAwareness {
+            [DllImport("shcore.dll")]
+            public static extern int SetProcessDpiAwareness(int awareness);
+            [DllImport("user32.dll")]
+            public static extern bool SetProcessDPIAware();
+            public static void Enable() {
+                try { SetProcessDpiAwareness(2); }  // Per-monitor DPI (Win 8.1+)
+                catch { try { SetProcessDPIAware(); } catch { } }  // System DPI (Vista+)
+            }
+        }
+"@ -ErrorAction SilentlyContinue
+    [DpiAwareness]::Enable()
+} catch { }
+#endregion
+```
+
+### 2. AsyncHelpers Module (`Modules\AsyncHelpers.psm1`)
+Provides non-blocking background operations for WPF applications:
+- `Initialize-AsyncRunspacePool` / `Close-AsyncRunspacePool` - Runspace pool management
+- `Invoke-Async` / `Wait-Async` / `Test-AsyncComplete` / `Stop-Async` - Async execution
+- `Invoke-UIThread` - Safe UI thread dispatch
+- `Start-BackgroundOperation` - Complete async workflow with callbacks
+
+### 3. Error Handling Wrapper (Main Entry Point)
+```powershell
+try {
+    $window.ShowDialog() | Out-Null
+}
+catch {
+    $errorMsg = "A fatal error occurred:`n`n$($_.Exception.Message)"
+    Write-Log "FATAL: $($_.Exception.Message)"
+    Write-Log "Stack: $($_.ScriptStackTrace)"
+    [System.Windows.MessageBox]::Show($errorMsg, "App - Error", "OK", "Error") | Out-Null
+    exit 1
+}
+finally {
+    # Cleanup: stop timers, kill processes, dispose resources
+}
+```
+
+### 4. Startup Benchmarking
+```powershell
+$script:StartupTime = Get-Date
+# ... initialization ...
+$script:StartupDuration = ((Get-Date) - $script:StartupTime).TotalMilliseconds
+Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
+```
+
+### 5. CI Pipeline Features (`.github\workflows\build.yml`)
+- **Code Review:** PSScriptAnalyzer with custom settings
+- **Security Scan:** Specific security-focused rules
+- **Pester Tests:** Unit tests with NUnit XML output
+- **Build:** PS2EXE compilation with version embedding
+- **Startup Benchmark:** Parse time, module import time, EXE size validation
+- **EXE Validation:** PE header, 64-bit architecture, version info checks
+- **Release Automation:** GitHub release with artifacts
+
+### 6. EXE Validation Tests (`Tests\ExeValidation.Tests.ps1`)
+- PE header validation (MZ signature, PE signature)
+- 64-bit architecture verification
+- Version info embedding (product name, company, version)
+- Startup benchmark (script parse time < 5s)
+- Distribution package validation

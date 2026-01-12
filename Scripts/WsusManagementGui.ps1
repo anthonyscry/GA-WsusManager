@@ -16,7 +16,39 @@ Version: 3.8.0
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-$script:AppVersion = "3.8.0"
+#region DPI Awareness - Enable crisp rendering on high-DPI displays
+try {
+    Add-Type -TypeDefinition @"
+        using System;
+        using System.Runtime.InteropServices;
+        public class DpiAwareness {
+            [DllImport("shcore.dll")]
+            public static extern int SetProcessDpiAwareness(int awareness);
+
+            [DllImport("user32.dll")]
+            public static extern bool SetProcessDPIAware();
+
+            public static void Enable() {
+                try {
+                    // Try Windows 8.1+ per-monitor DPI awareness
+                    SetProcessDpiAwareness(2); // PROCESS_PER_MONITOR_DPI_AWARE
+                } catch {
+                    try {
+                        // Fall back to Windows Vista+ system DPI awareness
+                        SetProcessDPIAware();
+                    } catch { }
+                }
+            }
+        }
+"@ -ErrorAction SilentlyContinue
+    [DpiAwareness]::Enable()
+} catch {
+    # DPI awareness not critical - continue without it
+}
+#endregion
+
+$script:AppVersion = "3.8.3"
+$script:StartupTime = Get-Date
 
 #region Script Path & Settings
 $script:ScriptRoot = $null
@@ -194,7 +226,7 @@ try {
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v3.7.0" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v3.8.3" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -570,6 +602,27 @@ function Set-ActiveNavButton {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
             $controls[$b].Foreground = if($b -eq $Active){"#E6EDF3"}else{"#8B949E"}
+        }
+    }
+}
+
+# Operation buttons that should be disabled during operations
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+
+function Disable-OperationButtons {
+    foreach ($b in $script:OperationButtons) {
+        if ($controls[$b]) {
+            $controls[$b].IsEnabled = $false
+            $controls[$b].Opacity = 0.5
+        }
+    }
+}
+
+function Enable-OperationButtons {
+    foreach ($b in $script:OperationButtons) {
+        if ($controls[$b]) {
+            $controls[$b].IsEnabled = $true
+            $controls[$b].Opacity = 1.0
         }
     }
 }
@@ -1222,12 +1275,12 @@ function Show-MaintenanceDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportType = "Full"; DaysOld = 30 }
+    $result = @{ Cancelled = $true; Direction = ""; Path = "" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
     $dlg.Width = 500
-    $dlg.Height = 400
+    $dlg.Height = 280
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1298,56 +1351,6 @@ function Show-TransferDialog {
     }.GetNewClosure())
     $stack.Children.Add($pathPanel)
 
-    # Export options (only visible for export)
-    $exportOptPanel = New-Object System.Windows.Controls.StackPanel
-    $exportOptPanel.Margin = "0,0,0,16"
-
-    $exportOptLbl = New-Object System.Windows.Controls.TextBlock
-    $exportOptLbl.Text = "Export Type:"
-    $exportOptLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $exportOptLbl.Margin = "0,0,0,8"
-    $exportOptPanel.Children.Add($exportOptLbl)
-
-    $radioFull = New-Object System.Windows.Controls.RadioButton
-    $radioFull.GroupName = "ExportType"
-    $radioFull.Content = "Full Export (all content)"
-    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $radioFull.Margin = "0,0,0,4"
-    $radioFull.IsChecked = $true
-    $exportOptPanel.Children.Add($radioFull)
-
-    $diffPanel = New-Object System.Windows.Controls.StackPanel
-    $diffPanel.Orientation = "Horizontal"
-    $diffPanel.Margin = "0,0,0,4"
-
-    $radioDiff = New-Object System.Windows.Controls.RadioButton
-    $radioDiff.GroupName = "ExportType"
-    $radioDiff.Content = "Differential (last"
-    $radioDiff.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $diffPanel.Children.Add($radioDiff)
-
-    $daysTxt = New-Object System.Windows.Controls.TextBox
-    $daysTxt.Text = "30"
-    $daysTxt.Width = 40
-    $daysTxt.Margin = "6,0,6,0"
-    $daysTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $daysTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $daysTxt.Padding = "4,2"
-    $diffPanel.Children.Add($daysTxt)
-
-    $daysLbl2 = New-Object System.Windows.Controls.TextBlock
-    $daysLbl2.Text = "days)"
-    $daysLbl2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $daysLbl2.VerticalAlignment = "Center"
-    $diffPanel.Children.Add($daysLbl2)
-    $exportOptPanel.Children.Add($diffPanel)
-
-    $stack.Children.Add($exportOptPanel)
-
-    # Show/hide export options based on direction
-    $radioExport.Add_Checked({ $exportOptPanel.Visibility = "Visible" }.GetNewClosure())
-    $radioImport.Add_Checked({ $exportOptPanel.Visibility = "Collapsed" }.GetNewClosure())
-
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
@@ -1364,16 +1367,9 @@ function Show-TransferDialog {
             [System.Windows.MessageBox]::Show("Select a folder path.", "Transfer", "OK", "Warning")
             return
         }
-        $daysVal = 30
-        if ($radioExport.IsChecked -and $radioDiff.IsChecked -and -not [int]::TryParse($daysTxt.Text, [ref]$daysVal)) {
-            [System.Windows.MessageBox]::Show("Invalid days value.", "Transfer", "OK", "Warning")
-            return
-        }
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
-        $result.ExportType = if ($radioFull.IsChecked) { "Full" } else { "Differential" }
-        $result.DaysOld = $daysVal
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -1489,10 +1485,38 @@ function Invoke-LogOperation {
     Write-Log "Run-LogOp: $Id"
 
     $sr = $script:ScriptRoot
-    $mgmt = Join-Path $sr "Invoke-WsusManagement.ps1"
-    if (-not (Test-Path $mgmt)) { $mgmt = Join-Path $sr "Scripts\Invoke-WsusManagement.ps1" }
-    $maint = Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"
-    if (-not (Test-Path $maint)) { $maint = Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1" }
+
+    # Find management script - check multiple locations
+    $mgmt = $null
+    $mgmtLocations = @(
+        (Join-Path $sr "Invoke-WsusManagement.ps1"),
+        (Join-Path $sr "Scripts\Invoke-WsusManagement.ps1")
+    )
+    foreach ($loc in $mgmtLocations) {
+        if (Test-Path $loc) { $mgmt = $loc; break }
+    }
+
+    # Find maintenance script - check multiple locations
+    $maint = $null
+    $maintLocations = @(
+        (Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"),
+        (Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1")
+    )
+    foreach ($loc in $maintLocations) {
+        if (Test-Path $loc) { $maint = $loc; break }
+    }
+
+    # Validate scripts exist before proceeding
+    if (-not $mgmt) {
+        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusManagement.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+        Write-Log "ERROR: Invoke-WsusManagement.ps1 not found in $sr or $sr\Scripts"
+        return
+    }
+    if (-not $maint) {
+        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusMonthlyMaintenance.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+        Write-Log "ERROR: Invoke-WsusMonthlyMaintenance.ps1 not found in $sr or $sr\Scripts"
+        return
+    }
 
     $cp = Get-EscapedPath $script:ContentPath
     $sql = Get-EscapedPath $script:SqlInstance
@@ -1538,11 +1562,8 @@ function Invoke-LogOperation {
             $path = Get-EscapedPath $opts.Path
             $Title = $opts.Direction
             if ($opts.Direction -eq "Export") {
-                if ($opts.ExportType -eq "Differential") {
-                    "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path' -Differential -DaysOld $($opts.DaysOld)"
-                } else {
-                    "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path'"
-                }
+                # Note: CLI Export always does full export (differential is interactive-only)
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path'"
             } else {
                 "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
             }
@@ -1566,8 +1587,9 @@ function Invoke-LogOperation {
         $script:LogExpanded = $true
     }
 
-    # Mark operation as running and show cancel button
+    # Mark operation as running, disable buttons, show cancel button
     $script:OperationRunning = $true
+    Disable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Visible"
 
     Write-LogOutput "Starting $Title..." -Level Info
@@ -1631,6 +1653,7 @@ function Invoke-LogOperation {
 
             if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                 $script:OperationRunning = $false
+                Enable-OperationButtons
                 $controls.BtnCancelOp.Visibility = "Collapsed"
                 $controls.StatusLabel.Text = " - Ready"
                 $this.Stop()
@@ -1641,6 +1664,7 @@ function Invoke-LogOperation {
         Write-LogOutput "ERROR: $_" -Level Error
         Set-Status "Ready"
         $script:OperationRunning = $false
+        Enable-OperationButtons
         $controls.BtnCancelOp.Visibility = "Collapsed"
     }
 }
@@ -1671,6 +1695,7 @@ $controls.BtnCancelOp.Add_Click({
         }
     }
     $script:OperationRunning = $false
+    Enable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Collapsed"
     Set-Status "Ready"
 })
@@ -1817,5 +1842,51 @@ $window.Add_Closing({
 })
 #endregion
 
+#region Main Entry Point with Error Handling
+$script:StartupDuration = ((Get-Date) - $script:StartupTime).TotalMilliseconds
+Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 Write-Log "Running WPF form"
-$window.ShowDialog() | Out-Null
+
+try {
+    $window.ShowDialog() | Out-Null
+}
+catch {
+    $errorMsg = "A fatal error occurred:`n`n$($_.Exception.Message)"
+    Write-Log "FATAL: $($_.Exception.Message)"
+    Write-Log "Stack: $($_.ScriptStackTrace)"
+
+    try {
+        [System.Windows.MessageBox]::Show(
+            $errorMsg,
+            "WSUS Manager - Error",
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Error
+        ) | Out-Null
+    }
+    catch {
+        # If WPF message box fails, try Windows Forms
+        [System.Windows.Forms.MessageBox]::Show(
+            $errorMsg,
+            "WSUS Manager - Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+    }
+
+    exit 1
+}
+finally {
+    # Cleanup resources
+    try {
+        if ($timer) { $timer.Stop() }
+        if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) {
+            $script:CurrentProcess.Kill()
+        }
+    }
+    catch {
+        Write-Log "Cleanup warning: $_"
+    }
+}
+
+Write-Log "=== Application closed ==="
+#endregion
