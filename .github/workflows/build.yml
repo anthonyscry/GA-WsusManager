@@ -424,56 +424,62 @@ jobs:
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
         $packageName = "WsusManager-v$version"
-        $stagingDir = ".\staging\$packageName"
+        $distDir = ".\dist"
+        $packageDir = "$distDir\$packageName"
 
-        New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+        # Create dist folder structure
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
-        # Copy main executable
-        Copy-Item ".\WsusManager.exe" -Destination $stagingDir
+        # Copy main executable to both dist root and package folder
+        Copy-Item ".\WsusManager.exe" -Destination $distDir
+        Copy-Item ".\WsusManager.exe" -Destination $packageDir
 
         # Copy required folders (Scripts and Modules are REQUIRED for the EXE to work)
         if (Test-Path ".\Scripts") {
-          Copy-Item ".\Scripts" -Destination "$stagingDir\Scripts" -Recurse
+          Copy-Item ".\Scripts" -Destination "$packageDir\Scripts" -Recurse
           Write-Host "Copied Scripts folder" -ForegroundColor Green
         } else {
-          Write-Host "WARNING: Scripts folder not found!" -ForegroundColor Red
+          Write-Host "::error::Scripts folder not found - EXE will not work!"
+          exit 1
         }
 
         if (Test-Path ".\Modules") {
-          Copy-Item ".\Modules" -Destination "$stagingDir\Modules" -Recurse
+          Copy-Item ".\Modules" -Destination "$packageDir\Modules" -Recurse
           Write-Host "Copied Modules folder" -ForegroundColor Green
         } else {
-          Write-Host "WARNING: Modules folder not found!" -ForegroundColor Red
+          Write-Host "::error::Modules folder not found - EXE will not work!"
+          exit 1
         }
 
         # Copy optional files/folders
         if (Test-Path ".\DomainController") {
-          Copy-Item ".\DomainController" -Destination "$stagingDir\DomainController" -Recurse
+          Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
           Write-Host "Copied DomainController folder" -ForegroundColor Green
         }
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $stagingDir }
-        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $stagingDir }
-        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $stagingDir }
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
 
         # List contents for verification
         Write-Host "`nPackage contents:" -ForegroundColor Cyan
-        Get-ChildItem -Path $stagingDir -Recurse | ForEach-Object {
-          $relativePath = $_.FullName.Replace((Get-Item $stagingDir).FullName, "")
+        Get-ChildItem -Path $packageDir -Recurse | ForEach-Object {
+          $relativePath = $_.FullName.Replace((Get-Item $packageDir).FullName, "")
           Write-Host "  $relativePath"
         }
 
-        # Create zip
-        Compress-Archive -Path "$stagingDir\*" -DestinationPath ".\$packageName.zip" -Force
+        # Create zip in dist folder
+        Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
 
-        Write-Host "`nCreated: $packageName.zip" -ForegroundColor Green
+        Write-Host "`nDist folder contents:" -ForegroundColor Cyan
+        Get-ChildItem -Path $distDir -File | ForEach-Object {
+          Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
+        }
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: WsusManager-${{ steps.version.outputs.VERSION }}
-        path: |
-          ./WsusManager.exe
-          ./WsusManager-v*.zip
+        path: ./dist/
         retention-days: 30
 
   #############################################
@@ -491,7 +497,8 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        path: ./artifacts
+        name: WsusManager-${{ needs.build.outputs.version }}
+        path: ./dist
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -500,7 +507,7 @@ jobs:
         name: WSUS Manager v${{ needs.build.outputs.version }}
         draft: true
         prerelease: false
-        files: ./artifacts/**/*.zip
+        files: ./dist/*.zip
         body: |
           ## WSUS Manager v${{ needs.build.outputs.version }}
 
