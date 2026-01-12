@@ -93,10 +93,11 @@ For WSUS servers on disconnected networks:
 
 ### Changing Modes
 
-1. Click the **Server Mode** toggle in the sidebar
-2. The mode switches between Online/Air-Gap
+Server Mode is auto-detected based on internet connectivity.
+
+1. Ensure the server has internet access for Online mode
+2. Disconnect to switch to Air-Gap mode
 3. Menu items update automatically
-4. Setting is saved and persists across restarts
 
 ---
 
@@ -111,6 +112,8 @@ Installs WSUS with SQL Server Express from scratch.
 2. Browse to folder containing SQL installers
 3. Click **Install**
 4. Wait 15-30 minutes for completion
+
+> **Note:** If the default installer folder is missing SQL/SSMS files, the installer will prompt you to select the correct folder.
 
 **Prerequisites:**
 - SQL installers in selected folder
@@ -162,6 +165,8 @@ Imports updates from USB media to an air-gapped server.
 3. Click **Import**
 4. Wait for import to complete
 
+> **Note:** The import runs non-interactively using the selected folder and will not prompt for additional input.
+
 **Prerequisites:**
 - Valid export folder structure
 - Sufficient disk space
@@ -169,6 +174,8 @@ Imports updates from USB media to an air-gapped server.
 ### Monthly Maintenance
 
 Runs comprehensive maintenance tasks.
+
+> **Online-only:** Run Monthly Maintenance on the **Online** WSUS server.
 
 **What it does:**
 1. Synchronizes with Microsoft Update
@@ -182,6 +189,23 @@ Runs comprehensive maintenance tasks.
 - Monthly (recommended)
 - After initial sync
 - When database grows large
+
+**UX Note:** Some phases can be quiet for several minutes; the GUI refreshes status roughly every 30 seconds.
+
+### Schedule Maintenance Task
+
+Creates or updates the scheduled task that runs Monthly Maintenance.
+
+> **Online-only:** Create the schedule on the **Online** WSUS server.
+
+**Steps:**
+1. Click **Schedule Task** in the Maintenance section
+2. Choose schedule (Weekly/Monthly/Daily)
+3. Set the start time (default: Saturday at 02:00)
+4. Select the maintenance profile
+5. Click **Create Task**
+
+**Default Recommendation:** Weekly on Saturday at 02:00.
 
 ### Deep Cleanup
 

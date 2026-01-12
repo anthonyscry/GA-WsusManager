@@ -24,6 +24,47 @@ param(
 )
 
 # -------------------------
+# INSTALLER PATH VALIDATION
+# -------------------------
+$requiredInstaller = "SQLEXPRADV_x64_ENU.exe"
+
+function Resolve-InstallerPath {
+    param([string]$Path)
+
+    if ($Path -and (Test-Path $Path)) {
+        $installerFile = Join-Path $Path $requiredInstaller
+        if (Test-Path $installerFile) {
+            return $Path
+        }
+    }
+
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Select folder containing SQL Server installers ($requiredInstaller, SSMS-Setup-ENU.exe)"
+    $dialog.SelectedPath = "C:\WSUS"
+
+    if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+        Write-Host "    Installation cancelled: SQL installer folder not selected." -ForegroundColor Yellow
+        return $null
+    }
+
+    $selectedPath = $dialog.SelectedPath
+    $installerFile = Join-Path $selectedPath $requiredInstaller
+    if (-not (Test-Path $installerFile)) {
+        Write-Host "    Installer not found in selected folder: $installerFile" -ForegroundColor Red
+        return $null
+    }
+
+    return $selectedPath
+}
+
+$InstallerPath = Resolve-InstallerPath -Path $InstallerPath
+if (-not $InstallerPath) {
+    Write-Host "    Aborting install: SQL installer files not found." -ForegroundColor Red
+    exit 1
+}
+
+# -------------------------
 # CONFIGURATION
 # -------------------------
 $LogFile         = "C:\WSUS\Logs\install.log"
@@ -384,6 +425,7 @@ if ($sqlcmd) {
 # 10. WSUS POSTINSTALL
 # =====================================================================
 Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
+# TODO: Add optional HTTP/HTTPS configuration flag (default remains HTTP on port 8530).
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 

@@ -508,6 +508,9 @@ $null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
 
 Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
 
+# UI note: some phases are long-running and may appear idle in the GUI log.
+Write-Status "Heads-up: some maintenance phases can take several minutes with minimal output. GUI status refreshes every ~30 seconds." -Type Info
+
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
     -SkipExport $SkipExport -ExportPath $ExportPath -ExportDays $ExportDays -Unattended $Unattended
