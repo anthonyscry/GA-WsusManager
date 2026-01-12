@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using WsusManager.Core.Health;
 using WsusManager.Core.Services;
 using WsusManager.Core.Utilities;
+using WsusManager.Core.Operations;
+using WsusManager.Gui.Views;
 using System.Collections.ObjectModel;
 
 namespace WsusManager.Gui.ViewModels;
@@ -50,6 +52,58 @@ public partial class MainViewModel : ObservableObject
 
         // Start auto-refresh timer (30 seconds)
         StartAutoRefresh();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteOperation))]
+    private async Task ExportImportAsync()
+    {
+        // Show dialog FIRST (just like PowerShell version!)
+        var dialog = new ExportImportDialog
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+
+        if (dialog.ShowDialog() != true)
+            return; // User cancelled
+
+        // Now run the operation immediately (no more prompts!)
+        IsOperationRunning = true;
+        var operation = dialog.Direction;
+        StatusMessage = $"Running {operation}...";
+        LogOutput = string.Empty;
+
+        try
+        {
+            AppendLog($"=== Starting {operation} ===");
+            AppendLog($"Path: {dialog.SelectedPath}");
+
+            var exportImport = new ExportImportOperations();
+            var progress = new Progress<string>(msg => AppendLog(msg));
+
+            bool success = dialog.IsExport
+                ? await exportImport.ExportAsync(dialog.SelectedPath, progress)
+                : await exportImport.ImportAsync(dialog.SelectedPath, progress);
+
+            if (success)
+            {
+                AppendLog($"\n{operation} completed successfully!");
+                StatusMessage = $"{operation} complete";
+            }
+            else
+            {
+                AppendLog($"\n{operation} failed");
+                StatusMessage = $"{operation} failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"\nERROR: {ex.Message}");
+            StatusMessage = $"{operation} failed";
+        }
+        finally
+        {
+            IsOperationRunning = false;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteOperation))]
