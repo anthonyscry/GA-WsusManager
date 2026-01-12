@@ -47,7 +47,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "3.8.3"
+$script:AppVersion = "3.8.5"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -1347,12 +1347,14 @@ function Show-ScheduleTaskDialog {
         DayOfMonth = 1
         Time = "02:00"
         Profile = "Full"
+        RunAsUser = ".\dod_admin"
+        Password = ""
     }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Schedule Monthly Maintenance"
     $dlg.Width = 460
-    $dlg.Height = 360
+    $dlg.Height = 480
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1490,8 +1492,47 @@ function Show-ScheduleTaskDialog {
     $profileCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $profileCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $profileCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $profileCombo.Margin = "0,0,0,16"
+    $profileCombo.Margin = "0,0,0,12"
     $stack.Children.Add($profileCombo)
+
+    # Credentials section
+    $credLbl = New-Object System.Windows.Controls.TextBlock
+    $credLbl.Text = "Run As Credentials (for unattended execution):"
+    $credLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $credLbl.FontSize = 11
+    $credLbl.Margin = "0,4,0,8"
+    $stack.Children.Add($credLbl)
+
+    $userLbl = New-Object System.Windows.Controls.TextBlock
+    $userLbl.Text = "Username (e.g., .\dod_admin or DOMAIN\user):"
+    $userLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $userLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($userLbl)
+
+    $userBox = New-Object System.Windows.Controls.TextBox
+    $userBox.Text = ".\dod_admin"
+    $userBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $userBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $userBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $userBox.BorderThickness = "1"
+    $userBox.Padding = "6,4"
+    $userBox.Margin = "0,0,0,12"
+    $stack.Children.Add($userBox)
+
+    $passLbl = New-Object System.Windows.Controls.TextBlock
+    $passLbl.Text = "Password:"
+    $passLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $passLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($passLbl)
+
+    $passBox = New-Object System.Windows.Controls.PasswordBox
+    $passBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $passBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $passBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $passBox.BorderThickness = "1"
+    $passBox.Padding = "6,4"
+    $passBox.Margin = "0,0,0,16"
+    $stack.Children.Add($passBox)
 
     $scheduleCombo.Add_SelectionChanged({
         if (-not $scheduleCombo.SelectedItem) { return }
@@ -1533,11 +1574,24 @@ function Show-ScheduleTaskDialog {
                 return
             }
         }
+        # Validate credentials
+        $userName = $userBox.Text.Trim()
+        $password = $passBox.Password
+        if ([string]::IsNullOrWhiteSpace($userName)) {
+            [System.Windows.MessageBox]::Show("Username is required for scheduled task execution.", "Schedule", "OK", "Warning")
+            return
+        }
+        if ([string]::IsNullOrWhiteSpace($password)) {
+            [System.Windows.MessageBox]::Show("Password is required for scheduled task execution.`n`nThe task needs credentials to run whether the user is logged on or not.", "Schedule", "OK", "Warning")
+            return
+        }
         $result.Schedule = $scheduleValue
         $result.DayOfWeek = $dowCombo.SelectedItem.ToString()
         $result.DayOfMonth = $domValue
         $result.Time = $timeValue
         $result.Profile = $profileCombo.SelectedItem.ToString()
+        $result.RunAsUser = $userName
+        $result.Password = $password
         $result.Cancelled = $false
         $dlg.Close()
     }.GetNewClosure())
@@ -1951,25 +2005,12 @@ function Invoke-LogOperation {
                 [System.Windows.MessageBox]::Show("SA passwords do not match.", "Error", "OK", "Error")
                 return
             }
-            $script:SaUser = $saUser
-
-            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
-            if ([string]::IsNullOrWhiteSpace($saPassword)) {
-                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
-                return
-            }
-            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
-            if (-not (Test-Path $sqlInstaller)) {
-                [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
-                return
-            }
-            $script:InstallPath = $installerPath
 
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
             $saUserSafe = $script:SaUser -replace "'", "''"
             $saPasswordSafe = $saPassword -replace "'", "''"
-            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe'"
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe' -NonInteractive"
         }
         "restore" {
             $opts = Show-RestoreDialog
@@ -2015,14 +2056,17 @@ function Invoke-LogOperation {
             }
 
             $Title = "Schedule Task ($($opts.Schedule))"
-            $args = "-Schedule '$($opts.Schedule)' -Time '$($opts.Time)' -MaintenanceProfile '$($opts.Profile)' -RunAsUser 'SYSTEM'"
+            $runAsUser = $opts.RunAsUser -replace "'", "''"
+            $runAsPassword = $opts.Password -replace "'", "''"
+            $args = "-Schedule '$($opts.Schedule)' -Time '$($opts.Time)' -MaintenanceProfile '$($opts.Profile)' -RunAsUser '$runAsUser'"
             if ($opts.Schedule -eq "Weekly") {
                 $args += " -DayOfWeek '$($opts.DayOfWeek)'"
             } elseif ($opts.Schedule -eq "Monthly") {
                 $args += " -DayOfMonth $($opts.DayOfMonth)"
             }
 
-            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; New-WsusMaintenanceTask $args }"
+            # Pass password as SecureString via ConvertTo-SecureString
+            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString '$runAsPassword' -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
@@ -2072,7 +2116,8 @@ function Invoke-LogOperation {
             if ($line) {
                 $data = $Event.MessageData
                 $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
-                $data.Window.Dispatcher.Invoke([Action]{
+                # Use BeginInvoke with Normal priority for non-blocking UI updates
+                $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
                     $data.Controls.LogOutput.AppendText("[$timestamp] $prefix $line`r`n")
@@ -2112,10 +2157,14 @@ function Invoke-LogOperation {
         # Use a timer as backup to check process status and force UI refresh
         # Note: Primary reset happens in exitHandler, timer is backup for edge cases
         $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
-        $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+        $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
         $script:OpCheckTimer.Add_Tick({
-            # Force UI to process pending events (keeps log responsive)
-            [System.Windows.Forms.Application]::DoEvents()
+            # Force WPF to process pending dispatcher operations (keeps log responsive)
+            # This is the WPF equivalent of DoEvents - pushes all queued dispatcher frames
+            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+                [System.Windows.Threading.DispatcherPriority]::Background,
+                [Action]{ }
+            )
 
             if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                 $script:OperationRunning = $false
