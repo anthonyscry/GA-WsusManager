@@ -131,6 +131,19 @@ $ConfirmPreference  = "None"
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Force immediate output flushing for GUI redirection
+# Override Write-Host to flush after each message
+function Write-HostFlush {
+    param([Parameter(ValueFromPipeline)]$Object, [string]$ForegroundColor, [switch]$NoNewline)
+    if ($ForegroundColor) {
+        Microsoft.PowerShell.Utility\Write-Host $Object -ForegroundColor $ForegroundColor -NoNewline:$NoNewline
+    } else {
+        Microsoft.PowerShell.Utility\Write-Host $Object -NoNewline:$NoNewline
+    }
+    [Console]::Out.Flush()
+}
+Set-Alias -Name Write-Host -Value Write-HostFlush -Scope Script
+
 # =====================================================================
 # SECURE SA PASSWORD (ONLY USER INPUT)
 # =====================================================================
