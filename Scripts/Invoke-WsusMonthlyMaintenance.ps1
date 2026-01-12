@@ -205,6 +205,8 @@ function Write-Status {
     $color = $colors[$Type]
     Write-Host "$prefix " -ForegroundColor $color -NoNewline
     Write-Host $Message
+    # Force output buffer flush for GUI redirection
+    [Console]::Out.Flush()
 }
 
 # Pre-flight validation
@@ -573,13 +575,32 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
         $subscription.StartSynchronization()
         Write-Log "Sync triggered, waiting for it to start..."
-        Start-Sleep -Seconds 15
+        # Split sleep into smaller chunks with heartbeat to keep output flowing
+        for ($i = 0; $i -lt 3; $i++) {
+            Start-Sleep -Seconds 5
+            Write-Host "." -NoNewline
+            [Console]::Out.Flush()
+        }
+        Write-Host ""
+        [Console]::Out.Flush()
 
         $syncIterations = 0
         $maxIterations = 120
+        $lastProgressUpdate = Get-Date
 
         do {
-            Start-Sleep -Seconds 30
+            # Split the 30-second wait into smaller chunks with heartbeat
+            for ($i = 0; $i -lt 6; $i++) {
+                Start-Sleep -Seconds 5
+                # Output a dot every 5 seconds to show activity
+                if ($i -lt 5) {
+                    Write-Host "." -NoNewline
+                    [Console]::Out.Flush()
+                }
+            }
+            Write-Host ""
+            [Console]::Out.Flush()
+
             $syncStatus = $subscription.GetSynchronizationStatus()
             $syncProgress = $subscription.GetSynchronizationProgress()
 
@@ -658,7 +679,14 @@ do {
         Write-Log "No downloads queued"
         break
     }
-    Start-Sleep -Seconds 30
+    # Split wait with heartbeat
+    for ($i = 0; $i -lt 6; $i++) {
+        Start-Sleep -Seconds 5
+        Write-Host "." -NoNewline
+        [Console]::Out.Flush()
+    }
+    Write-Host ""
+    [Console]::Out.Flush()
     $downloadIterations++
 } while ($downloadIterations -lt 60)
 
