@@ -3,13 +3,7 @@
 
 name: Codacy Security Scan
 
-on:
-  push:
-    branches: [main, master, develop]
-  pull_request:
-    branches: [main, master]
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+on: []
 
 permissions:
   contents: read
