@@ -173,6 +173,21 @@ function Stop-SqlExpressSetup {
     }
 }
 
+function Wait-WithHeartbeat {
+    param(
+        [Parameter(Mandatory)][System.Diagnostics.Process]$Process,
+        [Parameter(Mandatory)][string]$Message
+    )
+    Write-Host "    $Message"
+    while (-not $Process.HasExited) {
+        Start-Sleep -Seconds 15
+        Write-Host "." -NoNewline
+        [Console]::Out.Flush()
+    }
+    Write-Host ""
+    [Console]::Out.Flush()
+}
+
 # Get or retrieve password as SecureString
 if ($SaPassword) {
     $validationError = Test-SAPasswordStrength -Password $SaPassword
@@ -205,7 +220,8 @@ if ($sqlInstalled) {
     if (!(Test-Path $Extractor)) { throw "SQL extractor missing at $Extractor" }
 
     if (!(Test-Path "$ExtractPath\setup.exe")) {
-        Start-Process $Extractor -ArgumentList "/Q", "/x:$ExtractPath" -Wait -NoNewWindow
+        $extractProcess = Start-Process $Extractor -ArgumentList "/Q", "/x:$ExtractPath" -PassThru -NoNewWindow
+        Wait-WithHeartbeat -Process $extractProcess -Message "Extracting SQL Express (this can take a few minutes)..."
         Write-Host "    Extraction complete."
         Stop-SqlExpressSetup -SetupPath $ExtractPath
     } else {
@@ -262,7 +278,8 @@ if ($sqlInstalled) {
         throw "Cannot find setup.exe at $setupExe"
     }
 
-    $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -Wait -PassThru -NoNewWindow
+    $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -PassThru -NoNewWindow
+    Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
 
     if ($setupProcess.ExitCode -ne 0 -and $setupProcess.ExitCode -ne 3010) {
         throw "SQL installation failed with exit code $($setupProcess.ExitCode). Check log at C:\Program Files\Microsoft SQL Server\160\Setup Bootstrap\Log\Summary.txt"
@@ -278,7 +295,8 @@ Write-Host "[+] Installing SSMS..."
 if ($ssmsInstalled) {
     Write-Host "    SSMS already installed. Skipping."
 } elseif (Test-Path $SSMSInstaller) {
-    Start-Process $SSMSInstaller -ArgumentList "/install", "/passive", "/norestart" -Wait -NoNewWindow
+    $ssmsProcess = Start-Process $SSMSInstaller -ArgumentList "/install", "/passive", "/norestart" -PassThru -NoNewWindow
+    Wait-WithHeartbeat -Process $ssmsProcess -Message "Installing SSMS (this can take several minutes)..."
     Write-Host "    SSMS installation complete."
 } else {
     Write-Host "    SSMS installer not found, skipping."
@@ -452,7 +470,8 @@ $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 if (Test-Path $wsusUtil) {
     $postInstallArgs = "postinstall", "SQL_INSTANCE_NAME=`"$sqlInstance`"", "CONTENT_DIR=`"$WSUSContent`""
 
-    $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -Wait -PassThru -NoNewWindow
+    $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -PassThru -NoNewWindow
+    Wait-WithHeartbeat -Process $wsusProcess -Message "Configuring WSUS post-install steps (this can take several minutes)..."
 
     if ($wsusProcess.ExitCode -eq 0) {
         Write-Host "    WSUS postinstall complete."
