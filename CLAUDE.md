@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.4
+**Current Version:** 3.8.3
 
 ## Repository Structure
 
@@ -67,7 +67,7 @@ The build process:
 3. Blocks build if errors are found
 4. Warns but continues if only warnings exist
 5. Compiles `WsusManagementGui.ps1` to `WsusManager.exe` using PS2EXE
-6. Creates distribution zip with Scripts/, Modules/, and DomainController/ folders
+6. Creates distribution zip with Scripts/, Modules/, DomainController/, and branding assets
 
 **Version:** Update in `build.ps1` and `Scripts\WsusManagementGui.ps1` (`$script:AppVersion`)
 
@@ -75,20 +75,21 @@ The build process:
 
 The build creates a complete distribution zip (`WsusManager-vX.X.X.zip`) containing:
 ```
-WsusManager-vX.X.X/
-├── WsusManager.exe           # Main GUI application
-├── Scripts/                  # Required - operation scripts
-│   ├── Invoke-WsusManagement.ps1
-│   ├── Invoke-WsusMonthlyMaintenance.ps1
-│   ├── Install-WsusWithSqlExpress.ps1
-│   └── ...
-├── Modules/                  # Required - PowerShell modules
-│   ├── WsusUtilities.psm1
-│   ├── WsusHealth.psm1
-│   └── ...
-├── DomainController/         # Optional - GPO scripts
-├── QUICK-START.txt
-└── README.md
+WsusManager.exe           # Main GUI application
+Scripts/                  # Required - operation scripts
+├── Invoke-WsusManagement.ps1
+├── Invoke-WsusMonthlyMaintenance.ps1
+├── Install-WsusWithSqlExpress.ps1
+└── ...
+Modules/                  # Required - PowerShell modules
+├── WsusUtilities.psm1
+├── WsusHealth.psm1
+└── ...
+DomainController/         # Optional - GPO scripts
+general_atomics_logo_big.ico
+general_atomics_logo_small.ico
+QUICK-START.txt
+README.md
 ```
 
 **IMPORTANT:** The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.
@@ -116,7 +117,7 @@ WsusManager-vX.X.X/
 
 ### Standard Paths
 - WSUS Content: `C:\WSUS\`
-- SQL/SSMS Installers: `C:\WSUS\SQLDB\`
+- SQL/SSMS Installers: `C:\WSUS\SQLDB\` (installer script prompts if missing)
 - Logs: `C:\WSUS\Logs\`
 - SQL Instance: `localhost\SQLEXPRESS`
 - WSUS Ports: 8530 (HTTP), 8531 (HTTPS)

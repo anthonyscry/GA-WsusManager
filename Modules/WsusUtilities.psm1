@@ -519,7 +519,7 @@ function Test-WsusPath {
 # ===========================
 
 # Module-level constants for credential storage
-$script:WsusConfigPath = "C:\WSUS\Config"
+$script:WsusConfigPath = "C:\WSUS"
 $script:WsusSqlCredentialFile = "sql_credential.xml"
 
 function Get-WsusSqlCredentialPath {

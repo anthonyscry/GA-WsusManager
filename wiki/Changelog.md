@@ -4,13 +4,17 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
-## [3.8.4] - January 2026
+## [3.8.4] - March 2026
 
 ### Bug Fixes
 - **Fixed**: Export operation hanging when called from GUI
   - Added non-interactive mode to `Invoke-ExportToMedia`
   - New CLI parameters: `-SourcePath`, `-DestinationPath`, `-CopyMode`, `-DaysOld`
   - Skips interactive prompts when DestinationPath is provided
+- **Fixed**: Import prompts showing during GUI/CLI air-gap imports
+  - Import now supports non-interactive mode with selected source path
+- **Fixed**: Install WSUS appearing idle when installer files are missing
+  - Installer now prompts for SQL/SSMS folder selection
 - **Fixed**: GitHub Actions workflow EXE validation tests failing
   - ExeValidation tests now excluded from pre-build test job
   - EXE validation runs after build in build job
@@ -23,6 +27,10 @@ All notable changes to WSUS Manager are documented here.
   - Full copy (all files)
   - Differential copy (last N days)
   - Custom days selector
+- **Added**: Scheduled task creation support for SYSTEM account
+
+### Packaging
+- **Updated**: Distribution package includes GA logo assets for the GUI
 
 ### Infrastructure
 - **Changed**: Build artifacts go to `dist/` folder (gitignored)

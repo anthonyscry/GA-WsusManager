@@ -2,8 +2,8 @@
 
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
-| **Version** | 3.5.2 |
-| **Last Updated** | January 2026 |
+| **Version** | 3.8.3 |
+| **Last Updated** | March 2026 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
 
@@ -15,7 +15,7 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 > **Upload your project bundle here:**
 >
-> **[PLACEHOLDER: Upload WsusManager-v3.5.2.zip here]**
+> **[PLACEHOLDER: Upload WsusManager-v3.8.3.zip here]**
 >
 > The bundle includes:
 > - WsusManager.exe (portable GUI)
@@ -48,7 +48,7 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 ### Required Installers
 
-> Save to C:\WSUS\SQLDB\ before installation
+> Save to C:\WSUS\SQLDB\ before installation (or select folder when prompted)
 
 | File | Description | Download Link |
 |------|-------------|---------------|
@@ -57,42 +57,18 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports o
 
 ---
 
-## What's New in v3.5.2
+## What's New in v3.8.3
 
-### Security Hardening
-
-| Feature | Description |
-|---------|-------------|
-| SQL Injection Prevention | Added input validation in Test-WsusBackupIntegrity |
-| Path Validation | Test-ValidPath and Test-SafePath prevent command injection |
-| Safe Path Escaping | Get-EscapedPath ensures safe command string construction |
-| DPAPI Documentation | Documented credential storage security limitations |
-
-### Bug Fixes
+### Improvements
 
 | Feature | Description |
 |---------|-------------|
-| Service Refresh Fix | Fixed Start-WsusAutoRecovery error where $svc.Refresh() failed on PSCustomObject |
-| Improved Service Recovery | Now re-queries service status instead of using Refresh() method |
+| Installer Prompt | Install WSUS now prompts for the SQL/SSMS installer folder if files are missing |
+| Air-Gap Import | Import from external media runs non-interactively when launched from GUI/CLI |
+| Maintenance UX | Monthly maintenance logs note that some phases can be quiet for several minutes |
+| Packaging | Distribution zip includes required Scripts/Modules and branding assets |
 
-### Performance Optimizations
-
-| Feature | Description |
-|---------|-------------|
-| SQL Module Caching | SqlServer module version checked once at load time |
-| Batch Service Queries | Single batch query instead of 5 individual calls |
-| Dashboard Refresh Guard | Prevents overlapping refresh operations |
-| Test Suite Optimization | Shared module pre-loading reduces test time |
-
-### Code Quality
-
-| Feature | Description |
-|---------|-------------|
-| Pester Unit Tests | 323 unit tests across 10 test files (all passing) |
-| PSScriptAnalyzer | Build runs code analysis before compilation |
-| Approved Verbs | Renamed Load-Settings to Import-WsusSettings |
-
-### Previous (v3.5.0/3.5.1)
+### Previous Highlights
 
 | Feature | Description |
 |---------|-------------|
@@ -138,7 +114,7 @@ The dashboard displays four status cards with auto-refresh every 30 seconds:
 
 ## Server Mode Toggle
 
-Toggle between **Online** and **Air-Gap** modes using the switch in the sidebar.
+Server Mode auto-detects **Online** vs **Air-Gap** based on internet connectivity.
 
 | Mode | Visible Operations | Hidden Operations |
 |------|-------------------|-------------------|
@@ -158,11 +134,14 @@ The mode is saved to user settings and persists across restarts.
 | Export to Media | Export DB and content to USB (Full or Differential) |
 | Import from Media | Import from USB to air-gapped server |
 | Monthly Maintenance | Run WSUS cleanup and optimization |
+| Schedule Task | Create or update the scheduled maintenance task |
 | Deep Cleanup | Aggressive cleanup for space recovery |
 | Health Check | Verify WSUS configuration and connectivity |
 | Health + Repair | Health check with automatic fixes |
 | Settings | Configure paths and SQL instance |
 | About | Application info and credits |
+
+> **Note:** Monthly Maintenance and Schedule Task are intended for the **Online** WSUS server only.
 
 ---
 

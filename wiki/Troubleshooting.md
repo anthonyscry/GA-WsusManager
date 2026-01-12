@@ -369,6 +369,28 @@ The Health Check verifies:
 
 **Note:** If you downloaded just the EXE, you must extract the full distribution zip. The EXE requires Scripts/ and Modules/ folders to function.
 
+### Install WSUS Appears Stuck
+
+**Symptoms:**
+- Install WSUS starts but shows no progress
+- Log shows "Starting Install WSUS" with no further output
+
+**Cause:** The installer prompt is waiting for a folder selection if SQL/SSMS files are missing from the default path.
+
+**Solutions:**
+1. Look for a folder picker dialog (may be behind other windows)
+2. Select the folder containing `SQLEXPRADV_x64_ENU.exe` and `SSMS-Setup-ENU.exe`
+3. If you canceled the prompt, re-run Install WSUS and select the correct folder
+
+### Maintenance Appears Idle
+
+**Symptoms:**
+- Monthly Maintenance runs but log output pauses for several minutes
+
+**Cause:** Some phases (sync, cleanup, export) can be long-running with minimal output.
+
+**Solution:** Allow the process to continue; the GUI refreshes status roughly every 30 seconds.
+
 ### Folder Structure Error
 
 **Symptoms:**
@@ -381,11 +403,10 @@ The Health Check verifies:
 1. Download the full distribution package (`WsusManager-vX.X.X.zip`)
 2. Extract ALL contents, maintaining folder structure:
    ```
-   WsusManager-vX.X.X/
-   ├── WsusManager.exe      # Main application
-   ├── Scripts/             # REQUIRED - operation scripts
-   ├── Modules/             # REQUIRED - PowerShell modules
-   └── DomainController/    # Optional - GPO scripts
+   WsusManager.exe      # Main application
+   Scripts/             # REQUIRED - operation scripts
+   Modules/             # REQUIRED - PowerShell modules
+   DomainController/    # Optional - GPO scripts
    ```
 3. Run `WsusManager.exe` from this folder
 
