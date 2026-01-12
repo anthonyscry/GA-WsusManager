@@ -1,0 +1,96 @@
+name: Build C# POC
+
+on:
+  push:
+    branches:
+      - claude/evaluate-csharp-port-RxyW2
+    paths:
+      - 'CSharp/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore CSharp/WsusManager.sln
+
+    - name: Build solution
+      run: dotnet build CSharp/WsusManager.sln --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test CSharp/WsusManager.sln --configuration Release --no-build --verbosity normal
+
+    - name: Publish GUI (Single File EXE)
+      run: |
+        dotnet publish CSharp/src/WsusManager.Gui/WsusManager.Gui.csproj `
+          --configuration Release `
+          --output CSharp/publish/gui `
+          --self-contained true `
+          --runtime win-x64 `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:DebugType=none `
+          -p:DebugSymbols=false
+
+    - name: Create distribution package
+      run: |
+        New-Item -ItemType Directory -Force -Path CSharp/dist
+
+        # Copy GUI
+        Copy-Item CSharp/publish/gui/WsusManager.exe CSharp/dist/WsusManager-v4.0-POC.exe
+
+        # Copy documentation
+        Copy-Item CSharp/README.md CSharp/dist/
+        Copy-Item CSharp/EXECUTIVE-SUMMARY.md CSharp/dist/
+        Copy-Item CSharp/POWERSHELL-VS-CSHARP.md CSharp/dist/
+
+        # Create info file
+        @"
+        WSUS Manager v4.0 - C# POC
+        ================================
+        Built: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')
+        Branch: $env:GITHUB_REF_NAME
+        Commit: $env:GITHUB_SHA
+
+        Files:
+        - WsusManager-v4.0-POC.exe (WPF GUI application)
+        - README.md (POC overview)
+        - EXECUTIVE-SUMMARY.md (Migration decision guide)
+        - POWERSHELL-VS-CSHARP.md (Comparison document)
+
+        This is a single-file executable with no dependencies.
+        Requires: Windows 10/11, 64-bit
+        Run as Administrator.
+
+        To test:
+        1. Right-click WsusManager-v4.0-POC.exe
+        2. Select 'Run as administrator'
+        3. Try Health Check, Repair, or Export/Import
+
+        "@ | Out-File CSharp/dist/BUILD-INFO.txt
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: WsusManager-CSharp-POC
+        path: CSharp/dist/
+        retention-days: 30
+
+    - name: Get EXE sizes
+      run: |
+        Write-Host "`n=== Build Results ===" -ForegroundColor Cyan
+        Get-ChildItem CSharp/dist/*.exe | ForEach-Object {
+          $sizeMB = [math]::Round($_.Length / 1MB, 2)
+          Write-Host "$($_.Name): $sizeMB MB" -ForegroundColor Green
+        }
