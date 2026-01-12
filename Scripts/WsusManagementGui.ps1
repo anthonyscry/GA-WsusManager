@@ -274,17 +274,12 @@ try {
 
             <!-- Header -->
             <DockPanel Margin="0,0,0,12">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
-                            <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
-                        <TextBlock x:Name="AdminBadge" Text="Admin" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
-                    </Border>
-                </StackPanel>
+                <Border DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
+                    </StackPanel>
+                </Border>
                 <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
             </DockPanel>
 
@@ -396,10 +391,10 @@ try {
                             <TextBox x:Name="InstallPathBox" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
                             <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="10,6" Margin="8,0,0,0"/>
                         </Grid>
-                        <TextBlock Text="SA Username:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
-                        <TextBox x:Name="InstallSaUser" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
                         <TextBlock Text="SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
                         <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="Confirm SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPasswordConfirm" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
                         <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                             <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
@@ -1412,6 +1407,9 @@ function Show-ScheduleTaskDialog {
     $scheduleCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
     $scheduleCombo.BorderThickness = "1"
     $scheduleCombo.ItemContainerStyle = $comboItemStyle
+    $scheduleCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $scheduleCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $scheduleCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $stack.Children.Add($scheduleCombo)
 
     $dayOfWeekPanel = New-Object System.Windows.Controls.StackPanel
@@ -1433,6 +1431,9 @@ function Show-ScheduleTaskDialog {
     $dowCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
     $dowCombo.BorderThickness = "1"
     $dowCombo.ItemContainerStyle = $comboItemStyle
+    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $dayOfWeekPanel.Children.Add($dowCombo)
     $stack.Children.Add($dayOfWeekPanel)
 
@@ -1486,10 +1487,14 @@ function Show-ScheduleTaskDialog {
     $profileCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
     $profileCombo.BorderThickness = "1"
     $profileCombo.ItemContainerStyle = $comboItemStyle
+    $profileCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $profileCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $profileCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $profileCombo.Margin = "0,0,0,16"
     $stack.Children.Add($profileCombo)
 
     $scheduleCombo.Add_SelectionChanged({
+        if (-not $scheduleCombo.SelectedItem) { return }
         $selected = $scheduleCombo.SelectedItem.ToString()
         if ($selected -eq "Monthly") {
             $dayOfWeekPanel.Visibility = "Collapsed"
@@ -1932,10 +1937,18 @@ function Invoke-LogOperation {
             }
             $script:InstallPath = $installerPath
 
-            $saUser = if ($controls.InstallSaUser) { $controls.InstallSaUser.Text } else { $script:SaUser }
-            $saUser = $saUser.Trim()
-            if ([string]::IsNullOrWhiteSpace($saUser)) {
-                [System.Windows.MessageBox]::Show("SA username is required.", "Error", "OK", "Error")
+            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPassword)) {
+                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
+                return
+            }
+            $saPasswordConfirm = if ($controls.InstallSaPasswordConfirm) { $controls.InstallSaPasswordConfirm.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPasswordConfirm)) {
+                [System.Windows.MessageBox]::Show("SA password confirmation is required.", "Error", "OK", "Error")
+                return
+            }
+            if ($saPassword -ne $saPasswordConfirm) {
+                [System.Windows.MessageBox]::Show("SA passwords do not match.", "Error", "OK", "Error")
                 return
             }
             $script:SaUser = $saUser
@@ -1954,7 +1967,7 @@ function Invoke-LogOperation {
 
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
-            $saUserSafe = $saUser -replace "'", "''"
+            $saUserSafe = $script:SaUser -replace "'", "''"
             $saPasswordSafe = $saPassword -replace "'", "''"
             "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe'"
         }
@@ -2128,8 +2141,8 @@ function Invoke-LogOperation {
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnInstall.Add_Click({
     $controls.InstallPathBox.Text = $script:InstallPath
-    $controls.InstallSaUser.Text = $script:SaUser
     if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password = "" }
+    if ($controls.InstallSaPasswordConfirm) { $controls.InstallSaPasswordConfirm.Password = "" }
     Show-Panel "Install" "Install WSUS" "BtnInstall"
 })
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
