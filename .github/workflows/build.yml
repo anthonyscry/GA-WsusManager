@@ -9,8 +9,6 @@ on:
       - 'Tests/**'
       - '*.ps1'
       - '.github/workflows/build.yml'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       version:
@@ -252,7 +250,8 @@ jobs:
   #############################################
   build:
     name: Build Executable
-    runs-on: windows-latest
+    runs-on: windows-2022
+    timeout-minutes: 45
     needs: [code-review, test]
     if: |
       always() &&
@@ -284,18 +283,18 @@ jobs:
         Write-Host "Version: $version" -ForegroundColor Cyan
 
     - name: Install PS2EXE
-      shell: pwsh
+      shell: powershell
       run: |
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module -Name ps2exe -Force -Scope CurrentUser
+        Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
 
     - name: Build executable
       id: build_exe
-      shell: pwsh
+      shell: powershell
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
 
-        Import-Module ps2exe -Force
+        Import-Module ps2exe -Force -ErrorAction Stop
 
         $buildStart = Get-Date
 
@@ -421,33 +420,6 @@ jobs:
 
         Write-Host "::endgroup::"
 
-    - name: Run EXE Validation Tests
-      shell: pwsh
-      run: |
-        Write-Host "=== Running EXE Validation Tests ===" -ForegroundColor Cyan
-
-        # Install Pester if not present
-        if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge '5.0.0' })) {
-          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
-        }
-        Import-Module Pester -MinimumVersion 5.0.0 -Force
-
-        $config = New-PesterConfiguration
-        $config.Run.Path = "./Tests/ExeValidation.Tests.ps1"
-        $config.Run.Exit = $false
-        $config.Output.Verbosity = 'Detailed'
-
-        $results = Invoke-Pester -Configuration $config
-
-        Write-Host "`n=== EXE Validation Summary ===" -ForegroundColor Cyan
-        Write-Host "Passed: $($results.PassedCount)" -ForegroundColor Green
-        Write-Host "Failed: $($results.FailedCount)" -ForegroundColor $(if ($results.FailedCount -gt 0) { 'Red' } else { 'Green' })
-        Write-Host "Skipped: $($results.SkippedCount)" -ForegroundColor Yellow
-
-        if ($results.FailedCount -gt 0) {
-          Write-Host "::warning::$($results.FailedCount) EXE validation test(s) failed"
-        }
-
     - name: Create distribution package
       shell: pwsh
       run: |
@@ -485,7 +457,18 @@ jobs:
           Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
           Write-Host "Copied DomainController folder" -ForegroundColor Green
         }
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\wsus-icon.ico") {
+          Copy-Item ".\wsus-icon.ico" -Destination $packageDir
+          Copy-Item ".\wsus-icon.ico" -Destination $distDir
+        }
+        if (Test-Path ".\general_atomics_logo_small.ico") {
+          Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+          Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir
+        }
+        if (Test-Path ".\general_atomics_logo_big.ico") {
+          Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+          Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir
+        }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
         if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
 
@@ -502,6 +485,33 @@ jobs:
         Write-Host "`nDist folder contents:" -ForegroundColor Cyan
         Get-ChildItem -Path $distDir -File | ForEach-Object {
           Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
+        }
+
+    - name: Run EXE Validation Tests
+      shell: pwsh
+      run: |
+        Write-Host "=== Running EXE Validation Tests ===" -ForegroundColor Cyan
+
+        # Install Pester if not present
+        if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge '5.0.0' })) {
+          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
+        }
+        Import-Module Pester -MinimumVersion 5.0.0 -Force
+
+        $config = New-PesterConfiguration
+        $config.Run.Path = "./Tests/ExeValidation.Tests.ps1"
+        $config.Run.Exit = $false
+        $config.Output.Verbosity = 'Detailed'
+
+        $results = Invoke-Pester -Configuration $config
+
+        Write-Host "`n=== EXE Validation Summary ===" -ForegroundColor Cyan
+        Write-Host "Passed: $($results.PassedCount)" -ForegroundColor Green
+        Write-Host "Failed: $($results.FailedCount)" -ForegroundColor $(if ($results.FailedCount -gt 0) { 'Red' } else { 'Green' })
+        Write-Host "Skipped: $($results.SkippedCount)" -ForegroundColor Yellow
+
+        if ($results.FailedCount -gt 0) {
+          Write-Host "::warning::$($results.FailedCount) EXE validation test(s) failed"
         }
 
     - name: Upload build artifact

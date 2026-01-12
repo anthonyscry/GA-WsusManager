@@ -384,6 +384,7 @@ if ($sqlcmd) {
 # 10. WSUS POSTINSTALL
 # =====================================================================
 Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
+# TODO: Add optional HTTP/HTTPS configuration flag (default remains HTTP on port 8530).
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 
