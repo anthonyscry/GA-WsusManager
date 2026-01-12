@@ -1,0 +1,68 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    Git pre-commit hook for GA-WsusManager
+.DESCRIPTION
+    Runs PSScriptAnalyzer on staged PowerShell files and blocks commit if errors found.
+#>
+
+$ErrorActionPreference = 'Stop'
+
+Write-Host "Running pre-commit checks..." -ForegroundColor Cyan
+
+# Get staged PowerShell files
+$stagedFiles = git diff --cached --name-only --diff-filter=ACM | Where-Object { $_ -match '\.(ps1|psm1|psd1)$' }
+
+if ($stagedFiles) {
+    Write-Host "`nChecking PowerShell files..." -ForegroundColor Yellow
+
+    # Check if PSScriptAnalyzer is available
+    $analyzer = Get-Module -ListAvailable PSScriptAnalyzer
+    if (-not $analyzer) {
+        Write-Host "[WARN] PSScriptAnalyzer not installed. Skipping lint check." -ForegroundColor Yellow
+        Write-Host "       Install with: Install-Module PSScriptAnalyzer -Scope CurrentUser" -ForegroundColor Gray
+    } else {
+        $hasErrors = $false
+
+        # Get settings file path
+        $repoRoot = git rev-parse --show-toplevel
+        $settingsPath = Join-Path $repoRoot ".PSScriptAnalyzerSettings.psd1"
+
+        $analyzerParams = @{
+            Severity = @('Error')
+        }
+        if (Test-Path $settingsPath) {
+            $analyzerParams.Settings = $settingsPath
+        }
+
+        foreach ($file in $stagedFiles) {
+            if (Test-Path $file) {
+                try {
+                    $results = Invoke-ScriptAnalyzer -Path $file @analyzerParams -ErrorAction SilentlyContinue
+
+                    if ($results) {
+                        Write-Host "[FAIL] $file" -ForegroundColor Red
+                        foreach ($result in $results) {
+                            Write-Host "  Line $($result.Line): $($result.RuleName)" -ForegroundColor Red
+                            Write-Host "  $($result.Message)" -ForegroundColor Gray
+                        }
+                        $hasErrors = $true
+                    } else {
+                        Write-Host "[PASS] $file" -ForegroundColor Green
+                    }
+                } catch {
+                    Write-Host "[SKIP] $file (analyzer error)" -ForegroundColor Yellow
+                }
+            }
+        }
+
+        if ($hasErrors) {
+            Write-Host "`nCommit blocked: PSScriptAnalyzer found errors." -ForegroundColor Red
+            Write-Host "Fix the errors above and try again." -ForegroundColor Yellow
+            exit 1
+        }
+    }
+}
+
+Write-Host "`nAll pre-commit checks passed!" -ForegroundColor Green
+exit 0
