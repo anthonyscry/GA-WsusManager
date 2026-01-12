@@ -24,7 +24,9 @@ param(
     [Parameter(HelpMessage = "SQL sa username")]
     [string]$SaUsername = "sa",
     [Parameter(HelpMessage = "SQL sa password (plain text)")]
-    [string]$SaPassword
+    [string]$SaPassword,
+    [Parameter(HelpMessage = "Run in non-interactive mode (no dialogs, fail on missing paths/passwords)")]
+    [switch]$NonInteractive
 )
 
 # -------------------------
@@ -33,13 +35,28 @@ param(
 $requiredInstaller = "SQLEXPRADV_x64_ENU.exe"
 
 function Resolve-InstallerPath {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [switch]$NonInteractive
+    )
 
     if ($Path -and (Test-Path $Path)) {
         $installerFile = Join-Path $Path $requiredInstaller
         if (Test-Path $installerFile) {
             return $Path
         }
+    }
+
+    # In non-interactive mode, fail instead of showing dialog
+    if ($NonInteractive) {
+        if (-not $Path) {
+            Write-Host "    ERROR: InstallerPath not specified and running in non-interactive mode." -ForegroundColor Red
+        } elseif (-not (Test-Path $Path)) {
+            Write-Host "    ERROR: InstallerPath does not exist: $Path" -ForegroundColor Red
+        } else {
+            Write-Host "    ERROR: Required installer not found: $(Join-Path $Path $requiredInstaller)" -ForegroundColor Red
+        }
+        return $null
     }
 
     Add-Type -AssemblyName System.Windows.Forms
@@ -62,7 +79,7 @@ function Resolve-InstallerPath {
     return $selectedPath
 }
 
-$InstallerPath = Resolve-InstallerPath -Path $InstallerPath
+$InstallerPath = Resolve-InstallerPath -Path $InstallerPath -NonInteractive:$NonInteractive
 if (-not $InstallerPath) {
     Write-Host "    Aborting install: SQL installer files not found." -ForegroundColor Red
     exit 1
@@ -198,6 +215,11 @@ if ($SaPassword) {
     $securePass = ConvertTo-SecureString $SaPassword -AsPlainText -Force
     $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
 } elseif (!(Test-Path $PasswordFile)) {
+    # In non-interactive mode, fail if password not provided
+    if ($NonInteractive) {
+        Write-Host "    ERROR: SA password is required in non-interactive mode. Use -SaPassword parameter." -ForegroundColor Red
+        exit 1
+    }
     $securePass = Get-SAPassword
     # Store encrypted SecureString (Get-SAPassword now returns SecureString directly)
     $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile

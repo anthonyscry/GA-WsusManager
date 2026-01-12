@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.3
+**Current Version:** 3.8.5
 
 ## Repository Structure
 
@@ -195,7 +195,24 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.4)
+## Recent Changes (v3.8.5)
+
+- **Fixed output log window not refreshing until Cancel clicked:**
+  - Changed from `Dispatcher.Invoke` to `Dispatcher.BeginInvoke` with Normal priority
+  - Timer now uses proper WPF dispatcher pump instead of Windows Forms `DoEvents()`
+  - Timer interval reduced to 250ms for more responsive UI updates
+- **Fixed Install operation hanging when clicked:**
+  - Added `-NonInteractive` parameter to `Install-WsusWithSqlExpress.ps1`
+  - In non-interactive mode, script fails with error message instead of showing dialogs
+  - GUI now passes `-NonInteractive` when calling the install script
+  - Cleaned up duplicate code in GUI install case
+- **Updated scheduled task to use domain credentials:**
+  - Scheduled task dialog now prompts for username (default: `.\dod_admin`)
+  - Password required for unattended task execution
+  - Tasks run whether user is logged on or not
+  - Removed hardcoded SYSTEM account for scheduled tasks
+
+### Previous (v3.8.4)
 
 - **Fixed Export hanging for input when called from GUI:**
   - Added non-interactive mode to `Invoke-ExportToMedia` function
