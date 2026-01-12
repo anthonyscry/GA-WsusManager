@@ -8,6 +8,11 @@ on:
       - 'CSharp/**'
   workflow_dispatch:
 
+# Prevent concurrent runs - cancel in-progress runs when new commit arrives
+concurrency:
+  group: csharp-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
