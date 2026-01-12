@@ -1,0 +1,38 @@
+
+{
+  "name": "ga-wsus-manager-pro",
+  "version": "3.8.6",
+  "description": "Standalone Portable WSUS Management Suite",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:exe": "electron-builder build --win --portable"
+  },
+  "author": "Tony Tran",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.ga-asi.wsusmanager",
+    "productName": "GA-WsusManager Pro",
+    "files": [
+      "index.html",
+      "main.js",
+      "index.tsx",
+      "types.ts",
+      "constants.tsx",
+      "services/**/*",
+      "components/**/*",
+      "metadata.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    }
+  }
+}
