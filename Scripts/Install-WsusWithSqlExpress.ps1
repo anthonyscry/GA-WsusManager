@@ -18,6 +18,10 @@ Notes:
 ===============================================================================
 #>
 
+# Suppress PSScriptAnalyzer warning for ConvertTo-SecureString - this is necessary
+# to convert plaintext passwords from CLI/GUI input to SecureString for secure storage
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '')]
 param(
     [Parameter(HelpMessage = "Path to folder containing SQL Express and SSMS installers")]
     [string]$InstallerPath = "C:\WSUS\SQLDB",
