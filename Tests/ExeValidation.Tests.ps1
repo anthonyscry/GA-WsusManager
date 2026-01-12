@@ -59,8 +59,8 @@ BeforeAll {
     $script:ExeExists = $null -ne $script:ExePath -and (Test-Path $script:ExePath)
 }
 
-Describe "EXE Validation Tests" -Skip:(-not $script:ExeExists) {
-    Context "File Existence and Basic Properties" {
+Describe "EXE Validation Tests" {
+    Context "File Existence and Basic Properties" -Skip:(-not $script:ExeExists) {
         It "Should have WsusManager.exe in repo root or dist folder" {
             $script:ExePath | Should -Not -BeNullOrEmpty -Because "ExePath should be set"
             (Test-Path $script:ExePath) | Should -Be $true -Because "The compiled executable should exist"
@@ -82,7 +82,7 @@ Describe "EXE Validation Tests" -Skip:(-not $script:ExeExists) {
         }
     }
 
-    Context "PE Header Validation" {
+    Context "PE Header Validation" -Skip:(-not $script:ExeExists) {
         It "Should have valid PE signature (MZ header)" {
             $bytes = [System.IO.File]::ReadAllBytes($script:ExePath)
             $bytes.Length | Should -BeGreaterThan 64
@@ -116,7 +116,7 @@ Describe "EXE Validation Tests" -Skip:(-not $script:ExeExists) {
         }
     }
 
-    Context "Version Information" {
+    Context "Version Information" -Skip:(-not $script:ExeExists) {
         It "Should have embedded version information" {
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $versionInfo | Should -Not -BeNullOrEmpty
@@ -145,7 +145,7 @@ Describe "EXE Validation Tests" -Skip:(-not $script:ExeExists) {
         }
     }
 
-    Context "Startup Benchmark" -Tag "Benchmark", "CI" {
+    Context "Startup Benchmark" -Tag "Benchmark", "CI" -Skip:(-not $script:ExeExists) {
         It "Should start within acceptable time (< 10 seconds)" {
             # We can't actually run the GUI in CI, but we can verify the script parses quickly
             $guiScript = Join-Path $script:RepoRoot "Scripts" "WsusManagementGui.ps1"
@@ -169,7 +169,7 @@ Describe "EXE Validation Tests" -Skip:(-not $script:ExeExists) {
         }
     }
 
-    Context "Distribution Package" -Tag "CI" {
+    Context "Distribution Package" -Tag "CI" -Skip:(-not $script:ExeExists) {
         It "Should have distribution zip if exe exists" {
             $zipFiles = Get-ChildItem -Path $script:RepoRoot -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
             $distZip = Get-ChildItem -Path (Join-Path $script:RepoRoot "dist") -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
