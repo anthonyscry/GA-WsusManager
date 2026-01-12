@@ -1,0 +1,150 @@
+name: Build GA-WsusManager (Fast CI)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DEFAULT_VERSION: '3.8.1'
+
+jobs:
+  build:
+    name: Build Executable (No Tests)
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        shell: pwsh
+        run: |
+          $buildContent = Get-Content ".\build.ps1" -Raw
+          if ($buildContent -match '\$Version\s*=\s*"([^"]+)"') {
+            $version = $Matches[1]
+          } else {
+            $version = "${{ env.DEFAULT_VERSION }}"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version" -ForegroundColor Cyan
+
+      - name: Install PS2EXE
+        shell: powershell
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
+
+      - name: Build executable
+        shell: powershell
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+
+          Import-Module ps2exe -Force -ErrorAction Stop
+
+          $buildParams = @{
+            InputFile = ".\Scripts\WsusManagementGui.ps1"
+            OutputFile = ".\WsusManager.exe"
+            NoConsole = $true
+            RequireAdmin = $true
+            Title = "WSUS Manager"
+            Description = "WSUS Manager - GUI for Windows Server Update Services"
+            Company = "GA-ASI"
+            Product = "WSUS Manager"
+            Copyright = "Tony Tran, ISSO - GA-ASI"
+            Version = "$version.0"
+            STA = $true
+            x64 = $true
+          }
+
+          if (Test-Path ".\wsus-icon.ico") {
+            $buildParams.IconFile = ".\wsus-icon.ico"
+          }
+
+          Invoke-PS2EXE @buildParams
+
+          if (Test-Path ".\WsusManager.exe") {
+            Write-Host "Build successful" -ForegroundColor Green
+          } else {
+            Write-Host "Build failed" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Create distribution package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $packageName = "WsusManager-v$version"
+          $distDir = ".\dist"
+          $packageDir = "$distDir\\staging"
+
+          if (Test-Path $packageDir) { Remove-Item -Path $packageDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+
+          Copy-Item ".\WsusManager.exe" -Destination $distDir
+          Copy-Item ".\WsusManager.exe" -Destination $packageDir
+
+          if (Test-Path ".\Scripts") {
+            Copy-Item ".\Scripts" -Destination "$packageDir\Scripts" -Recurse
+          } else {
+            Write-Host "::error::Scripts folder not found - EXE will not work!"
+            exit 1
+          }
+
+          if (Test-Path ".\Modules") {
+            Copy-Item ".\Modules" -Destination "$packageDir\Modules" -Recurse
+          } else {
+            Write-Host "::error::Modules folder not found - EXE will not work!"
+            exit 1
+          }
+
+          if (Test-Path ".\DomainController") {
+            Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
+          }
+          if (Test-Path ".\wsus-icon.ico") {
+            Copy-Item ".\wsus-icon.ico" -Destination $packageDir
+            Copy-Item ".\wsus-icon.ico" -Destination $distDir
+          }
+          if (Test-Path ".\general_atomics_logo_small.ico") {
+            Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+            Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir
+          }
+          if (Test-Path ".\general_atomics_logo_big.ico") {
+            Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+            Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir
+          }
+          if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+          if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
+
+          Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
+          Remove-Item -Path $packageDir -Recurse -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WsusManager-${{ steps.version.outputs.VERSION }}
+          path: ./dist/
+          retention-days: 30
+
+      - name: Send failure email
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Fast CI build failed: ${{ github.repository }}"
+          to: ci@example.com
+          from: ${{ secrets.SMTP_FROM }}
+          body: |
+            The fast CI build failed.
+
+            Repository: ${{ github.repository }}
+            Workflow: ${{ github.workflow }}
+            Run: ${{ github.run_number }}
+            URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
