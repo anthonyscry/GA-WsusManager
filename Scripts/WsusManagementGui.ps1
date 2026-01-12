@@ -2271,8 +2271,6 @@ $controls.BtnCancel.Add_Click({
 #region Initialize
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
-$controls.AdminBadge.Text = if($script:IsAdmin){"Admin"}else{"Limited"}
-$controls.AdminBadge.Foreground = if($script:IsAdmin){"#3FB950"}else{"#D29922"}
 
 try {
     $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
