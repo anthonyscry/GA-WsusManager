@@ -6,6 +6,12 @@ on:
       - main
       - master
 
+# Prevent concurrent runs - cancel in-progress runs when new commit arrives
+# Uses shared group with build.yml so only one build workflow runs at a time
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
