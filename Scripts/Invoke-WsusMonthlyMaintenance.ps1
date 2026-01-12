@@ -244,6 +244,29 @@ function Stop-Heartbeat {
     }
 }
 
+function Start-Heartbeat {
+    param([string]$Message = "Still working... please wait.")
+    Stop-Heartbeat
+    $script:HeartbeatTimer = New-Object System.Timers.Timer 30000
+    $script:HeartbeatTimer.AutoReset = $true
+    $script:HeartbeatEvent = Register-ObjectEvent -InputObject $script:HeartbeatTimer -EventName Elapsed -MessageData $Message -Action {
+        Write-Status $Event.MessageData -Type Info
+    }
+    $script:HeartbeatTimer.Start()
+}
+
+function Stop-Heartbeat {
+    if ($script:HeartbeatTimer) {
+        $script:HeartbeatTimer.Stop()
+        $script:HeartbeatTimer.Dispose()
+        $script:HeartbeatTimer = $null
+    }
+    if ($script:HeartbeatEvent) {
+        Unregister-Event -SourceIdentifier $script:HeartbeatEvent.Name -ErrorAction SilentlyContinue
+        $script:HeartbeatEvent = $null
+    }
+}
+
 # Pre-flight validation
 function Test-Prerequisites {
     param(
