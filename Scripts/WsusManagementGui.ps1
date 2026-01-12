@@ -1951,6 +1951,19 @@ function Invoke-LogOperation {
                 [System.Windows.MessageBox]::Show("SA passwords do not match.", "Error", "OK", "Error")
                 return
             }
+            $script:SaUser = $saUser
+
+            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPassword)) {
+                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
+                return
+            }
+            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
+            if (-not (Test-Path $sqlInstaller)) {
+                [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
+                return
+            }
+            $script:InstallPath = $installerPath
 
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
