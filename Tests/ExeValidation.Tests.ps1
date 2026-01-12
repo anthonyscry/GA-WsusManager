@@ -37,11 +37,7 @@ BeforeAll {
 
 Describe "EXE Validation Tests" {
     Context "File Existence and Basic Properties" {
-        It "Should have WsusManager.exe in repo root or dist folder" {
-            # Skip this test in CI when exe hasn't been built yet
-            if (-not $script:ExeExists) {
-                Set-ItResult -Skipped -Because "EXE not found - likely running before build step"
-            }
+        It "Should have WsusManager.exe in repo root or dist folder" -Skip:(-not $script:ExeExists) {
             (Test-Path $script:ExePath) | Should -Be $true -Because "The compiled executable should exist"
         }
 
