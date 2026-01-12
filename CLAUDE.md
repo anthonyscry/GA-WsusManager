@@ -197,10 +197,6 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 ## Recent Changes (v3.8.6)
 
-- **Fixed live output streaming in GUI:**
-  - Redirect all PowerShell streams (`*>&1`) to capture Write-Host output
-  - Added `Write-HostFlush` wrapper in Install script for immediate output
-  - Disabled progress bar to prevent buffering issues
 - **Input fields now disabled during operations:**
   - Password boxes and path textbox greyed out during install
   - Added `OperationInputs` array for tracking input fields

@@ -2108,9 +2108,7 @@ function Invoke-LogOperation {
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
-        # Redirect all PowerShell streams (including Write-Host/Information) to stdout using *>&1
-        # Also disable progress bar which can cause buffering issues
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"`$ProgressPreference='SilentlyContinue'; $cmd *>&1`""
+        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
