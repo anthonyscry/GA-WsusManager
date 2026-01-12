@@ -56,7 +56,7 @@ public class DatabaseOperations
 
         try
         {
-            var result = await _sql.ExecuteScalarAsync<int>(query, timeout: 300);
+            var result = await _sql.ExecuteScalarAsync<int?>(query, timeout: 300);
             return result ?? 0;
         }
         catch (Exception ex)
@@ -105,7 +105,7 @@ public class DatabaseOperations
         try
         {
             var startTime = DateTime.Now;
-            var result = await _sql.ExecuteScalarAsync<int>(query, timeout: 0);
+            var result = await _sql.ExecuteScalarAsync<int?>(query, timeout: 0);
             var deleted = result ?? 0;
             var duration = Math.Round((DateTime.Now - startTime).TotalMinutes, 1);
 
