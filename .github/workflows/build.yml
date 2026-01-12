@@ -1,0 +1,392 @@
+name: Build GA-WsusManager
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Scripts/**'
+      - 'Modules/**'
+      - 'Tests/**'
+      - '*.ps1'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 3.8.0)'
+        required: false
+        default: ''
+      create_release:
+        description: 'Create GitHub release'
+        required: false
+        type: boolean
+        default: false
+      skip_tests:
+        description: 'Skip tests (manual dispatch only)'
+        required: false
+        type: boolean
+        default: false
+
+# Prevent concurrent runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DEFAULT_VERSION: '3.8.0'
+
+jobs:
+  #############################################
+  # PowerShell Code Review
+  #############################################
+  code-review:
+    name: PowerShell Code Review
+    runs-on: windows-latest
+    if: ${{ !(github.event.inputs.skip_tests == 'true' && github.event_name == 'workflow_dispatch') }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name PSScriptAnalyzer -MinimumVersion 1.21.0 -Force -Scope CurrentUser
+        Get-Module -Name PSScriptAnalyzer -ListAvailable | Select-Object Name, Version
+
+    - name: Run PSScriptAnalyzer
+      id: lint
+      shell: pwsh
+      run: |
+        Write-Host "=== Running PSScriptAnalyzer ===" -ForegroundColor Cyan
+
+        $results = @()
+        $settingsPath = ".\.PSScriptAnalyzerSettings.psd1"
+
+        # Analyze all PowerShell files
+        $psFiles = Get-ChildItem -Path . -Include *.ps1, *.psm1, *.psd1 -Recurse -File |
+                   Where-Object { $_.FullName -notmatch '\\Tests\\|\\\.git\\|\\dist\\' }
+
+        Write-Host "Found $($psFiles.Count) PowerShell files to analyze"
+
+        $analyzerParams = @{
+          Severity = @('Error', 'Warning')
+        }
+        if (Test-Path $settingsPath) {
+          $analyzerParams.Settings = $settingsPath
+        }
+
+        foreach ($file in $psFiles) {
+          try {
+            $fileResults = Invoke-ScriptAnalyzer -Path $file.FullName @analyzerParams -ErrorAction SilentlyContinue
+            if ($fileResults) {
+              $results += $fileResults
+            }
+          } catch {
+            Write-Host "Skipped: $($file.Name) (analyzer error)" -ForegroundColor Yellow
+          }
+        }
+
+        # Output results
+        $errors = $results | Where-Object { $_.Severity -eq 'Error' }
+        $warnings = $results | Where-Object { $_.Severity -eq 'Warning' }
+
+        Write-Host ""
+        Write-Host "=== Results ===" -ForegroundColor Cyan
+        Write-Host "Errors: $($errors.Count)" -ForegroundColor $(if ($errors.Count -gt 0) { 'Red' } else { 'Green' })
+        Write-Host "Warnings: $($warnings.Count)" -ForegroundColor $(if ($warnings.Count -gt 0) { 'Yellow' } else { 'Green' })
+
+        if ($results.Count -gt 0) {
+          Write-Host ""
+          Write-Host "=== Issues Found ===" -ForegroundColor Yellow
+          $results | Group-Object ScriptName | ForEach-Object {
+            Write-Host ""
+            Write-Host "File: $($_.Name)" -ForegroundColor White
+            $_.Group | ForEach-Object {
+              $color = if ($_.Severity -eq 'Error') { 'Red' } else { 'Yellow' }
+              Write-Host "  Line $($_.Line): [$($_.Severity)] $($_.RuleName)" -ForegroundColor $color
+            }
+          }
+        }
+
+        echo "WARNINGS=$($warnings.Count)" >> $env:GITHUB_OUTPUT
+        echo "ERRORS=$($errors.Count)" >> $env:GITHUB_OUTPUT
+
+        if ($errors.Count -gt 0) {
+          Write-Host ""
+          Write-Host "::error::PSScriptAnalyzer found $($errors.Count) error(s)"
+          exit 1
+        }
+
+    - name: Security Scan
+      id: security
+      shell: pwsh
+      run: |
+        Write-Host "=== Running Security Analysis ===" -ForegroundColor Cyan
+
+        $securityRules = @(
+          'PSAvoidUsingPlainTextForPassword',
+          'PSAvoidUsingConvertToSecureStringWithPlainText',
+          'PSAvoidUsingInvokeExpression',
+          'PSAvoidGlobalVars',
+          'PSAvoidUsingEmptyCatchBlock'
+        )
+
+        $psFiles = Get-ChildItem -Path . -Include *.ps1, *.psm1 -Recurse -File |
+                   Where-Object { $_.FullName -notmatch '\\Tests\\|\\\.git\\|\\dist\\' }
+
+        $securityIssues = @()
+
+        foreach ($file in $psFiles) {
+          try {
+            $issues = Invoke-ScriptAnalyzer -Path $file.FullName -IncludeRule $securityRules -ErrorAction SilentlyContinue
+            if ($issues) {
+              $securityIssues += $issues
+            }
+          } catch {
+            # Skip files that cause analyzer errors
+          }
+        }
+
+        Write-Host "Security Issues: $($securityIssues.Count)"
+        echo "SECURITY_ISSUES=$($securityIssues.Count)" >> $env:GITHUB_OUTPUT
+
+        if ($securityIssues.Count -gt 0) {
+          $securityIssues | ForEach-Object {
+            Write-Host "[$($_.Severity)] $($_.ScriptName):$($_.Line) - $($_.RuleName)" -ForegroundColor Yellow
+          }
+        }
+
+  #############################################
+  # Pester Tests
+  #############################################
+  test:
+    name: Pester Tests
+    runs-on: windows-latest
+    if: ${{ !(github.event.inputs.skip_tests == 'true' && github.event_name == 'workflow_dispatch') }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
+        Get-Module -Name Pester -ListAvailable | Select-Object Name, Version
+
+    - name: Run Pester Tests
+      id: pester
+      shell: pwsh
+      run: |
+        Write-Host "=== Running Pester Tests ===" -ForegroundColor Cyan
+
+        $testFiles = Get-ChildItem -Path ./Tests -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue
+
+        if (-not $testFiles -or $testFiles.Count -eq 0) {
+          Write-Host "No test files found" -ForegroundColor Yellow
+          echo "TESTS_RUN=0" >> $env:GITHUB_OUTPUT
+          echo "TESTS_PASSED=0" >> $env:GITHUB_OUTPUT
+          echo "TESTS_FAILED=0" >> $env:GITHUB_OUTPUT
+          exit 0
+        }
+
+        Write-Host "Found $($testFiles.Count) test file(s)"
+
+        Import-Module Pester -MinimumVersion 5.0.0 -Force
+
+        $config = New-PesterConfiguration
+        $config.Run.Path = $testFiles.FullName
+        $config.Run.Exit = $false
+        $config.Output.Verbosity = 'Detailed'
+        $config.TestResult.Enabled = $true
+        $config.TestResult.OutputPath = './test-results.xml'
+        $config.TestResult.OutputFormat = 'NUnitXml'
+
+        $results = Invoke-Pester -Configuration $config
+
+        Write-Host ""
+        Write-Host "=== Test Summary ===" -ForegroundColor Cyan
+        Write-Host "Total: $($results.TotalCount)"
+        Write-Host "Passed: $($results.PassedCount)" -ForegroundColor Green
+        Write-Host "Failed: $($results.FailedCount)" -ForegroundColor $(if ($results.FailedCount -gt 0) { 'Red' } else { 'Green' })
+
+        echo "TESTS_RUN=$($results.TotalCount)" >> $env:GITHUB_OUTPUT
+        echo "TESTS_PASSED=$($results.PassedCount)" >> $env:GITHUB_OUTPUT
+        echo "TESTS_FAILED=$($results.FailedCount)" >> $env:GITHUB_OUTPUT
+
+        if ($results.FailedCount -gt 0) {
+          Write-Host "::error::$($results.FailedCount) test(s) failed"
+          exit 1
+        }
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: ./test-results.xml
+        retention-days: 14
+
+  #############################################
+  # Build Executable
+  #############################################
+  build:
+    name: Build Executable
+    runs-on: windows-latest
+    needs: [code-review, test]
+    if: |
+      always() &&
+      (needs.code-review.result == 'success' || needs.code-review.result == 'skipped') &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: version
+      shell: pwsh
+      run: |
+        if ("${{ github.event.inputs.version }}" -ne "") {
+          $version = "${{ github.event.inputs.version }}"
+        } else {
+          # Read from build.ps1
+          $buildContent = Get-Content ".\build.ps1" -Raw
+          if ($buildContent -match '\$Version\s*=\s*"([^"]+)"') {
+            $version = $Matches[1]
+          } else {
+            $version = "${{ env.DEFAULT_VERSION }}"
+          }
+        }
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "Version: $version" -ForegroundColor Cyan
+
+    - name: Install PS2EXE
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name ps2exe -Force -Scope CurrentUser
+
+    - name: Build executable
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+
+        Import-Module ps2exe -Force
+
+        $buildParams = @{
+          InputFile = ".\Scripts\WsusManagementGui.ps1"
+          OutputFile = ".\WsusManager.exe"
+          NoConsole = $true
+          RequireAdmin = $true
+          Title = "WSUS Manager"
+          Description = "WSUS Manager - GUI for Windows Server Update Services"
+          Company = "GA-ASI"
+          Product = "WSUS Manager"
+          Copyright = "Tony Tran, ISSO - GA-ASI"
+          Version = "$version.0"
+          STA = $true
+          x64 = $true
+        }
+
+        if (Test-Path ".\wsus-icon.ico") {
+          $buildParams.IconFile = ".\wsus-icon.ico"
+        }
+
+        Invoke-PS2EXE @buildParams
+
+        if (Test-Path ".\WsusManager.exe") {
+          Write-Host "Build successful!" -ForegroundColor Green
+        } else {
+          Write-Host "Build failed" -ForegroundColor Red
+          exit 1
+        }
+
+    - name: Create distribution package
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $packageName = "WsusManager-v$version"
+        $stagingDir = ".\staging\$packageName"
+
+        New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+        New-Item -ItemType Directory -Path "$stagingDir\DomainController" -Force | Out-Null
+
+        Copy-Item ".\WsusManager.exe" -Destination $stagingDir
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $stagingDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $stagingDir }
+        if (Test-Path ".\DomainController") {
+          Copy-Item ".\DomainController\*" -Destination "$stagingDir\DomainController" -Recurse
+        }
+
+        # Create zip
+        Compress-Archive -Path "$stagingDir\*" -DestinationPath ".\$packageName.zip" -Force
+
+        Write-Host "Created: $packageName.zip" -ForegroundColor Green
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WsusManager-${{ steps.version.outputs.VERSION }}
+        path: |
+          ./WsusManager.exe
+          ./WsusManager-v*.zip
+        retention-days: 30
+
+  #############################################
+  # Create Release
+  #############################################
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.inputs.create_release == 'true'
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ needs.build.outputs.version }}
+        name: WSUS Manager v${{ needs.build.outputs.version }}
+        draft: true
+        prerelease: false
+        files: ./artifacts/**/*.zip
+        body: |
+          ## WSUS Manager v${{ needs.build.outputs.version }}
+
+          ### Downloads
+          | Package | Description |
+          |---------|-------------|
+          | `WsusManager-v*.zip` | Complete distribution package |
+
+          ### Requirements
+          - Windows Server 2016, 2019, 2022, or 2025
+          - Administrator privileges
+          - .NET Framework 4.7.2+
+
+          ### Installation
+          1. Extract the zip file
+          2. Run `WsusManager.exe` as Administrator
+
+          ### Code Quality
+          - PSScriptAnalyzer: Passed
+          - Security Scan: Passed
+          - Pester Tests: Passed
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

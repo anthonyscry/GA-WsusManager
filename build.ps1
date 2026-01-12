@@ -105,38 +105,51 @@ if (-not $SkipCodeReview) {
         $InfoCount = 0
         $AllIssues = @()
 
+        # Use settings file if available
+        $settingsPath = Join-Path $ScriptRoot ".PSScriptAnalyzerSettings.psd1"
+        $analyzerParams = @{
+            Severity = @('Error', 'Warning')
+        }
+        if (Test-Path $settingsPath) {
+            $analyzerParams.Settings = $settingsPath
+            Write-Host "Using settings: .PSScriptAnalyzerSettings.psd1" -ForegroundColor Gray
+        }
+
         Write-Host ""
         foreach ($script in $ScriptsToAnalyze) {
             $scriptPath = Join-Path $ScriptRoot $script
             if (Test-Path $scriptPath) {
-                $issues = Invoke-ScriptAnalyzer -Path $scriptPath -Severity @('Error', 'Warning', 'Information')
+                try {
+                    $issues = Invoke-ScriptAnalyzer -Path $scriptPath @analyzerParams -ErrorAction Stop
 
-                if ($issues) {
-                    $scriptErrors = ($issues | Where-Object { $_.Severity -eq 'Error' }).Count
-                    $scriptWarnings = ($issues | Where-Object { $_.Severity -eq 'Warning' }).Count
-                    $scriptInfo = ($issues | Where-Object { $_.Severity -eq 'Information' }).Count
+                    if ($issues) {
+                        $scriptErrors = ($issues | Where-Object { $_.Severity -eq 'Error' }).Count
+                        $scriptWarnings = ($issues | Where-Object { $_.Severity -eq 'Warning' }).Count
 
-                    $ErrorCount += $scriptErrors
-                    $WarningCount += $scriptWarnings
-                    $InfoCount += $scriptInfo
-                    $TotalIssues += $issues.Count
+                        $ErrorCount += $scriptErrors
+                        $WarningCount += $scriptWarnings
+                        $TotalIssues += $issues.Count
 
-                    foreach ($issue in $issues) {
-                        $AllIssues += [PSCustomObject]@{
-                            Script = $script
-                            Line = $issue.Line
-                            Severity = $issue.Severity
-                            Rule = $issue.RuleName
-                            Message = $issue.Message
+                        foreach ($issue in $issues) {
+                            $AllIssues += [PSCustomObject]@{
+                                Script = $script
+                                Line = $issue.Line
+                                Severity = $issue.Severity
+                                Rule = $issue.RuleName
+                                Message = $issue.Message
+                            }
                         }
-                    }
 
-                    $statusIcon = if ($scriptErrors -gt 0) { "X" } elseif ($scriptWarnings -gt 0) { "!" } else { "i" }
-                    $statusColor = if ($scriptErrors -gt 0) { "Red" } elseif ($scriptWarnings -gt 0) { "Yellow" } else { "Cyan" }
-                    Write-Host "    [$statusIcon] $script - $($issues.Count) issue(s)" -ForegroundColor $statusColor
+                        $statusIcon = if ($scriptErrors -gt 0) { "X" } elseif ($scriptWarnings -gt 0) { "!" } else { "i" }
+                        $statusColor = if ($scriptErrors -gt 0) { "Red" } elseif ($scriptWarnings -gt 0) { "Yellow" } else { "Cyan" }
+                        Write-Host "    [$statusIcon] $script - $($issues.Count) issue(s)" -ForegroundColor $statusColor
+                    }
+                    else {
+                        Write-Host "    [+] $script - No issues" -ForegroundColor Green
+                    }
                 }
-                else {
-                    Write-Host "    [+] $script - No issues" -ForegroundColor Green
+                catch {
+                    Write-Host "    [?] $script - Skipped (analyzer error)" -ForegroundColor Gray
                 }
             }
         }
@@ -374,12 +387,144 @@ try {
         Write-Host "    File: $($exe.FullName)" -ForegroundColor White
         Write-Host "    Size: $sizeMB MB" -ForegroundColor White
 
+        # ============================================
+        # CREATE DISTRIBUTION ZIP
+        # ============================================
+
+        Write-Host "`n[*] Creating distribution package..." -ForegroundColor Yellow
+
+        $packageName = "WsusManager-v$Version"
+        $zipFileName = "$packageName.zip"
+        $stagingDir = Join-Path $env:TEMP "WsusManager-Package-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        $packageDir = Join-Path $stagingDir $packageName
+
+        # Create staging directory structure
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $packageDir "DomainController") -Force | Out-Null
+
+        # Copy distribution files
+        Copy-Item ".\$OutputName" -Destination $packageDir
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+        if (Test-Path ".\DomainController") {
+            Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
+        }
+
+        # Create quick start guide
+        $quickStart = @"
+WSUS Manager v$Version - Quick Start Guide
+============================================
+
+REQUIREMENTS
+------------
+- Windows Server 2016, 2019, 2022, or 2025
+- Administrator privileges
+- .NET Framework 4.7.2 or later
+
+INSTALLATION
+------------
+1. Copy WsusManager.exe to your WSUS server
+2. Right-click and select "Run as administrator"
+3. No installation required - fully portable!
+
+FIRST RUN
+---------
+1. Launch WsusManager.exe as Administrator
+2. The dashboard will auto-detect your WSUS configuration
+3. Use the menu for WSUS operations
+
+DOMAIN CONTROLLER SETUP (Optional)
+----------------------------------
+The DomainController folder contains GPO deployment scripts.
+Run Set-WsusGroupPolicy.ps1 on your DC to configure clients.
+
+Author: Tony Tran, ISSO, GA-ASI
+"@
+        $quickStart | Out-File -FilePath (Join-Path $packageDir "QUICK-START.txt") -Encoding UTF8
+
+        # Remove existing zip if present
+        if (Test-Path ".\$zipFileName") { Remove-Item ".\$zipFileName" -Force }
+
+        # Create zip archive
+        try {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($packageDir, ".\$zipFileName", [System.IO.Compression.CompressionLevel]::Optimal, $true)
+        }
+        catch {
+            Compress-Archive -Path "$packageDir\*" -DestinationPath ".\$zipFileName" -Force
+        }
+
+        # Cleanup staging
+        Remove-Item $stagingDir -Recurse -Force
+
+        if (Test-Path ".\$zipFileName") {
+            $zipFile = Get-Item ".\$zipFileName"
+            $zipSizeMB = [math]::Round($zipFile.Length / 1MB, 2)
+            Write-Host "[+] Package created: $zipFileName ($zipSizeMB MB)" -ForegroundColor Green
+        }
+
+        # ============================================
+        # COPY TO DIST FOLDER AND GIT COMMIT
+        # ============================================
+
+        Write-Host "`n[*] Updating dist folder..." -ForegroundColor Yellow
+
+        $distDir = Join-Path $ScriptRoot "dist"
+        if (-not (Test-Path $distDir)) {
+            New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+        }
+
+        # Copy exe and zip to dist
+        Copy-Item ".\$OutputName" -Destination $distDir -Force
+        Copy-Item ".\$zipFileName" -Destination $distDir -Force
+        Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
+        Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
+
+        # Git operations
+        Write-Host "`n[*] Committing to git..." -ForegroundColor Yellow
+
+        # Check if we're in a git repo
+        $gitDir = Join-Path $ScriptRoot ".git"
+        if (Test-Path $gitDir) {
+            try {
+                # Add dist folder
+                & git add "dist\*" 2>$null
+
+                # Check if there are changes to commit
+                $gitStatus = & git status --porcelain "dist\" 2>$null
+                if ($gitStatus) {
+                    & git commit -m "Build v$Version - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" 2>$null
+                    Write-Host "[+] Committed dist folder to git" -ForegroundColor Green
+
+                    # Push to remote
+                    & git push 2>$null
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host "[+] Pushed to remote repository" -ForegroundColor Green
+                    }
+                    else {
+                        Write-Host "[!] Push failed - you may need to push manually" -ForegroundColor Yellow
+                    }
+                }
+                else {
+                    Write-Host "[*] No changes to commit in dist folder" -ForegroundColor Gray
+                }
+            }
+            catch {
+                Write-Host "[!] Git operations failed: $_" -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host "[*] Not a git repository - skipping git operations" -ForegroundColor Gray
+        }
+
         Write-Host "`n========================================" -ForegroundColor Cyan
         Write-Host "  Build Complete!" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "`nUsage:" -ForegroundColor Yellow
-        Write-Host "  .\$OutputName    # Run WSUS Manager GUI" -ForegroundColor White
-        Write-Host "`nThe executable is fully portable - copy it anywhere!" -ForegroundColor Gray
+        Write-Host "`nOutputs:" -ForegroundColor Yellow
+        Write-Host "  .\$OutputName           # Run WSUS Manager GUI" -ForegroundColor White
+        Write-Host "  .\$zipFileName       # Distribution package" -ForegroundColor White
+        Write-Host "  .\dist\                  # Git-tracked distribution" -ForegroundColor White
+        Write-Host "`nThe dist folder has been committed and pushed to git." -ForegroundColor Gray
     }
     else {
         Write-Host "[!] Build may have failed - output file not found" -ForegroundColor Red

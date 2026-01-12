@@ -1,21 +1,65 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Get-FileHash \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager.exe\", \"C:\\\\Projects\\\\wsus-sql\\\\WsusManager-3.2.0.exe\")",
-      "Bash(Format-Table Hash, Path -Wrap)",
-      "Bash(rm:*)",
-      "Bash(powershell:*)",
-      "Bash(Select-Object -First 50)",
-      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.4.2.exe\")",
-      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.4.4.exe\")",
-      "Bash(Start-Process \"C:\\\\Projects\\\\GA-WsusManager\\\\WsusManager-3.5.1.exe\")",
+      "Bash(dir:*)",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Path ''C:\\\\Projects\\\\GA-WsusManager'' -Name\")",
+      "Bash(powershell.exe -Command:*)",
+      "mcp__desktop-commander__*",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd CLAUDE.md with project documentation for AI assistants\n\nProvides comprehensive guidance including:\n- Project overview and structure\n- Build process documentation\n- Key technical details \\(modules, GUI, paths\\)\n- Development tasks and testing instructions\n- Code style guidelines and important considerations\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git remote set-url:*)",
-      "Bash(git reset:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nv3.5.2: Update WSUS Manager with tests and documentation\n\nChanges:\n- Add Pester unit tests for modules \\(Tests/\\)\n- Update README and Confluence documentation\n- Update build script with test support\n- Refactor GUI and CLI scripts\n- Remove unused MCP/TypeScript scripts\n- Add versioned executables \\(3.5.0, 3.5.1, 3.5.2\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(ls:*)"
+      "Bash(powershell.exe -NoProfile -Command \"$env:PSModulePath -split '';''\")",
+      "Bash(powershell:*)",
+      "Bash(git -C \"C:\\\\Projects\\\\GA-WsusManager\" push)"
     ]
+  },
+  "mcpServers": {
+    "playwright": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
+    },
+    "stagehand": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@browserbasehq/mcp-server-browserbase"
+      ],
+      "env": {
+        "BROWSERBASE_API_KEY": "bb_live_5zWJS1qcQ-zNPUVfql01maE69yg",
+        "BROWSERBASE_PROJECT_ID": "2144dc15-80bf-4f13-aa85-dc857d62dd9b",
+        "GEMINI_API_KEY": "AIzaSyCoBo8Wn81h9IEoxLt1Dek6TDFJUUWlbDc"
+      }
+    },
+    "desktop-commander": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@wonderwhy-er/desktop-commander"
+      ]
+    },
+    "puppeteer": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ]
+    },
+    "context7": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    }
   }
 }
