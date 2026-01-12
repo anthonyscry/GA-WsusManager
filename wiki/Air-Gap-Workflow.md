@@ -206,6 +206,8 @@ Record the hash for verification on the air-gap side.
 5. Click **Import**
 6. Wait for import to complete
 
+> **Note:** The GUI import uses the selected folder directly and does not prompt for additional input during the copy.
+
 ### Post-Import Steps
 
 #### For Full Imports
@@ -247,8 +249,8 @@ After import:
 
 On the **Online** server, schedule Monthly Maintenance:
 
-1. Click **Settings** (if task not created)
-2. The task is created during maintenance
+1. Click **Schedule Task** in the Maintenance section
+2. Choose Weekly/Monthly/Daily and set the start time (recommended: Saturday at 02:00)
 
 Or manually:
 ```powershell
@@ -312,12 +314,12 @@ Maintain backups on both servers:
 │  │   Sync      │───>│   Approve   │───>│ Monthly Maintenance │  │
 │  │   Updates   │    │   Updates   │    │                     │  │
 │  └─────────────┘    └─────────────┘    └──────────┬──────────┘  │
-│                                                    │              │
-│                                        ┌───────────▼───────────┐ │
-│                                        │   Export to Media     │ │
-│                                        │   (Full/Differential) │ │
-│                                        └───────────┬───────────┘ │
-└────────────────────────────────────────────────────┼─────────────┘
+│                                                    │             │
+│                                       ┌────────────▼───────────┐ │
+│                                       │   Export to Media      │ │
+│                                       │   (Full/Differential)  │ │
+│                                       └────────────┬───────────┘ │
+└────────────────────────────────────────────────────┼────────────┘
                                                      │
                                           ┌──────────▼──────────┐
                                           │     USB Drive       │
