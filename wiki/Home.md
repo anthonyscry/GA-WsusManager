@@ -37,7 +37,7 @@ Real-time monitoring with color-coded status cards:
 - **Automation** - Scheduled task status
 
 ### Server Modes
-Toggle between Online and Air-Gap modes to show only relevant operations:
+Server Mode auto-detects Online vs Air-Gap based on internet connectivity to show only relevant operations:
 - **Online Mode** - Export, Monthly Maintenance
 - **Air-Gap Mode** - Import from media
 
@@ -49,9 +49,12 @@ Toggle between Online and Air-Gap modes to show only relevant operations:
 | Export to Media | Full or differential export to USB |
 | Import from Media | Import updates to air-gapped server |
 | Monthly Maintenance | Sync, cleanup, and backup |
+| Schedule Task | Create or update the maintenance scheduled task |
 | Deep Cleanup | Aggressive space recovery |
 | Health Check | Verify configuration |
 | Health + Repair | Auto-fix common issues |
+
+> **Note:** Monthly Maintenance and Schedule Task should run on the **Online** WSUS server only.
 
 ---
 
@@ -93,6 +96,7 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 3.8.3 | Mar 2026 | Installer folder prompt, non-interactive air-gap import, maintenance UX notes |
 | 3.5.2 | Jan 2026 | Bug fixes, 323 unit tests, security hardening |
 | 3.5.1 | Jan 2026 | Performance optimizations |
 | 3.5.0 | Jan 2026 | Server mode toggle, modern GUI |
