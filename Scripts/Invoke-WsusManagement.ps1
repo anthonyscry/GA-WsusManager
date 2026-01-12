@@ -78,6 +78,14 @@ param(
     [Parameter(ParameterSetName = 'Export')]
     [switch]$Export,
 
+    # Export parameters
+    [Parameter(ParameterSetName = 'Export')]
+    [ValidateSet('Full', 'Differential')]
+    [string]$ExportMode = 'Differential',
+
+    [Parameter(ParameterSetName = 'Export')]
+    [int]$ExportDays = 30,
+
     [Parameter(ParameterSetName = 'Health')]
     [switch]$Health,
 
@@ -1033,11 +1041,16 @@ function Invoke-ExportToMedia {
     .SYNOPSIS
         Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
-        Prompts for source and destination, supports full or differential copy modes
+        Prompts for source and destination, supports full or differential copy modes.
+        When Mode and Days parameters are provided, skips interactive prompts.
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath = "C:\WSUS"
+        [string]$ContentPath = "C:\WSUS",
+        [string]$Destination = "",
+        [ValidateSet('Full', 'Differential', '')]
+        [string]$Mode = "",
+        [int]$Days = 0
     )
 
     Write-Banner "COPY DATA TO EXTERNAL MEDIA"
@@ -1054,63 +1067,76 @@ function Invoke-ExportToMedia {
         $ContentPath = "C:\WSUS"
     }
 
-    # Prompt for copy mode
-    Write-Host "Copy mode:" -ForegroundColor Cyan
-    Write-Host "  1. Full copy (all files)"
-    Write-Host "  2. Differential copy (files from last 30 days) [Default]"
-    Write-Host "  3. Differential copy (custom days)"
-    Write-Host ""
-    $modeChoice = Read-Host "Select mode (1/2/3) [2]"
-    if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
+    # If Mode is provided via parameter, skip interactive prompt
+    if ($Mode -ne "") {
+        $copyMode = $Mode
+        $maxAgeDays = if ($Mode -eq "Full") { 0 } elseif ($Days -gt 0) { $Days } else { 30 }
+        Write-Host "Copy mode: $copyMode$(if ($copyMode -eq 'Differential') { " (last $maxAgeDays days)" })" -ForegroundColor Cyan
+    } else {
+        # Prompt for copy mode
+        Write-Host "Copy mode:" -ForegroundColor Cyan
+        Write-Host "  1. Full copy (all files)"
+        Write-Host "  2. Differential copy (files from last 30 days) [Default]"
+        Write-Host "  3. Differential copy (custom days)"
+        Write-Host ""
+        $modeChoice = Read-Host "Select mode (1/2/3) [2]"
+        if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
 
-    $copyMode = "Differential"
-    $maxAgeDays = 30
+        $copyMode = "Differential"
+        $maxAgeDays = 30
 
-    switch ($modeChoice) {
-        "1" {
-            $copyMode = "Full"
-            $maxAgeDays = 0
-        }
-        "2" {
-            $copyMode = "Differential"
-            $maxAgeDays = 30
-        }
-        "3" {
-            $copyMode = "Differential"
-            $daysInput = Read-Host "Enter number of days [30]"
-            if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
-            if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
-                if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
-            } else {
+        switch ($modeChoice) {
+            "1" {
+                $copyMode = "Full"
+                $maxAgeDays = 0
+            }
+            "2" {
+                $copyMode = "Differential"
                 $maxAgeDays = 30
             }
-        }
-        default {
-            $copyMode = "Differential"
-            $maxAgeDays = 30
+            "3" {
+                $copyMode = "Differential"
+                $daysInput = Read-Host "Enter number of days [30]"
+                if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
+                if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
+                    if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
+                } else {
+                    $maxAgeDays = 30
+                }
+            }
+            default {
+                $copyMode = "Differential"
+                $maxAgeDays = 30
+            }
         }
     }
 
     Write-Host ""
 
-    # Prompt for source
-    Write-Host "Source options:" -ForegroundColor Cyan
-    Write-Host "  1. Network share: $DefaultSource [Default]"
-    Write-Host "  2. Local WSUS: $ContentPath"
-    Write-Host "  3. Custom path"
-    Write-Host ""
-    $sourceChoice = Read-Host "Select source (1/2/3) [1]"
-    if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
+    # CLI mode: use DefaultSource directly, skip prompts
+    if ($Destination -ne "") {
+        $source = $DefaultSource
+        Write-Host "Source: $source" -ForegroundColor Cyan
+    } else {
+        # Interactive mode: Prompt for source
+        Write-Host "Source options:" -ForegroundColor Cyan
+        Write-Host "  1. Network share: $DefaultSource [Default]"
+        Write-Host "  2. Local WSUS: $ContentPath"
+        Write-Host "  3. Custom path"
+        Write-Host ""
+        $sourceChoice = Read-Host "Select source (1/2/3) [1]"
+        if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
 
-    $source = switch ($sourceChoice) {
-        "1" { $DefaultSource }
-        "2" { $ContentPath }
-        "3" {
-            $customSource = Read-Host "Enter source path"
-            $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
-            if ($validation.IsValid) { $validation.CleanPath } else { $null }
+        $source = switch ($sourceChoice) {
+            "1" { $DefaultSource }
+            "2" { $ContentPath }
+            "3" {
+                $customSource = Read-Host "Enter source path"
+                $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+                if ($validation.IsValid) { $validation.CleanPath } else { $null }
+            }
+            default { $DefaultSource }
         }
-        default { $DefaultSource }
     }
 
     # Validate source path
@@ -1148,11 +1174,17 @@ function Invoke-ExportToMedia {
     }
     Write-Host ""
 
-    # Prompt for destination
-    Write-Host "Destination (external media path):" -ForegroundColor Cyan
-    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
-    Write-Host ""
-    $destination = Read-Host "Enter destination path"
+    # CLI mode: use provided destination, skip prompt
+    if ($Destination -ne "") {
+        $destination = $Destination
+        Write-Host "Destination: $destination" -ForegroundColor Cyan
+    } else {
+        # Interactive mode: Prompt for destination
+        Write-Host "Destination (external media path):" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host ""
+        $destination = Read-Host "Enter destination path"
+    }
 
     # Validate destination path format
     $validation = Test-ValidPath -Path $destination
@@ -1474,7 +1506,7 @@ if ($Restore) {
 } elseif ($Import) {
     Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
 } elseif ($Export) {
-    Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath
+    Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath -Mode $ExportMode -Days $ExportDays
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

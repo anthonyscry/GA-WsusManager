@@ -20,7 +20,10 @@ Notes:
 
 param(
     [Parameter(HelpMessage = "Path to folder containing SQL Express and SSMS installers")]
-    [string]$InstallerPath = "C:\WSUS\SQLDB"
+    [string]$InstallerPath = "C:\WSUS\SQLDB",
+
+    [Parameter(HelpMessage = "SA password as SecureString (skips interactive prompt if provided)")]
+    [System.Security.SecureString]$SAPassword = $null
 )
 
 # -------------------------
@@ -121,7 +124,14 @@ function Stop-SqlExpressSetup {
 }
 
 # Get or retrieve password as SecureString
-if (!(Test-Path $PasswordFile)) {
+if ($SAPassword -ne $null) {
+    # Password provided via parameter (from GUI)
+    Write-Host "Using provided SA password..." -ForegroundColor Cyan
+    $securePass = $SAPassword
+    # Store encrypted for future use
+    $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
+} elseif (!(Test-Path $PasswordFile)) {
+    # No stored password - prompt user
     $securePass = Get-SAPassword
     # Store encrypted SecureString (Get-SAPassword now returns SecureString directly)
     $securePass | ConvertFrom-SecureString | Set-Content $PasswordFile
