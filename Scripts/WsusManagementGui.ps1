@@ -67,6 +67,8 @@ $script:SettingsFile = Join-Path $env:APPDATA "WsusManager\settings.json"
 $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
 $script:ExportRoot = "C:\"
+$script:InstallPath = "C:\WSUS\SQLDB"
+$script:SaUser = "sa"
 $script:ServerMode = "Online"
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
@@ -251,6 +253,7 @@ try {
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
@@ -271,9 +274,17 @@ try {
 
             <!-- Header -->
             <DockPanel Margin="0,0,0,12">
-                <Border DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
-                    <TextBlock x:Name="AdminBadge" Text="Admin" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
-                </Border>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
+                        <TextBlock x:Name="AdminBadge" Text="Admin" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
+                    </Border>
+                </StackPanel>
                 <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
             </DockPanel>
 
@@ -367,6 +378,33 @@ try {
                                 <Button x:Name="BtnOpenLog" Content="Open" FontSize="9" Padding="6,1" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Install Panel -->
+            <Grid x:Name="InstallPanel" Grid.Row="1" Visibility="Collapsed">
+                <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Install WSUS + SQL Express" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Select the folder containing SQL Server installers. Default is C:\WSUS\SQLDB." FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="InstallPathBox" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                            <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="10,6" Margin="8,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="SA Username:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <TextBox x:Name="InstallSaUser" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                            <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -562,7 +600,37 @@ function Get-TaskStatus {
     return "Not Set"
 }
 
+function Test-InternetConnection {
+    try {
+        return Test-Connection -ComputerName "www.microsoft.com" -Count 1 -Quiet -ErrorAction SilentlyContinue
+    } catch {
+        return $false
+    }
+}
+
+function Update-ServerMode {
+    $isOnline = Test-InternetConnection
+    $script:ServerMode = if ($isOnline) { "Online" } else { "Air-Gap" }
+
+    if ($controls.InternetStatusDot -and $controls.InternetStatusText) {
+        $controls.InternetStatusDot.Fill = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
+        $controls.InternetStatusText.Text = if ($isOnline) { "Online" } else { "Offline" }
+        $controls.InternetStatusText.Foreground = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
+    }
+
+    if ($controls.BtnMaintenance) {
+        $controls.BtnMaintenance.IsEnabled = $isOnline
+        $controls.BtnMaintenance.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
+    }
+    if ($controls.BtnSchedule) {
+        $controls.BtnSchedule.IsEnabled = $isOnline
+        $controls.BtnSchedule.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
+    }
+}
+
 function Update-Dashboard {
+    Update-ServerMode
+
     $svc = Get-ServiceStatus
     $controls.Card1Value.Text = if($svc.Running -eq 3){"All Running"}else{"$($svc.Running)/3"}
     $controls.Card1Sub.Text = if($svc.Names.Count -gt 0){$svc.Names -join ", "}else{"Stopped"}
@@ -597,7 +665,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -607,7 +675,7 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall")
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
@@ -631,6 +699,7 @@ function Show-Panel {
     param([string]$Panel, [string]$Title, [string]$NavBtn)
     $controls.PageTitle.Text = $Title
     $controls.DashboardPanel.Visibility = if($Panel -eq "Dashboard"){"Visible"}else{"Collapsed"}
+    $controls.InstallPanel.Visibility = if($Panel -eq "Install"){"Visible"}else{"Collapsed"}
     $controls.OperationPanel.Visibility = if($Panel -eq "Operation"){"Visible"}else{"Collapsed"}
     $controls.AboutPanel.Visibility = if($Panel -eq "About"){"Visible"}else{"Collapsed"}
     $controls.HelpPanel.Visibility = if($Panel -eq "Help"){"Visible"}else{"Collapsed"}
@@ -658,7 +727,7 @@ QUICK START
 1. Run WsusManager.exe as Administrator
 2. Use 'Install WSUS' for fresh installation
 3. Dashboard shows real-time status
-4. Toggle Mode for Online/Air-Gap operations
+4. Server Mode auto-detects Online vs Air-Gap based on internet access
 
 REQUIREMENTS
 • Windows Server 2019+
@@ -712,7 +781,8 @@ TRANSFER
 • Import (Air-Gap) - Import from external media
 
 MAINTENANCE
-• Monthly - Sync, decline superseded, cleanup, backup
+• Monthly (Online only) - Sync, decline superseded, cleanup, backup
+• Schedule Task (Online only) - Create/update the maintenance scheduled task
 • Deep Cleanup - Remove obsolete, shrink database
 
 DIAGNOSTICS
@@ -1274,6 +1344,216 @@ function Show-MaintenanceDialog {
     return $result
 }
 
+function Show-ScheduleTaskDialog {
+    $result = @{
+        Cancelled = $true
+        Schedule = "Weekly"
+        DayOfWeek = "Saturday"
+        DayOfMonth = 1
+        Time = "02:00"
+        Profile = "Full"
+    }
+
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Schedule Monthly Maintenance"
+    $dlg.Width = 460
+    $dlg.Height = 360
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $title = New-Object System.Windows.Controls.TextBlock
+    $title.Text = "Create Scheduled Task"
+    $title.FontSize = 14
+    $title.FontWeight = "Bold"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,12"
+    $stack.Children.Add($title)
+
+    $note = New-Object System.Windows.Controls.TextBlock
+    $note.Text = "Recommended: Weekly on Saturday at 02:00"
+    $note.FontSize = 11
+    $note.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $note.Margin = "0,0,0,16"
+    $stack.Children.Add($note)
+
+    $scheduleLbl = New-Object System.Windows.Controls.TextBlock
+    $scheduleLbl.Text = "Schedule:"
+    $scheduleLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $scheduleLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($scheduleLbl)
+
+    $comboItemStyle = New-Object System.Windows.Style ([System.Windows.Controls.ComboBoxItem])
+    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BackgroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")))))
+    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::ForegroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")))))
+    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::PaddingProperty, "6,4")))
+    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BorderBrushProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")))))
+    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BorderThicknessProperty, 0)))
+
+    $comboHoverTrigger = New-Object System.Windows.Trigger
+    $comboHoverTrigger.Property = [System.Windows.Controls.ComboBoxItem]::IsMouseOverProperty
+    $comboHoverTrigger.Value = $true
+    $comboHoverTrigger.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BackgroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")))))
+    $comboItemStyle.Triggers.Add($comboHoverTrigger)
+
+    $scheduleCombo = New-Object System.Windows.Controls.ComboBox
+    $scheduleCombo.Items.Add("Weekly") | Out-Null
+    $scheduleCombo.Items.Add("Monthly") | Out-Null
+    $scheduleCombo.Items.Add("Daily") | Out-Null
+    $scheduleCombo.SelectedIndex = 0
+    $scheduleCombo.Margin = "0,0,0,12"
+    $scheduleCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $scheduleCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $scheduleCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $scheduleCombo.BorderThickness = "1"
+    $scheduleCombo.ItemContainerStyle = $comboItemStyle
+    $stack.Children.Add($scheduleCombo)
+
+    $dayOfWeekPanel = New-Object System.Windows.Controls.StackPanel
+    $dayOfWeekPanel.Margin = "0,0,0,12"
+
+    $dowLbl = New-Object System.Windows.Controls.TextBlock
+    $dowLbl.Text = "Day of Week:"
+    $dowLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dowLbl.Margin = "0,0,0,6"
+    $dayOfWeekPanel.Children.Add($dowLbl)
+
+    $dowCombo = New-Object System.Windows.Controls.ComboBox
+    @("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday") | ForEach-Object {
+        $dowCombo.Items.Add($_) | Out-Null
+    }
+    $dowCombo.SelectedItem = "Saturday"
+    $dowCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dowCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dowCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $dowCombo.BorderThickness = "1"
+    $dowCombo.ItemContainerStyle = $comboItemStyle
+    $dayOfWeekPanel.Children.Add($dowCombo)
+    $stack.Children.Add($dayOfWeekPanel)
+
+    $dayOfMonthPanel = New-Object System.Windows.Controls.StackPanel
+    $dayOfMonthPanel.Margin = "0,0,0,12"
+    $dayOfMonthPanel.Visibility = "Collapsed"
+
+    $domLbl = New-Object System.Windows.Controls.TextBlock
+    $domLbl.Text = "Day of Month (1-28):"
+    $domLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $domLbl.Margin = "0,0,0,6"
+    $dayOfMonthPanel.Children.Add($domLbl)
+
+    $domBox = New-Object System.Windows.Controls.TextBox
+    $domBox.Text = "1"
+    $domBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $domBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $domBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $domBox.BorderThickness = "1"
+    $domBox.Padding = "6,4"
+    $dayOfMonthPanel.Children.Add($domBox)
+    $stack.Children.Add($dayOfMonthPanel)
+
+    $timeLbl = New-Object System.Windows.Controls.TextBlock
+    $timeLbl.Text = "Start Time (HH:mm):"
+    $timeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $timeLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($timeLbl)
+
+    $timeBox = New-Object System.Windows.Controls.TextBox
+    $timeBox.Text = "02:00"
+    $timeBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $timeBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $timeBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $timeBox.BorderThickness = "1"
+    $timeBox.Padding = "6,4"
+    $timeBox.Margin = "0,0,0,12"
+    $stack.Children.Add($timeBox)
+
+    $profileLbl = New-Object System.Windows.Controls.TextBlock
+    $profileLbl.Text = "Maintenance Profile:"
+    $profileLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $profileLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($profileLbl)
+
+    $profileCombo = New-Object System.Windows.Controls.ComboBox
+    @("Full","Quick","SyncOnly") | ForEach-Object { $profileCombo.Items.Add($_) | Out-Null }
+    $profileCombo.SelectedItem = "Full"
+    $profileCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $profileCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $profileCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $profileCombo.BorderThickness = "1"
+    $profileCombo.ItemContainerStyle = $comboItemStyle
+    $profileCombo.Margin = "0,0,0,16"
+    $stack.Children.Add($profileCombo)
+
+    $scheduleCombo.Add_SelectionChanged({
+        $selected = $scheduleCombo.SelectedItem.ToString()
+        if ($selected -eq "Monthly") {
+            $dayOfWeekPanel.Visibility = "Collapsed"
+            $dayOfMonthPanel.Visibility = "Visible"
+        } elseif ($selected -eq "Weekly") {
+            $dayOfWeekPanel.Visibility = "Visible"
+            $dayOfMonthPanel.Visibility = "Collapsed"
+        } else {
+            $dayOfWeekPanel.Visibility = "Collapsed"
+            $dayOfMonthPanel.Visibility = "Collapsed"
+        }
+    })
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $saveBtn = New-Object System.Windows.Controls.Button
+    $saveBtn.Content = "Create Task"
+    $saveBtn.Padding = "14,6"
+    $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $saveBtn.Foreground = "White"
+    $saveBtn.BorderThickness = 0
+    $saveBtn.Margin = "0,0,8,0"
+    $saveBtn.Add_Click({
+        $timeValue = $timeBox.Text.Trim()
+        if ($timeValue -notmatch '^\d{1,2}:\d{2}$') {
+            [System.Windows.MessageBox]::Show("Invalid time format. Use HH:mm (e.g., 02:00).", "Schedule", "OK", "Warning")
+            return
+        }
+        $scheduleValue = $scheduleCombo.SelectedItem.ToString()
+        $domValue = 1
+        if ($scheduleValue -eq "Monthly") {
+            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 28) {
+                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 28.", "Schedule", "OK", "Warning")
+                return
+            }
+        }
+        $result.Schedule = $scheduleValue
+        $result.DayOfWeek = $dowCombo.SelectedItem.ToString()
+        $result.DayOfMonth = $domValue
+        $result.Time = $timeValue
+        $result.Profile = $profileCombo.SelectedItem.ToString()
+        $result.Cancelled = $false
+        $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($saveBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+
+    return $result
+}
+
 function Show-TransferDialog {
     $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Full"; DaysOld = 30 }
 
@@ -1368,6 +1648,13 @@ function Show-TransferDialog {
     # Show/hide export mode based on direction
     $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
     $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
+
+    # Auto-select mode based on detected server mode
+    if ($script:ServerMode -eq "Air-Gap") {
+        $radioExport.IsEnabled = $false
+        $radioImport.IsChecked = $true
+        $exportModePanel.Visibility = "Collapsed"
+    }
 
     # Path selection
     $pathLbl = New-Object System.Windows.Controls.TextBlock
@@ -1549,6 +1836,12 @@ function Invoke-LogOperation {
         return
     }
 
+    # Guard Online-only operations
+    if ($script:ServerMode -eq "Air-Gap" -and $Id -in @("maintenance", "schedule")) {
+        [System.Windows.MessageBox]::Show("This operation is only available on the Online WSUS server.", "Online Only", "OK", "Warning")
+        return
+    }
+
     Write-Log "Run-LogOp: $Id"
 
     $sr = $script:ScriptRoot
@@ -1573,22 +1866,35 @@ function Invoke-LogOperation {
         if (Test-Path $loc) { $maint = $loc; break }
     }
 
-    # Validate scripts exist before proceeding
-    if (-not $mgmt) {
-        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusManagement.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
-        Write-Log "ERROR: Invoke-WsusManagement.ps1 not found in $sr or $sr\Scripts"
-        return
+    # Find scheduled task module - check multiple locations
+    $taskModule = $null
+    $taskModuleLocations = @(
+        (Join-Path $sr "Modules\WsusScheduledTask.psm1"),
+        (Join-Path (Split-Path $sr -Parent) "Modules\WsusScheduledTask.psm1")
+    )
+    foreach ($loc in $taskModuleLocations) {
+        if (Test-Path $loc) { $taskModule = $loc; break }
     }
-    if (-not $maint) {
-        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusMonthlyMaintenance.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
-        Write-Log "ERROR: Invoke-WsusMonthlyMaintenance.ps1 not found in $sr or $sr\Scripts"
-        return
+
+    # Validate scripts exist before proceeding
+    if ($Id -ne "schedule") {
+        if (-not $mgmt) {
+            [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusManagement.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+            Write-Log "ERROR: Invoke-WsusManagement.ps1 not found in $sr or $sr\Scripts"
+            return
+        }
+        if ($Id -eq "maintenance" -and -not $maint) {
+            [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusMonthlyMaintenance.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+            Write-Log "ERROR: Invoke-WsusMonthlyMaintenance.ps1 not found in $sr or $sr\Scripts"
+            return
+        }
     }
 
     $cp = Get-EscapedPath $script:ContentPath
     $sql = Get-EscapedPath $script:SqlInstance
-    $mgmtSafe = Get-EscapedPath $mgmt
-    $maintSafe = Get-EscapedPath $maint
+    $mgmtSafe = if ($mgmt) { Get-EscapedPath $mgmt } else { $null }
+    $maintSafe = if ($maint) { Get-EscapedPath $maint } else { $null }
+    $taskModuleSafe = if ($taskModule) { Get-EscapedPath $taskModule } else { $null }
 
     # Handle dialog-based operations
     $cmd = switch ($Id) {
@@ -1609,45 +1915,42 @@ function Invoke-LogOperation {
                 return
             }
 
-            # Default installer path
-            $defaultInstallerPath = "C:\WSUS\SQLDB"
-            $installerPath = $null
-
-            # Check if default path exists
-            if (Test-Path $defaultInstallerPath) {
-                # Verify it has the required files
-                $sqlInstaller = Join-Path $defaultInstallerPath "SQLEXPRADV_x64_ENU.exe"
-                if (Test-Path $sqlInstaller) {
-                    $installerPath = $defaultInstallerPath
-                } else {
-                    $result = [System.Windows.MessageBox]::Show("Default installer folder exists ($defaultInstallerPath) but SQLEXPRADV_x64_ENU.exe was not found.`n`nWould you like to browse for a different folder?", "Installer Not Found", "YesNo", "Question")
-                    if ($result -ne "Yes") { return }
-                }
+            $installerPath = if ($controls.InstallPathBox) { $controls.InstallPathBox.Text } else { $script:InstallPath }
+            $installerPath = $installerPath.Trim()
+            if (-not (Test-SafePath $installerPath)) {
+                [System.Windows.MessageBox]::Show("Invalid installer path. Please select a valid folder.", "Error", "OK", "Error")
+                return
             }
+            if (-not (Test-Path $installerPath)) {
+                [System.Windows.MessageBox]::Show("Installer folder not found: $installerPath", "Error", "OK", "Error")
+                return
+            }
+            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
+            if (-not (Test-Path $sqlInstaller)) {
+                [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
+                return
+            }
+            $script:InstallPath = $installerPath
 
-            # If no valid path yet, prompt user to browse
-            if (-not $installerPath) {
-                $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-                $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
-                $fbd.SelectedPath = "C:\WSUS"
-                if ($fbd.ShowDialog() -eq "OK") {
-                    $p = $fbd.SelectedPath
-                    if (-not (Test-SafePath $p)) {
-                        [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                        return
-                    }
-                    $sqlInstaller = Join-Path $p "SQLEXPRADV_x64_ENU.exe"
-                    if (-not (Test-Path $sqlInstaller)) {
-                        [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in selected folder.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
-                        return
-                    }
-                    $installerPath = $p
-                } else { return }
+            $saUser = if ($controls.InstallSaUser) { $controls.InstallSaUser.Text } else { $script:SaUser }
+            $saUser = $saUser.Trim()
+            if ([string]::IsNullOrWhiteSpace($saUser)) {
+                [System.Windows.MessageBox]::Show("SA username is required.", "Error", "OK", "Error")
+                return
+            }
+            $script:SaUser = $saUser
+
+            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPassword)) {
+                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
+                return
             }
 
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
-            "& '$installScriptSafe' -InstallerPath '$installerPathSafe'"
+            $saUserSafe = $saUser -replace "'", "''"
+            $saPasswordSafe = $saPassword -replace "'", "''"
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe'"
         }
         "restore" {
             $opts = Show-RestoreDialog
@@ -1682,6 +1985,25 @@ function Invoke-LogOperation {
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
             "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)'"
+        }
+        "schedule" {
+            $opts = Show-ScheduleTaskDialog
+            if ($opts.Cancelled) { return }
+            if (-not $taskModuleSafe) {
+                [System.Windows.MessageBox]::Show("Cannot find WsusScheduledTask.psm1`n`nSearched in:`n- $sr\Modules`n- $(Split-Path $sr -Parent)\Modules`n`nMake sure the Modules folder is in the same directory as WsusManager.exe", "Module Not Found", "OK", "Error")
+                Write-Log "ERROR: WsusScheduledTask.psm1 not found"
+                return
+            }
+
+            $Title = "Schedule Task ($($opts.Schedule))"
+            $args = "-Schedule '$($opts.Schedule)' -Time '$($opts.Time)' -MaintenanceProfile '$($opts.Profile)' -RunAsUser 'SYSTEM'"
+            if ($opts.Schedule -eq "Weekly") {
+                $args += " -DayOfWeek '$($opts.DayOfWeek)'"
+            } elseif ($opts.Schedule -eq "Monthly") {
+                $args += " -DayOfMonth $($opts.DayOfMonth)"
+            }
+
+            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; New-WsusMaintenanceTask $args }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
@@ -1798,16 +2120,39 @@ function Invoke-LogOperation {
 
 #region Event Handlers
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
-$controls.BtnInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
+$controls.BtnInstall.Add_Click({
+    $controls.InstallPathBox.Text = $script:InstallPath
+    $controls.InstallSaUser.Text = $script:SaUser
+    if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password = "" }
+    Show-Panel "Install" "Install WSUS" "BtnInstall"
+})
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
 $controls.BtnRepair.Add_Click({ Invoke-LogOperation "repair" "Repair" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
+
+$controls.BtnBrowseInstallPath.Add_Click({
+    $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+    $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
+    $fbd.SelectedPath = $script:InstallPath
+    if ($fbd.ShowDialog() -eq "OK") {
+        $p = $fbd.SelectedPath
+        if (-not (Test-SafePath $p)) {
+            [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+            return
+        }
+        $controls.InstallPathBox.Text = $p
+        $script:InstallPath = $p
+    }
+})
+
+$controls.BtnRunInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
 
 # Cancel operation button
 $controls.BtnCancelOp.Add_Click({

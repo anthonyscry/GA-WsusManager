@@ -139,7 +139,7 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')]
         [string]$DayOfWeek = 'Saturday',
 
-        [string]$Time = "01:00",
+        [string]$Time = "02:00",
 
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$MaintenanceProfile = 'Full',
@@ -206,17 +206,21 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
-    # Prompt for password if not provided
-    if (-not $UserPassword) {
-        Write-Host "Enter password for $RunAsUser to run scheduled task:" -ForegroundColor Yellow
-        $UserPassword = Read-Host -AsSecureString "Password"
-    }
+    $useServiceAccount = $RunAsUser -eq "SYSTEM"
 
-    # Validate password was provided
-    $PlainPassword = ConvertFrom-SecureStringToPlainText -SecureString $UserPassword
-    if ([string]::IsNullOrEmpty($PlainPassword)) {
-        $result.Message = "Password is required for scheduled task creation"
-        return $result
+    if (-not $useServiceAccount) {
+        # Prompt for password if not provided
+        if (-not $UserPassword) {
+            Write-Host "Enter password for $RunAsUser to run scheduled task:" -ForegroundColor Yellow
+            $UserPassword = Read-Host -AsSecureString "Password"
+        }
+
+        # Validate password was provided
+        $PlainPassword = ConvertFrom-SecureStringToPlainText -SecureString $UserPassword
+        if ([string]::IsNullOrEmpty($PlainPassword)) {
+            $result.Message = "Password is required for scheduled task creation"
+            return $result
+        }
     }
 
     try {
@@ -251,16 +255,27 @@ function New-WsusMaintenanceTask {
             Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false | Out-Null
         }
 
-        # Create task with user credentials - runs whether user is logged on or not
-        Register-ScheduledTask -TaskName $TaskName `
-            -Action $action `
-            -Trigger $trigger `
-            -Settings $settings `
-            -User $RunAsUser `
-            -Password $PlainPassword `
-            -RunLevel Highest | Out-Null
+        if ($useServiceAccount) {
+            Register-ScheduledTask -TaskName $TaskName `
+                -Action $action `
+                -Trigger $trigger `
+                -Settings $settings `
+                -User "SYSTEM" `
+                -LogonType ServiceAccount `
+                -RunLevel Highest | Out-Null
+        } else {
+            # Create task with user credentials - runs whether user is logged on or not
+            Register-ScheduledTask -TaskName $TaskName `
+                -Action $action `
+                -Trigger $trigger `
+                -Settings $settings `
+                -User $RunAsUser `
+                -Password $PlainPassword `
+                -RunLevel Highest | Out-Null
+        }
 
-        $result.Message = "Scheduled task '$TaskName' created to run as $RunAsUser (no login required)"
+        $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
+        $result.Message = "Scheduled task '$TaskName' created to run as $runAsMessage (no login required)"
         $result.Success = $true
 
     } catch {
