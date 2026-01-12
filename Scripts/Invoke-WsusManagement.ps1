@@ -789,7 +789,9 @@ function Invoke-CopyForAirGap {
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath
+        [string]$ContentPath,
+        [string]$SourcePath,
+        [switch]$NonInteractive
     )
 
     Write-Banner "IMPORT FROM EXTERNAL MEDIA"
@@ -803,14 +805,18 @@ function Invoke-CopyForAirGap {
         $DefaultSource = "C:\"
     }
 
-    # Prompt for source path
-    Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
-    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
-    Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
-    Write-Host ""
-    $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+    $ExportSource = if ($SourcePath) { $SourcePath } else { $DefaultSource }
 
-    $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+    if (-not $NonInteractive) {
+        # Prompt for source path
+        Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
+        Write-Host ""
+        $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+
+        $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+    }
 
     # Validate the source path
     $validation = Test-ValidPath -Path $ExportSource -MustExist -PathType Container
@@ -820,6 +826,11 @@ function Invoke-CopyForAirGap {
         return
     }
     $ExportSource = $validation.CleanPath
+
+    if ($NonInteractive) {
+        Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath
+        return
+    }
 
     :mainLoop while ($true) {
         Clear-Host
@@ -1515,7 +1526,7 @@ function Start-InteractiveMenu {
 if ($Restore) {
     Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance -BackupPath $BackupPath
 } elseif ($Import) {
-    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
+    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath -SourcePath $ExportRoot -NonInteractive
 } elseif ($Export) {
     # For backward compatibility with current GUI:
     # - If DestinationPath is set explicitly, use it
