@@ -252,7 +252,8 @@ jobs:
   #############################################
   build:
     name: Build Executable
-    runs-on: windows-latest
+    runs-on: windows-2022
+    timeout-minutes: 45
     needs: [code-review, test]
     if: |
       always() &&
@@ -284,18 +285,18 @@ jobs:
         Write-Host "Version: $version" -ForegroundColor Cyan
 
     - name: Install PS2EXE
-      shell: pwsh
+      shell: powershell
       run: |
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module -Name ps2exe -Force -Scope CurrentUser
+        Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
 
     - name: Build executable
       id: build_exe
-      shell: pwsh
+      shell: powershell
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
 
-        Import-Module ps2exe -Force
+        Import-Module ps2exe -Force -ErrorAction Stop
 
         $buildStart = Get-Date
 
