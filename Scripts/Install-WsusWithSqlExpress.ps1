@@ -2,7 +2,7 @@
 ===============================================================================
 Script: Install-WsusWithSqlExpress.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.0
+Version: 1.1.0
 Date: 2026-01-09
 ===============================================================================
 Purpose: Fully automated SQL Express 2022 + SSMS + WSUS installation (SQL mode).
@@ -13,22 +13,27 @@ Overview:
 Notes:
   - Run as Administrator on the WSUS server.
   - Logs to C:\WSUS\Logs\install.log
-  - Requires installer files in C:\WSUS\SQLDB
+  - Requires installer files in specified InstallerPath (default: C:\WSUS\SQLDB)
   - Content folder must be C:\WSUS for correct DB file registration.
 ===============================================================================
 #>
+
+param(
+    [Parameter(HelpMessage = "Path to folder containing SQL Express and SSMS installers")]
+    [string]$InstallerPath = "C:\WSUS\SQLDB"
+)
 
 # -------------------------
 # CONFIGURATION
 # -------------------------
 $LogFile         = "C:\WSUS\Logs\install.log"
-$Extractor       = "C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe"
-$ExtractPath     = "C:\WSUS\SQLDB\SQL2022EXP"
-$SSMSInstaller   = "C:\WSUS\SQLDB\SSMS-Setup-ENU.exe"
+$Extractor       = Join-Path $InstallerPath "SQLEXPRADV_x64_ENU.exe"
+$ExtractPath     = Join-Path $InstallerPath "SQL2022EXP"
+$SSMSInstaller   = Join-Path $InstallerPath "SSMS-Setup-ENU.exe"
 $WSUSRoot        = "C:\WSUS"
 $WSUSContent     = "C:\WSUS"
-$ConfigFile      = "C:\WSUS\SQLDB\ConfigurationFile.ini"
-$PasswordFile    = "C:\WSUS\SQLDB\sa.encrypted"
+$ConfigFile      = Join-Path $InstallerPath "ConfigurationFile.ini"
+$PasswordFile    = Join-Path $InstallerPath "sa.encrypted"
 
 # Detect existing installs to support reruns
 $sqlService = Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue

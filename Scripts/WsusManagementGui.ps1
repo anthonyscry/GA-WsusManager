@@ -1526,21 +1526,61 @@ function Invoke-LogOperation {
     # Handle dialog-based operations
     $cmd = switch ($Id) {
         "install" {
-            $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-            $fbd.Description = "Select folder with WSUS setup files (must contain Install-WsusWithSqlExpress.ps1)"
-            if ($fbd.ShowDialog() -eq "OK") {
-                $p = $fbd.SelectedPath
-                if (-not (Test-SafePath $p)) {
-                    [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                    return
+            # Find install script - check same locations as other scripts
+            $installScript = $null
+            $installLocations = @(
+                (Join-Path $sr "Install-WsusWithSqlExpress.ps1"),
+                (Join-Path $sr "Scripts\Install-WsusWithSqlExpress.ps1")
+            )
+            foreach ($loc in $installLocations) {
+                if (Test-Path $loc) { $installScript = $loc; break }
+            }
+
+            if (-not $installScript) {
+                [System.Windows.MessageBox]::Show("Cannot find Install-WsusWithSqlExpress.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+                Write-Log "ERROR: Install-WsusWithSqlExpress.ps1 not found"
+                return
+            }
+
+            # Default installer path
+            $defaultInstallerPath = "C:\WSUS\SQLDB"
+            $installerPath = $null
+
+            # Check if default path exists
+            if (Test-Path $defaultInstallerPath) {
+                # Verify it has the required files
+                $sqlInstaller = Join-Path $defaultInstallerPath "SQLEXPRADV_x64_ENU.exe"
+                if (Test-Path $sqlInstaller) {
+                    $installerPath = $defaultInstallerPath
+                } else {
+                    $result = [System.Windows.MessageBox]::Show("Default installer folder exists ($defaultInstallerPath) but SQLEXPRADV_x64_ENU.exe was not found.`n`nWould you like to browse for a different folder?", "Installer Not Found", "YesNo", "Question")
+                    if ($result -ne "Yes") { return }
                 }
-                $installScript = Join-Path $p 'Install-WsusWithSqlExpress.ps1'
-                if (-not (Test-Path $installScript)) {
-                    [System.Windows.MessageBox]::Show("Install-WsusWithSqlExpress.ps1 not found in selected folder.`n`nPlease select the folder containing the WSUS installation scripts.", "Error", "OK", "Error")
-                    return
-                }
-                "& '$(Get-EscapedPath $installScript)'"
-            } else { return }
+            }
+
+            # If no valid path yet, prompt user to browse
+            if (-not $installerPath) {
+                $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+                $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
+                $fbd.SelectedPath = "C:\WSUS"
+                if ($fbd.ShowDialog() -eq "OK") {
+                    $p = $fbd.SelectedPath
+                    if (-not (Test-SafePath $p)) {
+                        [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                        return
+                    }
+                    $sqlInstaller = Join-Path $p "SQLEXPRADV_x64_ENU.exe"
+                    if (-not (Test-Path $sqlInstaller)) {
+                        [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in selected folder.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
+                        return
+                    }
+                    $installerPath = $p
+                } else { return }
+            }
+
+            $installScriptSafe = Get-EscapedPath $installScript
+            $installerPathSafe = Get-EscapedPath $installerPath
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe'"
         }
         "restore" {
             $opts = Show-RestoreDialog
