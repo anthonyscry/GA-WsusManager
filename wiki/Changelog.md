@@ -4,6 +4,31 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.5] - January 2026
+
+### Bug Fixes
+- **Fixed**: Output log window not refreshing until Cancel clicked
+  - Changed from `Dispatcher.Invoke` to `Dispatcher.BeginInvoke` with Normal priority
+  - Timer now uses proper WPF dispatcher pump instead of Windows Forms `DoEvents()`
+  - Timer interval reduced to 250ms for more responsive UI updates
+- **Fixed**: Install operation hanging when clicked from GUI
+  - Added `-NonInteractive` parameter to `Install-WsusWithSqlExpress.ps1`
+  - In non-interactive mode, script fails with error message instead of showing dialogs
+  - GUI now passes `-NonInteractive` when calling the install script
+  - Cleaned up duplicate validation code in GUI install case
+
+### Features
+- **Changed**: Scheduled task now uses domain credentials instead of SYSTEM
+  - Dialog prompts for username (default: `.\dod_admin`)
+  - Password required for unattended task execution
+  - Tasks run whether user is logged on or not
+
+### Documentation
+- **Updated**: CLAUDE.md with v3.8.5 changes
+- **Updated**: Changelog.md
+
+---
+
 ## [3.8.4] - March 2026
 
 ### Bug Fixes
