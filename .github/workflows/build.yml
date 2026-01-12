@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 env:
-  DEFAULT_VERSION: '3.8.0'
+  DEFAULT_VERSION: '3.8.1'
 
 jobs:
   #############################################
@@ -234,6 +234,17 @@ jobs:
         path: ./test-results.xml
         retention-days: 14
 
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        files: coverage.xml
+        flags: unittests
+        fail_ci_if_error: false
+        verbose: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   #############################################
   # Build Executable
   #############################################
@@ -277,11 +288,14 @@ jobs:
         Install-Module -Name ps2exe -Force -Scope CurrentUser
 
     - name: Build executable
+      id: build_exe
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
 
         Import-Module ps2exe -Force
+
+        $buildStart = Get-Date
 
         $buildParams = @{
           InputFile = ".\Scripts\WsusManagementGui.ps1"
@@ -304,12 +318,106 @@ jobs:
 
         Invoke-PS2EXE @buildParams
 
+        $buildDuration = [math]::Round(((Get-Date) - $buildStart).TotalSeconds, 2)
+        echo "BUILD_DURATION=$buildDuration" >> $env:GITHUB_OUTPUT
+
         if (Test-Path ".\WsusManager.exe") {
-          Write-Host "Build successful!" -ForegroundColor Green
+          Write-Host "Build successful in ${buildDuration}s!" -ForegroundColor Green
         } else {
           Write-Host "Build failed" -ForegroundColor Red
           exit 1
         }
+
+    - name: Startup Benchmark
+      id: benchmark
+      shell: pwsh
+      run: |
+        Write-Host "::group::Startup Benchmark"
+        Write-Host "=== Running Startup Benchmark ===" -ForegroundColor Cyan
+
+        $guiScript = ".\Scripts\WsusManagementGui.ps1"
+        $benchmarkResults = @{}
+
+        # 1. Script Parse Time
+        Write-Host "`n[1/4] Measuring script parse time..." -ForegroundColor Yellow
+        $parseStart = Get-Date
+        $errors = $null
+        $tokens = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($guiScript, [ref]$tokens, [ref]$errors)
+        $parseTime = [math]::Round(((Get-Date) - $parseStart).TotalMilliseconds, 2)
+        $benchmarkResults.ParseTimeMs = $parseTime
+        Write-Host "  Parse time: ${parseTime}ms"
+
+        if ($errors.Count -gt 0) {
+          Write-Host "::error::Script has $($errors.Count) syntax error(s)"
+          exit 1
+        }
+
+        # 2. Token Count (complexity indicator)
+        Write-Host "`n[2/4] Analyzing script complexity..." -ForegroundColor Yellow
+        $benchmarkResults.TokenCount = $tokens.Count
+        $benchmarkResults.LineCount = (Get-Content $guiScript).Count
+        Write-Host "  Tokens: $($tokens.Count)"
+        Write-Host "  Lines: $($benchmarkResults.LineCount)"
+
+        # 3. Module Import Time
+        Write-Host "`n[3/4] Measuring module import time..." -ForegroundColor Yellow
+        $moduleDir = ".\Modules"
+        $moduleImportStart = Get-Date
+        $moduleFiles = Get-ChildItem -Path $moduleDir -Filter "*.psm1" -ErrorAction SilentlyContinue
+        foreach ($mod in $moduleFiles) {
+          Import-Module $mod.FullName -Force -DisableNameChecking -ErrorAction SilentlyContinue
+        }
+        $moduleImportTime = [math]::Round(((Get-Date) - $moduleImportStart).TotalMilliseconds, 2)
+        $benchmarkResults.ModuleImportTimeMs = $moduleImportTime
+        Write-Host "  Module import time: ${moduleImportTime}ms ($($moduleFiles.Count) modules)"
+
+        # 4. EXE File Analysis
+        Write-Host "`n[4/4] Analyzing executable..." -ForegroundColor Yellow
+        if (Test-Path ".\WsusManager.exe") {
+          $exeInfo = Get-Item ".\WsusManager.exe"
+          $benchmarkResults.ExeSizeKB = [math]::Round($exeInfo.Length / 1KB, 2)
+          $benchmarkResults.ExeSizeMB = [math]::Round($exeInfo.Length / 1MB, 2)
+          Write-Host "  EXE size: $($benchmarkResults.ExeSizeMB) MB"
+
+          # PE validation
+          $bytes = [System.IO.File]::ReadAllBytes(".\WsusManager.exe")
+          $isValidPE = ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A)
+          $benchmarkResults.ValidPE = $isValidPE
+          Write-Host "  Valid PE: $isValidPE"
+
+          # Version info
+          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo(".\WsusManager.exe")
+          $benchmarkResults.ProductVersion = $versionInfo.ProductVersion
+          Write-Host "  Version: $($versionInfo.ProductVersion)"
+        }
+
+        # Summary
+        Write-Host "`n=== Benchmark Summary ===" -ForegroundColor Cyan
+        Write-Host "  Script Parse:    $($benchmarkResults.ParseTimeMs)ms"
+        Write-Host "  Module Import:   $($benchmarkResults.ModuleImportTimeMs)ms"
+        Write-Host "  Total Overhead:  $([math]::Round($benchmarkResults.ParseTimeMs + $benchmarkResults.ModuleImportTimeMs, 2))ms"
+        Write-Host "  EXE Size:        $($benchmarkResults.ExeSizeMB) MB"
+        Write-Host "  Script Lines:    $($benchmarkResults.LineCount)"
+
+        # Set outputs for job summary
+        echo "PARSE_TIME_MS=$($benchmarkResults.ParseTimeMs)" >> $env:GITHUB_OUTPUT
+        echo "MODULE_IMPORT_MS=$($benchmarkResults.ModuleImportTimeMs)" >> $env:GITHUB_OUTPUT
+        echo "EXE_SIZE_MB=$($benchmarkResults.ExeSizeMB)" >> $env:GITHUB_OUTPUT
+        echo "LINE_COUNT=$($benchmarkResults.LineCount)" >> $env:GITHUB_OUTPUT
+
+        # Threshold checks
+        $maxParseTime = 5000  # 5 seconds
+        $maxExeSize = 50      # 50 MB
+
+        if ($benchmarkResults.ParseTimeMs -gt $maxParseTime) {
+          Write-Host "::warning::Script parse time ($($benchmarkResults.ParseTimeMs)ms) exceeds threshold (${maxParseTime}ms)"
+        }
+        if ($benchmarkResults.ExeSizeMB -gt $maxExeSize) {
+          Write-Host "::warning::EXE size ($($benchmarkResults.ExeSizeMB)MB) exceeds threshold (${maxExeSize}MB)"
+        }
+
+        Write-Host "::endgroup::"
 
     - name: Create distribution package
       shell: pwsh
