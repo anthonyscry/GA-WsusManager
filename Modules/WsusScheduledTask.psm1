@@ -139,7 +139,7 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')]
         [string]$DayOfWeek = 'Saturday',
 
-        [string]$Time = "01:00",
+        [string]$Time = "02:00",
 
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$MaintenanceProfile = 'Full',

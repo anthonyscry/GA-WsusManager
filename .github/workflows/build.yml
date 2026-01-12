@@ -426,9 +426,10 @@ jobs:
         $version = "${{ steps.version.outputs.VERSION }}"
         $packageName = "WsusManager-v$version"
         $distDir = ".\dist"
-        $packageDir = "$distDir\$packageName"
+        $packageDir = "$distDir\\staging"
 
         # Create dist folder structure
+        if (Test-Path $packageDir) { Remove-Item -Path $packageDir -Recurse -Force }
         New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
         # Copy main executable to both dist root and package folder
@@ -479,8 +480,11 @@ jobs:
           Write-Host "  $relativePath"
         }
 
-        # Create zip in dist folder
+        # Create zip in dist folder without nesting contents under a parent folder
         Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
+
+        # Remove staging directory after packaging
+        Remove-Item -Path $packageDir -Recurse -Force
 
         Write-Host "`nDist folder contents:" -ForegroundColor Cyan
         Get-ChildItem -Path $distDir -File | ForEach-Object {

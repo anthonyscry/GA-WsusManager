@@ -14,6 +14,9 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 - **Fixed OperationRunning flag** - Flag now properly resets in all code paths (completion, error, cancel)
 - **Fixed Export parameters** - Removed invalid CLI parameters that were causing errors
 - **Fixed distribution package** - Zip now includes required Scripts/ and Modules/ folders
+- **Installer prompt** - Install WSUS now prompts for SQL/SSMS installer location if files are missing
+- **Air-gap import** - GUI/CLI import runs non-interactively using the selected media path
+- **Maintenance UX** - Monthly maintenance logs note that some phases can be quiet for several minutes
 
 ### Previous (v3.8.1)
 - DPI awareness for high-resolution displays
@@ -50,11 +53,10 @@ A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports b
 
 **Important:** Keep the folder structure intact:
 ```
-WsusManager-vX.X.X/
-├── WsusManager.exe      # Main application
-├── Scripts/             # Required - do not delete!
-├── Modules/             # Required - do not delete!
-└── DomainController/    # Optional - GPO scripts
+WsusManager.exe      # Main application
+Scripts/             # Required - do not delete!
+Modules/             # Required - do not delete!
+DomainController/    # Optional - GPO scripts
 ```
 
 > ⚠️ **Do not move WsusManager.exe without its Scripts and Modules folders!**
@@ -84,7 +86,7 @@ Features:
 | PowerShell | 5.1+ |
 | SQL Server | SQL Server Express 2022 |
 
-### Required Installers (place in `C:\WSUS\SQLDB\`)
+### Required Installers (place in `C:\WSUS\SQLDB\` or select at prompt)
 
 - `SQLEXPRADV_x64_ENU.exe` - SQL Server Express 2022
 - `SSMS-Setup-ENU.exe` - SQL Server Management Studio
@@ -108,7 +110,7 @@ The dashboard displays four status cards with auto-refresh:
 
 ## Server Mode
 
-Toggle between **Online** and **Air-Gap** modes using the switch in the sidebar. This shows only the relevant menu options for your server type.
+Server Mode auto-detects **Online** vs **Air-Gap** based on internet connectivity and shows only the relevant menu options for your server type.
 
 | Mode | Visible Operations | Hidden |
 |------|-------------------|--------|
@@ -128,9 +130,12 @@ The mode is saved to your user settings and persists across restarts.
 | Export to Media | Online | Export DB and content to USB (Full or Differential) |
 | Import from Media | Air-Gap | Import from USB to air-gapped server |
 | Monthly Maintenance | Online | Sync with Microsoft, cleanup, and backup |
+| Schedule Task | Online | Create or update the scheduled maintenance task |
 | Deep Cleanup | Both | Aggressive cleanup for space recovery |
 | Health Check | Both | Verify WSUS configuration and connectivity |
 | Health + Repair | Both | Health check with automatic fixes |
+
+> **Note:** Monthly Maintenance and Schedule Task are intended for the **Online** WSUS server only.
 
 ---
 
@@ -151,6 +156,8 @@ Air-Gap WSUS → Import from Media
 **Export Options:**
 - **Full Export** - Complete database and all content files
 - **Differential Export** - Only updates from the last N days (default: 30)
+
+**Import Note:** When importing from external media via the GUI, the selected path is used without additional prompts.
 
 ---
 
