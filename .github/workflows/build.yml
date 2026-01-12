@@ -457,7 +457,18 @@ jobs:
           Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
           Write-Host "Copied DomainController folder" -ForegroundColor Green
         }
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\wsus-icon.ico") {
+          Copy-Item ".\wsus-icon.ico" -Destination $packageDir
+          Copy-Item ".\wsus-icon.ico" -Destination $distDir
+        }
+        if (Test-Path ".\general_atomics_logo_small.ico") {
+          Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+          Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir
+        }
+        if (Test-Path ".\general_atomics_logo_big.ico") {
+          Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+          Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir
+        }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
         if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
 
