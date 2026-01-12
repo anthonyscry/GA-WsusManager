@@ -38,7 +38,7 @@ This guide covers everything you need to install and configure WSUS Manager.
 
 ### Required Installers
 
-Download these files and save to `C:\WSUS\SQLDB\`:
+Download these files and save to `C:\WSUS\SQLDB\` (or select their folder when prompted):
 
 | File | Download Link |
 |------|---------------|
@@ -124,9 +124,11 @@ On first launch, go to **Settings** and configure:
 
 1. Launch `WsusManager.exe` as Administrator
 2. Click **Install WSUS** in the sidebar
-3. Browse to the folder containing SQL installers (`C:\WSUS\SQLDB`)
+3. Browse to the folder containing SQL installers (`C:\WSUS\SQLDB` if you kept defaults)
 4. Click **Install**
 5. Wait for installation to complete (15-30 minutes)
+
+> **Note:** If the default installer folder does not contain `SQLEXPRADV_x64_ENU.exe`, the installer will prompt you to select the correct folder.
 
 ### What Gets Installed
 

@@ -165,6 +165,7 @@ The build script performs:
 
 ```
 WsusManager.exe     # ~260 KB executable
+dist\WsusManager-vX.X.X.zip  # Distribution package with Scripts/, Modules/, and branding assets
 ```
 
 ---
