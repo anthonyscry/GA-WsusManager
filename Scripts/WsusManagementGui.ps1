@@ -1275,12 +1275,12 @@ function Show-MaintenanceDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = "" }
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Differential"; ExportDays = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
     $dlg.Width = 500
-    $dlg.Height = 280
+    $dlg.Height = 400
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1317,6 +1317,63 @@ function Show-TransferDialog {
     $radioImport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioImport.Margin = "0,0,0,16"
     $stack.Children.Add($radioImport)
+
+    # Export Mode selection (only shown for Export)
+    $exportModePanel = New-Object System.Windows.Controls.StackPanel
+    $exportModePanel.Margin = "0,0,0,16"
+
+    $modeLbl = New-Object System.Windows.Controls.TextBlock
+    $modeLbl.Text = "Export Mode:"
+    $modeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $modeLbl.Margin = "0,0,0,8"
+    $exportModePanel.Children.Add($modeLbl)
+
+    $radioFull = New-Object System.Windows.Controls.RadioButton
+    $radioFull.Content = "Full copy (all files)"
+    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Margin = "0,0,0,4"
+    $radioFull.GroupName = "ExportMode"
+    $exportModePanel.Children.Add($radioFull)
+
+    $radioDiff30 = New-Object System.Windows.Controls.RadioButton
+    $radioDiff30.Content = "Differential (files from last 30 days)"
+    $radioDiff30.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiff30.Margin = "0,0,0,4"
+    $radioDiff30.GroupName = "ExportMode"
+    $radioDiff30.IsChecked = $true
+    $exportModePanel.Children.Add($radioDiff30)
+
+    $diffCustomPanel = New-Object System.Windows.Controls.StackPanel
+    $diffCustomPanel.Orientation = "Horizontal"
+    $diffCustomPanel.Margin = "0,0,0,4"
+
+    $radioDiffCustom = New-Object System.Windows.Controls.RadioButton
+    $radioDiffCustom.Content = "Differential (custom days):"
+    $radioDiffCustom.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiffCustom.GroupName = "ExportMode"
+    $diffCustomPanel.Children.Add($radioDiffCustom)
+
+    $daysTextBox = New-Object System.Windows.Controls.TextBox
+    $daysTextBox.Width = 50
+    $daysTextBox.Margin = "8,0,0,0"
+    $daysTextBox.Text = "30"
+    $daysTextBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $daysTextBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysTextBox.Padding = "4,2"
+    $daysTextBox.IsEnabled = $false
+    $diffCustomPanel.Children.Add($daysTextBox)
+
+    $exportModePanel.Children.Add($diffCustomPanel)
+
+    # Enable/disable days textbox based on custom radio selection
+    $radioDiffCustom.Add_Checked({ $daysTextBox.IsEnabled = $true }.GetNewClosure())
+    $radioDiffCustom.Add_Unchecked({ $daysTextBox.IsEnabled = $false }.GetNewClosure())
+
+    $stack.Children.Add($exportModePanel)
+
+    # Show/hide export mode based on direction
+    $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
+    $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
 
     # Path selection
     $pathLbl = New-Object System.Windows.Controls.TextBlock
@@ -1370,7 +1427,205 @@ function Show-TransferDialog {
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
+
+        # Capture export mode if exporting
+        if ($radioExport.IsChecked) {
+            if ($radioFull.IsChecked) {
+                $result.ExportMode = "Full"
+                $result.ExportDays = 0
+            } elseif ($radioDiff30.IsChecked) {
+                $result.ExportMode = "Differential"
+                $result.ExportDays = 30
+            } elseif ($radioDiffCustom.IsChecked) {
+                $result.ExportMode = "Differential"
+                $days = 30
+                if ([int]::TryParse($daysTextBox.Text, [ref]$days) -and $days -gt 0) {
+                    $result.ExportDays = $days
+                } else {
+                    $result.ExportDays = 30
+                }
+            }
+        }
         $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($runBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+    return $result
+}
+
+function Show-InstallDialog {
+    $result = @{ Cancelled = $true; InstallerPath = ""; SAPassword = $null }
+
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Install WSUS with SQL Express"
+    $dlg.Width = 520
+    $dlg.Height = 380
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $title = New-Object System.Windows.Controls.TextBlock
+    $title.Text = "Install WSUS with SQL Express"
+    $title.FontSize = 14
+    $title.FontWeight = "Bold"
+    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Margin = "0,0,0,8"
+    $stack.Children.Add($title)
+
+    $desc = New-Object System.Windows.Controls.TextBlock
+    $desc.Text = "This will install SQL Server Express 2022, SSMS, and configure WSUS."
+    $desc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $desc.TextWrapping = "Wrap"
+    $desc.Margin = "0,0,0,16"
+    $stack.Children.Add($desc)
+
+    # Installer Path section
+    $pathLbl = New-Object System.Windows.Controls.TextBlock
+    $pathLbl.Text = "Installer Folder (containing SQL Express & SSMS installers):"
+    $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $pathLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($pathLbl)
+
+    $pathPanel = New-Object System.Windows.Controls.DockPanel
+    $pathPanel.Margin = "0,0,0,16"
+
+    $browseBtn = New-Object System.Windows.Controls.Button
+    $browseBtn.Content = "Browse"
+    $browseBtn.Padding = "10,4"
+    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
+    $pathPanel.Children.Add($browseBtn)
+
+    $pathTxt = New-Object System.Windows.Controls.TextBox
+    $pathTxt.Margin = "0,0,8,0"
+    $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $pathTxt.Padding = "6,4"
+    # Set default path
+    $defaultPath = "C:\WSUS\SQLDB"
+    if (Test-Path $defaultPath) { $pathTxt.Text = $defaultPath }
+    $pathPanel.Children.Add($pathTxt)
+
+    $browseBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select folder containing SQL Server installers"
+        $fbd.SelectedPath = "C:\WSUS"
+        if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $stack.Children.Add($pathPanel)
+
+    # SA Password section
+    $pwdLbl = New-Object System.Windows.Controls.TextBlock
+    $pwdLbl.Text = "SQL Server SA Password (15+ chars, 1 number, 1 special):"
+    $pwdLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $pwdLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($pwdLbl)
+
+    $pwd1 = New-Object System.Windows.Controls.PasswordBox
+    $pwd1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $pwd1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $pwd1.Padding = "6,4"
+    $pwd1.Margin = "0,0,0,8"
+    $stack.Children.Add($pwd1)
+
+    $pwd2Lbl = New-Object System.Windows.Controls.TextBlock
+    $pwd2Lbl.Text = "Confirm SA Password:"
+    $pwd2Lbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $pwd2Lbl.Margin = "0,0,0,6"
+    $stack.Children.Add($pwd2Lbl)
+
+    $pwd2 = New-Object System.Windows.Controls.PasswordBox
+    $pwd2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $pwd2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $pwd2.Padding = "6,4"
+    $pwd2.Margin = "0,0,0,16"
+    $stack.Children.Add($pwd2)
+
+    # Buttons
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $runBtn = New-Object System.Windows.Controls.Button
+    $runBtn.Content = "Start Installation"
+    $runBtn.Padding = "14,6"
+    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+    $runBtn.Foreground = "White"
+    $runBtn.BorderThickness = 0
+    $runBtn.Margin = "0,0,8,0"
+    $runBtn.Add_Click({
+        # Validate installer path
+        if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Please select the installer folder.", "Validation Error", "OK", "Warning")
+            return
+        }
+        $sqlInstaller = Join-Path $pathTxt.Text "SQLEXPRADV_x64_ENU.exe"
+        if (-not (Test-Path $sqlInstaller)) {
+            [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in selected folder.`n`nPlease select the folder containing the SQL Server installation files.", "Validation Error", "OK", "Warning")
+            return
+        }
+
+        # Validate password - use SecurePassword property to get SecureString directly
+        $secPwd1 = $pwd1.SecurePassword
+        $secPwd2 = $pwd2.SecurePassword
+
+        # Convert to plaintext only for validation (then clear from memory)
+        $bstr1 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd1)
+        $bstr2 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd2)
+        try {
+            $p1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr1)
+            $p2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr2)
+
+            if ([string]::IsNullOrWhiteSpace($p1)) {
+                [System.Windows.MessageBox]::Show("Please enter the SA password.", "Validation Error", "OK", "Warning")
+                return
+            }
+            if ($p1 -ne $p2) {
+                [System.Windows.MessageBox]::Show("Passwords do not match.", "Validation Error", "OK", "Warning")
+                return
+            }
+            if ($p1.Length -lt 15) {
+                [System.Windows.MessageBox]::Show("Password must be at least 15 characters.", "Validation Error", "OK", "Warning")
+                return
+            }
+            if ($p1 -notmatch "\d") {
+                [System.Windows.MessageBox]::Show("Password must contain at least one number.", "Validation Error", "OK", "Warning")
+                return
+            }
+            if ($p1 -notmatch "[^a-zA-Z0-9]") {
+                [System.Windows.MessageBox]::Show("Password must contain at least one special character.", "Validation Error", "OK", "Warning")
+                return
+            }
+
+            $result.Cancelled = $false
+            $result.InstallerPath = $pathTxt.Text
+            # Use SecureString directly from PasswordBox
+            $result.SAPassword = $secPwd1.Copy()
+            $dlg.Close()
+        } finally {
+            # Zero out the BSTR memory for security
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr1)
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
+        }
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
 
@@ -1542,40 +1797,24 @@ function Invoke-LogOperation {
                 return
             }
 
-            # Default installer path
-            $defaultInstallerPath = "C:\WSUS\SQLDB"
-            $installerPath = $null
+            # Show install dialog for installer path and SA password
+            $opts = Show-InstallDialog
+            if ($opts.Cancelled) { return }
 
-            # Check if default path exists
-            if (Test-Path $defaultInstallerPath) {
-                # Verify it has the required files
-                $sqlInstaller = Join-Path $defaultInstallerPath "SQLEXPRADV_x64_ENU.exe"
-                if (Test-Path $sqlInstaller) {
-                    $installerPath = $defaultInstallerPath
-                } else {
-                    $result = [System.Windows.MessageBox]::Show("Default installer folder exists ($defaultInstallerPath) but SQLEXPRADV_x64_ENU.exe was not found.`n`nWould you like to browse for a different folder?", "Installer Not Found", "YesNo", "Question")
-                    if ($result -ne "Yes") { return }
-                }
+            $installerPath = $opts.InstallerPath
+            if (-not (Test-SafePath $installerPath)) {
+                [System.Windows.MessageBox]::Show("Invalid installer path.", "Error", "OK", "Error")
+                return
             }
 
-            # If no valid path yet, prompt user to browse
-            if (-not $installerPath) {
-                $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-                $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
-                $fbd.SelectedPath = "C:\WSUS"
-                if ($fbd.ShowDialog() -eq "OK") {
-                    $p = $fbd.SelectedPath
-                    if (-not (Test-SafePath $p)) {
-                        [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-                        return
-                    }
-                    $sqlInstaller = Join-Path $p "SQLEXPRADV_x64_ENU.exe"
-                    if (-not (Test-Path $sqlInstaller)) {
-                        [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in selected folder.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
-                        return
-                    }
-                    $installerPath = $p
-                } else { return }
+            # Save the SA password to the expected location so the script can use it
+            $passwordFile = Join-Path $installerPath "sa.encrypted"
+            try {
+                $opts.SAPassword | ConvertFrom-SecureString | Set-Content $passwordFile -Force
+                Write-Log "Saved SA password to $passwordFile"
+            } catch {
+                [System.Windows.MessageBox]::Show("Failed to save SA password: $_", "Error", "OK", "Error")
+                return
             }
 
             $installScriptSafe = Get-EscapedPath $installScript
@@ -1602,8 +1841,10 @@ function Invoke-LogOperation {
             $path = Get-EscapedPath $opts.Path
             $Title = $opts.Direction
             if ($opts.Direction -eq "Export") {
-                # Note: CLI Export always does full export (differential is interactive-only)
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path'"
+                $exportMode = $opts.ExportMode
+                $exportDays = $opts.ExportDays
+                $Title = "Export ($exportMode$(if ($exportMode -eq 'Differential') { ", $exportDays days" }))"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path' -ExportMode '$exportMode' -ExportDays $exportDays"
             } else {
                 "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
             }
