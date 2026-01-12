@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.5
+**Current Version:** 3.8.6
 
 ## Repository Structure
 
@@ -195,7 +195,22 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.5)
+## Recent Changes (v3.8.6)
+
+- **Fixed live output streaming in GUI:**
+  - Redirect all PowerShell streams (`*>&1`) to capture Write-Host output
+  - Added `Write-HostFlush` wrapper in Install script for immediate output
+  - Disabled progress bar to prevent buffering issues
+- **Input fields now disabled during operations:**
+  - Password boxes and path textbox greyed out during install
+  - Added `OperationInputs` array for tracking input fields
+  - Fields re-enabled when operation completes or is cancelled
+- **Code cleanup:**
+  - Removed duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies → 1)
+  - Streamlined GitHub workflows with concurrency settings
+  - Removed Codacy and release-drafter workflows
+
+### Previous (v3.8.5)
 
 - **Fixed output log window not refreshing until Cancel clicked:**
   - Changed from `Dispatcher.Invoke` to `Dispatcher.BeginInvoke` with Normal priority
