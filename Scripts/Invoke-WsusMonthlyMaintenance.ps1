@@ -615,11 +615,23 @@ try {
     # Use Add-Type instead of deprecated LoadWithPartialName
     Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
+
+    # Validate WSUS connection - GetUpdateServer may return null without throwing
+    if ($null -eq $wsus) {
+        throw "GetUpdateServer returned null - WSUS service may not be running or configured"
+    }
+
     Write-Log "WSUS connection successful"
     Write-Status "WSUS connection successful" -Type Success
 
     Start-Sleep -Seconds 2
     $subscription = $wsus.GetSubscription()
+
+    # Validate subscription object
+    if ($null -eq $subscription) {
+        throw "Failed to get WSUS subscription object"
+    }
+
     Write-Log "Subscription object retrieved"
 
 } catch {
