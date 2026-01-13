@@ -2524,19 +2524,8 @@ function Invoke-LogOperation {
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
-            # Set smaller font using P/Invoke, then configure window
-            $setFontCode = @'
-Add-Type -TypeDefinition @"
-using System;
-using System.Runtime.InteropServices;
-public class CF{
-[DllImport("kernel32.dll")]static extern IntPtr GetStdHandle(int h);
-[DllImport("kernel32.dll",CharSet=CharSet.Unicode)]static extern bool SetCurrentConsoleFontEx(IntPtr o,bool m,ref FX f);
-[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct FX{public uint s;public uint n;public short x;public short y;public int ff;public int fw;[MarshalAs(UnmanagedType.ByValTStr,SizeConst=32)]public string fn;}
-public static void Set(short h){var f=new FX();f.s=84;f.y=h;f.ff=54;f.fw=400;f.fn="Consolas";SetCurrentConsoleFontEx(GetStdHandle(-11),false,ref f);}}
-"@ -EA 0;[CF]::Set(14)
-'@
-            $setupConsole = "$setFontCode; mode con: cols=100 lines=15; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            # Configure console window size (font size controlled by user's PowerShell defaults)
+            $setupConsole = "mode con: cols=100 lines=20; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             # Wrap command in try/finally so prompt ALWAYS shows even if script errors
             $wrappedCmd = "$setupConsole; try { $cmd } catch { Write-Host ('ERROR: ' + `$_.Exception.Message) -ForegroundColor Red } finally { Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host ''; Write-Host 'Press ENTER to close this window...' -ForegroundColor Yellow; Read-Host }"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""

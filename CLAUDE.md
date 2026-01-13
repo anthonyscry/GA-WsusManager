@@ -199,7 +199,7 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 - **Live Terminal Mode:**
   - New toggle button in log panel header to open operations in external PowerShell window
-  - Console window positioned near log panel area with smaller text (100x15 chars)
+  - Console window sized to 100x20 chars, positioned near log panel area
   - Keystroke timer sends Enter key every 2 seconds to flush output buffer
   - Settings persist to `settings.json`
 - **Import dialog with source and destination selection:**
