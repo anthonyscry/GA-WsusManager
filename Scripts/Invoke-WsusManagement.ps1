@@ -98,11 +98,13 @@ param(
     [Parameter(ParameterSetName = 'Restore')]
     [string]$BackupPath,
 
-    # Export parameters (for non-interactive mode)
+    # Export/Import parameters (for non-interactive mode)
     [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
     [string]$SourcePath,
 
     [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
     [string]$DestinationPath,
 
     [Parameter(ParameterSetName = 'Export')]
