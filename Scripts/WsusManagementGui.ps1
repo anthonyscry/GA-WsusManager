@@ -126,7 +126,9 @@ function Get-EscapedPath { param([string]$Path)
 function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     if ($Path -match '[`$;|&<>]') { return $false }
-    if ($Path -notmatch '^[A-Za-z]:\\') { return $false }
+    # Accept both local paths (C:\) and UNC paths (\\server\share or \\server\share$)
+    # UNC pattern: \\server\share where share can include $ for admin shares
+    if ($Path -notmatch '^([A-Za-z]:\\|\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.$-]+)') { return $false }
     return $true
 }
 
@@ -138,24 +140,38 @@ try {
 } catch { Write-Log "Admin check failed: $_" }
 #endregion
 
-#region Keystroke Sender for Live Terminal
-# P/Invoke to send keystrokes to console window without stealing focus
+#region Console Window Helpers for Live Terminal
+# P/Invoke for keystrokes and window positioning
 Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 
-public class ConsolKeySender {
+public class ConsoleWindowHelper {
     [DllImport("user32.dll")]
     public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
     public const uint WM_KEYDOWN = 0x0100;
     public const uint WM_KEYUP = 0x0101;
     public const int VK_RETURN = 0x0D;
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_NOACTIVATE = 0x0010;
 
     public static void SendEnter(IntPtr hWnd) {
         if (hWnd != IntPtr.Zero) {
             PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
             PostMessage(hWnd, WM_KEYUP, VK_RETURN, 0);
+        }
+    }
+
+    public static void PositionWindow(IntPtr hWnd, int x, int y, int width, int height) {
+        if (hWnd != IntPtr.Zero) {
+            MoveWindow(hWnd, x, y, width, height, true);
         }
     }
 }
@@ -635,10 +651,16 @@ function Get-TaskStatus {
 }
 
 function Test-InternetConnection {
+    # Use .NET Ping with short timeout (500ms) to avoid blocking UI
+    $ping = $null
     try {
-        return Test-Connection -ComputerName "www.microsoft.com" -Count 1 -Quiet -ErrorAction SilentlyContinue
+        $ping = New-Object System.Net.NetworkInformation.Ping
+        $reply = $ping.Send("8.8.8.8", 500)  # Google DNS, 500ms timeout
+        return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
     } catch {
         return $false
+    } finally {
+        if ($null -ne $ping) { $ping.Dispose() }
     }
 }
 
@@ -665,36 +687,51 @@ function Update-ServerMode {
 function Update-Dashboard {
     Update-ServerMode
 
+    # Card 1: Services
     $svc = Get-ServiceStatus
-    $controls.Card1Value.Text = if($svc.Running -eq 3){"All Running"}else{"$($svc.Running)/3"}
-    $controls.Card1Sub.Text = if($svc.Names.Count -gt 0){$svc.Names -join ", "}else{"Stopped"}
-    $controls.Card1Bar.Background = if($svc.Running -eq 3){"#3FB950"}elseif($svc.Running -gt 0){"#D29922"}else{"#F85149"}
-
-    $db = Get-DatabaseSizeGB
-    if ($db -ge 0) {
-        $controls.Card2Value.Text = "$db / 10 GB"
-        $controls.Card2Sub.Text = if($db -ge 9){"Critical!"}elseif($db -ge 7){"Warning"}else{"Healthy"}
-        $controls.Card2Bar.Background = if($db -ge 9){"#F85149"}elseif($db -ge 7){"#D29922"}else{"#3FB950"}
-    } else {
-        $controls.Card2Value.Text = "Offline"
-        $controls.Card2Sub.Text = "SQL stopped"
-        $controls.Card2Bar.Background = "#D29922"
+    if ($null -ne $svc -and $controls.Card1Value -and $controls.Card1Sub -and $controls.Card1Bar) {
+        $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
+        $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
+        $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
+        $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
+        $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
     }
 
+    # Card 2: Database
+    $db = Get-DatabaseSizeGB
+    if ($controls.Card2Value -and $controls.Card2Sub -and $controls.Card2Bar) {
+        if ($db -ge 0) {
+            $controls.Card2Value.Text = "$db / 10 GB"
+            $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
+            $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+        } else {
+            $controls.Card2Value.Text = "Offline"
+            $controls.Card2Sub.Text = "SQL stopped"
+            $controls.Card2Bar.Background = "#D29922"
+        }
+    }
+
+    # Card 3: Disk
     $disk = Get-DiskFreeGB
-    $controls.Card3Value.Text = "$disk GB"
-    $controls.Card3Sub.Text = if($disk -lt 10){"Critical!"}elseif($disk -lt 50){"Low"}else{"OK"}
-    $controls.Card3Bar.Background = if($disk -lt 10){"#F85149"}elseif($disk -lt 50){"#D29922"}else{"#3FB950"}
+    if ($controls.Card3Value -and $controls.Card3Sub -and $controls.Card3Bar) {
+        $controls.Card3Value.Text = "$disk GB"
+        $controls.Card3Sub.Text = if ($disk -lt 10) { "Critical!" } elseif ($disk -lt 50) { "Low" } else { "OK" }
+        $controls.Card3Bar.Background = if ($disk -lt 10) { "#F85149" } elseif ($disk -lt 50) { "#D29922" } else { "#3FB950" }
+    }
 
+    # Card 4: Task
     $task = Get-TaskStatus
-    $controls.Card4Value.Text = $task
-    $controls.Card4Bar.Background = if($task -eq "Ready"){"#3FB950"}else{"#D29922"}
+    if ($controls.Card4Value -and $controls.Card4Bar) {
+        $controls.Card4Value.Text = $task
+        $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+    }
 
-    $controls.CfgContentPath.Text = $script:ContentPath
-    $controls.CfgSqlInstance.Text = $script:SqlInstance
-    $controls.CfgExportRoot.Text = $script:ExportRoot
-    $controls.CfgLogPath.Text = $script:LogDir
-    $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')"
+    # Configuration display
+    if ($controls.CfgContentPath) { $controls.CfgContentPath.Text = $script:ContentPath }
+    if ($controls.CfgSqlInstance) { $controls.CfgSqlInstance.Text = $script:SqlInstance }
+    if ($controls.CfgExportRoot) { $controls.CfgExportRoot.Text = $script:ExportRoot }
+    if ($controls.CfgLogPath) { $controls.CfgLogPath.Text = $script:LogDir }
+    if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
 }
 
 function Set-ActiveNavButton {
@@ -747,16 +784,34 @@ function Enable-OperationButtons {
 
 function Stop-CurrentOperation {
     # Properly cleans up all resources from a running operation
-    # Unregisters events, stops timer, disposes process, resets state
+    # Unregisters events, stops timers, disposes process, resets state
     param([switch]$SuppressLog)
 
-    # 1. Stop the backup timer first (prevents race conditions)
+    # 1. Stop all timers first (prevents race conditions)
     if ($null -ne $script:OpCheckTimer) {
         try {
             $script:OpCheckTimer.Stop()
             $script:OpCheckTimer = $null
         } catch {
             if (-not $SuppressLog) { Write-Log "Timer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:KeystrokeTimer) {
+        try {
+            $script:KeystrokeTimer.Stop()
+            $script:KeystrokeTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "KeystrokeTimer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:StdinFlushTimer) {
+        try {
+            $script:StdinFlushTimer.Stop()
+            $script:StdinFlushTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "StdinFlushTimer stop warning: $_" }
         }
     }
 
@@ -1550,7 +1605,7 @@ function Show-ScheduleTaskDialog {
     $dayOfMonthPanel.Visibility = "Collapsed"
 
     $domLbl = New-Object System.Windows.Controls.TextBlock
-    $domLbl.Text = "Day of Month (1-28):"
+    $domLbl.Text = "Day of Month (1-31):"
     $domLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $domLbl.Margin = "0,0,0,6"
     $dayOfMonthPanel.Children.Add($domLbl)
@@ -1653,7 +1708,7 @@ function Show-ScheduleTaskDialog {
             $dayOfWeekPanel.Visibility = "Collapsed"
             $dayOfMonthPanel.Visibility = "Collapsed"
         }
-    })
+    }.GetNewClosure())
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1675,8 +1730,8 @@ function Show-ScheduleTaskDialog {
         $scheduleValue = $scheduleCombo.SelectedItem.ToString()
         $domValue = 1
         if ($scheduleValue -eq "Monthly") {
-            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 28) {
-                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 28.", "Schedule", "OK", "Warning")
+            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 31) {
+                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning")
                 return
             }
         }
@@ -2205,8 +2260,9 @@ function Invoke-LogOperation {
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
-            # Wrap command with pause so user can review output before window closes
-            $wrappedCmd = "$cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
+            # Set smaller console window and buffer, then run command with pause at end
+            $setupConsole = "mode con: cols=100 lines=15; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            $wrappedCmd = "$setupConsole; $cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
             $psi.UseShellExecute = $true
             $psi.CreateNoWindow = $false
@@ -2262,6 +2318,29 @@ function Invoke-LogOperation {
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
 
+            # Position and resize the console window to match log panel area
+            try {
+                $hWnd = $script:CurrentProcess.MainWindowHandle
+                if ($hWnd -ne [IntPtr]::Zero) {
+                    # Get main window position
+                    $mainLeft = [int]$script:window.Left
+                    $mainTop = [int]$script:window.Top
+                    $mainWidth = [int]$script:window.ActualWidth
+                    $mainHeight = [int]$script:window.ActualHeight
+
+                    # Position console below the main content area (where log panel would be)
+                    # Sidebar is ~180px, leave some margin
+                    $consoleX = [math]::Max(0, $mainLeft + 200)
+                    $consoleY = [math]::Max(0, $mainTop + $mainHeight - 280)  # Above the bottom edge
+                    $consoleWidth = [math]::Max(400, $mainWidth - 220)  # Account for sidebar + margins, min 400px
+                    $consoleHeight = 250  # Same as log panel height
+
+                    [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
+                }
+            } catch {
+                # Silently ignore positioning errors - window will just use default position
+            }
+
             # Keystroke timer - sends Enter to console every 2 seconds to flush output buffer
             $script:KeystrokeTimer = New-Object System.Windows.Threading.DispatcherTimer
             $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
@@ -2270,7 +2349,7 @@ function Invoke-LogOperation {
                     if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
                         $hWnd = $script:CurrentProcess.MainWindowHandle
                         if ($hWnd -ne [IntPtr]::Zero) {
-                            [ConsolKeySender]::SendEnter($hWnd)
+                            [ConsoleWindowHelper]::SendEnter($hWnd)
                         }
                     } else {
                         $this.Stop()
@@ -2608,8 +2687,10 @@ $controls.BtnSaveLog.Add_Click({
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
+    Stop-CurrentOperation
+    Enable-OperationButtons
     $controls.BtnCancel.Visibility = "Collapsed"
+    Set-Status "Cancelled"
 })
 #endregion
 
