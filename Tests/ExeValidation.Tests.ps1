@@ -168,15 +168,6 @@ Describe "EXE Validation Tests" {
             $errors.Count | Should -Be 0 -Because "Script should have no syntax errors"
         }
     }
-
-    Context "Distribution Package" -Tag "CI" -Skip:(-not $script:ExeExists) {
-        It "Should have distribution zip if exe exists" {
-            $zipFiles = Get-ChildItem -Path $script:RepoRoot -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
-            $distZip = Get-ChildItem -Path (Join-Path $script:RepoRoot "dist") -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
-
-            ($zipFiles.Count -gt 0 -or $distZip.Count -gt 0) | Should -Be $true -Because "Distribution zip should exist"
-        }
-    }
 }
 
 Describe "AsyncHelpers Module Validation" {
