@@ -117,7 +117,7 @@ function New-WsusMaintenanceTask {
         Maintenance profile to use: Full, Quick, SyncOnly (default: Full)
 
     .PARAMETER RunAsUser
-        User account to run the task as (default: .\dod_admin)
+        User account to run the task as (default: dod_admin)
 
     .PARAMETER UserPassword
         Password for the user account (will prompt if not provided)
@@ -144,7 +144,7 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$MaintenanceProfile = 'Full',
 
-        [string]$RunAsUser = ".\dod_admin",
+        [string]$RunAsUser = "dod_admin",
 
         [securestring]$UserPassword
     )
