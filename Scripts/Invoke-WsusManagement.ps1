@@ -114,6 +114,11 @@ param(
     [Parameter(ParameterSetName = 'Export')]
     [int]$DaysOld = 30,
 
+    # Non-interactive mode (skip prompts, fail on missing required paths)
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [switch]$NonInteractive,
+
     # Common
     [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
     [string]$ContentPath = "C:\WSUS",
@@ -201,11 +206,17 @@ function Write-Log($msg, $color = "White") {
 }
 
 function Write-Banner($title) {
+    # Banner sized for 90-column console window
+    $lineWidth = 88
+    $line = "=" * $lineWidth
+    # Center the title
+    $padding = [math]::Max(0, [math]::Floor(($lineWidth - $title.Length) / 2))
+    $centeredTitle = (" " * $padding) + $title
     $banner = @"
 
-===============================================================================
-                    $title
-===============================================================================
+$line
+$centeredTitle
+$line
 
 "@
     Write-Host $banner -ForegroundColor Cyan
@@ -359,10 +370,11 @@ function Assert-SqlSysadmin {
     $permCheck = Test-SqlSysadmin -SqlInstance $SqlInstance
 
     if (-not $permCheck.HasPermission) {
+        $errLine = "=" * 88
         Write-Host ""
-        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host $errLine -ForegroundColor Red
         Write-Host "  PERMISSION ERROR - Operation Cancelled" -ForegroundColor Red
-        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host $errLine -ForegroundColor Red
         Write-Host ""
         Write-Host "  User: $($permCheck.UserName)" -ForegroundColor White
         Write-Host "  Error: $($permCheck.Message)" -ForegroundColor Yellow
@@ -374,7 +386,7 @@ function Assert-SqlSysadmin {
         Write-Host "    USE [master]" -ForegroundColor Gray
         Write-Host "    ALTER SERVER ROLE [sysadmin] ADD MEMBER [$($permCheck.UserName)]" -ForegroundColor Gray
         Write-Host ""
-        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host $errLine -ForegroundColor Red
         Write-Host ""
 
         Write-Log "PERMISSION ERROR: $($permCheck.Message)" "Red"
@@ -688,9 +700,9 @@ function Invoke-BrowseArchive {
     # YEAR SELECTION
     :yearLoop while ($true) {
         Clear-Host
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host "              BROWSE ARCHIVE - SELECT YEAR" -ForegroundColor Cyan
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host ""
 
         $years = Get-ChildItem -Path $searchPath -Directory -ErrorAction SilentlyContinue |
@@ -728,9 +740,9 @@ function Invoke-BrowseArchive {
             # MONTH SELECTION
             :monthLoop while ($true) {
                 Clear-Host
-                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host ("=" * 88) -ForegroundColor Cyan
                 Write-Host "              BROWSE ARCHIVE - SELECT MONTH ($($selectedYear.Name))" -ForegroundColor Cyan
-                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host ("=" * 88) -ForegroundColor Cyan
                 Write-Host ""
 
                 $months = Get-ChildItem -Path $selectedYear.FullName -Directory -ErrorAction SilentlyContinue |
@@ -769,9 +781,9 @@ function Invoke-BrowseArchive {
                     # BACKUP SELECTION
                     :backupLoop while ($true) {
                         Clear-Host
-                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
                         Write-Host "       SELECT BACKUP ($($selectedYear.Name) / $($selectedMonth.Name))" -ForegroundColor Cyan
-                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
                         Write-Host ""
 
                         # Find all .bak files directly in the month folder
@@ -952,9 +964,9 @@ function Invoke-CopyForAirGap {
 
     :mainLoop while ($true) {
         Clear-Host
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host "              IMPORT FROM EXTERNAL MEDIA" -ForegroundColor Cyan
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host ""
         Write-Host "Source: $ExportSource" -ForegroundColor Gray
         Write-Host ""
@@ -1573,10 +1585,10 @@ function Invoke-WsusReset {
 
 function Show-Menu {
     Clear-Host
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host "              WSUS Management v3.3.0" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host ""
     Write-Host "INSTALLATION" -ForegroundColor Yellow
     Write-Host "  1. Install WSUS with SQL Express 2022"
@@ -1600,7 +1612,7 @@ function Show-Menu {
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
 }
 
 function Invoke-MenuScript {
