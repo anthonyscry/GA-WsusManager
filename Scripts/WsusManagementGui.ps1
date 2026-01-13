@@ -162,6 +162,7 @@ public class ConsolKeySender {
 "@ -ErrorAction SilentlyContinue
 
 $script:KeystrokeTimer = $null
+$script:StdinFlushTimer = $null
 #endregion
 
 #region XAML
@@ -2323,6 +2324,7 @@ function Invoke-LogOperation {
             $psi.UseShellExecute = $false
             $psi.RedirectStandardOutput = $true
             $psi.RedirectStandardError = $true
+            $psi.RedirectStandardInput = $true
             $psi.CreateNoWindow = $true
             $psi.WorkingDirectory = $sr
 
@@ -2369,9 +2371,12 @@ function Invoke-LogOperation {
 
             $exitHandler = {
                 $data = $Event.MessageData
-                # Stop the timer IMMEDIATELY to prevent race conditions
+                # Stop all timers IMMEDIATELY to prevent race conditions
                 if ($null -ne $script:OpCheckTimer) {
                     $script:OpCheckTimer.Stop()
+                }
+                if ($null -ne $script:StdinFlushTimer) {
+                    $script:StdinFlushTimer.Stop()
                 }
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
@@ -2407,6 +2412,24 @@ function Invoke-LogOperation {
             $script:CurrentProcess.BeginOutputReadLine()
             $script:CurrentProcess.BeginErrorReadLine()
 
+            # Stdin flush timer - sends newlines to StandardInput every 2 seconds to flush output buffer
+            $script:StdinFlushTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:StdinFlushTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:StdinFlushTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        # Write empty line to stdin to help flush any buffered output
+                        $script:CurrentProcess.StandardInput.WriteLine("")
+                        $script:CurrentProcess.StandardInput.Flush()
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore stdin write errors (process may have exited)
+                }
+            })
+            $script:StdinFlushTimer.Start()
+
             # Use a timer to force UI refresh (keeps log responsive)
             # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
             $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
@@ -2422,6 +2445,9 @@ function Invoke-LogOperation {
                 # Backup cleanup: only if process exited but exitHandler didn't fire
                 if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                     $this.Stop()
+                    if ($null -ne $script:StdinFlushTimer) {
+                        $script:StdinFlushTimer.Stop()
+                    }
                     # Only do cleanup if exitHandler didn't already (check if still marked as running)
                     if ($script:OperationRunning) {
                         $script:OperationRunning = $false
@@ -2438,6 +2464,9 @@ function Invoke-LogOperation {
             $script:OperationRunning = $false
             Enable-OperationButtons
             $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:StdinFlushTimer) {
+                $script:StdinFlushTimer.Stop()
+            }
         }
     }
 }
