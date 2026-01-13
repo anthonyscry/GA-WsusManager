@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 env:
-  DEFAULT_VERSION: '3.8.1'
+  DEFAULT_VERSION: '3.8.6'
 
 jobs:
   #############################################
