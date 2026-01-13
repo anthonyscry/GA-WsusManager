@@ -1718,7 +1718,7 @@ function Show-ScheduleTaskDialog {
     $schedLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($schedLbl) | Out-Null
 
-    # Schedule ComboBox
+    # Schedule ComboBox with readable dropdown styling
     $schedCombo = New-Object System.Windows.Controls.ComboBox
     $schedCombo.Items.Add("Weekly") | Out-Null
     $schedCombo.Items.Add("Monthly") | Out-Null
@@ -1729,6 +1729,13 @@ function Show-ScheduleTaskDialog {
     $schedCombo.Foreground = $brushText
     $schedCombo.BorderBrush = $brushBorder
     $schedCombo.BorderThickness = "1"
+    $schedCombo.Padding = "6,4"
+    $schedCombo.FontSize = 13
+    # Override system colors for dropdown popup readability
+    $schedCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $schedCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
+    $schedCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
+    $schedCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
     $mainStack.Children.Add($schedCombo) | Out-Null
     $script:ScheduleDialogControls.ScheduleCombo = $schedCombo
 
@@ -1750,6 +1757,13 @@ function Show-ScheduleTaskDialog {
     $dowCombo.Foreground = $brushText
     $dowCombo.BorderBrush = $brushBorder
     $dowCombo.BorderThickness = "1"
+    $dowCombo.Padding = "6,4"
+    $dowCombo.FontSize = 13
+    # Override system colors for dropdown popup readability
+    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
+    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
+    $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
     $dowPanel.Children.Add($dowCombo) | Out-Null
     $script:ScheduleDialogControls.DowCombo = $dowCombo
 
@@ -1805,7 +1819,7 @@ function Show-ScheduleTaskDialog {
     $profLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($profLbl) | Out-Null
 
-    # Profile ComboBox
+    # Profile ComboBox with readable dropdown styling
     $profCombo = New-Object System.Windows.Controls.ComboBox
     @("Full","Quick","SyncOnly") | ForEach-Object { $profCombo.Items.Add($_) | Out-Null }
     $profCombo.SelectedItem = "Full"
@@ -1813,6 +1827,13 @@ function Show-ScheduleTaskDialog {
     $profCombo.Foreground = $brushText
     $profCombo.BorderBrush = $brushBorder
     $profCombo.BorderThickness = "1"
+    $profCombo.Padding = "6,4"
+    $profCombo.FontSize = 13
+    # Override system colors for dropdown popup readability
+    $profCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $profCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
+    $profCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
+    $profCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
     $profCombo.Margin = "0,0,0,12"
     $mainStack.Children.Add($profCombo) | Out-Null
     $script:ScheduleDialogControls.ProfileCombo = $profCombo
@@ -2525,9 +2546,24 @@ function Invoke-LogOperation {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
             # Configure console window size (font size controlled by user's PowerShell defaults)
-            $setupConsole = "mode con: cols=100 lines=20; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
-            # Wrap command in try/finally so prompt ALWAYS shows even if script errors
-            $wrappedCmd = "$setupConsole; try { $cmd } catch { Write-Host ('ERROR: ' + `$_.Exception.Message) -ForegroundColor Red } finally { Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host ''; Write-Host 'Press ENTER to close this window...' -ForegroundColor Yellow; Read-Host }"
+            $setupConsole = "mode con: cols=90 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            # Wrap command in try/finally with 30-second auto-close countdown
+            $autoCloseScript = @'
+Write-Host ''
+Write-Host '=== Operation Complete ===' -ForegroundColor Green
+Write-Host ''
+Write-Host 'Press ENTER to close, or window will close in 30 seconds...' -ForegroundColor Yellow
+$countdown = 30
+while ($countdown -gt 0) {
+    if ([Console]::KeyAvailable) {
+        $null = [Console]::ReadKey($true)
+        break
+    }
+    Start-Sleep -Milliseconds 1000
+    $countdown--
+}
+'@
+            $wrappedCmd = "$setupConsole; try { $cmd } catch { Write-Host ('ERROR: ' + `$_.Exception.Message) -ForegroundColor Red }; $autoCloseScript"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
             $psi.UseShellExecute = $true
             $psi.CreateNoWindow = $false
@@ -2590,32 +2626,29 @@ function Invoke-LogOperation {
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
 
-            # Position and resize the console window to match log panel area
+            # Position console window - slightly smaller than main window and centered
             try {
                 $hWnd = $script:CurrentProcess.MainWindowHandle
                 if ($hWnd -ne [IntPtr]::Zero) {
-                    # Get main window position
+                    # Get main window position and size
                     $mainLeft = [int]$script:window.Left
                     $mainTop = [int]$script:window.Top
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
-                    # Position console in log panel area (right side of app, above bottom)
-                    # Sidebar is ~180px, content area starts at ~200px
-                    $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
-                    $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
+                    # Console is 80% of main window size
+                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.8))
+                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.7))
 
-                    $consoleHeight = 220  # Slightly smaller than log panel
-                    # Position at sidebar offset, constrained to app width
-                    $consoleX = [math]::Max(0, $mainLeft + 195)
-                    $consoleY = [math]::Max(0, $mainTop + $mainHeight - 255)  # Near bottom
-                    # Width = app width minus sidebar minus margins (keep within app boundary)
-                    $consoleWidth = [math]::Min(($mainWidth - 215), ($mainLeft + $mainWidth - $consoleX - 15))
-                    $consoleWidth = [math]::Max(350, $consoleWidth)  # Min 350px
+                    # Center console within main window
+                    $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)
+                    $consoleY = $mainTop + [int](($mainHeight - $consoleHeight) / 2)
 
                     # Apply screen bounds
-                    $consoleX = [math]::Min($consoleX, $screenWidth - $consoleWidth - 10)
-                    $consoleY = [math]::Min($consoleY, $screenHeight - $consoleHeight - 40)
+                    $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
+                    $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
+                    $consoleX = [math]::Max(0, [math]::Min($consoleX, $screenWidth - $consoleWidth - 10))
+                    $consoleY = [math]::Max(0, [math]::Min($consoleY, $screenHeight - $consoleHeight - 40))
 
                     [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
                 }
