@@ -50,7 +50,13 @@ param(
     [switch]$SkipExport,
 
     # SQL Server credentials for database operations (prompted if not provided)
-    [System.Management.Automation.PSCredential]$SqlCredential
+    [System.Management.Automation.PSCredential]$SqlCredential,
+
+    # Skip transcript logging (use when called from GUI which captures stdout/stderr)
+    [switch]$NoTranscript,
+
+    # Force Windows Authentication (logged-in user) for all DB operations
+    [switch]$UseWindowsAuth
 )
 
 # Import shared modules
@@ -152,9 +158,15 @@ $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Obj
 $ScriptVersion = "3.0.5"
 
 # === SQL CREDENTIAL HANDLING ===
+# UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
 # Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
-# Unattended/Scheduled task mode: Use stored SQL credential (dod_admin)
-if ($Unattended) {
+# Unattended/Scheduled task mode: Use stored SQL credential if available
+if ($UseWindowsAuth) {
+    # Force Windows Authentication (typically when called from GUI)
+    Write-Host "[i] Using Windows Integrated Authentication (logged-in user) for SQL operations" -ForegroundColor Cyan
+    $SqlCredential = $null
+    $script:UseSqlCredential = $false
+} elseif ($Unattended) {
     # Scheduled task mode - use stored SQL credential
     if (-not $SqlCredential) {
         $SqlCredential = Get-WsusSqlCredential -Quiet
@@ -162,19 +174,7 @@ if ($Unattended) {
             Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
         } else {
             Write-Warning "No SQL credential available for unattended mode."
-            $createCred = Read-Host "Create and store SQL credential now? (Y/N)"
-            if ($createCred -match '^[Yy]') {
-                if (Set-WsusSqlCredential -Username "sa") {
-                    $SqlCredential = Get-WsusSqlCredential -Quiet
-                    if ($SqlCredential) {
-                        Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
-                    }
-                }
-            }
-            if (-not $SqlCredential) {
-                Write-Warning "Direct SQL operations will be skipped."
-                Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for scheduled task use."
-            }
+            Write-Warning "Using Windows Integrated Authentication instead."
         }
     }
     $script:UseSqlCredential = ($null -ne $SqlCredential)
@@ -539,7 +539,14 @@ if ($Unattended) {
 }
 
 # Setup logging using module function
-$null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+# Use shared daily log when called from GUI, per-script log when run standalone
+if ($NoTranscript) {
+    # From GUI - use shared daily log (all operations in one file)
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -SharedLog
+} else {
+    # Standalone - use timestamped per-script log
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+}
 
 Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
 

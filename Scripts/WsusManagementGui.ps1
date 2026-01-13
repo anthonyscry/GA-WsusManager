@@ -62,7 +62,8 @@ if ($exePath -and $exePath -notmatch 'powershell\.exe$|pwsh\.exe$') {
 }
 
 $script:LogDir = "C:\WSUS\Logs"
-$script:LogPath = Join-Path $script:LogDir "WsusGui_$(Get-Date -Format 'yyyy-MM-dd').log"
+# Use shared daily log file - all operations go to one log
+$script:LogPath = Join-Path $script:LogDir "WsusOperations_$(Get-Date -Format 'yyyy-MM-dd').log"
 $script:SettingsFile = Join-Path $env:APPDATA "WsusManager\settings.json"
 $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
@@ -78,6 +79,8 @@ $script:OutputEventJob = $null
 $script:ErrorEventJob = $null
 $script:ExitEventJob = $null
 $script:OpCheckTimer = $null
+# Deduplication tracking - prevents same line appearing multiple times
+$script:RecentLines = @{}
 
 function Write-Log { param([string]$Msg)
     try {
@@ -755,7 +758,10 @@ function Stop-CurrentOperation {
         $script:CurrentProcess = $null
     }
 
-    # 4. Reset operation state
+    # 4. Clear deduplication cache
+    $script:RecentLines = @{}
+
+    # 5. Reset operation state
     $script:OperationRunning = $false
 }
 
@@ -2115,7 +2121,7 @@ function Invoke-LogOperation {
             $opts = Show-MaintenanceDialog
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
-            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)'"
+            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
         }
         "schedule" {
             $opts = Show-ScheduleTaskDialog
@@ -2158,8 +2164,9 @@ function Invoke-LogOperation {
     Disable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Visible"
 
-    # Clear log before starting new operation (prevents old/new output mixing)
+    # Clear log and deduplication cache before starting new operation
     $controls.LogOutput.Clear()
+    $script:RecentLines = @{}
 
     Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
@@ -2189,20 +2196,30 @@ function Invoke-LogOperation {
 
         $outputHandler = {
             $line = $Event.SourceEventArgs.Data
-            if ($line) {
-                $data = $Event.MessageData
-                $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
-                # Format message BEFORE dispatch to capture values properly
-                $timestamp = Get-Date -Format "HH:mm:ss"
-                $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
-                $formattedLine = "[$timestamp] $prefix $line`r`n"
-                $logOutput = $data.Controls.LogOutput
-                # Use BeginInvoke with closure to capture formatted values
-                $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
-                    $logOutput.AppendText($formattedLine)
-                    $logOutput.ScrollToEnd()
-                }.GetNewClosure())
+            # Skip empty or whitespace-only lines
+            if ([string]::IsNullOrWhiteSpace($line)) { return }
+
+            # Deduplication: Skip if we just saw this exact line (within 2 second window)
+            $lineHash = $line.Trim().GetHashCode().ToString()
+            $now = [DateTime]::UtcNow.Ticks
+            $lastSeen = $script:RecentLines[$lineHash]
+            if ($lastSeen -and ($now - $lastSeen) -lt 20000000) {  # 2 seconds in ticks
+                return  # Skip duplicate
             }
+            $script:RecentLines[$lineHash] = $now
+
+            $data = $Event.MessageData
+            $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
+            # Format message BEFORE dispatch to capture values properly
+            $timestamp = Get-Date -Format "HH:mm:ss"
+            $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+            $formattedLine = "[$timestamp] $prefix $line`r`n"
+            $logOutput = $data.Controls.LogOutput
+            # Use BeginInvoke with closure to capture formatted values
+            $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
+                $logOutput.AppendText($formattedLine)
+                $logOutput.ScrollToEnd()
+            }.GetNewClosure())
         }
 
         $exitHandler = {
