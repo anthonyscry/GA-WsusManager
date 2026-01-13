@@ -75,23 +75,25 @@ Describe "Script Syntax Validation" {
 Describe "Module Loading" {
     Context "All modules load without errors" {
         BeforeDiscovery {
+            # Must set path in BeforeDiscovery for -ForEach tests to use
+            $script:TestModulesPath = Join-Path (Split-Path -Parent $PSScriptRoot) "Modules"
             $script:ModuleList = @(
-                @{ ModuleName = "WsusUtilities" }
-                @{ ModuleName = "WsusServices" }
-                @{ ModuleName = "WsusFirewall" }
-                @{ ModuleName = "WsusPermissions" }
-                @{ ModuleName = "WsusDatabase" }
-                @{ ModuleName = "WsusHealth" }
-                @{ ModuleName = "WsusConfig" }
-                @{ ModuleName = "WsusExport" }
-                @{ ModuleName = "WsusScheduledTask" }
-                @{ ModuleName = "WsusAutoDetection" }
-                @{ ModuleName = "AsyncHelpers" }
+                @{ ModuleName = "WsusUtilities"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusServices"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusFirewall"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusPermissions"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusDatabase"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusHealth"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusConfig"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusExport"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusScheduledTask"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusAutoDetection"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "AsyncHelpers"; ModulesPath = $script:TestModulesPath }
             )
         }
 
         It "<ModuleName>.psm1 loads without errors" -ForEach $script:ModuleList {
-            $modulePath = Join-Path $script:ModulesPath "$ModuleName.psm1"
+            $modulePath = Join-Path $ModulesPath "$ModuleName.psm1"
             { Import-Module $modulePath -Force -DisableNameChecking -ErrorAction Stop } | Should -Not -Throw
         }
     }
