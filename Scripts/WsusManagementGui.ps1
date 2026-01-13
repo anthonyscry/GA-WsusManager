@@ -126,8 +126,9 @@ function Get-EscapedPath { param([string]$Path)
 function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     if ($Path -match '[`$;|&<>]') { return $false }
-    # Accept both local paths (C:\) and UNC paths (\\server\share)
-    if ($Path -notmatch '^([A-Za-z]:\\|\\\\[A-Za-z0-9_.-]+\\)') { return $false }
+    # Accept both local paths (C:\) and UNC paths (\\server\share or \\server\share$)
+    # UNC pattern: \\server\share where share can include $ for admin shares
+    if ($Path -notmatch '^([A-Za-z]:\\|\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.$-]+)') { return $false }
     return $true
 }
 
@@ -651,13 +652,15 @@ function Get-TaskStatus {
 
 function Test-InternetConnection {
     # Use .NET Ping with short timeout (500ms) to avoid blocking UI
+    $ping = $null
     try {
         $ping = New-Object System.Net.NetworkInformation.Ping
         $reply = $ping.Send("8.8.8.8", 500)  # Google DNS, 500ms timeout
-        $ping.Dispose()
-        return ($reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+        return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
     } catch {
         return $false
+    } finally {
+        if ($null -ne $ping) { $ping.Dispose() }
     }
 }
 
@@ -2327,9 +2330,9 @@ function Invoke-LogOperation {
 
                     # Position console below the main content area (where log panel would be)
                     # Sidebar is ~180px, leave some margin
-                    $consoleX = $mainLeft + 200
-                    $consoleY = $mainTop + $mainHeight - 280  # Above the bottom edge
-                    $consoleWidth = $mainWidth - 220  # Account for sidebar + margins
+                    $consoleX = [math]::Max(0, $mainLeft + 200)
+                    $consoleY = [math]::Max(0, $mainTop + $mainHeight - 280)  # Above the bottom edge
+                    $consoleWidth = [math]::Max(400, $mainWidth - 220)  # Account for sidebar + margins, min 400px
                     $consoleHeight = 250  # Same as log panel height
 
                     [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
