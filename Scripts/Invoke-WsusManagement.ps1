@@ -294,6 +294,97 @@ function Test-ValidPath {
     return $result
 }
 
+function Test-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Checks if the current user has sysadmin permissions on SQL Server
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .OUTPUTS
+        Hashtable with HasPermission (bool), Message (string), and UserName (string)
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS"
+    )
+
+    $result = @{
+        HasPermission = $false
+        Message = ""
+        UserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    }
+
+    try {
+        # First check if SQL Server is running
+        $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if (-not $sqlService -or $sqlService.Status -ne 'Running') {
+            $result.Message = "SQL Server is not running"
+            return $result
+        }
+
+        # Check sysadmin membership using Invoke-Sqlcmd
+        $query = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+        $checkResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Query $query -ErrorAction Stop
+
+        if ($checkResult.IsSysAdmin -eq 1) {
+            $result.HasPermission = $true
+            $result.Message = "User has sysadmin permissions"
+        } else {
+            $result.Message = "User '$($result.UserName)' does not have sysadmin permissions on SQL Server"
+        }
+    } catch {
+        $result.Message = "Failed to check SQL permissions: $($_.Exception.Message)"
+    }
+
+    return $result
+}
+
+function Assert-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Verifies sysadmin permissions and exits with error if not granted
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .PARAMETER OperationName
+        Name of the operation being attempted (for error message)
+    .OUTPUTS
+        Returns $true if permissions OK, exits script if not
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [string]$OperationName = "database operation"
+    )
+
+    Write-Host "Checking SQL Server permissions..." -ForegroundColor Yellow
+
+    $permCheck = Test-SqlSysadmin -SqlInstance $SqlInstance
+
+    if (-not $permCheck.HasPermission) {
+        Write-Host ""
+        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host "  PERMISSION ERROR - Operation Cancelled" -ForegroundColor Red
+        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  User: $($permCheck.UserName)" -ForegroundColor White
+        Write-Host "  Error: $($permCheck.Message)" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  The '$OperationName' operation requires SQL Server sysadmin permissions." -ForegroundColor White
+        Write-Host ""
+        Write-Host "  To grant sysadmin permissions, run as SA or existing sysadmin:" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "    USE [master]" -ForegroundColor Gray
+        Write-Host "    ALTER SERVER ROLE [sysadmin] ADD MEMBER [$($permCheck.UserName)]" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "===============================================================================" -ForegroundColor Red
+        Write-Host ""
+
+        Write-Log "PERMISSION ERROR: $($permCheck.Message)" "Red"
+        return $false
+    }
+
+    Write-Host "  Permissions OK: $($permCheck.UserName)" -ForegroundColor Green
+    return $true
+}
+
 # ============================================================================
 # RESTORE OPERATION
 # ============================================================================
@@ -306,6 +397,11 @@ function Invoke-WsusRestore {
     )
 
     Write-Banner "WSUS DATABASE RESTORE"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Database Restore")) {
+        return
+    }
 
     $SqlCmdExe = Get-SqlCmd
     if (-not $SqlCmdExe) {
@@ -1381,6 +1477,11 @@ function Invoke-WsusCleanup {
     )
 
     Write-Banner "WSUS DEEP CLEANUP"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Deep Cleanup")) {
+        return
+    }
 
     # Use the globally resolved modules folder
     if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
