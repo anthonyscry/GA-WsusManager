@@ -161,15 +161,25 @@ Imports updates from USB media to an air-gapped server.
 
 **Steps:**
 1. Click **Import from Media**
-2. Select source folder (USB drive)
-3. Click **Import**
+2. In the Transfer dialog:
+   - Select **Import** direction
+   - Browse to **Source (External Media)** folder on USB drive
+   - Browse to **Destination (WSUS Server)** folder (default: `C:\WSUS`)
+3. Click **Start Transfer**
 4. Wait for import to complete
 
-> **Note:** The import runs non-interactively using the selected folder and will not prompt for additional input.
+> **Note:** The import runs fully non-interactive using the selected folders and will not prompt for additional input during the copy operation.
+
+**Dialog Options:**
+| Field | Description | Default |
+|-------|-------------|---------|
+| Source (External Media) | USB drive or network path containing export | (Browse required) |
+| Destination (WSUS Server) | Local WSUS content directory | `C:\WSUS` |
 
 **Prerequisites:**
-- Valid export folder structure
-- Sufficient disk space
+- Valid export folder structure on source media
+- Sufficient disk space on destination
+- WSUS services running
 
 ### Monthly Maintenance
 

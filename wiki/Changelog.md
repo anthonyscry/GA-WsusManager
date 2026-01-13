@@ -4,6 +4,38 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.7] - January 2026
+
+### Features
+- **Live Terminal Mode:**
+  - New toggle in log panel header opens operations in external PowerShell window
+  - Console positioned near log panel with smaller text (100x15 chars)
+  - Keystroke timer flushes output buffer every 2 seconds
+  - Setting persists across sessions
+- **Enhanced Import Dialog:**
+  - Two folder browsers: source (external media) and destination (WSUS server)
+  - Default destination: C:\WSUS
+  - Fully non-interactive - no prompts during import operations
+
+### Improvements
+- **Non-blocking network check:**
+  - Uses .NET Ping with 500ms timeout instead of Test-Connection
+  - Prevents UI freeze during dashboard refresh
+- **Better sync progress output:**
+  - Shows percentage (e.g., "Syncing: DownloadUpdates (45.2%)")
+  - Only logs on phase change or 10% progress
+  - Logs near completion (95%+) to avoid gaps
+
+### Bug Fixes
+- **Fixed**: Schedule Task crash - parameter renamed to `-MaintenanceProfile`
+- **Fixed**: UNC paths rejected - `Test-SafePath` now accepts `\\server\share`
+- **Fixed**: Dashboard null reference - added null checks to `Update-Dashboard`
+- **Fixed**: Timer cleanup - `KeystrokeTimer` and `StdinFlushTimer` now properly disposed
+- **Fixed**: Console window off-screen - added bounds checking (min 400px width)
+- **Fixed**: Day validation - expanded from 1-28 to 1-31 for monthly schedules
+
+---
+
 ## [3.8.6] - January 2026
 
 ### Bug Fixes

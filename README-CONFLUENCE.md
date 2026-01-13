@@ -2,8 +2,8 @@
 
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
-| **Version** | 3.8.3 |
-| **Last Updated** | March 2026 |
+| **Version** | 3.8.7 |
+| **Last Updated** | January 2026 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
 
