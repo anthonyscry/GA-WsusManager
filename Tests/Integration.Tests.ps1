@@ -74,25 +74,25 @@ Describe "Script Syntax Validation" {
 
 Describe "Module Loading" {
     Context "All modules load without errors" {
-        $moduleNames = @(
-            "WsusUtilities"
-            "WsusServices"
-            "WsusFirewall"
-            "WsusPermissions"
-            "WsusDatabase"
-            "WsusHealth"
-            "WsusConfig"
-            "WsusExport"
-            "WsusScheduledTask"
-            "WsusAutoDetection"
-            "AsyncHelpers"
-        )
+        BeforeDiscovery {
+            $script:ModuleList = @(
+                @{ ModuleName = "WsusUtilities" }
+                @{ ModuleName = "WsusServices" }
+                @{ ModuleName = "WsusFirewall" }
+                @{ ModuleName = "WsusPermissions" }
+                @{ ModuleName = "WsusDatabase" }
+                @{ ModuleName = "WsusHealth" }
+                @{ ModuleName = "WsusConfig" }
+                @{ ModuleName = "WsusExport" }
+                @{ ModuleName = "WsusScheduledTask" }
+                @{ ModuleName = "WsusAutoDetection" }
+                @{ ModuleName = "AsyncHelpers" }
+            )
+        }
 
-        foreach ($moduleName in $moduleNames) {
-            It "$moduleName.psm1 loads without errors" {
-                $modulePath = Join-Path $script:ModulesPath "$moduleName.psm1"
-                { Import-Module $modulePath -Force -DisableNameChecking -ErrorAction Stop } | Should -Not -Throw
-            }
+        It "<ModuleName>.psm1 loads without errors" -ForEach $script:ModuleList {
+            $modulePath = Join-Path $script:ModulesPath "$ModuleName.psm1"
+            { Import-Module $modulePath -Force -DisableNameChecking -ErrorAction Stop } | Should -Not -Throw
         }
     }
 
