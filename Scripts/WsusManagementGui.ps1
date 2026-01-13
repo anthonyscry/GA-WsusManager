@@ -747,16 +747,34 @@ function Enable-OperationButtons {
 
 function Stop-CurrentOperation {
     # Properly cleans up all resources from a running operation
-    # Unregisters events, stops timer, disposes process, resets state
+    # Unregisters events, stops timers, disposes process, resets state
     param([switch]$SuppressLog)
 
-    # 1. Stop the backup timer first (prevents race conditions)
+    # 1. Stop all timers first (prevents race conditions)
     if ($null -ne $script:OpCheckTimer) {
         try {
             $script:OpCheckTimer.Stop()
             $script:OpCheckTimer = $null
         } catch {
             if (-not $SuppressLog) { Write-Log "Timer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:KeystrokeTimer) {
+        try {
+            $script:KeystrokeTimer.Stop()
+            $script:KeystrokeTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "KeystrokeTimer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:StdinFlushTimer) {
+        try {
+            $script:StdinFlushTimer.Stop()
+            $script:StdinFlushTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "StdinFlushTimer stop warning: $_" }
         }
     }
 
@@ -1550,7 +1568,7 @@ function Show-ScheduleTaskDialog {
     $dayOfMonthPanel.Visibility = "Collapsed"
 
     $domLbl = New-Object System.Windows.Controls.TextBlock
-    $domLbl.Text = "Day of Month (1-28):"
+    $domLbl.Text = "Day of Month (1-31):"
     $domLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $domLbl.Margin = "0,0,0,6"
     $dayOfMonthPanel.Children.Add($domLbl)
@@ -1653,7 +1671,7 @@ function Show-ScheduleTaskDialog {
             $dayOfWeekPanel.Visibility = "Collapsed"
             $dayOfMonthPanel.Visibility = "Collapsed"
         }
-    })
+    }.GetNewClosure())
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1675,8 +1693,8 @@ function Show-ScheduleTaskDialog {
         $scheduleValue = $scheduleCombo.SelectedItem.ToString()
         $domValue = 1
         if ($scheduleValue -eq "Monthly") {
-            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 28) {
-                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 28.", "Schedule", "OK", "Warning")
+            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 31) {
+                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning")
                 return
             }
         }
@@ -2608,8 +2626,10 @@ $controls.BtnSaveLog.Add_Click({
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
+    Stop-CurrentOperation
+    Enable-OperationButtons
     $controls.BtnCancel.Visibility = "Collapsed"
+    Set-Status "Cancelled"
 })
 #endregion
 
