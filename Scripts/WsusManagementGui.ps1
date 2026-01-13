@@ -1739,7 +1739,18 @@ function Show-ScheduleTaskDialog {
     $schedLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($schedLbl) | Out-Null
 
-    # Schedule ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
+    # =========================================================================
+    # COMBOBOX DARK THEME WORKAROUND
+    # =========================================================================
+    # WPF ComboBoxes use native Windows controls for their collapsed display area,
+    # which ignores WPF Background/Foreground properties and system color overrides.
+    # This causes white-on-white text in dark themed dialogs.
+    #
+    # SOLUTION: Set IsEditable=True and IsReadOnly=True
+    # This forces WPF to use a TextBox-based ContentPresenter for the display area,
+    # which properly respects the Background and Foreground properties.
+    # The IsReadOnly prevents user text input while maintaining dropdown functionality.
+    # =========================================================================
     $schedCombo = New-Object System.Windows.Controls.ComboBox
     $schedCombo.Items.Add("Weekly") | Out-Null
     $schedCombo.Items.Add("Monthly") | Out-Null
@@ -2563,10 +2574,22 @@ function Invoke-LogOperation {
             $psi.FileName = "powershell.exe"
             # Configure console window size (font size controlled by user's PowerShell defaults)
             $setupConsole = "mode con: cols=80 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
-            # Wrap command in try/finally with 30-second auto-close countdown
-            # Note: The keystroke timer sends Enter every 2 seconds to flush output.
-            # To avoid the automatic Enter keys closing the window early, we only accept
-            # ESC or Q to close immediately - Enter keys are ignored during countdown.
+            # =========================================================================
+            # AUTO-CLOSE SCRIPT WITH RESPONSIVE KEY HANDLING
+            # =========================================================================
+            # After operation completes, show a 30-second countdown before auto-closing.
+            # User can press ESC or Q to close immediately.
+            #
+            # KEY HANDLING DESIGN:
+            # - Loop runs every 100ms (300 iterations = 30 seconds) for responsive input
+            # - Inner while loop drains ALL buffered keystrokes each iteration
+            # - Only ESC and Q keys trigger immediate close; Enter is ignored
+            # - Enter is ignored because the keystroke timer sends Enter every 2 seconds
+            #   to flush PowerShell output buffers, and we don't want those to close the window
+            #
+            # Previous issue: 1-second sleep between key checks caused "smashing" behavior
+            # where users had to press keys multiple times to register input.
+            # =========================================================================
             $autoCloseScript = @'
 Write-Host ''
 Write-Host '=== Operation Complete ===' -ForegroundColor Green
@@ -2574,7 +2597,7 @@ Write-Host ''
 Write-Host 'Window will close in 30 seconds. Press ESC or Q to close now...' -ForegroundColor Yellow
 $countdown = 300
 while ($countdown -gt 0) {
-    # Drain all available keys and check for ESC/Q
+    # Drain all available keys from buffer and check for ESC/Q
     while ([Console]::KeyAvailable) {
         $key = [Console]::ReadKey($true)
         if ($key.Key -eq [ConsoleKey]::Escape -or $key.Key -eq [ConsoleKey]::Q) {
@@ -2650,17 +2673,34 @@ while ($countdown -gt 0) {
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
 
-            # Position console window - slightly smaller than main window and centered
+            # =========================================================================
+            # LIVE TERMINAL WINDOW POSITIONING
+            # =========================================================================
+            # Position the PowerShell console window centered within the main app window.
+            # This creates a "nested" visual effect where the terminal appears on top of
+            # the main application, making it clear which window the user should interact with.
+            #
+            # Size: 60% of main window dimensions (with 400x300 minimum)
+            #   - Smaller percentages keep the window fully inside the main app
+            #   - The 80-column mode (set via 'mode con:') determines text wrapping
+            #
+            # Position: Centered horizontally and vertically within main window bounds
+            #   - Clamped to screen edges to prevent off-screen placement
+            #   - 10px/40px margins from screen edges for taskbar visibility
+            #
+            # Uses Win32 SetWindowPos via ConsoleWindowHelper P/Invoke class
+            # =========================================================================
             try {
                 $hWnd = $script:CurrentProcess.MainWindowHandle
                 if ($hWnd -ne [IntPtr]::Zero) {
-                    # Get main window position and size
+                    # Get main window position and size for centering calculation
                     $mainLeft = [int]$script:window.Left
                     $mainTop = [int]$script:window.Top
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
                     # Console is 60% of main window size (fits centered within app)
+                    # Min 400x300 ensures usability on small windows
                     $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.60))
                     $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.60))
 
@@ -2668,7 +2708,7 @@ while ($countdown -gt 0) {
                     $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)
                     $consoleY = $mainTop + [int](($mainHeight - $consoleHeight) / 2)
 
-                    # Apply screen bounds
+                    # Clamp to screen bounds to prevent off-screen placement
                     $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
                     $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
                     $consoleX = [math]::Max(0, [math]::Min($consoleX, $screenWidth - $consoleWidth - 10))
