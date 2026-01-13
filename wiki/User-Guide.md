@@ -122,15 +122,15 @@ Installs WSUS with SQL Server Express from scratch.
 
 ### Create GPO
 
-Copies Group Policy Objects to `C:\WSUS GPO` for transfer to a Domain Controller.
+Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Controller.
 
 **Steps:**
 1. Click **Create GPO**
 2. Confirm the copy operation
-3. Copy the `C:\WSUS GPO` folder to the Domain Controller
+3. Copy the `C:\WSUS\WSUS GPO` folder to the Domain Controller
 4. On the DC, run as Administrator:
    ```powershell
-   cd 'C:\WSUS GPO'
+   cd 'C:\WSUS\WSUS GPO'
    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
    ```
 
