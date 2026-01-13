@@ -228,8 +228,11 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Fixed UNC path validation: `Test-SafePath` now accepts `\\server\share` paths
   - Added null checks to `Update-Dashboard` to prevent crashes during initialization
   - Fixed timer cleanup in `Stop-CurrentOperation` for `KeystrokeTimer` and `StdinFlushTimer`
-  - Added bounds checking for console window positioning (min 400px width)
+  - Added bounds checking for console window positioning (min 400px width, max screen bounds)
   - Expanded scheduled task day validation from 1-28 to 1-31
+  - Fixed Import CLI parameter set: `SourcePath`/`DestinationPath` now work for Import operations
+  - Fixed button state after operation completes: calls `Update-WsusButtonState` to respect WSUS installation
+  - Fixed Create GPO handler: disables buttons during operation, re-enables on completion
 
 ### Previous (v3.8.6)
 

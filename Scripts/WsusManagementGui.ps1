@@ -2477,6 +2477,8 @@ function Invoke-LogOperation {
                             $data.Controls[$inputName].Opacity = 1.0
                         }
                     }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
                 })
                 $script:OperationRunning = $false
             }
@@ -2508,10 +2510,19 @@ function Invoke-LogOperation {
 
                     # Position console below the main content area (where log panel would be)
                     # Sidebar is ~180px, leave some margin
+                    # Get screen dimensions for bounds checking
+                    $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
+                    $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
+
+                    $consoleHeight = 250  # Same as log panel height
                     $consoleX = [math]::Max(0, $mainLeft + 200)
                     $consoleY = [math]::Max(0, $mainTop + $mainHeight - 280)  # Above the bottom edge
                     $consoleWidth = [math]::Max(400, $mainWidth - 220)  # Account for sidebar + margins, min 400px
-                    $consoleHeight = 250  # Same as log panel height
+
+                    # Apply maximum bounds to prevent off-screen positioning
+                    $consoleX = [math]::Min($consoleX, $screenWidth - $consoleWidth - 20)
+                    $consoleY = [math]::Min($consoleY, $screenHeight - $consoleHeight - 50)
+                    $consoleWidth = [math]::Min($consoleWidth, $screenWidth - $consoleX - 20)
 
                     [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
                 }
@@ -2655,6 +2666,8 @@ function Invoke-LogOperation {
                             $data.Controls[$inputName].Opacity = 1.0
                         }
                     }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
                 })
                 # Reset the operation running flag (script scope accessible from event handler)
                 $script:OperationRunning = $false
@@ -2766,6 +2779,9 @@ $controls.BtnCreateGpo.Add_Click({
 
     if ($result -ne "Yes") { return }
 
+    # Disable buttons during operation
+    Disable-OperationButtons
+
     # Expand log panel and show progress
     if (-not $script:LogExpanded) {
         $controls.LogPanel.Height = 250
@@ -2830,6 +2846,9 @@ GPO files copied to: $destDir
     } catch {
         Write-LogOutput "Error: $_" -Level Error
         [System.Windows.MessageBox]::Show("Failed to create GPO files: $_", "Error", "OK", "Error")
+    } finally {
+        # Re-enable buttons (respects WSUS installation status)
+        Enable-OperationButtons
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
