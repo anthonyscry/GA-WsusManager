@@ -208,7 +208,7 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Destination folder: WSUS server path (default: C:\WSUS)
   - Both paths passed to CLI, eliminating all interactive prompts
 - **Create GPO button:**
-  - New button in Setup menu copies GPO files to `C:\WSUS GPO`
+  - New button in Setup menu copies GPO files to `C:\WSUS\WSUS GPO`
   - Shows detailed instructions for DC admin
   - Includes commands to force client check-in and verify GPO application
 - **WSUS installation detection:**
@@ -233,6 +233,21 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Fixed Import CLI parameter set: `SourcePath`/`DestinationPath` now work for Import operations
   - Fixed button state after operation completes: calls `Update-WsusButtonState` to respect WSUS installation
   - Fixed Create GPO handler: disables buttons during operation, re-enables on completion
+- **Live Terminal improvements:**
+  - Console window now uses try/finally so "Press Enter" prompt always shows even on error
+  - Changed from ReadKey to Read-Host for better compatibility
+  - Error messages displayed with red text in catch block
+- **Schedule Task dialog rewrite:**
+  - Complete rewrite to fix null reference exceptions during ShowDialog()
+  - Uses script-scope variables for event handlers to avoid closure capture issues
+  - Added PowerShell comment-based help documentation
+  - Null safety check for owner window before assignment
+  - Increased dialog height to 540px to show all fields including credentials
+- **SQL sysadmin permission checking:**
+  - Added `Test-SqlSysadmin` and `Assert-SqlSysadmin` functions
+  - Database operations (Restore, Deep Cleanup) check sysadmin permission before running
+  - Monthly Maintenance includes sysadmin check in pre-flight checks
+  - Clear error message if user lacks permissions
 
 ### Previous (v3.8.6)
 
