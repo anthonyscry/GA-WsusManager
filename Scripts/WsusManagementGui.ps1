@@ -1083,8 +1083,8 @@ function Show-ExportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Export to Media"
-    $dlg.Width = 450
-    $dlg.Height = 340
+    $dlg.Width = 480
+    $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1224,8 +1224,8 @@ function Show-ImportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Import from Media"
-    $dlg.Width = 450
-    $dlg.Height = 300
+    $dlg.Width = 480
+    $dlg.Height = 320
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1368,8 +1368,8 @@ function Show-RestoreDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Restore Database"
-    $dlg.Width = 550
-    $dlg.Height = 320
+    $dlg.Width = 480
+    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1519,8 +1519,8 @@ function Show-MaintenanceDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Monthly Maintenance"
-    $dlg.Width = 450
-    $dlg.Height = 340
+    $dlg.Width = 480
+    $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1666,7 +1666,7 @@ function Show-ScheduleTaskDialog {
     # Create dialog window
     $schedDlg = New-Object System.Windows.Window
     $schedDlg.Title = "Schedule Monthly Maintenance"
-    $schedDlg.Width = 460
+    $schedDlg.Width = 480
     $schedDlg.Height = 540  # Height accommodates all fields including credentials
     $schedDlg.WindowStartupLocation = "CenterScreen"  # Use CenterScreen if no owner
 
@@ -1689,6 +1689,27 @@ function Show-ScheduleTaskDialog {
     $brushText = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $brushLabel = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $brushAccent = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+
+    # Create dark theme ItemContainerStyle for ComboBoxes
+    $comboItemStyle = New-Object System.Windows.Style
+    $comboItemStyle.TargetType = [System.Windows.Controls.ComboBoxItem]
+    $bgSetter = New-Object System.Windows.Setter
+    $bgSetter.Property = [System.Windows.Controls.Control]::BackgroundProperty
+    $bgSetter.Value = $brushMid
+    $comboItemStyle.Setters.Add($bgSetter) | Out-Null
+    $fgSetter = New-Object System.Windows.Setter
+    $fgSetter.Property = [System.Windows.Controls.Control]::ForegroundProperty
+    $fgSetter.Value = $brushText
+    $comboItemStyle.Setters.Add($fgSetter) | Out-Null
+    # Add hover trigger for better visibility
+    $hoverTrigger = New-Object System.Windows.Trigger
+    $hoverTrigger.Property = [System.Windows.Controls.ComboBoxItem]::IsMouseOverProperty
+    $hoverTrigger.Value = $true
+    $hoverBgSetter = New-Object System.Windows.Setter
+    $hoverBgSetter.Property = [System.Windows.Controls.Control]::BackgroundProperty
+    $hoverBgSetter.Value = $brushAccent
+    $hoverTrigger.Setters.Add($hoverBgSetter) | Out-Null
+    $comboItemStyle.Triggers.Add($hoverTrigger) | Out-Null
 
     # Main stack panel
     $mainStack = New-Object System.Windows.Controls.StackPanel
@@ -1731,11 +1752,14 @@ function Show-ScheduleTaskDialog {
     $schedCombo.BorderThickness = "1"
     $schedCombo.Padding = "6,4"
     $schedCombo.FontSize = 13
-    # Override system colors for dropdown popup readability
-    $schedCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $schedCombo.ItemContainerStyle = $comboItemStyle
+    # Override system colors for dropdown and selection display
+    $schedCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
     $schedCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $schedCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $schedCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
+    $schedCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
+    $schedCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $mainStack.Children.Add($schedCombo) | Out-Null
     $script:ScheduleDialogControls.ScheduleCombo = $schedCombo
 
@@ -1759,11 +1783,14 @@ function Show-ScheduleTaskDialog {
     $dowCombo.BorderThickness = "1"
     $dowCombo.Padding = "6,4"
     $dowCombo.FontSize = 13
-    # Override system colors for dropdown popup readability
-    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $dowCombo.ItemContainerStyle = $comboItemStyle
+    # Override system colors for dropdown and selection display
+    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
     $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $dowCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
+    $dowCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
+    $dowCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $dowPanel.Children.Add($dowCombo) | Out-Null
     $script:ScheduleDialogControls.DowCombo = $dowCombo
 
@@ -1829,11 +1856,14 @@ function Show-ScheduleTaskDialog {
     $profCombo.BorderThickness = "1"
     $profCombo.Padding = "6,4"
     $profCombo.FontSize = 13
-    # Override system colors for dropdown popup readability
-    $profCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushDark
+    $profCombo.ItemContainerStyle = $comboItemStyle
+    # Override system colors for dropdown and selection display
+    $profCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
     $profCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $profCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $profCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
+    $profCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
+    $profCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $profCombo.Margin = "0,0,0,12"
     $mainStack.Children.Add($profCombo) | Out-Null
     $script:ScheduleDialogControls.ProfileCombo = $profCombo
@@ -1995,8 +2025,8 @@ function Show-TransferDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
-    $dlg.Width = 500
-    $dlg.Height = 450
+    $dlg.Width = 480
+    $dlg.Height = 460
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -2244,8 +2274,8 @@ function Show-TransferDialog {
 function Show-SettingsDialog {
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Settings"
-    $dlg.Width = 400
-    $dlg.Height = 220
+    $dlg.Width = 480
+    $dlg.Height = 280
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
