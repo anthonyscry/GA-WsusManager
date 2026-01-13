@@ -20,6 +20,11 @@ All notable changes to WSUS Manager are documented here.
   - New button in Setup menu copies GPO files to C:\WSUS GPO
   - Shows detailed instructions for DC admin
   - Includes commands to force client check-in
+- **WSUS Installation Detection:**
+  - Operations disabled if WSUS service not installed
+  - Dashboard cards show "Not Installed" / "N/A" status
+  - Log panel shows installation instructions
+  - Only Install WSUS button remains enabled
 
 ### Improvements
 - **Non-blocking network check:**

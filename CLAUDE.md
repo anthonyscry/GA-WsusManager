@@ -211,6 +211,11 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - New button in Setup menu copies GPO files to `C:\WSUS GPO`
   - Shows detailed instructions for DC admin
   - Includes commands to force client check-in and verify GPO application
+- **WSUS installation detection:**
+  - Operations greyed out if WSUS service not installed on server
+  - Dashboard cards show "Not Installed" / "N/A" status
+  - Log panel displays installation instructions on startup
+  - Only Install WSUS button remains enabled
 - **Non-blocking network check:**
   - Changed `Test-InternetConnection` from `Test-Connection` to .NET Ping with 500ms timeout
   - Prevents UI freezing during dashboard refresh on slow/offline networks

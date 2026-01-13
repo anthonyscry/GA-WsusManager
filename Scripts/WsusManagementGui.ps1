@@ -688,27 +688,43 @@ function Update-ServerMode {
 function Update-Dashboard {
     Update-ServerMode
 
+    # Check if WSUS is installed first
+    $wsusInstalled = Test-WsusInstalled
+
     # Card 1: Services
     $svc = Get-ServiceStatus
     if ($null -ne $svc -and $controls.Card1Value -and $controls.Card1Sub -and $controls.Card1Bar) {
-        $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
-        $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
-        $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
-        $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
-        $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
+        if (-not $wsusInstalled) {
+            # WSUS not installed
+            $controls.Card1Value.Text = "Not Installed"
+            $controls.Card1Sub.Text = "Use Install WSUS"
+            $controls.Card1Bar.Background = "#F85149"
+        } else {
+            $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
+            $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
+            $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
+            $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
+            $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
+        }
     }
 
     # Card 2: Database
-    $db = Get-DatabaseSizeGB
     if ($controls.Card2Value -and $controls.Card2Sub -and $controls.Card2Bar) {
-        if ($db -ge 0) {
-            $controls.Card2Value.Text = "$db / 10 GB"
-            $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
-            $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+        if (-not $wsusInstalled) {
+            $controls.Card2Value.Text = "N/A"
+            $controls.Card2Sub.Text = "WSUS not installed"
+            $controls.Card2Bar.Background = "#30363D"
         } else {
-            $controls.Card2Value.Text = "Offline"
-            $controls.Card2Sub.Text = "SQL stopped"
-            $controls.Card2Bar.Background = "#D29922"
+            $db = Get-DatabaseSizeGB
+            if ($db -ge 0) {
+                $controls.Card2Value.Text = "$db / 10 GB"
+                $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
+                $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+            } else {
+                $controls.Card2Value.Text = "Offline"
+                $controls.Card2Sub.Text = "SQL stopped"
+                $controls.Card2Bar.Background = "#D29922"
+            }
         }
     }
 
@@ -721,10 +737,15 @@ function Update-Dashboard {
     }
 
     # Card 4: Task
-    $task = Get-TaskStatus
     if ($controls.Card4Value -and $controls.Card4Bar) {
-        $controls.Card4Value.Text = $task
-        $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+        if (-not $wsusInstalled) {
+            $controls.Card4Value.Text = "N/A"
+            $controls.Card4Bar.Background = "#30363D"
+        } else {
+            $task = Get-TaskStatus
+            $controls.Card4Value.Text = $task
+            $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+        }
     }
 
     # Configuration display
@@ -733,6 +754,9 @@ function Update-Dashboard {
     if ($controls.CfgExportRoot) { $controls.CfgExportRoot.Text = $script:ExportRoot }
     if ($controls.CfgLogPath) { $controls.CfgLogPath.Text = $script:LogDir }
     if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
+
+    # Check WSUS installation and update button states
+    Update-WsusButtonState
 }
 
 function Set-ActiveNavButton {
@@ -750,6 +774,10 @@ function Set-ActiveNavButton {
 $script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
+# Buttons that require WSUS to be installed (all except Install WSUS)
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+# Track WSUS installation status
+$script:WsusInstalled = $false
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
@@ -779,6 +807,46 @@ function Enable-OperationButtons {
         if ($controls[$i]) {
             $controls[$i].IsEnabled = $true
             $controls[$i].Opacity = 1.0
+        }
+    }
+    # Re-check WSUS installation to disable buttons if WSUS not installed
+    Update-WsusButtonState
+}
+
+function Test-WsusInstalled {
+    # Check if WSUS service exists (not just running, but installed)
+    try {
+        $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+        return ($null -ne $svc)
+    } catch {
+        return $false
+    }
+}
+
+function Update-WsusButtonState {
+    # Disable/enable buttons based on WSUS installation status
+    $script:WsusInstalled = Test-WsusInstalled
+
+    if (-not $script:WsusInstalled) {
+        # WSUS not installed - disable all buttons except Install WSUS
+        foreach ($b in $script:WsusRequiredButtons) {
+            if ($controls[$b]) {
+                $controls[$b].IsEnabled = $false
+                $controls[$b].Opacity = 0.5
+                $controls[$b].ToolTip = "WSUS is not installed. Use 'Install WSUS' first."
+            }
+        }
+        Write-Log "WSUS not installed - operations disabled"
+    } else {
+        # WSUS installed - enable buttons (unless operation is running)
+        if (-not $script:OperationRunning) {
+            foreach ($b in $script:WsusRequiredButtons) {
+                if ($controls[$b]) {
+                    $controls[$b].IsEnabled = $true
+                    $controls[$b].Opacity = 1.0
+                    $controls[$b].ToolTip = $null
+                }
+            }
         }
     }
 }
@@ -2948,6 +3016,15 @@ try {
 } catch { <# About logo load failed #> }
 
 Update-Dashboard
+
+# Show message if WSUS is not installed
+if (-not $script:WsusInstalled) {
+    $controls.LogOutput.Text = "WSUS is not installed on this server.`r`n`r`nMost operations are disabled until WSUS is installed.`r`nUse 'Install WSUS' from the Setup menu to begin installation.`r`n"
+    # Expand log panel to show message
+    $controls.LogPanel.Height = 250
+    $controls.BtnToggleLog.Content = "Hide"
+    $script:LogExpanded = $true
+}
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)
