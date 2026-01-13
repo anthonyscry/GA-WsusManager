@@ -2438,8 +2438,19 @@ function Invoke-LogOperation {
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
-            # Set smaller console window with more columns (smaller text appearance)
-            $setupConsole = "mode con: cols=120 lines=18; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            # Set smaller font using P/Invoke, then configure window
+            $setFontCode = @'
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class CF{
+[DllImport("kernel32.dll")]static extern IntPtr GetStdHandle(int h);
+[DllImport("kernel32.dll",CharSet=CharSet.Unicode)]static extern bool SetCurrentConsoleFontEx(IntPtr o,bool m,ref FX f);
+[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]public struct FX{public uint s;public uint n;public short x;public short y;public int ff;public int fw;[MarshalAs(UnmanagedType.ByValTStr,SizeConst=32)]public string fn;}
+public static void Set(short h){var f=new FX();f.s=84;f.y=h;f.ff=54;f.fw=400;f.fn="Consolas";SetCurrentConsoleFontEx(GetStdHandle(-11),false,ref f);}}
+"@ -EA 0;[CF]::Set(14)
+'@
+            $setupConsole = "$setFontCode; mode con: cols=100 lines=15; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             $wrappedCmd = "$setupConsole; $cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
             $psi.UseShellExecute = $true
