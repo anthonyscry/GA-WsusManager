@@ -1121,10 +1121,11 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                     $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
 
                     foreach ($updateId in $batch) {
-                        # Use parameterized query to prevent SQL injection
+                        # Build parameterized delete query using SQLCMD variable syntax $(varname)
+                        # The -Variable parameter substitutes $(UpdateIdParam) with the actual GUID
                         $deleteQuery = @"
 DECLARE @LocalUpdateID int
-DECLARE @UpdateGuid uniqueidentifier = @UpdateIdParam
+DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
 SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
 IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
@@ -1135,12 +1136,12 @@ IF @LocalUpdateID IS NOT NULL
                             if ($script:UseSqlCredential -and $SqlCredential) {
                                 Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                     -Query $deleteQuery -QueryTimeout 300 `
-                                    -Variable "UpdateIdParam='$updateId'" `
+                                    -Variable "UpdateIdParam=$updateId" `
                                     -Credential $SqlCredential | Out-Null
                             } else {
                                 Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                     -Query $deleteQuery -QueryTimeout 300 `
-                                    -Variable "UpdateIdParam='$updateId'" | Out-Null
+                                    -Variable "UpdateIdParam=$updateId" | Out-Null
                             }
                             $totalDeleted++
                         } catch {
