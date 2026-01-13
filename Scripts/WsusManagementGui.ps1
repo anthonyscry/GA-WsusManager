@@ -2025,8 +2025,10 @@ function Invoke-LogOperation {
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
             $saUserSafe = $script:SaUser -replace "'", "''"
-            $saPasswordSafe = $saPassword -replace "'", "''"
-            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword '$saPasswordSafe' -NonInteractive"
+            # Security: Pass password via environment variable instead of command line
+            # This prevents password exposure in process listings and event logs
+            $env:WSUS_INSTALL_SA_PASSWORD = $saPassword
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword `$env:WSUS_INSTALL_SA_PASSWORD -NonInteractive; Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue"
         }
         "restore" {
             $opts = Show-RestoreDialog
@@ -2073,7 +2075,8 @@ function Invoke-LogOperation {
 
             $Title = "Schedule Task ($($opts.Schedule))"
             $runAsUser = $opts.RunAsUser -replace "'", "''"
-            $runAsPassword = $opts.Password -replace "'", "''"
+            # Security: Pass password via environment variable instead of command line
+            $env:WSUS_TASK_PASSWORD = $opts.Password
             $args = "-Schedule '$($opts.Schedule)' -Time '$($opts.Time)' -MaintenanceProfile '$($opts.Profile)' -RunAsUser '$runAsUser'"
             if ($opts.Schedule -eq "Weekly") {
                 $args += " -DayOfWeek '$($opts.DayOfWeek)'"
@@ -2081,8 +2084,8 @@ function Invoke-LogOperation {
                 $args += " -DayOfMonth $($opts.DayOfMonth)"
             }
 
-            # Pass password as SecureString via ConvertTo-SecureString
-            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString '$runAsPassword' -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd }"
+            # Pass password as SecureString via environment variable (not visible in process list)
+            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd; Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
