@@ -1289,7 +1289,7 @@ function Invoke-ExportToMedia {
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Safely eject the external media"
     Write-Host "  2. Transport to air-gap server"
-    Write-Host "  3. On air-gap server, run option 3 (Copy Data from External Media)"
+    Write-Host "  3. Import to air-gap server using WSUS Manager"
     Write-Host ""
 }
 
