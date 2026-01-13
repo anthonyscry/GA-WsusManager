@@ -1739,7 +1739,7 @@ function Show-ScheduleTaskDialog {
     $schedLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($schedLbl) | Out-Null
 
-    # Schedule ComboBox with readable dropdown styling
+    # Schedule ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
     $schedCombo = New-Object System.Windows.Controls.ComboBox
     $schedCombo.Items.Add("Weekly") | Out-Null
     $schedCombo.Items.Add("Monthly") | Out-Null
@@ -1752,15 +1752,9 @@ function Show-ScheduleTaskDialog {
     $schedCombo.BorderThickness = "1"
     $schedCombo.Padding = "6,4"
     $schedCombo.FontSize = 13
+    $schedCombo.IsEditable = $true
+    $schedCombo.IsReadOnly = $true
     $schedCombo.ItemContainerStyle = $comboItemStyle
-    # Override system colors for dropdown and selection display
-    $schedCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
-    $schedCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
-    $schedCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
-    $schedCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
-    $schedCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
-    $schedCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
-    $schedCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $mainStack.Children.Add($schedCombo) | Out-Null
     $script:ScheduleDialogControls.ScheduleCombo = $schedCombo
 
@@ -1775,6 +1769,7 @@ function Show-ScheduleTaskDialog {
     $dowLbl.Margin = "0,0,0,4"
     $dowPanel.Children.Add($dowLbl) | Out-Null
 
+    # Day of Week ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
     $dowCombo = New-Object System.Windows.Controls.ComboBox
     @("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday") | ForEach-Object { $dowCombo.Items.Add($_) | Out-Null }
     $dowCombo.SelectedItem = "Saturday"
@@ -1784,15 +1779,9 @@ function Show-ScheduleTaskDialog {
     $dowCombo.BorderThickness = "1"
     $dowCombo.Padding = "6,4"
     $dowCombo.FontSize = 13
+    $dowCombo.IsEditable = $true
+    $dowCombo.IsReadOnly = $true
     $dowCombo.ItemContainerStyle = $comboItemStyle
-    # Override system colors for dropdown and selection display
-    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
-    $dowCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
-    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
-    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
-    $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
-    $dowCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
-    $dowCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $dowPanel.Children.Add($dowCombo) | Out-Null
     $script:ScheduleDialogControls.DowCombo = $dowCombo
 
@@ -1848,7 +1837,7 @@ function Show-ScheduleTaskDialog {
     $profLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($profLbl) | Out-Null
 
-    # Profile ComboBox with readable dropdown styling
+    # Profile ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
     $profCombo = New-Object System.Windows.Controls.ComboBox
     @("Full","Quick","SyncOnly") | ForEach-Object { $profCombo.Items.Add($_) | Out-Null }
     $profCombo.SelectedItem = "Full"
@@ -1858,15 +1847,9 @@ function Show-ScheduleTaskDialog {
     $profCombo.BorderThickness = "1"
     $profCombo.Padding = "6,4"
     $profCombo.FontSize = 13
+    $profCombo.IsEditable = $true
+    $profCombo.IsReadOnly = $true
     $profCombo.ItemContainerStyle = $comboItemStyle
-    # Override system colors for dropdown and selection display
-    $profCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
-    $profCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
-    $profCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
-    $profCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
-    $profCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
-    $profCombo.Resources[[System.Windows.SystemColors]::ControlBrushKey] = $brushMid
-    $profCombo.Resources[[System.Windows.SystemColors]::InactiveSelectionHighlightBrushKey] = $brushMid
     $profCombo.Margin = "0,0,0,12"
     $mainStack.Children.Add($profCombo) | Out-Null
     $script:ScheduleDialogControls.ProfileCombo = $profCombo
@@ -2579,7 +2562,7 @@ function Invoke-LogOperation {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
             # Configure console window size (font size controlled by user's PowerShell defaults)
-            $setupConsole = "mode con: cols=85 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            $setupConsole = "mode con: cols=80 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             # Wrap command in try/finally with 30-second auto-close countdown
             # Note: The keystroke timer sends Enter every 2 seconds to flush output.
             # To avoid the automatic Enter keys closing the window early, we only accept
@@ -2677,9 +2660,9 @@ while ($countdown -gt 0) {
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
-                    # Console is 70% of main window size (fits better centered)
-                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.70))
-                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.65))
+                    # Console is 60% of main window size (fits centered within app)
+                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.60))
+                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.60))
 
                     # Center console within main window
                     $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)

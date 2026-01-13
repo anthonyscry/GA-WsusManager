@@ -269,7 +269,8 @@ function New-WsusMaintenanceTask {
                 -Settings $settings `
                 -User "SYSTEM" `
                 -LogonType ServiceAccount `
-                -RunLevel Highest | Out-Null
+                -RunLevel Highest `
+                -ErrorAction Stop | Out-Null
         } else {
             # Create task with user credentials - runs whether user is logged on or not
             Register-ScheduledTask -TaskName $TaskName `
@@ -278,7 +279,8 @@ function New-WsusMaintenanceTask {
                 -Settings $settings `
                 -User $RunAsUser `
                 -Password $PlainPassword `
-                -RunLevel Highest | Out-Null
+                -RunLevel Highest `
+                -ErrorAction Stop | Out-Null
         }
 
         $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
