@@ -81,6 +81,8 @@ $script:ExitEventJob = $null
 $script:OpCheckTimer = $null
 # Deduplication tracking - prevents same line appearing multiple times
 $script:RecentLines = @{}
+# Live Terminal Mode - launches operations in visible console window
+$script:LiveTerminalMode = $false
 
 function Write-Log { param([string]$Msg)
     try {
@@ -97,6 +99,7 @@ function Import-WsusSettings {
             if ($s.SqlInstance) { $script:SqlInstance = $s.SqlInstance }
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
+            if ($null -ne $s.LiveTerminalMode) { $script:LiveTerminalMode = $s.LiveTerminalMode }
         }
     } catch { Write-Log "Failed to load settings: $_" }
 }
@@ -105,7 +108,7 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode } |
+        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
@@ -133,6 +136,33 @@ try {
     $p = New-Object Security.Principal.WindowsPrincipal($id)
     $script:IsAdmin = $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 } catch { Write-Log "Admin check failed: $_" }
+#endregion
+
+#region Keystroke Sender for Live Terminal
+# P/Invoke to send keystrokes to console window without stealing focus
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class ConsolKeySender {
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    public const int VK_RETURN = 0x0D;
+
+    public static void SendEnter(IntPtr hWnd) {
+        if (hWnd != IntPtr.Zero) {
+            PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
+            PostMessage(hWnd, WM_KEYUP, VK_RETURN, 0);
+        }
+    }
+}
+"@ -ErrorAction SilentlyContinue
+
+$script:KeystrokeTimer = $null
+$script:StdinFlushTimer = $null
 #endregion
 
 #region XAML
@@ -510,6 +540,7 @@ try {
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
+                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
@@ -2164,135 +2195,279 @@ function Invoke-LogOperation {
     Disable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Visible"
 
-    # Clear log and deduplication cache before starting new operation
-    $controls.LogOutput.Clear()
-    $script:RecentLines = @{}
-
-    Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
 
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
-        $psi.UseShellExecute = $false
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.CreateNoWindow = $true
-        $psi.WorkingDirectory = $sr
+    # Branch based on Live Terminal mode
+    if ($script:LiveTerminalMode) {
+        # LIVE TERMINAL MODE: Launch in visible console window
+        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
 
-        $script:CurrentProcess = New-Object System.Diagnostics.Process
-        $script:CurrentProcess.StartInfo = $psi
-        $script:CurrentProcess.EnableRaisingEvents = $true
+        try {
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = "powershell.exe"
+            # Wrap command with pause so user can review output before window closes
+            $wrappedCmd = "$cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
+            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
+            $psi.UseShellExecute = $true
+            $psi.CreateNoWindow = $false
+            $psi.WorkingDirectory = $sr
 
-        # Create shared state object that can be modified from event handlers
-        $eventData = @{
-            Window = $script:window
-            Controls = $script:controls
-            Title = $Title
-            OperationButtons = $script:OperationButtons
-            OperationInputs = $script:OperationInputs
-        }
+            $script:CurrentProcess = New-Object System.Diagnostics.Process
+            $script:CurrentProcess.StartInfo = $psi
+            $script:CurrentProcess.EnableRaisingEvents = $true
 
-        $outputHandler = {
-            $line = $Event.SourceEventArgs.Data
-            # Skip empty or whitespace-only lines
-            if ([string]::IsNullOrWhiteSpace($line)) { return }
-
-            # Deduplication: Skip if we just saw this exact line (within 2 second window)
-            $lineHash = $line.Trim().GetHashCode().ToString()
-            $now = [DateTime]::UtcNow.Ticks
-            $lastSeen = $script:RecentLines[$lineHash]
-            if ($lastSeen -and ($now - $lastSeen) -lt 20000000) {  # 2 seconds in ticks
-                return  # Skip duplicate
-            }
-            $script:RecentLines[$lineHash] = $now
-
-            $data = $Event.MessageData
-            $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
-            # Format message BEFORE dispatch to capture values properly
-            $timestamp = Get-Date -Format "HH:mm:ss"
-            $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
-            $formattedLine = "[$timestamp] $prefix $line`r`n"
-            $logOutput = $data.Controls.LogOutput
-            # Use BeginInvoke with closure to capture formatted values
-            $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
-                $logOutput.AppendText($formattedLine)
-                $logOutput.ScrollToEnd()
-            }.GetNewClosure())
-        }
-
-        $exitHandler = {
-            $data = $Event.MessageData
-            # Stop the timer IMMEDIATELY to prevent race conditions
-            if ($null -ne $script:OpCheckTimer) {
-                $script:OpCheckTimer.Stop()
-            }
-            $data.Window.Dispatcher.Invoke([Action]{
-                $timestamp = Get-Date -Format "HH:mm:ss"
-                $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
-                $data.Controls.LogOutput.ScrollToEnd()
-                $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
-                $data.Controls.BtnCancelOp.Visibility = "Collapsed"
-                # Re-enable all operation buttons
-                foreach ($btnName in $data.OperationButtons) {
-                    if ($data.Controls[$btnName]) {
-                        $data.Controls[$btnName].IsEnabled = $true
-                        $data.Controls[$btnName].Opacity = 1.0
-                    }
+            # For UseShellExecute, we can't redirect output but we can still track exit
+            $exitHandler = {
+                $data = $Event.MessageData
+                # Stop all timers
+                if ($null -ne $script:OpCheckTimer) {
+                    $script:OpCheckTimer.Stop()
                 }
-                # Re-enable all operation input fields
-                foreach ($inputName in $data.OperationInputs) {
-                    if ($data.Controls[$inputName]) {
-                        $data.Controls[$inputName].IsEnabled = $true
-                        $data.Controls[$inputName].Opacity = 1.0
+                if ($null -ne $script:KeystrokeTimer) {
+                    $script:KeystrokeTimer.Stop()
+                }
+                $data.Window.Dispatcher.Invoke([Action]{
+                    $timestamp = Get-Date -Format "HH:mm:ss"
+                    $data.Controls.LogOutput.AppendText("`r`n[$timestamp] [+] Console closed - $($data.Title) finished`r`n")
+                    $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
+                    $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                    foreach ($btnName in $data.OperationButtons) {
+                        if ($data.Controls[$btnName]) {
+                            $data.Controls[$btnName].IsEnabled = $true
+                            $data.Controls[$btnName].Opacity = 1.0
+                        }
+                    }
+                    foreach ($inputName in $data.OperationInputs) {
+                        if ($data.Controls[$inputName]) {
+                            $data.Controls[$inputName].IsEnabled = $true
+                            $data.Controls[$inputName].Opacity = 1.0
+                        }
+                    }
+                })
+                $script:OperationRunning = $false
+            }
+
+            $eventData = @{
+                Window = $script:window
+                Controls = $script:controls
+                Title = $Title
+                OperationButtons = $script:OperationButtons
+                OperationInputs = $script:OperationInputs
+            }
+
+            $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
+
+            $script:CurrentProcess.Start() | Out-Null
+
+            # Give the process a moment to create its window
+            Start-Sleep -Milliseconds 500
+
+            # Keystroke timer - sends Enter to console every 2 seconds to flush output buffer
+            $script:KeystrokeTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:KeystrokeTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        $hWnd = $script:CurrentProcess.MainWindowHandle
+                        if ($hWnd -ne [IntPtr]::Zero) {
+                            [ConsolKeySender]::SendEnter($hWnd)
+                        }
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore keystroke errors
+                }
+            })
+            $script:KeystrokeTimer.Start()
+
+            # Timer for backup cleanup (in case exit event doesn't fire)
+            $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+            $script:OpCheckTimer.Add_Tick({
+                if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
+                    $this.Stop()
+                    if ($null -ne $script:KeystrokeTimer) {
+                        $script:KeystrokeTimer.Stop()
+                    }
+                    if ($script:OperationRunning) {
+                        $script:OperationRunning = $false
+                        Enable-OperationButtons
+                        $script:controls.BtnCancelOp.Visibility = "Collapsed"
+                        $timestamp = Get-Date -Format "HH:mm:ss"
+                        $script:controls.StatusLabel.Text = " - Completed at $timestamp"
                     }
                 }
             })
-            # Reset the operation running flag (script scope accessible from event handler)
+            $script:OpCheckTimer.Start()
+
+        } catch {
+            $controls.LogOutput.AppendText("`r`nERROR: $_`r`n")
+            Set-Status "Ready"
             $script:OperationRunning = $false
-        }
-
-        # Store event subscriptions for proper cleanup (prevents duplicates/leaks)
-        $script:OutputEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData
-        $script:ErrorEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData
-        $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
-
-        $script:CurrentProcess.Start() | Out-Null
-        $script:CurrentProcess.BeginOutputReadLine()
-        $script:CurrentProcess.BeginErrorReadLine()
-
-        # Use a timer to force UI refresh (keeps log responsive)
-        # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
-        $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
-        $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
-        $script:OpCheckTimer.Add_Tick({
-            # Force WPF to process pending dispatcher operations (keeps log responsive)
-            # This is the WPF equivalent of DoEvents - pushes all queued dispatcher frames
-            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
-                [System.Windows.Threading.DispatcherPriority]::Background,
-                [Action]{ }
-            )
-
-            # Backup cleanup: only if process exited but exitHandler didn't fire
-            if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
-                $this.Stop()
-                # Only do cleanup if exitHandler didn't already (check if still marked as running)
-                if ($script:OperationRunning) {
-                    $script:OperationRunning = $false
-                    Enable-OperationButtons
-                    $script:controls.BtnCancelOp.Visibility = "Collapsed"
-                    # Don't overwrite status - exitHandler sets completion timestamp
-                }
+            Enable-OperationButtons
+            $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:KeystrokeTimer) {
+                $script:KeystrokeTimer.Stop()
             }
-        })
-        $script:OpCheckTimer.Start()
-    } catch {
-        Write-LogOutput "ERROR: $_" -Level Error
-        Set-Status "Ready"
-        $script:OperationRunning = $false
-        Enable-OperationButtons
-        $controls.BtnCancelOp.Visibility = "Collapsed"
+        }
+    } else {
+        # EMBEDDED LOG MODE: Capture output to log panel (original behavior)
+        $controls.LogOutput.Clear()
+        $script:RecentLines = @{}
+        Write-LogOutput "Starting $Title..." -Level Info
+
+        try {
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = "powershell.exe"
+            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.RedirectStandardInput = $true
+            $psi.CreateNoWindow = $true
+            $psi.WorkingDirectory = $sr
+
+            $script:CurrentProcess = New-Object System.Diagnostics.Process
+            $script:CurrentProcess.StartInfo = $psi
+            $script:CurrentProcess.EnableRaisingEvents = $true
+
+            # Create shared state object that can be modified from event handlers
+            $eventData = @{
+                Window = $script:window
+                Controls = $script:controls
+                Title = $Title
+                OperationButtons = $script:OperationButtons
+                OperationInputs = $script:OperationInputs
+            }
+
+            $outputHandler = {
+                $line = $Event.SourceEventArgs.Data
+                # Skip empty or whitespace-only lines
+                if ([string]::IsNullOrWhiteSpace($line)) { return }
+
+                # Deduplication: Skip if we just saw this exact line (within 2 second window)
+                $lineHash = $line.Trim().GetHashCode().ToString()
+                $now = [DateTime]::UtcNow.Ticks
+                $lastSeen = $script:RecentLines[$lineHash]
+                if ($lastSeen -and ($now - $lastSeen) -lt 20000000) {  # 2 seconds in ticks
+                    return  # Skip duplicate
+                }
+                $script:RecentLines[$lineHash] = $now
+
+                $data = $Event.MessageData
+                $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
+                # Format message BEFORE dispatch to capture values properly
+                $timestamp = Get-Date -Format "HH:mm:ss"
+                $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+                $formattedLine = "[$timestamp] $prefix $line`r`n"
+                $logOutput = $data.Controls.LogOutput
+                # Use BeginInvoke with closure to capture formatted values
+                $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
+                    $logOutput.AppendText($formattedLine)
+                    $logOutput.ScrollToEnd()
+                }.GetNewClosure())
+            }
+
+            $exitHandler = {
+                $data = $Event.MessageData
+                # Stop all timers IMMEDIATELY to prevent race conditions
+                if ($null -ne $script:OpCheckTimer) {
+                    $script:OpCheckTimer.Stop()
+                }
+                if ($null -ne $script:StdinFlushTimer) {
+                    $script:StdinFlushTimer.Stop()
+                }
+                $data.Window.Dispatcher.Invoke([Action]{
+                    $timestamp = Get-Date -Format "HH:mm:ss"
+                    $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
+                    $data.Controls.LogOutput.ScrollToEnd()
+                    $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
+                    $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                    # Re-enable all operation buttons
+                    foreach ($btnName in $data.OperationButtons) {
+                        if ($data.Controls[$btnName]) {
+                            $data.Controls[$btnName].IsEnabled = $true
+                            $data.Controls[$btnName].Opacity = 1.0
+                        }
+                    }
+                    # Re-enable all operation input fields
+                    foreach ($inputName in $data.OperationInputs) {
+                        if ($data.Controls[$inputName]) {
+                            $data.Controls[$inputName].IsEnabled = $true
+                            $data.Controls[$inputName].Opacity = 1.0
+                        }
+                    }
+                })
+                # Reset the operation running flag (script scope accessible from event handler)
+                $script:OperationRunning = $false
+            }
+
+            # Store event subscriptions for proper cleanup (prevents duplicates/leaks)
+            $script:OutputEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData
+            $script:ErrorEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData
+            $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
+
+            $script:CurrentProcess.Start() | Out-Null
+            $script:CurrentProcess.BeginOutputReadLine()
+            $script:CurrentProcess.BeginErrorReadLine()
+
+            # Stdin flush timer - sends newlines to StandardInput every 2 seconds to flush output buffer
+            $script:StdinFlushTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:StdinFlushTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:StdinFlushTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        # Write empty line to stdin to help flush any buffered output
+                        $script:CurrentProcess.StandardInput.WriteLine("")
+                        $script:CurrentProcess.StandardInput.Flush()
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore stdin write errors (process may have exited)
+                }
+            })
+            $script:StdinFlushTimer.Start()
+
+            # Use a timer to force UI refresh (keeps log responsive)
+            # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
+            $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+            $script:OpCheckTimer.Add_Tick({
+                # Force WPF to process pending dispatcher operations (keeps log responsive)
+                # This is the WPF equivalent of DoEvents - pushes all queued dispatcher frames
+                [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+                    [System.Windows.Threading.DispatcherPriority]::Background,
+                    [Action]{ }
+                )
+
+                # Backup cleanup: only if process exited but exitHandler didn't fire
+                if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
+                    $this.Stop()
+                    if ($null -ne $script:StdinFlushTimer) {
+                        $script:StdinFlushTimer.Stop()
+                    }
+                    # Only do cleanup if exitHandler didn't already (check if still marked as running)
+                    if ($script:OperationRunning) {
+                        $script:OperationRunning = $false
+                        Enable-OperationButtons
+                        $script:controls.BtnCancelOp.Visibility = "Collapsed"
+                        # Don't overwrite status - exitHandler sets completion timestamp
+                    }
+                }
+            })
+            $script:OpCheckTimer.Start()
+        } catch {
+            Write-LogOutput "ERROR: $_" -Level Error
+            Set-Status "Ready"
+            $script:OperationRunning = $false
+            Enable-OperationButtons
+            $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:StdinFlushTimer) {
+                $script:StdinFlushTimer.Stop()
+            }
+        }
     }
 }
 
@@ -2393,6 +2568,20 @@ $controls.BtnOpenLog.Add_Click({
 })
 
 # Log panel buttons
+$controls.BtnLiveTerminal.Add_Click({
+    $script:LiveTerminalMode = -not $script:LiveTerminalMode
+    if ($script:LiveTerminalMode) {
+        $controls.BtnLiveTerminal.Content = "Live Terminal: On"
+        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+        $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+    } else {
+        $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
+        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $controls.LogOutput.Clear()
+    }
+    Save-Settings
+})
+
 $controls.BtnToggleLog.Add_Click({
     if ($script:LogExpanded) {
         $controls.LogPanel.Height = 36
@@ -2427,6 +2616,13 @@ $controls.BtnCancel.Add_Click({
 #region Initialize
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
+
+# Initialize Live Terminal button state from saved settings
+if ($script:LiveTerminalMode) {
+    $controls.BtnLiveTerminal.Content = "Live Terminal: On"
+    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+    $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+}
 
 try {
     $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
