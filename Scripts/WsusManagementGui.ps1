@@ -2081,27 +2081,6 @@ function Show-TransferDialog {
     $exportModePanel.Children.Add($diffCustomPanel)
     $stack.Children.Add($exportModePanel)
 
-    # Show/hide panels based on direction
-    $radioExport.Add_Checked({
-        $exportModePanel.Visibility = "Visible"
-        $importDestPanel.Visibility = "Collapsed"
-        $pathLbl.Text = "Destination folder:"
-    }.GetNewClosure())
-    $radioImport.Add_Checked({
-        $exportModePanel.Visibility = "Collapsed"
-        $importDestPanel.Visibility = "Visible"
-        $pathLbl.Text = "Source folder (external media):"
-    }.GetNewClosure())
-
-    # Auto-select mode based on detected server mode
-    if ($script:ServerMode -eq "Air-Gap") {
-        $radioExport.IsEnabled = $false
-        $radioImport.IsChecked = $true
-        $exportModePanel.Visibility = "Collapsed"
-        $importDestPanel.Visibility = "Visible"
-        $pathLbl.Text = "Source folder (external media):"
-    }
-
     # Path selection - Export destination / Import source
     $pathLbl = New-Object System.Windows.Controls.TextBlock
     $pathLbl.Text = "Destination folder:"
@@ -2175,6 +2154,27 @@ function Show-TransferDialog {
     }.GetNewClosure())
     $importDestPanel.Children.Add($importDestDock)
     $stack.Children.Add($importDestPanel)
+
+    # Show/hide panels based on direction (must be AFTER $importDestPanel and $pathLbl are created)
+    $radioExport.Add_Checked({
+        $exportModePanel.Visibility = "Visible"
+        $importDestPanel.Visibility = "Collapsed"
+        $pathLbl.Text = "Destination folder:"
+    }.GetNewClosure())
+    $radioImport.Add_Checked({
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }.GetNewClosure())
+
+    # Auto-select mode based on detected server mode
+    if ($script:ServerMode -eq "Air-Gap") {
+        $radioExport.IsEnabled = $false
+        $radioImport.IsChecked = $true
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -2548,16 +2548,22 @@ function Invoke-LogOperation {
             # Configure console window size (font size controlled by user's PowerShell defaults)
             $setupConsole = "mode con: cols=90 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             # Wrap command in try/finally with 30-second auto-close countdown
+            # Note: The keystroke timer sends Enter every 2 seconds to flush output.
+            # To avoid the automatic Enter keys closing the window early, we only accept
+            # ESC or Q to close immediately - Enter keys are ignored during countdown.
             $autoCloseScript = @'
 Write-Host ''
 Write-Host '=== Operation Complete ===' -ForegroundColor Green
 Write-Host ''
-Write-Host 'Press ENTER to close, or window will close in 30 seconds...' -ForegroundColor Yellow
+Write-Host 'Window will close in 30 seconds. Press ESC or Q to close now...' -ForegroundColor Yellow
 $countdown = 30
 while ($countdown -gt 0) {
     if ([Console]::KeyAvailable) {
-        $null = [Console]::ReadKey($true)
-        break
+        $key = [Console]::ReadKey($true)
+        # Only close on ESC or Q - ignore Enter (sent by keystroke timer)
+        if ($key.Key -eq [ConsoleKey]::Escape -or $key.Key -eq [ConsoleKey]::Q) {
+            break
+        }
     }
     Start-Sleep -Milliseconds 1000
     $countdown--
