@@ -1612,7 +1612,40 @@ function Show-MaintenanceDialog {
 }
 
 function Show-ScheduleTaskDialog {
-    $result = @{
+    <#
+    .SYNOPSIS
+        Displays the Schedule Task dialog for configuring monthly maintenance automation.
+
+    .DESCRIPTION
+        Creates a WPF modal dialog that allows users to configure:
+        - Schedule type (Weekly, Monthly, Daily)
+        - Day of week or day of month
+        - Start time
+        - Maintenance profile (Full, Quick, SyncOnly)
+        - Run-as credentials for unattended execution
+
+        The dialog uses script-scope variables ($script:ScheduleDialogControls, $script:ScheduleDialogResult)
+        to avoid closure issues with WPF event handlers.
+
+    .OUTPUTS
+        Hashtable with properties:
+        - Cancelled: [bool] True if user cancelled
+        - Schedule: [string] "Weekly", "Monthly", or "Daily"
+        - DayOfWeek: [string] Day name for weekly schedule
+        - DayOfMonth: [int] Day number for monthly schedule
+        - Time: [string] Start time in HH:mm format
+        - Profile: [string] Maintenance profile name
+        - RunAsUser: [string] Username for scheduled task
+        - Password: [string] Password for scheduled task
+
+    .NOTES
+        Event handlers access controls via $script:ScheduleDialogControls to avoid
+        PowerShell closure capture issues that can cause null reference exceptions.
+    #>
+
+    # Initialize result with default values
+    # Using script scope so event handlers can access and modify it
+    $script:ScheduleDialogResult = @{
         Cancelled = $true
         Schedule = "Weekly"
         DayOfWeek = "Saturday"
@@ -1623,266 +1656,314 @@ function Show-ScheduleTaskDialog {
         Password = ""
     }
 
-    $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Schedule Monthly Maintenance"
-    $dlg.Width = 460
-    $dlg.Height = 480
-    $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $dlg.ResizeMode = "NoResize"
-    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
+    # Store control references for event handlers
+    # This avoids closure issues where variables might be captured at unexpected times
+    $script:ScheduleDialogControls = @{}
 
-    $stack = New-Object System.Windows.Controls.StackPanel
-    $stack.Margin = "20"
+    # Create dialog window
+    $schedDlg = New-Object System.Windows.Window
+    $schedDlg.Title = "Schedule Monthly Maintenance"
+    $schedDlg.Width = 460
+    $schedDlg.Height = 540  # Height accommodates all fields including credentials
+    $schedDlg.WindowStartupLocation = "CenterScreen"  # Use CenterScreen if no owner
 
-    $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Create Scheduled Task"
-    $title.FontSize = 14
-    $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $title.Margin = "0,0,0,12"
-    $stack.Children.Add($title)
+    # Set owner window if available (enables modal behavior)
+    if ($null -ne $script:window) {
+        $schedDlg.Owner = $script:window
+        $schedDlg.WindowStartupLocation = "CenterOwner"
+    }
 
-    $note = New-Object System.Windows.Controls.TextBlock
-    $note.Text = "Recommended: Weekly on Saturday at 02:00"
-    $note.FontSize = 11
-    $note.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $note.Margin = "0,0,0,16"
-    $stack.Children.Add($note)
+    $schedDlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $schedDlg.ResizeMode = "NoResize"
 
-    $scheduleLbl = New-Object System.Windows.Controls.TextBlock
-    $scheduleLbl.Text = "Schedule:"
-    $scheduleLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $scheduleLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($scheduleLbl)
+    # ESC key closes dialog
+    $schedDlg.Add_KeyDown({ param($sender,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $sender.Close() } })
 
-    $comboItemStyle = New-Object System.Windows.Style ([System.Windows.Controls.ComboBoxItem])
-    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BackgroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")))))
-    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::ForegroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")))))
-    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::PaddingProperty, "6,4")))
-    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BorderBrushProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")))))
-    $comboItemStyle.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BorderThicknessProperty, 0)))
+    # Helper for dark theme colors
+    $brushDark = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $brushMid = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $brushBorder = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $brushText = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $brushLabel = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $brushAccent = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
 
-    $comboHoverTrigger = New-Object System.Windows.Trigger
-    $comboHoverTrigger.Property = [System.Windows.Controls.ComboBoxItem]::IsMouseOverProperty
-    $comboHoverTrigger.Value = $true
-    $comboHoverTrigger.Setters.Add((New-Object System.Windows.Setter ([System.Windows.Controls.Control]::BackgroundProperty, ([System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")))))
-    $comboItemStyle.Triggers.Add($comboHoverTrigger)
+    # Main stack panel
+    $mainStack = New-Object System.Windows.Controls.StackPanel
+    $mainStack.Margin = "20"
 
-    $scheduleCombo = New-Object System.Windows.Controls.ComboBox
-    $scheduleCombo.Items.Add("Weekly") | Out-Null
-    $scheduleCombo.Items.Add("Monthly") | Out-Null
-    $scheduleCombo.Items.Add("Daily") | Out-Null
-    $scheduleCombo.SelectedIndex = 0
-    $scheduleCombo.Margin = "0,0,0,12"
-    $scheduleCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $scheduleCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $scheduleCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
-    $scheduleCombo.BorderThickness = "1"
-    $scheduleCombo.ItemContainerStyle = $comboItemStyle
-    $scheduleCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $scheduleCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $scheduleCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $stack.Children.Add($scheduleCombo)
+    # Title
+    $titleTxt = New-Object System.Windows.Controls.TextBlock
+    $titleTxt.Text = "Create Scheduled Task"
+    $titleTxt.FontSize = 14
+    $titleTxt.FontWeight = "Bold"
+    $titleTxt.Foreground = $brushText
+    $titleTxt.Margin = "0,0,0,8"
+    $mainStack.Children.Add($titleTxt) | Out-Null
 
-    $dayOfWeekPanel = New-Object System.Windows.Controls.StackPanel
-    $dayOfWeekPanel.Margin = "0,0,0,12"
+    # Subtitle
+    $noteTxt = New-Object System.Windows.Controls.TextBlock
+    $noteTxt.Text = "Recommended: Weekly on Saturday at 02:00"
+    $noteTxt.FontSize = 11
+    $noteTxt.Foreground = $brushLabel
+    $noteTxt.Margin = "0,0,0,16"
+    $mainStack.Children.Add($noteTxt) | Out-Null
+
+    # Schedule Type label
+    $schedLbl = New-Object System.Windows.Controls.TextBlock
+    $schedLbl.Text = "Schedule:"
+    $schedLbl.Foreground = $brushLabel
+    $schedLbl.Margin = "0,0,0,4"
+    $mainStack.Children.Add($schedLbl) | Out-Null
+
+    # Schedule ComboBox
+    $schedCombo = New-Object System.Windows.Controls.ComboBox
+    $schedCombo.Items.Add("Weekly") | Out-Null
+    $schedCombo.Items.Add("Monthly") | Out-Null
+    $schedCombo.Items.Add("Daily") | Out-Null
+    $schedCombo.SelectedIndex = 0
+    $schedCombo.Margin = "0,0,0,12"
+    $schedCombo.Background = $brushMid
+    $schedCombo.Foreground = $brushText
+    $schedCombo.BorderBrush = $brushBorder
+    $schedCombo.BorderThickness = "1"
+    $mainStack.Children.Add($schedCombo) | Out-Null
+    $script:ScheduleDialogControls.ScheduleCombo = $schedCombo
+
+    # Day of Week panel (visible by default for Weekly)
+    $dowPanel = New-Object System.Windows.Controls.StackPanel
+    $dowPanel.Margin = "0,0,0,12"
+    $script:ScheduleDialogControls.DayOfWeekPanel = $dowPanel
 
     $dowLbl = New-Object System.Windows.Controls.TextBlock
     $dowLbl.Text = "Day of Week:"
-    $dowLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $dowLbl.Margin = "0,0,0,6"
-    $dayOfWeekPanel.Children.Add($dowLbl)
+    $dowLbl.Foreground = $brushLabel
+    $dowLbl.Margin = "0,0,0,4"
+    $dowPanel.Children.Add($dowLbl) | Out-Null
 
     $dowCombo = New-Object System.Windows.Controls.ComboBox
-    @("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday") | ForEach-Object {
-        $dowCombo.Items.Add($_) | Out-Null
-    }
+    @("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday") | ForEach-Object { $dowCombo.Items.Add($_) | Out-Null }
     $dowCombo.SelectedItem = "Saturday"
-    $dowCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $dowCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $dowCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $dowCombo.Background = $brushMid
+    $dowCombo.Foreground = $brushText
+    $dowCombo.BorderBrush = $brushBorder
     $dowCombo.BorderThickness = "1"
-    $dowCombo.ItemContainerStyle = $comboItemStyle
-    $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $dayOfWeekPanel.Children.Add($dowCombo)
-    $stack.Children.Add($dayOfWeekPanel)
+    $dowPanel.Children.Add($dowCombo) | Out-Null
+    $script:ScheduleDialogControls.DowCombo = $dowCombo
 
-    $dayOfMonthPanel = New-Object System.Windows.Controls.StackPanel
-    $dayOfMonthPanel.Margin = "0,0,0,12"
-    $dayOfMonthPanel.Visibility = "Collapsed"
+    $mainStack.Children.Add($dowPanel) | Out-Null
+
+    # Day of Month panel (hidden by default)
+    $domPanel = New-Object System.Windows.Controls.StackPanel
+    $domPanel.Margin = "0,0,0,12"
+    $domPanel.Visibility = "Collapsed"
+    $script:ScheduleDialogControls.DayOfMonthPanel = $domPanel
 
     $domLbl = New-Object System.Windows.Controls.TextBlock
     $domLbl.Text = "Day of Month (1-31):"
-    $domLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $domLbl.Margin = "0,0,0,6"
-    $dayOfMonthPanel.Children.Add($domLbl)
+    $domLbl.Foreground = $brushLabel
+    $domLbl.Margin = "0,0,0,4"
+    $domPanel.Children.Add($domLbl) | Out-Null
 
     $domBox = New-Object System.Windows.Controls.TextBox
     $domBox.Text = "1"
-    $domBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $domBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $domBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $domBox.Background = $brushMid
+    $domBox.Foreground = $brushText
+    $domBox.BorderBrush = $brushBorder
     $domBox.BorderThickness = "1"
     $domBox.Padding = "6,4"
-    $dayOfMonthPanel.Children.Add($domBox)
-    $stack.Children.Add($dayOfMonthPanel)
+    $domPanel.Children.Add($domBox) | Out-Null
+    $script:ScheduleDialogControls.DomBox = $domBox
 
+    $mainStack.Children.Add($domPanel) | Out-Null
+
+    # Time label
     $timeLbl = New-Object System.Windows.Controls.TextBlock
     $timeLbl.Text = "Start Time (HH:mm):"
-    $timeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $timeLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($timeLbl)
+    $timeLbl.Foreground = $brushLabel
+    $timeLbl.Margin = "0,0,0,4"
+    $mainStack.Children.Add($timeLbl) | Out-Null
 
+    # Time TextBox
     $timeBox = New-Object System.Windows.Controls.TextBox
     $timeBox.Text = "02:00"
-    $timeBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $timeBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $timeBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $timeBox.Background = $brushMid
+    $timeBox.Foreground = $brushText
+    $timeBox.BorderBrush = $brushBorder
     $timeBox.BorderThickness = "1"
     $timeBox.Padding = "6,4"
     $timeBox.Margin = "0,0,0,12"
-    $stack.Children.Add($timeBox)
+    $mainStack.Children.Add($timeBox) | Out-Null
+    $script:ScheduleDialogControls.TimeBox = $timeBox
 
-    $profileLbl = New-Object System.Windows.Controls.TextBlock
-    $profileLbl.Text = "Maintenance Profile:"
-    $profileLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $profileLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($profileLbl)
+    # Profile label
+    $profLbl = New-Object System.Windows.Controls.TextBlock
+    $profLbl.Text = "Maintenance Profile:"
+    $profLbl.Foreground = $brushLabel
+    $profLbl.Margin = "0,0,0,4"
+    $mainStack.Children.Add($profLbl) | Out-Null
 
-    $profileCombo = New-Object System.Windows.Controls.ComboBox
-    @("Full","Quick","SyncOnly") | ForEach-Object { $profileCombo.Items.Add($_) | Out-Null }
-    $profileCombo.SelectedItem = "Full"
-    $profileCombo.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $profileCombo.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $profileCombo.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
-    $profileCombo.BorderThickness = "1"
-    $profileCombo.ItemContainerStyle = $comboItemStyle
-    $profileCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $profileCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $profileCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $profileCombo.Margin = "0,0,0,12"
-    $stack.Children.Add($profileCombo)
+    # Profile ComboBox
+    $profCombo = New-Object System.Windows.Controls.ComboBox
+    @("Full","Quick","SyncOnly") | ForEach-Object { $profCombo.Items.Add($_) | Out-Null }
+    $profCombo.SelectedItem = "Full"
+    $profCombo.Background = $brushMid
+    $profCombo.Foreground = $brushText
+    $profCombo.BorderBrush = $brushBorder
+    $profCombo.BorderThickness = "1"
+    $profCombo.Margin = "0,0,0,12"
+    $mainStack.Children.Add($profCombo) | Out-Null
+    $script:ScheduleDialogControls.ProfileCombo = $profCombo
 
-    # Credentials section
-    $credLbl = New-Object System.Windows.Controls.TextBlock
-    $credLbl.Text = "Run As Credentials (for unattended execution):"
-    $credLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $credLbl.FontSize = 11
-    $credLbl.Margin = "0,4,0,8"
-    $stack.Children.Add($credLbl)
+    # Credentials section header
+    $credHdr = New-Object System.Windows.Controls.TextBlock
+    $credHdr.Text = "Run As Credentials (for unattended execution):"
+    $credHdr.Foreground = $brushLabel
+    $credHdr.FontSize = 11
+    $credHdr.Margin = "0,4,0,8"
+    $mainStack.Children.Add($credHdr) | Out-Null
 
+    # Username label
     $userLbl = New-Object System.Windows.Controls.TextBlock
     $userLbl.Text = "Username (e.g., .\dod_admin or DOMAIN\user):"
-    $userLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $userLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($userLbl)
+    $userLbl.Foreground = $brushLabel
+    $userLbl.Margin = "0,0,0,4"
+    $mainStack.Children.Add($userLbl) | Out-Null
 
+    # Username TextBox
     $userBox = New-Object System.Windows.Controls.TextBox
     $userBox.Text = ".\dod_admin"
-    $userBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $userBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $userBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $userBox.Background = $brushMid
+    $userBox.Foreground = $brushText
+    $userBox.BorderBrush = $brushBorder
     $userBox.BorderThickness = "1"
     $userBox.Padding = "6,4"
     $userBox.Margin = "0,0,0,12"
-    $stack.Children.Add($userBox)
+    $mainStack.Children.Add($userBox) | Out-Null
+    $script:ScheduleDialogControls.UserBox = $userBox
 
+    # Password label
     $passLbl = New-Object System.Windows.Controls.TextBlock
     $passLbl.Text = "Password:"
-    $passLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $passLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($passLbl)
+    $passLbl.Foreground = $brushLabel
+    $passLbl.Margin = "0,0,0,4"
+    $mainStack.Children.Add($passLbl) | Out-Null
 
+    # Password Box
     $passBox = New-Object System.Windows.Controls.PasswordBox
-    $passBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $passBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $passBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $passBox.Background = $brushMid
+    $passBox.Foreground = $brushText
+    $passBox.BorderBrush = $brushBorder
     $passBox.BorderThickness = "1"
     $passBox.Padding = "6,4"
     $passBox.Margin = "0,0,0,16"
-    $stack.Children.Add($passBox)
+    $mainStack.Children.Add($passBox) | Out-Null
+    $script:ScheduleDialogControls.PassBox = $passBox
 
-    $scheduleCombo.Add_SelectionChanged({
-        if (-not $scheduleCombo.SelectedItem) { return }
-        $selected = $scheduleCombo.SelectedItem.ToString()
-        if ($selected -eq "Monthly") {
-            $dayOfWeekPanel.Visibility = "Collapsed"
-            $dayOfMonthPanel.Visibility = "Visible"
-        } elseif ($selected -eq "Weekly") {
-            $dayOfWeekPanel.Visibility = "Visible"
-            $dayOfMonthPanel.Visibility = "Collapsed"
+    # Schedule type change handler - toggle day panels
+    $schedCombo.Add_SelectionChanged({
+        $ctrl = $script:ScheduleDialogControls
+        if ($null -eq $ctrl -or $null -eq $ctrl.ScheduleCombo) { return }
+        $sel = $ctrl.ScheduleCombo.SelectedItem
+        if ($null -eq $sel) { return }
+        $selStr = $sel.ToString()
+        if ($selStr -eq "Monthly") {
+            $ctrl.DayOfWeekPanel.Visibility = "Collapsed"
+            $ctrl.DayOfMonthPanel.Visibility = "Visible"
+        } elseif ($selStr -eq "Weekly") {
+            $ctrl.DayOfWeekPanel.Visibility = "Visible"
+            $ctrl.DayOfMonthPanel.Visibility = "Collapsed"
         } else {
-            $dayOfWeekPanel.Visibility = "Collapsed"
-            $dayOfMonthPanel.Visibility = "Collapsed"
+            $ctrl.DayOfWeekPanel.Visibility = "Collapsed"
+            $ctrl.DayOfMonthPanel.Visibility = "Collapsed"
         }
-    }.GetNewClosure())
+    })
 
-    $btnPanel = New-Object System.Windows.Controls.StackPanel
-    $btnPanel.Orientation = "Horizontal"
-    $btnPanel.HorizontalAlignment = "Right"
+    # Button panel
+    $btnStack = New-Object System.Windows.Controls.StackPanel
+    $btnStack.Orientation = "Horizontal"
+    $btnStack.HorizontalAlignment = "Right"
 
-    $saveBtn = New-Object System.Windows.Controls.Button
-    $saveBtn.Content = "Create Task"
-    $saveBtn.Padding = "14,6"
-    $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $saveBtn.Foreground = "White"
-    $saveBtn.BorderThickness = 0
-    $saveBtn.Margin = "0,0,8,0"
-    $saveBtn.Add_Click({
-        $timeValue = $timeBox.Text.Trim()
-        if ($timeValue -notmatch '^\d{1,2}:\d{2}$') {
-            [System.Windows.MessageBox]::Show("Invalid time format. Use HH:mm (e.g., 02:00).", "Schedule", "OK", "Warning")
+    # Create Task button
+    $createBtn = New-Object System.Windows.Controls.Button
+    $createBtn.Content = "Create Task"
+    $createBtn.Padding = "14,6"
+    $createBtn.Background = $brushAccent
+    $createBtn.Foreground = "White"
+    $createBtn.BorderThickness = 0
+    $createBtn.Margin = "0,0,8,0"
+    $script:ScheduleDialogControls.Dialog = $schedDlg
+    $createBtn.Add_Click({
+        $ctrl = $script:ScheduleDialogControls
+        $res = $script:ScheduleDialogResult
+        if ($null -eq $ctrl -or $null -eq $res) { return }
+
+        # Validate time format
+        $timeVal = $ctrl.TimeBox.Text.Trim()
+        if ($timeVal -notmatch '^\d{1,2}:\d{2}$') {
+            [System.Windows.MessageBox]::Show("Invalid time format. Use HH:mm (e.g., 02:00).", "Schedule", "OK", "Warning") | Out-Null
             return
         }
-        $scheduleValue = $scheduleCombo.SelectedItem.ToString()
-        $domValue = 1
-        if ($scheduleValue -eq "Monthly") {
-            if (-not [int]::TryParse($domBox.Text, [ref]$domValue) -or $domValue -lt 1 -or $domValue -gt 31) {
-                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning")
+
+        # Get schedule type
+        $schedVal = $ctrl.ScheduleCombo.SelectedItem.ToString()
+
+        # Validate day of month if Monthly
+        $domVal = 1
+        if ($schedVal -eq "Monthly") {
+            if (-not [int]::TryParse($ctrl.DomBox.Text, [ref]$domVal) -or $domVal -lt 1 -or $domVal -gt 31) {
+                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning") | Out-Null
                 return
             }
         }
-        # Validate credentials
-        $userName = $userBox.Text.Trim()
-        $password = $passBox.Password
-        if ([string]::IsNullOrWhiteSpace($userName)) {
-            [System.Windows.MessageBox]::Show("Username is required for scheduled task execution.", "Schedule", "OK", "Warning")
-            return
-        }
-        if ([string]::IsNullOrWhiteSpace($password)) {
-            [System.Windows.MessageBox]::Show("Password is required for scheduled task execution.`n`nThe task needs credentials to run whether the user is logged on or not.", "Schedule", "OK", "Warning")
-            return
-        }
-        $result.Schedule = $scheduleValue
-        $result.DayOfWeek = $dowCombo.SelectedItem.ToString()
-        $result.DayOfMonth = $domValue
-        $result.Time = $timeValue
-        $result.Profile = $profileCombo.SelectedItem.ToString()
-        $result.RunAsUser = $userName
-        $result.Password = $password
-        $result.Cancelled = $false
-        $dlg.Close()
-    }.GetNewClosure())
-    $btnPanel.Children.Add($saveBtn)
 
+        # Validate credentials
+        $userVal = $ctrl.UserBox.Text.Trim()
+        $passVal = $ctrl.PassBox.Password
+        if ([string]::IsNullOrWhiteSpace($userVal)) {
+            [System.Windows.MessageBox]::Show("Username is required for scheduled task execution.", "Schedule", "OK", "Warning") | Out-Null
+            return
+        }
+        if ([string]::IsNullOrWhiteSpace($passVal)) {
+            [System.Windows.MessageBox]::Show("Password is required for scheduled task execution.`n`nThe task needs credentials to run whether the user is logged on or not.", "Schedule", "OK", "Warning") | Out-Null
+            return
+        }
+
+        # Store results
+        $res.Schedule = $schedVal
+        $res.DayOfWeek = $ctrl.DowCombo.SelectedItem.ToString()
+        $res.DayOfMonth = $domVal
+        $res.Time = $timeVal
+        $res.Profile = $ctrl.ProfileCombo.SelectedItem.ToString()
+        $res.RunAsUser = $userVal
+        $res.Password = $passVal
+        $res.Cancelled = $false
+        $ctrl.Dialog.Close()
+    })
+    $btnStack.Children.Add($createBtn) | Out-Null
+
+    # Cancel button
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "14,6"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $brushMid
+    $cancelBtn.Foreground = $brushText
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
-    $btnPanel.Children.Add($cancelBtn)
+    $cancelBtn.Add_Click({
+        $script:ScheduleDialogControls.Dialog.Close()
+    })
+    $btnStack.Children.Add($cancelBtn) | Out-Null
 
-    $stack.Children.Add($btnPanel)
-    $dlg.Content = $stack
-    $dlg.ShowDialog() | Out-Null
+    $mainStack.Children.Add($btnStack) | Out-Null
 
-    return $result
+    # Set content and show dialog
+    $schedDlg.Content = $mainStack
+    $schedDlg.ShowDialog() | Out-Null
+
+    # Return result and clean up
+    $finalResult = $script:ScheduleDialogResult
+    $script:ScheduleDialogControls = $null
+    $script:ScheduleDialogResult = $null
+    return $finalResult
 }
 
 function Show-TransferDialog {
@@ -2451,7 +2532,8 @@ public static void Set(short h){var f=new FX();f.s=84;f.y=h;f.ff=54;f.fw=400;f.f
 "@ -EA 0;[CF]::Set(14)
 '@
             $setupConsole = "$setFontCode; mode con: cols=100 lines=15; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
-            $wrappedCmd = "$setupConsole; $cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
+            # Wrap command in try/finally so prompt ALWAYS shows even if script errors
+            $wrappedCmd = "$setupConsole; try { $cmd } catch { Write-Host ('ERROR: ' + `$_.Exception.Message) -ForegroundColor Red } finally { Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host ''; Write-Host 'Press ENTER to close this window...' -ForegroundColor Yellow; Read-Host }"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
             $psi.UseShellExecute = $true
             $psi.CreateNoWindow = $false
@@ -2782,7 +2864,7 @@ $controls.BtnCreateGpo.Add_Click({
         return
     }
 
-    $destDir = "C:\WSUS GPO"
+    $destDir = "C:\WSUS\WSUS GPO"
 
     # Confirm dialog
     $result = [System.Windows.MessageBox]::Show(
@@ -2828,10 +2910,10 @@ GPO files copied to: $destDir
 
 === NEXT STEPS ===
 
-1. Copy 'C:\WSUS GPO' folder to the Domain Controller
+1. Copy 'C:\WSUS\WSUS GPO' folder to the Domain Controller
 
 2. On the DC, run as Administrator:
-   cd 'C:\WSUS GPO'
+   cd 'C:\WSUS\WSUS GPO'
    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
 
 3. To force clients to update immediately:
@@ -2852,7 +2934,7 @@ GPO files copied to: $destDir
 
         # Also show message box with summary
         [System.Windows.MessageBox]::Show(
-            "GPO files created at: $destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands.",
+            "GPO files created at:`n$destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands.",
             "GPO Files Created", "OK", "Information")
 
     } catch {
