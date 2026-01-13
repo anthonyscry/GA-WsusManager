@@ -206,14 +206,30 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
-    # Auto-prefix local usernames with COMPUTERNAME\ for Register-ScheduledTask compatibility
-    # Using $env:COMPUTERNAME is more reliable than .\ for SID resolution
+    # =========================================================================
+    # LOCAL ACCOUNT USERNAME NORMALIZATION
+    # =========================================================================
+    # Register-ScheduledTask requires fully-qualified usernames for local accounts
+    # when running tasks with stored credentials ("whether user is logged on or not").
+    #
+    # The .\ prefix (e.g., .\dod_Admin) can cause "No mapping between account names
+    # and security IDs" errors (HRESULT 0x80070534) on some Windows configurations.
+    #
+    # Using COMPUTERNAME\username format (e.g., SERVER01\dod_Admin) is more reliable
+    # for Windows SID resolution and works consistently across all Windows versions.
+    #
+    # This code handles three input formats:
+    #   1. Bare username (dod_Admin) -> COMPUTERNAME\dod_Admin
+    #   2. Dot-prefix (.\dod_Admin) -> COMPUTERNAME\dod_Admin
+    #   3. Already qualified (DOMAIN\user or user@domain) -> unchanged
+    # =========================================================================
     if ($RunAsUser -notmatch '\\' -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
+        # Bare username - prefix with computer name for local account
         $RunAsUser = "$env:COMPUTERNAME\$RunAsUser"
         Write-Host "[i] Using local account format: $RunAsUser" -ForegroundColor Cyan
     }
-    # Convert .\ prefix to COMPUTERNAME\ for better compatibility
-    if ($RunAsUser -match '^\.\\') {
+    elseif ($RunAsUser -match '^\.\\') {
+        # Convert .\ prefix to COMPUTERNAME\ for better SID resolution
         $RunAsUser = $RunAsUser -replace '^\.\\', "$env:COMPUTERNAME\"
         Write-Host "[i] Converted to: $RunAsUser" -ForegroundColor Cyan
     }
