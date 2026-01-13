@@ -456,8 +456,10 @@ function Invoke-WsusRestore {
 
     # Restore database
     Write-Log "Restoring database..." "Yellow"
+    # Escape single quotes in path for SQL safety (double them)
+    $safePath = $selectedBackup.FullName -replace "'", "''"
     & $SqlCmdExe -S $SqlInstance -Q "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;" -b 2>$null
-    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($selectedBackup.FullName)' WITH REPLACE, STATS=10" -b
+    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$safePath' WITH REPLACE, STATS=10" -b
     & $SqlCmdExe -S $SqlInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b 2>$null
 
     # Start services

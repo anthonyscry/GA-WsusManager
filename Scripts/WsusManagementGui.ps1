@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.8.6
+Version: 3.8.7
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -1170,7 +1170,8 @@ function Show-ExportDialog {
 
     $destBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($destPanel)
 
@@ -1271,7 +1272,8 @@ function Show-ImportDialog {
     $srcBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
         $fbd.Description = "Select source folder containing WSUS export data"
-        if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($srcPanel)
 
@@ -1306,7 +1308,8 @@ function Show-ImportDialog {
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
         $fbd.Description = "Select destination folder on WSUS server"
         $fbd.SelectedPath = $dstTxt.Text
-        if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($dstPanel)
 
@@ -2107,7 +2110,8 @@ function Show-TransferDialog {
     $browseBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
         $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder (external media)" }
-        if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($pathPanel)
 
@@ -2145,7 +2149,8 @@ function Show-TransferDialog {
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
         $fbd.Description = "Select WSUS destination folder"
         $fbd.SelectedPath = $importDestTxt.Text
-        if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $importDestPanel.Children.Add($importDestDock)
     $stack.Children.Add($importDestPanel)
@@ -2588,6 +2593,11 @@ public static void Set(short h){var f=new FX();f.s=84;f.y=h;f.ff=54;f.fw=400;f.f
 
             $script:CurrentProcess.Start() | Out-Null
 
+            # Security: Clear password environment variables from parent process immediately after child starts
+            # The child process has already inherited these values, so we can safely remove them here
+            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
+            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
 
@@ -2773,6 +2783,12 @@ public static void Set(short h){var f=new FX();f.s=84;f.y=h;f.ff=54;f.fw=400;f.f
             $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
 
             $script:CurrentProcess.Start() | Out-Null
+
+            # Security: Clear password environment variables from parent process immediately after child starts
+            # The child process has already inherited these values, so we can safely remove them here
+            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
+            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+
             $script:CurrentProcess.BeginOutputReadLine()
             $script:CurrentProcess.BeginErrorReadLine()
 
@@ -2959,15 +2975,17 @@ $controls.BtnBrowseInstallPath.Add_Click({
     $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
     $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
     $fbd.SelectedPath = $script:InstallPath
-    if ($fbd.ShowDialog() -eq "OK") {
-        $p = $fbd.SelectedPath
-        if (-not (Test-SafePath $p)) {
-            [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
-            return
+    try {
+        if ($fbd.ShowDialog() -eq "OK") {
+            $p = $fbd.SelectedPath
+            if (-not (Test-SafePath $p)) {
+                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                return
+            }
+            $controls.InstallPathBox.Text = $p
+            $script:InstallPath = $p
         }
-        $controls.InstallPathBox.Text = $p
-        $script:InstallPath = $p
-    }
+    } finally { $fbd.Dispose() }
 })
 
 $controls.BtnRunInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
