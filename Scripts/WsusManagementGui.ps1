@@ -138,6 +138,32 @@ try {
 } catch { Write-Log "Admin check failed: $_" }
 #endregion
 
+#region Keystroke Sender for Live Terminal
+# P/Invoke to send keystrokes to console window without stealing focus
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class ConsolKeySender {
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    public const int VK_RETURN = 0x0D;
+
+    public static void SendEnter(IntPtr hWnd) {
+        if (hWnd != IntPtr.Zero) {
+            PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
+            PostMessage(hWnd, WM_KEYUP, VK_RETURN, 0);
+        }
+    }
+}
+"@ -ErrorAction SilentlyContinue
+
+$script:KeystrokeTimer = $null
+#endregion
+
 #region XAML
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -2173,7 +2199,7 @@ function Invoke-LogOperation {
     # Branch based on Live Terminal mode
     if ($script:LiveTerminalMode) {
         # LIVE TERMINAL MODE: Launch in visible console window
-        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
+        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
 
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -2192,8 +2218,12 @@ function Invoke-LogOperation {
             # For UseShellExecute, we can't redirect output but we can still track exit
             $exitHandler = {
                 $data = $Event.MessageData
+                # Stop all timers
                 if ($null -ne $script:OpCheckTimer) {
                     $script:OpCheckTimer.Stop()
+                }
+                if ($null -ne $script:KeystrokeTimer) {
+                    $script:KeystrokeTimer.Stop()
                 }
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
@@ -2228,12 +2258,37 @@ function Invoke-LogOperation {
 
             $script:CurrentProcess.Start() | Out-Null
 
+            # Give the process a moment to create its window
+            Start-Sleep -Milliseconds 500
+
+            # Keystroke timer - sends Enter to console every 2 seconds to flush output buffer
+            $script:KeystrokeTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:KeystrokeTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        $hWnd = $script:CurrentProcess.MainWindowHandle
+                        if ($hWnd -ne [IntPtr]::Zero) {
+                            [ConsolKeySender]::SendEnter($hWnd)
+                        }
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore keystroke errors
+                }
+            })
+            $script:KeystrokeTimer.Start()
+
             # Timer for backup cleanup (in case exit event doesn't fire)
             $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
             $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
             $script:OpCheckTimer.Add_Tick({
                 if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                     $this.Stop()
+                    if ($null -ne $script:KeystrokeTimer) {
+                        $script:KeystrokeTimer.Stop()
+                    }
                     if ($script:OperationRunning) {
                         $script:OperationRunning = $false
                         Enable-OperationButtons
@@ -2251,6 +2306,9 @@ function Invoke-LogOperation {
             $script:OperationRunning = $false
             Enable-OperationButtons
             $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:KeystrokeTimer) {
+                $script:KeystrokeTimer.Stop()
+            }
         }
     } else {
         # EMBEDDED LOG MODE: Capture output to log panel (original behavior)
