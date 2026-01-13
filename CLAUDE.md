@@ -207,6 +207,10 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Source folder: external media location (USB drive)
   - Destination folder: WSUS server path (default: C:\WSUS)
   - Both paths passed to CLI, eliminating all interactive prompts
+- **Create GPO button:**
+  - New button in Setup menu copies GPO files to `C:\WSUS GPO`
+  - Shows detailed instructions for DC admin
+  - Includes commands to force client check-in and verify GPO application
 - **Non-blocking network check:**
   - Changed `Test-InternetConnection` from `Test-Connection` to .NET Ping with 500ms timeout
   - Prevents UI freezing during dashboard refresh on slow/offline networks

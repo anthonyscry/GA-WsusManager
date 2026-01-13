@@ -301,6 +301,7 @@ $script:StdinFlushTimer = $null
                         <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
@@ -736,7 +737,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -746,7 +747,7 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 
@@ -2670,6 +2671,99 @@ $controls.BtnInstall.Add_Click({
     Show-Panel "Install" "Install WSUS" "BtnInstall"
 })
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
+$controls.BtnCreateGpo.Add_Click({
+    # Create GPO files for DC admin
+    $sr = $script:ScriptRoot
+    $sourceDir = $null
+    $locations = @(
+        (Join-Path $sr "DomainController"),
+        (Join-Path $sr "Scripts\DomainController"),
+        (Join-Path (Split-Path $sr -Parent) "DomainController")
+    )
+    foreach ($loc in $locations) {
+        if (Test-Path $loc) { $sourceDir = $loc; break }
+    }
+
+    if (-not $sourceDir) {
+        [System.Windows.MessageBox]::Show("DomainController folder not found.`n`nExpected locations:`n- $sr\DomainController`n- $sr\Scripts\DomainController", "Error", "OK", "Error")
+        return
+    }
+
+    $destDir = "C:\WSUS GPO"
+
+    # Confirm dialog
+    $result = [System.Windows.MessageBox]::Show(
+        "This will copy GPO files to:`n$destDir`n`nContinue?",
+        "Create GPO Files", "YesNo", "Question")
+
+    if ($result -ne "Yes") { return }
+
+    # Expand log panel and show progress
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 250
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    Write-LogOutput "=== Creating GPO Files ===" -Level Info
+
+    try {
+        # Create destination folder
+        if (-not (Test-Path $destDir)) {
+            New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+            Write-LogOutput "Created folder: $destDir" -Level Success
+        }
+
+        # Copy files
+        Write-LogOutput "Copying from: $sourceDir" -Level Info
+        Copy-Item -Path "$sourceDir\*" -Destination $destDir -Recurse -Force
+        Write-LogOutput "Files copied successfully" -Level Success
+
+        # Count items
+        $gpoCount = (Get-ChildItem "$destDir\WSUS GPOs" -Directory -ErrorAction SilentlyContinue).Count
+        $scriptFile = Test-Path "$destDir\Set-WsusGroupPolicy.ps1"
+
+        Write-LogOutput "GPO backups found: $gpoCount" -Level Info
+        Write-LogOutput "Import script: $(if($scriptFile){'Present'}else{'Missing'})" -Level $(if($scriptFile){'Success'}else{'Warning'})
+
+        # Show instructions
+        $instructions = @"
+GPO files copied to: $destDir
+
+=== NEXT STEPS ===
+
+1. Copy 'C:\WSUS GPO' folder to the Domain Controller
+
+2. On the DC, run as Administrator:
+   cd 'C:\WSUS GPO'
+   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
+
+3. To force clients to update immediately:
+   gpupdate /force
+
+   Or from DC (all domain computers):
+   Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer `$_.Name -Force }
+
+4. Verify on clients:
+   gpresult /r | findstr WSUS
+"@
+
+        Write-LogOutput "" -Level Info
+        Write-LogOutput "=== INSTRUCTIONS ===" -Level Info
+        Write-LogOutput $instructions -Level Info
+
+        Set-Status "GPO files created"
+
+        # Also show message box with summary
+        [System.Windows.MessageBox]::Show(
+            "GPO files created at: $destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands.",
+            "GPO Files Created", "OK", "Information")
+
+    } catch {
+        Write-LogOutput "Error: $_" -Level Error
+        [System.Windows.MessageBox]::Show("Failed to create GPO files: $_", "Error", "OK", "Error")
+    }
+})
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })

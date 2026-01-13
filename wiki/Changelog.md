@@ -16,6 +16,10 @@ All notable changes to WSUS Manager are documented here.
   - Two folder browsers: source (external media) and destination (WSUS server)
   - Default destination: C:\WSUS
   - Fully non-interactive - no prompts during import operations
+- **Create GPO Button:**
+  - New button in Setup menu copies GPO files to C:\WSUS GPO
+  - Shows detailed instructions for DC admin
+  - Includes commands to force client check-in
 
 ### Improvements
 - **Non-blocking network check:**

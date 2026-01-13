@@ -131,6 +131,7 @@ The mode is saved to user settings and persists across restarts.
 |-----------|-------------|
 | Install WSUS | Install WSUS + SQL Express from scratch |
 | Restore Database | Restore SUSDB from backup |
+| Create GPO | Copy GPO files to C:\WSUS GPO for DC import |
 | Export to Media | Export DB and content to USB (Full or Differential) |
 | Import from Media | Import from USB to air-gapped server |
 | Monthly Maintenance | Run WSUS cleanup and optimization |
