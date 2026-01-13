@@ -633,6 +633,8 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
         $syncIterations = 0
         $maxIterations = 120
         $lastProgressUpdate = Get-Date
+        $lastPhase = ""
+        $lastProcessed = 0
 
         do {
             # Split the 30-second wait into smaller chunks with heartbeat
@@ -651,7 +653,20 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             $syncProgress = $subscription.GetSynchronizationProgress()
 
             if ($syncStatus -eq "Running") {
-                Write-Log "Syncing: $($syncProgress.Phase) | Items: $($syncProgress.ProcessedItems)/$($syncProgress.TotalItems)"
+                $currentPhase = $syncProgress.Phase.ToString()
+                $processed = $syncProgress.ProcessedItems
+                $total = $syncProgress.TotalItems
+                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } else { 0 }
+
+                # Only log if phase changed or significant progress made (every 10%)
+                $phaseChanged = ($currentPhase -ne $lastPhase)
+                $progressJump = ($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1))
+
+                if ($phaseChanged -or $progressJump -or $syncIterations -eq 0) {
+                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$total"
+                    $lastPhase = $currentPhase
+                    $lastProcessed = $processed
+                }
                 $syncIterations++
             } elseif ($syncStatus -eq "NotProcessing") {
                 Write-Log "Sync completed or not running"
