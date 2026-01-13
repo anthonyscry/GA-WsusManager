@@ -206,11 +206,16 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
-    # Auto-prefix local usernames with .\ for Register-ScheduledTask compatibility
-    # Local accounts need .\username format when running "whether user is logged on or not"
+    # Auto-prefix local usernames with COMPUTERNAME\ for Register-ScheduledTask compatibility
+    # Using $env:COMPUTERNAME is more reliable than .\ for SID resolution
     if ($RunAsUser -notmatch '\\' -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
-        $RunAsUser = ".\$RunAsUser"
+        $RunAsUser = "$env:COMPUTERNAME\$RunAsUser"
         Write-Host "[i] Using local account format: $RunAsUser" -ForegroundColor Cyan
+    }
+    # Convert .\ prefix to COMPUTERNAME\ for better compatibility
+    if ($RunAsUser -match '^\.\\') {
+        $RunAsUser = $RunAsUser -replace '^\.\\', "$env:COMPUTERNAME\"
+        Write-Host "[i] Converted to: $RunAsUser" -ForegroundColor Cyan
     }
 
     $useServiceAccount = $RunAsUser -eq "SYSTEM"
