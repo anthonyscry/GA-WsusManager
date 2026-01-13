@@ -324,6 +324,31 @@ function Test-Prerequisites {
         $results.Success = $false
     }
 
+    # Check 6: SQL Server sysadmin permissions
+    Write-Host "  SQL Sysadmin      " -NoNewline -ForegroundColor DarkGray
+    try {
+        $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if ($sqlService -and $sqlService.Status -eq 'Running') {
+            $permQuery = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+            $permResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Query $permQuery -ErrorAction Stop
+            if ($permResult.IsSysAdmin -eq 1) {
+                Write-Host "OK" -ForegroundColor Green
+            } else {
+                Write-Host "FAILED" -ForegroundColor Red
+                $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                $results.Errors += "User '$currentUser' does not have SQL sysadmin permissions. Run: ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]"
+                $results.Success = $false
+            }
+        } else {
+            Write-Host "SKIP" -ForegroundColor Yellow
+            Write-Host "  (SQL not running)" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "Cannot verify SQL permissions: $($_.Exception.Message)"
+        $results.Success = $false
+    }
+
     Write-Host ""
     return $results
 }
