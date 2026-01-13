@@ -2438,8 +2438,8 @@ function Invoke-LogOperation {
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
-            # Set smaller console window and buffer, then run command with pause at end
-            $setupConsole = "mode con: cols=100 lines=15; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            # Set smaller console window with more columns (smaller text appearance)
+            $setupConsole = "mode con: cols=120 lines=18; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             $wrappedCmd = "$setupConsole; $cmd; Write-Host ''; Write-Host '=== Operation Complete ===' -ForegroundColor Green; Write-Host 'Press any key to close this window...'; `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')"
             $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
             $psi.UseShellExecute = $true
@@ -2508,21 +2508,22 @@ function Invoke-LogOperation {
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
-                    # Position console below the main content area (where log panel would be)
-                    # Sidebar is ~180px, leave some margin
-                    # Get screen dimensions for bounds checking
+                    # Position console in log panel area (right side of app, above bottom)
+                    # Sidebar is ~180px, content area starts at ~200px
                     $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
                     $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
 
-                    $consoleHeight = 250  # Same as log panel height
-                    $consoleX = [math]::Max(0, $mainLeft + 200)
-                    $consoleY = [math]::Max(0, $mainTop + $mainHeight - 280)  # Above the bottom edge
-                    $consoleWidth = [math]::Max(400, $mainWidth - 220)  # Account for sidebar + margins, min 400px
+                    $consoleHeight = 220  # Slightly smaller than log panel
+                    # Position at sidebar offset, constrained to app width
+                    $consoleX = [math]::Max(0, $mainLeft + 195)
+                    $consoleY = [math]::Max(0, $mainTop + $mainHeight - 255)  # Near bottom
+                    # Width = app width minus sidebar minus margins (keep within app boundary)
+                    $consoleWidth = [math]::Min(($mainWidth - 215), ($mainLeft + $mainWidth - $consoleX - 15))
+                    $consoleWidth = [math]::Max(350, $consoleWidth)  # Min 350px
 
-                    # Apply maximum bounds to prevent off-screen positioning
-                    $consoleX = [math]::Min($consoleX, $screenWidth - $consoleWidth - 20)
-                    $consoleY = [math]::Min($consoleY, $screenHeight - $consoleHeight - 50)
-                    $consoleWidth = [math]::Min($consoleWidth, $screenWidth - $consoleX - 20)
+                    # Apply screen bounds
+                    $consoleX = [math]::Min($consoleX, $screenWidth - $consoleWidth - 10)
+                    $consoleY = [math]::Min($consoleY, $screenHeight - $consoleHeight - 40)
 
                     [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
                 }
