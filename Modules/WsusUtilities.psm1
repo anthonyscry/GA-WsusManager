@@ -162,9 +162,16 @@ function Start-WsusLogging {
     .PARAMETER UseTimestamp
         Include timestamp in filename (default: true)
 
+    .PARAMETER SharedLog
+        Use shared daily log file (WsusOperations_yyyy-MM-dd.log) instead of per-script log
+
     .EXAMPLE
         Start-WsusLogging -ScriptName "MyScript"
         # Creates C:\WSUS\Logs\MyScript_20250108_1430.log
+
+    .EXAMPLE
+        Start-WsusLogging -ScriptName "MyScript" -SharedLog
+        # Uses C:\WSUS\Logs\WsusOperations_2025-01-08.log
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -172,14 +179,19 @@ function Start-WsusLogging {
 
         [string]$LogDirectory = "C:\WSUS\Logs",
 
-        [bool]$UseTimestamp = $true
+        [bool]$UseTimestamp = $true,
+
+        [switch]$SharedLog
     )
 
     # Create log directory if it doesn't exist
     New-Item -Path $LogDirectory -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
     # Generate log filename
-    if ($UseTimestamp) {
+    if ($SharedLog) {
+        # Use single shared daily log file for all operations
+        $logFile = Join-Path $LogDirectory "WsusOperations_$(Get-Date -Format 'yyyy-MM-dd').log"
+    } elseif ($UseTimestamp) {
         $logFile = Join-Path $LogDirectory "${ScriptName}_$(Get-Date -Format 'yyyyMMdd_HHmm').log"
     } else {
         $logFile = Join-Path $LogDirectory "${ScriptName}.log"
