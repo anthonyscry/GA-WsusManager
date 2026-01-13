@@ -27,7 +27,6 @@ on:
         default: false
 
 # Prevent concurrent runs - cancel in-progress runs when new commit arrives
-# Uses shared group with build-fast-ci.yml so only one build workflow runs at a time
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
