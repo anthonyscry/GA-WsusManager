@@ -202,11 +202,14 @@ Record the hash for verification on the air-gap side.
 1. Connect USB drive to **Air-Gap** server
 2. Launch WSUS Manager
 3. Click **Import from Media**
-4. Select the export folder on USB
-5. Click **Import**
+4. In the Transfer dialog:
+   - Select **Import** direction
+   - **Source (External Media)**: Browse to the export folder on USB (e.g., `E:\WSUS_Export_2026-01-11`)
+   - **Destination (WSUS Server)**: Verify destination folder (default: `C:\WSUS`)
+5. Click **Start Transfer**
 6. Wait for import to complete
 
-> **Note:** The GUI import uses the selected folder directly and does not prompt for additional input during the copy.
+> **Note:** The import runs fully non-interactive using the selected folders. No additional prompts will appear during the copy operation.
 
 ### Post-Import Steps
 
