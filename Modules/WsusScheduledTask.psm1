@@ -206,6 +206,13 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
+    # Auto-prefix local usernames with .\ for Register-ScheduledTask compatibility
+    # Local accounts need .\username format when running "whether user is logged on or not"
+    if ($RunAsUser -notmatch '\\' -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
+        $RunAsUser = ".\$RunAsUser"
+        Write-Host "[i] Using local account format: $RunAsUser" -ForegroundColor Cyan
+    }
+
     $useServiceAccount = $RunAsUser -eq "SYSTEM"
 
     if (-not $useServiceAccount) {

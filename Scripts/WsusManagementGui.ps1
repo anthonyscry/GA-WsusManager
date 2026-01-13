@@ -1755,6 +1755,7 @@ function Show-ScheduleTaskDialog {
     $schedCombo.ItemContainerStyle = $comboItemStyle
     # Override system colors for dropdown and selection display
     $schedCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
+    $schedCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
     $schedCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $schedCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $schedCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
@@ -1786,6 +1787,7 @@ function Show-ScheduleTaskDialog {
     $dowCombo.ItemContainerStyle = $comboItemStyle
     # Override system colors for dropdown and selection display
     $dowCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
+    $dowCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
     $dowCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $dowCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $dowCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
@@ -1859,6 +1861,7 @@ function Show-ScheduleTaskDialog {
     $profCombo.ItemContainerStyle = $comboItemStyle
     # Override system colors for dropdown and selection display
     $profCombo.Resources[[System.Windows.SystemColors]::WindowBrushKey] = $brushMid
+    $profCombo.Resources[[System.Windows.SystemColors]::WindowTextBrushKey] = $brushText
     $profCombo.Resources[[System.Windows.SystemColors]::HighlightBrushKey] = $brushAccent
     $profCombo.Resources[[System.Windows.SystemColors]::HighlightTextBrushKey] = [System.Windows.Media.Brushes]::White
     $profCombo.Resources[[System.Windows.SystemColors]::ControlTextBrushKey] = $brushText
