@@ -632,7 +632,8 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
         $syncIterations = 0
         $maxIterations = 120
-        $lastProgressUpdate = Get-Date
+        $lastPhase = ""
+        $lastProcessed = 0
 
         do {
             # Split the 30-second wait into smaller chunks with heartbeat
@@ -651,7 +652,24 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             $syncProgress = $subscription.GetSynchronizationProgress()
 
             if ($syncStatus -eq "Running") {
-                Write-Log "Syncing: $($syncProgress.Phase) | Items: $($syncProgress.ProcessedItems)/$($syncProgress.TotalItems)"
+                # Null-safe access to sync progress properties
+                $currentPhase = if ($null -ne $syncProgress -and $null -ne $syncProgress.Phase) {
+                    $syncProgress.Phase.ToString()
+                } else { "Unknown" }
+                $processed = if ($null -ne $syncProgress) { $syncProgress.ProcessedItems } else { 0 }
+                $total = if ($null -ne $syncProgress) { $syncProgress.TotalItems } else { 0 }
+                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } else { 0 }
+
+                # Log if: phase changed, 10% progress jump, first iteration, or near completion (95%+)
+                $phaseChanged = ($currentPhase -ne $lastPhase)
+                $progressJump = ($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1))
+                $nearCompletion = ($pct -ge 95) -and ($processed -ne $lastProcessed)
+
+                if ($phaseChanged -or $progressJump -or $nearCompletion -or $syncIterations -eq 0) {
+                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$total"
+                    $lastPhase = $currentPhase
+                    $lastProcessed = $processed
+                }
                 $syncIterations++
             } elseif ($syncStatus -eq "NotProcessing") {
                 Write-Log "Sync completed or not running"
