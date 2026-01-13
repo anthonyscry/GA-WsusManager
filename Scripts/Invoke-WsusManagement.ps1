@@ -497,7 +497,8 @@ function Select-Destination {
 function Invoke-FullCopy {
     param(
         [string]$ExportSource,
-        [string]$ContentPath
+        [string]$ContentPath,
+        [string]$DestinationPath  # When provided, skips interactive destination selection
     )
 
     Write-Banner "FULL COPY - LATEST EXPORT"
@@ -545,8 +546,13 @@ function Invoke-FullCopy {
         Write-Host "  $contentFiles files ($(Format-SizeDisplay $contentSize))"
     }
 
-    $destination = Select-Destination -DefaultPath $ContentPath
-    if (-not $destination) { return }
+    # Use DestinationPath if provided (non-interactive), otherwise prompt
+    if ($DestinationPath) {
+        $destination = $DestinationPath
+    } else {
+        $destination = Select-Destination -DefaultPath $ContentPath
+        if (-not $destination) { return }
+    }
 
     Write-Host ""
     Write-Host "Configuration:" -ForegroundColor Yellow
@@ -555,8 +561,11 @@ function Invoke-FullCopy {
     Write-Host "  Mode: Differential copy (only newer/missing files)"
     Write-Host ""
 
-    $confirm = Read-Host "Proceed with copy? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) { return }
+    # Skip confirmation if DestinationPath was provided (non-interactive mode)
+    if (-not $DestinationPath) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
 
     Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
         -IncludeDatabase:($null -ne $rootBak) -IncludeContent:$hasRootContent
@@ -786,11 +795,18 @@ function Invoke-CopyForAirGap {
         Import WSUS data from external media (Apricorn, optical, USB) to air-gap server
     .DESCRIPTION
         Prompts for source path (where external media is mounted) and copies to local WSUS
+    .PARAMETER SourcePath
+        Path to external media containing WSUS export data
+    .PARAMETER DestinationPath
+        Destination path on WSUS server (default: C:\WSUS)
+    .PARAMETER NonInteractive
+        Skip all interactive prompts - requires SourcePath and DestinationPath
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
         [string]$ContentPath,
         [string]$SourcePath,
+        [string]$DestinationPath,
         [switch]$NonInteractive
     )
 
@@ -828,7 +844,9 @@ function Invoke-CopyForAirGap {
     $ExportSource = $validation.CleanPath
 
     if ($NonInteractive) {
-        Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath
+        # Use DestinationPath if provided, otherwise fall back to ContentPath
+        $destPath = if ($DestinationPath) { $DestinationPath } else { $ContentPath }
+        Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath -DestinationPath $destPath
         return
     }
 
@@ -1526,7 +1544,9 @@ function Start-InteractiveMenu {
 if ($Restore) {
     Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance -BackupPath $BackupPath
 } elseif ($Import) {
-    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath -SourcePath $ExportRoot -NonInteractive
+    # Use SourcePath if provided, otherwise fall back to ExportRoot
+    $importSource = if ($SourcePath) { $SourcePath } else { $ExportRoot }
+    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath -SourcePath $importSource -DestinationPath $DestinationPath -NonInteractive
 } elseif ($Export) {
     # For backward compatibility with current GUI:
     # - If DestinationPath is set explicitly, use it

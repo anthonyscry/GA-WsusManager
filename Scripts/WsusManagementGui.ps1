@@ -1150,12 +1150,12 @@ function Show-ExportDialog {
 }
 
 function Show-ImportDialog {
-    $result = @{ Cancelled = $true; SourcePath = "" }
+    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = "C:\WSUS" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Import from Media"
     $dlg.Width = 450
-    $dlg.Height = 220
+    $dlg.Height = 300
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1173,14 +1173,15 @@ function Show-ImportDialog {
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
+    # Source folder section
     $srcLbl = New-Object System.Windows.Controls.TextBlock
-    $srcLbl.Text = "Source folder:"
+    $srcLbl.Text = "Source folder (external media):"
     $srcLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
 
     $srcPanel = New-Object System.Windows.Controls.DockPanel
-    $srcPanel.Margin = "0,0,0,20"
+    $srcPanel.Margin = "0,0,0,16"
 
     $srcBtn = New-Object System.Windows.Controls.Button
     $srcBtn.Content = "Browse"
@@ -1200,9 +1201,45 @@ function Show-ImportDialog {
 
     $srcBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select source folder containing WSUS export data"
         if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
     $stack.Children.Add($srcPanel)
+
+    # Destination folder section
+    $dstLbl = New-Object System.Windows.Controls.TextBlock
+    $dstLbl.Text = "Destination folder (WSUS server):"
+    $dstLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dstLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($dstLbl)
+
+    $dstPanel = New-Object System.Windows.Controls.DockPanel
+    $dstPanel.Margin = "0,0,0,20"
+
+    $dstBtn = New-Object System.Windows.Controls.Button
+    $dstBtn.Content = "Browse"
+    $dstBtn.Padding = "10,4"
+    $dstBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($dstBtn, "Right")
+    $dstPanel.Children.Add($dstBtn)
+
+    $dstTxt = New-Object System.Windows.Controls.TextBox
+    $dstTxt.Text = "C:\WSUS"
+    $dstTxt.Margin = "0,0,8,0"
+    $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstTxt.Padding = "6,4"
+    $dstPanel.Children.Add($dstTxt)
+
+    $dstBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select destination folder on WSUS server"
+        $fbd.SelectedPath = $dstTxt.Text
+        if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $stack.Children.Add($dstPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1220,8 +1257,13 @@ function Show-ImportDialog {
             [System.Windows.MessageBox]::Show("Select source folder.", "Import", "OK", "Warning")
             return
         }
+        if ([string]::IsNullOrWhiteSpace($dstTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select destination folder.", "Import", "OK", "Warning")
+            return
+        }
         $result.Cancelled = $false
         $result.SourcePath = $srcTxt.Text
+        $result.DestinationPath = $dstTxt.Text
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($importBtn)
@@ -1775,12 +1817,12 @@ function Show-ScheduleTaskDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Full"; DaysOld = 30 }
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; SourcePath = ""; DestinationPath = "C:\WSUS"; ExportMode = "Full"; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
     $dlg.Width = 500
-    $dlg.Height = 380
+    $dlg.Height = 450
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1865,26 +1907,36 @@ function Show-TransferDialog {
     $exportModePanel.Children.Add($diffCustomPanel)
     $stack.Children.Add($exportModePanel)
 
-    # Show/hide export mode based on direction
-    $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
-    $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
+    # Show/hide panels based on direction
+    $radioExport.Add_Checked({
+        $exportModePanel.Visibility = "Visible"
+        $importDestPanel.Visibility = "Collapsed"
+        $pathLbl.Text = "Destination folder:"
+    }.GetNewClosure())
+    $radioImport.Add_Checked({
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }.GetNewClosure())
 
     # Auto-select mode based on detected server mode
     if ($script:ServerMode -eq "Air-Gap") {
         $radioExport.IsEnabled = $false
         $radioImport.IsChecked = $true
         $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
     }
 
-    # Path selection
+    # Path selection - Export destination / Import source
     $pathLbl = New-Object System.Windows.Controls.TextBlock
-    $pathLbl.Text = "Folder path:"
+    $pathLbl.Text = "Destination folder:"
     $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $pathLbl.Margin = "0,0,0,6"
     $stack.Children.Add($pathLbl)
 
     $pathPanel = New-Object System.Windows.Controls.DockPanel
-    $pathPanel.Margin = "0,0,0,16"
+    $pathPanel.Margin = "0,0,0,12"
 
     $browseBtn = New-Object System.Windows.Controls.Button
     $browseBtn.Content = "Browse"
@@ -1904,10 +1956,49 @@ function Show-TransferDialog {
 
     $browseBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder for import" }
+        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder (external media)" }
         if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
     $stack.Children.Add($pathPanel)
+
+    # Import destination panel (only visible when Import is selected)
+    $importDestPanel = New-Object System.Windows.Controls.StackPanel
+    $importDestPanel.Visibility = "Collapsed"
+    $importDestPanel.Margin = "0,0,0,12"
+
+    $importDestLbl = New-Object System.Windows.Controls.TextBlock
+    $importDestLbl.Text = "WSUS destination folder:"
+    $importDestLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $importDestLbl.Margin = "0,0,0,6"
+    $importDestPanel.Children.Add($importDestLbl)
+
+    $importDestDock = New-Object System.Windows.Controls.DockPanel
+
+    $importDestBtn = New-Object System.Windows.Controls.Button
+    $importDestBtn.Content = "Browse"
+    $importDestBtn.Padding = "10,4"
+    $importDestBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($importDestBtn, "Right")
+    $importDestDock.Children.Add($importDestBtn)
+
+    $importDestTxt = New-Object System.Windows.Controls.TextBox
+    $importDestTxt.Text = "C:\WSUS"
+    $importDestTxt.Margin = "0,0,8,0"
+    $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestTxt.Padding = "6,4"
+    $importDestDock.Children.Add($importDestTxt)
+
+    $importDestBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select WSUS destination folder"
+        $fbd.SelectedPath = $importDestTxt.Text
+        if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $importDestPanel.Children.Add($importDestDock)
+    $stack.Children.Add($importDestPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1922,12 +2013,23 @@ function Show-TransferDialog {
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Select a folder path.", "Transfer", "OK", "Warning")
+            $msg = if ($radioExport.IsChecked) { "Select destination folder." } else { "Select source folder." }
+            [System.Windows.MessageBox]::Show($msg, "Transfer", "OK", "Warning")
+            return
+        }
+        # Validate import destination
+        if ($radioImport.IsChecked -and [string]::IsNullOrWhiteSpace($importDestTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select WSUS destination folder.", "Transfer", "OK", "Warning")
             return
         }
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
+        # For Import, also set SourcePath and DestinationPath
+        if ($radioImport.IsChecked) {
+            $result.SourcePath = $pathTxt.Text
+            $result.DestinationPath = $importDestTxt.Text
+        }
         # Determine export mode
         if ($radioFull.IsChecked) {
             $result.ExportMode = "Full"
@@ -2199,8 +2301,15 @@ function Invoke-LogOperation {
                 $Title = "Export ($modeDesc)"
                 "& '$mgmtSafe' -Export -ContentPath '$cp' -DestinationPath '$path' -CopyMode '$($opts.ExportMode)' -DaysOld $($opts.DaysOld)"
             } else {
+                # Import - validate destination path too
+                if (-not (Test-SafePath $opts.DestinationPath)) {
+                    [System.Windows.MessageBox]::Show("Invalid destination path.", "Error", "OK", "Error")
+                    return
+                }
+                $srcPath = Get-EscapedPath $opts.SourcePath
+                $destPath = Get-EscapedPath $opts.DestinationPath
                 $Title = "Import"
-                "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
+                "& '$mgmtSafe' -Import -ContentPath '$cp' -SourcePath '$srcPath' -DestinationPath '$destPath' -NonInteractive"
             }
         }
         "maintenance" {
