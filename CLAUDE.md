@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.6
+**Current Version:** 3.8.7
 
 ## Repository Structure
 
@@ -195,7 +195,46 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.6)
+## Recent Changes (v3.8.7)
+
+- **Live Terminal Mode:**
+  - New toggle button in log panel header to open operations in external PowerShell window
+  - Console window positioned near log panel area with smaller text (100x15 chars)
+  - Keystroke timer sends Enter key every 2 seconds to flush output buffer
+  - Settings persist to `settings.json`
+- **Import dialog with source and destination selection:**
+  - Transfer dialog now shows two folder browsers for Import operations
+  - Source folder: external media location (USB drive)
+  - Destination folder: WSUS server path (default: C:\WSUS)
+  - Both paths passed to CLI, eliminating all interactive prompts
+- **Create GPO button:**
+  - New button in Setup menu copies GPO files to `C:\WSUS GPO`
+  - Shows detailed instructions for DC admin
+  - Includes commands to force client check-in and verify GPO application
+- **WSUS installation detection:**
+  - Operations greyed out if WSUS service not installed on server
+  - Dashboard cards show "Not Installed" / "N/A" status
+  - Log panel displays installation instructions on startup
+  - Only Install WSUS button remains enabled
+- **Non-blocking network check:**
+  - Changed `Test-InternetConnection` from `Test-Connection` to .NET Ping with 500ms timeout
+  - Prevents UI freezing during dashboard refresh on slow/offline networks
+- **Improved sync progress output:**
+  - Only logs when phase changes or 10% progress made
+  - Shows percentage in output (e.g., "Syncing: DownloadUpdates (45.2%)")
+  - Logs near completion (95%+) to avoid gaps before "completed" message
+- **Bug fixes from code review:**
+  - Fixed Schedule Task crash: `-Profile` parameter renamed to `-MaintenanceProfile`
+  - Fixed UNC path validation: `Test-SafePath` now accepts `\\server\share` paths
+  - Added null checks to `Update-Dashboard` to prevent crashes during initialization
+  - Fixed timer cleanup in `Stop-CurrentOperation` for `KeystrokeTimer` and `StdinFlushTimer`
+  - Added bounds checking for console window positioning (min 400px width, max screen bounds)
+  - Expanded scheduled task day validation from 1-28 to 1-31
+  - Fixed Import CLI parameter set: `SourcePath`/`DestinationPath` now work for Import operations
+  - Fixed button state after operation completes: calls `Update-WsusButtonState` to respect WSUS installation
+  - Fixed Create GPO handler: disables buttons during operation, re-enables on completion
+
+### Previous (v3.8.6)
 
 - **Input fields now disabled during operations:**
   - Password boxes and path textbox greyed out during install

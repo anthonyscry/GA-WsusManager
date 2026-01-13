@@ -47,7 +47,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "3.8.6"
+$script:AppVersion = "3.8.7"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -301,6 +301,7 @@ $script:StdinFlushTimer = $null
                         <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
@@ -687,27 +688,43 @@ function Update-ServerMode {
 function Update-Dashboard {
     Update-ServerMode
 
+    # Check if WSUS is installed first
+    $wsusInstalled = Test-WsusInstalled
+
     # Card 1: Services
     $svc = Get-ServiceStatus
     if ($null -ne $svc -and $controls.Card1Value -and $controls.Card1Sub -and $controls.Card1Bar) {
-        $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
-        $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
-        $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
-        $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
-        $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
+        if (-not $wsusInstalled) {
+            # WSUS not installed
+            $controls.Card1Value.Text = "Not Installed"
+            $controls.Card1Sub.Text = "Use Install WSUS"
+            $controls.Card1Bar.Background = "#F85149"
+        } else {
+            $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
+            $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
+            $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
+            $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
+            $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
+        }
     }
 
     # Card 2: Database
-    $db = Get-DatabaseSizeGB
     if ($controls.Card2Value -and $controls.Card2Sub -and $controls.Card2Bar) {
-        if ($db -ge 0) {
-            $controls.Card2Value.Text = "$db / 10 GB"
-            $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
-            $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+        if (-not $wsusInstalled) {
+            $controls.Card2Value.Text = "N/A"
+            $controls.Card2Sub.Text = "WSUS not installed"
+            $controls.Card2Bar.Background = "#30363D"
         } else {
-            $controls.Card2Value.Text = "Offline"
-            $controls.Card2Sub.Text = "SQL stopped"
-            $controls.Card2Bar.Background = "#D29922"
+            $db = Get-DatabaseSizeGB
+            if ($db -ge 0) {
+                $controls.Card2Value.Text = "$db / 10 GB"
+                $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
+                $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+            } else {
+                $controls.Card2Value.Text = "Offline"
+                $controls.Card2Sub.Text = "SQL stopped"
+                $controls.Card2Bar.Background = "#D29922"
+            }
         }
     }
 
@@ -720,10 +737,15 @@ function Update-Dashboard {
     }
 
     # Card 4: Task
-    $task = Get-TaskStatus
     if ($controls.Card4Value -and $controls.Card4Bar) {
-        $controls.Card4Value.Text = $task
-        $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+        if (-not $wsusInstalled) {
+            $controls.Card4Value.Text = "N/A"
+            $controls.Card4Bar.Background = "#30363D"
+        } else {
+            $task = Get-TaskStatus
+            $controls.Card4Value.Text = $task
+            $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+        }
     }
 
     # Configuration display
@@ -732,11 +754,14 @@ function Update-Dashboard {
     if ($controls.CfgExportRoot) { $controls.CfgExportRoot.Text = $script:ExportRoot }
     if ($controls.CfgLogPath) { $controls.CfgLogPath.Text = $script:LogDir }
     if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
+
+    # Check WSUS installation and update button states
+    Update-WsusButtonState
 }
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -746,9 +771,13 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
+# Buttons that require WSUS to be installed (all except Install WSUS)
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+# Track WSUS installation status
+$script:WsusInstalled = $false
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
@@ -778,6 +807,46 @@ function Enable-OperationButtons {
         if ($controls[$i]) {
             $controls[$i].IsEnabled = $true
             $controls[$i].Opacity = 1.0
+        }
+    }
+    # Re-check WSUS installation to disable buttons if WSUS not installed
+    Update-WsusButtonState
+}
+
+function Test-WsusInstalled {
+    # Check if WSUS service exists (not just running, but installed)
+    try {
+        $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+        return ($null -ne $svc)
+    } catch {
+        return $false
+    }
+}
+
+function Update-WsusButtonState {
+    # Disable/enable buttons based on WSUS installation status
+    $script:WsusInstalled = Test-WsusInstalled
+
+    if (-not $script:WsusInstalled) {
+        # WSUS not installed - disable all buttons except Install WSUS
+        foreach ($b in $script:WsusRequiredButtons) {
+            if ($controls[$b]) {
+                $controls[$b].IsEnabled = $false
+                $controls[$b].Opacity = 0.5
+                $controls[$b].ToolTip = "WSUS is not installed. Use 'Install WSUS' first."
+            }
+        }
+        Write-Log "WSUS not installed - operations disabled"
+    } else {
+        # WSUS installed - enable buttons (unless operation is running)
+        if (-not $script:OperationRunning) {
+            foreach ($b in $script:WsusRequiredButtons) {
+                if ($controls[$b]) {
+                    $controls[$b].IsEnabled = $true
+                    $controls[$b].Opacity = 1.0
+                    $controls[$b].ToolTip = $null
+                }
+            }
         }
     }
 }
@@ -1150,12 +1219,12 @@ function Show-ExportDialog {
 }
 
 function Show-ImportDialog {
-    $result = @{ Cancelled = $true; SourcePath = "" }
+    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = "C:\WSUS" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Import from Media"
     $dlg.Width = 450
-    $dlg.Height = 220
+    $dlg.Height = 300
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1173,14 +1242,15 @@ function Show-ImportDialog {
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
+    # Source folder section
     $srcLbl = New-Object System.Windows.Controls.TextBlock
-    $srcLbl.Text = "Source folder:"
+    $srcLbl.Text = "Source folder (external media):"
     $srcLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
 
     $srcPanel = New-Object System.Windows.Controls.DockPanel
-    $srcPanel.Margin = "0,0,0,20"
+    $srcPanel.Margin = "0,0,0,16"
 
     $srcBtn = New-Object System.Windows.Controls.Button
     $srcBtn.Content = "Browse"
@@ -1200,9 +1270,45 @@ function Show-ImportDialog {
 
     $srcBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select source folder containing WSUS export data"
         if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
     $stack.Children.Add($srcPanel)
+
+    # Destination folder section
+    $dstLbl = New-Object System.Windows.Controls.TextBlock
+    $dstLbl.Text = "Destination folder (WSUS server):"
+    $dstLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dstLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($dstLbl)
+
+    $dstPanel = New-Object System.Windows.Controls.DockPanel
+    $dstPanel.Margin = "0,0,0,20"
+
+    $dstBtn = New-Object System.Windows.Controls.Button
+    $dstBtn.Content = "Browse"
+    $dstBtn.Padding = "10,4"
+    $dstBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($dstBtn, "Right")
+    $dstPanel.Children.Add($dstBtn)
+
+    $dstTxt = New-Object System.Windows.Controls.TextBox
+    $dstTxt.Text = "C:\WSUS"
+    $dstTxt.Margin = "0,0,8,0"
+    $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstTxt.Padding = "6,4"
+    $dstPanel.Children.Add($dstTxt)
+
+    $dstBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select destination folder on WSUS server"
+        $fbd.SelectedPath = $dstTxt.Text
+        if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $stack.Children.Add($dstPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1220,8 +1326,13 @@ function Show-ImportDialog {
             [System.Windows.MessageBox]::Show("Select source folder.", "Import", "OK", "Warning")
             return
         }
+        if ([string]::IsNullOrWhiteSpace($dstTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select destination folder.", "Import", "OK", "Warning")
+            return
+        }
         $result.Cancelled = $false
         $result.SourcePath = $srcTxt.Text
+        $result.DestinationPath = $dstTxt.Text
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($importBtn)
@@ -1775,12 +1886,12 @@ function Show-ScheduleTaskDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Full"; DaysOld = 30 }
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; SourcePath = ""; DestinationPath = "C:\WSUS"; ExportMode = "Full"; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
     $dlg.Width = 500
-    $dlg.Height = 380
+    $dlg.Height = 450
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1865,26 +1976,36 @@ function Show-TransferDialog {
     $exportModePanel.Children.Add($diffCustomPanel)
     $stack.Children.Add($exportModePanel)
 
-    # Show/hide export mode based on direction
-    $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
-    $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
+    # Show/hide panels based on direction
+    $radioExport.Add_Checked({
+        $exportModePanel.Visibility = "Visible"
+        $importDestPanel.Visibility = "Collapsed"
+        $pathLbl.Text = "Destination folder:"
+    }.GetNewClosure())
+    $radioImport.Add_Checked({
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }.GetNewClosure())
 
     # Auto-select mode based on detected server mode
     if ($script:ServerMode -eq "Air-Gap") {
         $radioExport.IsEnabled = $false
         $radioImport.IsChecked = $true
         $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
     }
 
-    # Path selection
+    # Path selection - Export destination / Import source
     $pathLbl = New-Object System.Windows.Controls.TextBlock
-    $pathLbl.Text = "Folder path:"
+    $pathLbl.Text = "Destination folder:"
     $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $pathLbl.Margin = "0,0,0,6"
     $stack.Children.Add($pathLbl)
 
     $pathPanel = New-Object System.Windows.Controls.DockPanel
-    $pathPanel.Margin = "0,0,0,16"
+    $pathPanel.Margin = "0,0,0,12"
 
     $browseBtn = New-Object System.Windows.Controls.Button
     $browseBtn.Content = "Browse"
@@ -1904,10 +2025,49 @@ function Show-TransferDialog {
 
     $browseBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder for import" }
+        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder (external media)" }
         if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
     }.GetNewClosure())
     $stack.Children.Add($pathPanel)
+
+    # Import destination panel (only visible when Import is selected)
+    $importDestPanel = New-Object System.Windows.Controls.StackPanel
+    $importDestPanel.Visibility = "Collapsed"
+    $importDestPanel.Margin = "0,0,0,12"
+
+    $importDestLbl = New-Object System.Windows.Controls.TextBlock
+    $importDestLbl.Text = "WSUS destination folder:"
+    $importDestLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $importDestLbl.Margin = "0,0,0,6"
+    $importDestPanel.Children.Add($importDestLbl)
+
+    $importDestDock = New-Object System.Windows.Controls.DockPanel
+
+    $importDestBtn = New-Object System.Windows.Controls.Button
+    $importDestBtn.Content = "Browse"
+    $importDestBtn.Padding = "10,4"
+    $importDestBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($importDestBtn, "Right")
+    $importDestDock.Children.Add($importDestBtn)
+
+    $importDestTxt = New-Object System.Windows.Controls.TextBox
+    $importDestTxt.Text = "C:\WSUS"
+    $importDestTxt.Margin = "0,0,8,0"
+    $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestTxt.Padding = "6,4"
+    $importDestDock.Children.Add($importDestTxt)
+
+    $importDestBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select WSUS destination folder"
+        $fbd.SelectedPath = $importDestTxt.Text
+        if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath }
+    }.GetNewClosure())
+    $importDestPanel.Children.Add($importDestDock)
+    $stack.Children.Add($importDestPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1922,12 +2082,23 @@ function Show-TransferDialog {
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Select a folder path.", "Transfer", "OK", "Warning")
+            $msg = if ($radioExport.IsChecked) { "Select destination folder." } else { "Select source folder." }
+            [System.Windows.MessageBox]::Show($msg, "Transfer", "OK", "Warning")
+            return
+        }
+        # Validate import destination
+        if ($radioImport.IsChecked -and [string]::IsNullOrWhiteSpace($importDestTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select WSUS destination folder.", "Transfer", "OK", "Warning")
             return
         }
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
+        # For Import, also set SourcePath and DestinationPath
+        if ($radioImport.IsChecked) {
+            $result.SourcePath = $pathTxt.Text
+            $result.DestinationPath = $importDestTxt.Text
+        }
         # Determine export mode
         if ($radioFull.IsChecked) {
             $result.ExportMode = "Full"
@@ -2199,8 +2370,15 @@ function Invoke-LogOperation {
                 $Title = "Export ($modeDesc)"
                 "& '$mgmtSafe' -Export -ContentPath '$cp' -DestinationPath '$path' -CopyMode '$($opts.ExportMode)' -DaysOld $($opts.DaysOld)"
             } else {
+                # Import - validate destination path too
+                if (-not (Test-SafePath $opts.DestinationPath)) {
+                    [System.Windows.MessageBox]::Show("Invalid destination path.", "Error", "OK", "Error")
+                    return
+                }
+                $srcPath = Get-EscapedPath $opts.SourcePath
+                $destPath = Get-EscapedPath $opts.DestinationPath
                 $Title = "Import"
-                "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
+                "& '$mgmtSafe' -Import -ContentPath '$cp' -SourcePath '$srcPath' -DestinationPath '$destPath' -NonInteractive"
             }
         }
         "maintenance" {
@@ -2299,6 +2477,8 @@ function Invoke-LogOperation {
                             $data.Controls[$inputName].Opacity = 1.0
                         }
                     }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
                 })
                 $script:OperationRunning = $false
             }
@@ -2330,10 +2510,19 @@ function Invoke-LogOperation {
 
                     # Position console below the main content area (where log panel would be)
                     # Sidebar is ~180px, leave some margin
+                    # Get screen dimensions for bounds checking
+                    $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
+                    $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
+
+                    $consoleHeight = 250  # Same as log panel height
                     $consoleX = [math]::Max(0, $mainLeft + 200)
                     $consoleY = [math]::Max(0, $mainTop + $mainHeight - 280)  # Above the bottom edge
                     $consoleWidth = [math]::Max(400, $mainWidth - 220)  # Account for sidebar + margins, min 400px
-                    $consoleHeight = 250  # Same as log panel height
+
+                    # Apply maximum bounds to prevent off-screen positioning
+                    $consoleX = [math]::Min($consoleX, $screenWidth - $consoleWidth - 20)
+                    $consoleY = [math]::Min($consoleY, $screenHeight - $consoleHeight - 50)
+                    $consoleWidth = [math]::Min($consoleWidth, $screenWidth - $consoleX - 20)
 
                     [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
                 }
@@ -2477,6 +2666,8 @@ function Invoke-LogOperation {
                             $data.Controls[$inputName].Opacity = 1.0
                         }
                     }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
                 })
                 # Reset the operation running flag (script scope accessible from event handler)
                 $script:OperationRunning = $false
@@ -2561,6 +2752,105 @@ $controls.BtnInstall.Add_Click({
     Show-Panel "Install" "Install WSUS" "BtnInstall"
 })
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
+$controls.BtnCreateGpo.Add_Click({
+    # Create GPO files for DC admin
+    $sr = $script:ScriptRoot
+    $sourceDir = $null
+    $locations = @(
+        (Join-Path $sr "DomainController"),
+        (Join-Path $sr "Scripts\DomainController"),
+        (Join-Path (Split-Path $sr -Parent) "DomainController")
+    )
+    foreach ($loc in $locations) {
+        if (Test-Path $loc) { $sourceDir = $loc; break }
+    }
+
+    if (-not $sourceDir) {
+        [System.Windows.MessageBox]::Show("DomainController folder not found.`n`nExpected locations:`n- $sr\DomainController`n- $sr\Scripts\DomainController", "Error", "OK", "Error")
+        return
+    }
+
+    $destDir = "C:\WSUS GPO"
+
+    # Confirm dialog
+    $result = [System.Windows.MessageBox]::Show(
+        "This will copy GPO files to:`n$destDir`n`nContinue?",
+        "Create GPO Files", "YesNo", "Question")
+
+    if ($result -ne "Yes") { return }
+
+    # Disable buttons during operation
+    Disable-OperationButtons
+
+    # Expand log panel and show progress
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 250
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    Write-LogOutput "=== Creating GPO Files ===" -Level Info
+
+    try {
+        # Create destination folder
+        if (-not (Test-Path $destDir)) {
+            New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+            Write-LogOutput "Created folder: $destDir" -Level Success
+        }
+
+        # Copy files
+        Write-LogOutput "Copying from: $sourceDir" -Level Info
+        Copy-Item -Path "$sourceDir\*" -Destination $destDir -Recurse -Force
+        Write-LogOutput "Files copied successfully" -Level Success
+
+        # Count items
+        $gpoCount = (Get-ChildItem "$destDir\WSUS GPOs" -Directory -ErrorAction SilentlyContinue).Count
+        $scriptFile = Test-Path "$destDir\Set-WsusGroupPolicy.ps1"
+
+        Write-LogOutput "GPO backups found: $gpoCount" -Level Info
+        Write-LogOutput "Import script: $(if($scriptFile){'Present'}else{'Missing'})" -Level $(if($scriptFile){'Success'}else{'Warning'})
+
+        # Show instructions
+        $instructions = @"
+GPO files copied to: $destDir
+
+=== NEXT STEPS ===
+
+1. Copy 'C:\WSUS GPO' folder to the Domain Controller
+
+2. On the DC, run as Administrator:
+   cd 'C:\WSUS GPO'
+   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
+
+3. To force clients to update immediately:
+   gpupdate /force
+
+   Or from DC (all domain computers):
+   Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer `$_.Name -Force }
+
+4. Verify on clients:
+   gpresult /r | findstr WSUS
+"@
+
+        Write-LogOutput "" -Level Info
+        Write-LogOutput "=== INSTRUCTIONS ===" -Level Info
+        Write-LogOutput $instructions -Level Info
+
+        Set-Status "GPO files created"
+
+        # Also show message box with summary
+        [System.Windows.MessageBox]::Show(
+            "GPO files created at: $destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands.",
+            "GPO Files Created", "OK", "Information")
+
+    } catch {
+        Write-LogOutput "Error: $_" -Level Error
+        [System.Windows.MessageBox]::Show("Failed to create GPO files: $_", "Error", "OK", "Error")
+    } finally {
+        # Re-enable buttons (respects WSUS installation status)
+        Enable-OperationButtons
+    }
+})
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
@@ -2745,6 +3035,15 @@ try {
 } catch { <# About logo load failed #> }
 
 Update-Dashboard
+
+# Show message if WSUS is not installed
+if (-not $script:WsusInstalled) {
+    $controls.LogOutput.Text = "WSUS is not installed on this server.`r`n`r`nMost operations are disabled until WSUS is installed.`r`nUse 'Install WSUS' from the Setup menu to begin installation.`r`n"
+    # Expand log panel to show message
+    $controls.LogPanel.Height = 250
+    $controls.BtnToggleLog.Content = "Hide"
+    $script:LogExpanded = $true
+}
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)

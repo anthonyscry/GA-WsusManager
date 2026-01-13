@@ -2,8 +2,8 @@
 
 | **Author** | Tony Tran, ISSO, GA-ASI |
 |------------|-------------------------|
-| **Version** | 3.8.3 |
-| **Last Updated** | March 2026 |
+| **Version** | 3.8.7 |
+| **Last Updated** | January 2026 |
 
 A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports online and air-gapped networks.
 
@@ -131,6 +131,7 @@ The mode is saved to user settings and persists across restarts.
 |-----------|-------------|
 | Install WSUS | Install WSUS + SQL Express from scratch |
 | Restore Database | Restore SUSDB from backup |
+| Create GPO | Copy GPO files to C:\WSUS GPO for DC import |
 | Export to Media | Export DB and content to USB (Full or Differential) |
 | Import from Media | Import from USB to air-gapped server |
 | Monthly Maintenance | Run WSUS cleanup and optimization |

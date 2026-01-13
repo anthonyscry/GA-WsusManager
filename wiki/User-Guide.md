@@ -120,6 +120,39 @@ Installs WSUS with SQL Server Express from scratch.
 - No existing WSUS installation
 - Administrator privileges
 
+### Create GPO
+
+Copies Group Policy Objects to `C:\WSUS GPO` for transfer to a Domain Controller.
+
+**Steps:**
+1. Click **Create GPO**
+2. Confirm the copy operation
+3. Copy the `C:\WSUS GPO` folder to the Domain Controller
+4. On the DC, run as Administrator:
+   ```powershell
+   cd 'C:\WSUS GPO'
+   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
+   ```
+
+**To force clients to update:**
+```powershell
+# On individual clients:
+gpupdate /force
+
+# From DC (all domain computers):
+Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force }
+
+# Verify on clients:
+gpresult /r | findstr WSUS
+```
+
+**GPOs Created:**
+| GPO Name | Purpose | Link Target |
+|----------|---------|-------------|
+| WSUS Update Policy | Client update settings | Domain root |
+| WSUS Inbound Allow | Firewall rules for WSUS server | Member Servers\WSUS Server |
+| WSUS Outbound Allow | Firewall rules for clients | Workstations, Member Servers, DCs |
+
 ### Restore Database
 
 Restores SUSDB from a backup file.
@@ -161,15 +194,25 @@ Imports updates from USB media to an air-gapped server.
 
 **Steps:**
 1. Click **Import from Media**
-2. Select source folder (USB drive)
-3. Click **Import**
+2. In the Transfer dialog:
+   - Select **Import** direction
+   - Browse to **Source (External Media)** folder on USB drive
+   - Browse to **Destination (WSUS Server)** folder (default: `C:\WSUS`)
+3. Click **Start Transfer**
 4. Wait for import to complete
 
-> **Note:** The import runs non-interactively using the selected folder and will not prompt for additional input.
+> **Note:** The import runs fully non-interactive using the selected folders and will not prompt for additional input during the copy operation.
+
+**Dialog Options:**
+| Field | Description | Default |
+|-------|-------------|---------|
+| Source (External Media) | USB drive or network path containing export | (Browse required) |
+| Destination (WSUS Server) | Local WSUS content directory | `C:\WSUS` |
 
 **Prerequisites:**
-- Valid export folder structure
-- Sufficient disk space
+- Valid export folder structure on source media
+- Sufficient disk space on destination
+- WSUS services running
 
 ### Monthly Maintenance
 
