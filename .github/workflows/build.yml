@@ -329,77 +329,6 @@ jobs:
           exit 1
         }
 
-    - name: Create distribution package
-      shell: pwsh
-      run: |
-        $version = "${{ steps.version.outputs.VERSION }}"
-        $packageName = "WsusManager-v$version"
-        $distDir = ".\dist"
-        $packageDir = "$distDir\\staging"
-
-        # Create dist folder structure
-        if (Test-Path $packageDir) { Remove-Item -Path $packageDir -Recurse -Force }
-        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
-
-        # Copy main executable to both dist root and package folder
-        Copy-Item ".\WsusManager.exe" -Destination $distDir
-        Copy-Item ".\WsusManager.exe" -Destination $packageDir
-
-        # Copy required folders (Scripts and Modules are REQUIRED for the EXE to work)
-        if (Test-Path ".\Scripts") {
-          Copy-Item ".\Scripts" -Destination "$packageDir\Scripts" -Recurse
-          Write-Host "Copied Scripts folder" -ForegroundColor Green
-        } else {
-          Write-Host "::error::Scripts folder not found - EXE will not work!"
-          exit 1
-        }
-
-        if (Test-Path ".\Modules") {
-          Copy-Item ".\Modules" -Destination "$packageDir\Modules" -Recurse
-          Write-Host "Copied Modules folder" -ForegroundColor Green
-        } else {
-          Write-Host "::error::Modules folder not found - EXE will not work!"
-          exit 1
-        }
-
-        # Copy optional files/folders
-        if (Test-Path ".\DomainController") {
-          Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
-          Write-Host "Copied DomainController folder" -ForegroundColor Green
-        }
-        if (Test-Path ".\wsus-icon.ico") {
-          Copy-Item ".\wsus-icon.ico" -Destination $packageDir
-          Copy-Item ".\wsus-icon.ico" -Destination $distDir
-        }
-        if (Test-Path ".\general_atomics_logo_small.ico") {
-          Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
-          Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir
-        }
-        if (Test-Path ".\general_atomics_logo_big.ico") {
-          Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
-          Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir
-        }
-        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
-        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
-
-        # List contents for verification
-        Write-Host "`nPackage contents:" -ForegroundColor Cyan
-        Get-ChildItem -Path $packageDir -Recurse | ForEach-Object {
-          $relativePath = $_.FullName.Replace((Get-Item $packageDir).FullName, "")
-          Write-Host "  $relativePath"
-        }
-
-        # Create zip in dist folder without nesting contents under a parent folder
-        Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
-
-        # Remove staging directory after packaging
-        Remove-Item -Path $packageDir -Recurse -Force
-
-        Write-Host "`nDist folder contents:" -ForegroundColor Cyan
-        Get-ChildItem -Path $distDir -File | ForEach-Object {
-          Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
-        }
-
     - name: Run EXE Validation Tests
       shell: pwsh
       run: |
@@ -425,6 +354,67 @@ jobs:
 
         if ($results.FailedCount -gt 0) {
           Write-Host "::warning::$($results.FailedCount) EXE validation test(s) failed"
+        }
+
+    - name: Create distribution package
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $packageName = "WsusManager-v$version"
+        $distDir = ".\dist"
+        $packageDir = "$distDir\staging"
+
+        # Clean and create dist folder
+        if (Test-Path $distDir) { Remove-Item -Path $distDir -Recurse -Force }
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+
+        # Copy main executable
+        Copy-Item ".\WsusManager.exe" -Destination $packageDir
+
+        # Copy required folders (Scripts and Modules are REQUIRED for the EXE to work)
+        if (Test-Path ".\Scripts") {
+          Copy-Item ".\Scripts" -Destination "$packageDir\Scripts" -Recurse
+          Write-Host "Copied Scripts folder" -ForegroundColor Green
+        } else {
+          Write-Host "::error::Scripts folder not found - EXE will not work!"
+          exit 1
+        }
+
+        if (Test-Path ".\Modules") {
+          Copy-Item ".\Modules" -Destination "$packageDir\Modules" -Recurse
+          Write-Host "Copied Modules folder" -ForegroundColor Green
+        } else {
+          Write-Host "::error::Modules folder not found - EXE will not work!"
+          exit 1
+        }
+
+        # Copy optional files/folders
+        if (Test-Path ".\DomainController") {
+          Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
+          Write-Host "Copied DomainController folder" -ForegroundColor Green
+        }
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir }
+        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
+
+        # List contents for verification
+        Write-Host "`nPackage contents:" -ForegroundColor Cyan
+        Get-ChildItem -Path $packageDir -Recurse | ForEach-Object {
+          $relativePath = $_.FullName.Replace((Get-Item $packageDir).FullName, "")
+          Write-Host "  $relativePath"
+        }
+
+        # Create single zip with everything needed to run
+        Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
+
+        # Remove staging directory - only keep the zip
+        Remove-Item -Path $packageDir -Recurse -Force
+
+        Write-Host "`nFinal artifact:" -ForegroundColor Cyan
+        Get-ChildItem -Path $distDir -File | ForEach-Object {
+          Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
         }
 
     - name: Upload build artifact
