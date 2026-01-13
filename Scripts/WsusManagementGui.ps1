@@ -1655,7 +1655,7 @@ function Show-ScheduleTaskDialog {
         DayOfMonth = 1
         Time = "02:00"
         Profile = "Full"
-        RunAsUser = ".\dod_admin"
+        RunAsUser = "dod_admin"
         Password = ""
     }
 
@@ -1878,14 +1878,14 @@ function Show-ScheduleTaskDialog {
 
     # Username label
     $userLbl = New-Object System.Windows.Controls.TextBlock
-    $userLbl.Text = "Username (e.g., .\dod_admin or DOMAIN\user):"
+    $userLbl.Text = "Username (e.g., dod_admin or DOMAIN\user):"
     $userLbl.Foreground = $brushLabel
     $userLbl.Margin = "0,0,0,4"
     $mainStack.Children.Add($userLbl) | Out-Null
 
     # Username TextBox
     $userBox = New-Object System.Windows.Controls.TextBox
-    $userBox.Text = ".\dod_admin"
+    $userBox.Text = "dod_admin"
     $userBox.Background = $brushMid
     $userBox.Foreground = $brushText
     $userBox.BorderBrush = $brushBorder
@@ -2576,7 +2576,7 @@ function Invoke-LogOperation {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
             $psi.FileName = "powershell.exe"
             # Configure console window size (font size controlled by user's PowerShell defaults)
-            $setupConsole = "mode con: cols=90 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            $setupConsole = "mode con: cols=85 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
             # Wrap command in try/finally with 30-second auto-close countdown
             # Note: The keystroke timer sends Enter every 2 seconds to flush output.
             # To avoid the automatic Enter keys closing the window early, we only accept
@@ -2586,16 +2586,18 @@ Write-Host ''
 Write-Host '=== Operation Complete ===' -ForegroundColor Green
 Write-Host ''
 Write-Host 'Window will close in 30 seconds. Press ESC or Q to close now...' -ForegroundColor Yellow
-$countdown = 30
+$countdown = 300
 while ($countdown -gt 0) {
-    if ([Console]::KeyAvailable) {
+    # Drain all available keys and check for ESC/Q
+    while ([Console]::KeyAvailable) {
         $key = [Console]::ReadKey($true)
-        # Only close on ESC or Q - ignore Enter (sent by keystroke timer)
         if ($key.Key -eq [ConsoleKey]::Escape -or $key.Key -eq [ConsoleKey]::Q) {
+            $countdown = 0
             break
         }
     }
-    Start-Sleep -Milliseconds 1000
+    if ($countdown -eq 0) { break }
+    Start-Sleep -Milliseconds 100
     $countdown--
 }
 '@
@@ -2672,9 +2674,9 @@ while ($countdown -gt 0) {
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
-                    # Console is 80% of main window size
-                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.8))
-                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.7))
+                    # Console is 70% of main window size (fits better centered)
+                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.70))
+                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.65))
 
                     # Center console within main window
                     $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)
