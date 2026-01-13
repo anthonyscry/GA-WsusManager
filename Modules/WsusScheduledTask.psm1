@@ -105,7 +105,7 @@ function New-WsusMaintenanceTask {
         When to run: Monthly, Weekly, Daily (default: Monthly)
 
     .PARAMETER DayOfMonth
-        Day of month to run (1-28, default: 15) - for Monthly schedule
+        Day of month to run (1-31, default: 15) - for Monthly schedule
 
     .PARAMETER DayOfWeek
         Day of week to run (Sunday-Saturday, default: Sunday) - for Weekly schedule
@@ -133,7 +133,7 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Monthly', 'Weekly', 'Daily')]
         [string]$Schedule = 'Monthly',
 
-        [ValidateRange(1, 28)]
+        [ValidateRange(1, 31)]
         [int]$DayOfMonth = 15,
 
         [ValidateSet('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')]
@@ -444,7 +444,7 @@ function Show-WsusScheduledTaskMenu {
 
         switch ($choice.ToUpper()) {
             '1' {
-                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "01:00" -Profile Full -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "01:00" -MaintenanceProfile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
@@ -454,7 +454,7 @@ function Show-WsusScheduledTaskMenu {
                 Read-Host "Press Enter to continue"
             }
             '2' {
-                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Saturday -Time "01:00" -Profile Full -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Saturday -Time "01:00" -MaintenanceProfile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
@@ -479,13 +479,13 @@ function Show-WsusScheduledTaskMenu {
                 $params = @{
                     Schedule = $scheduleChoice
                     Time = $timeInput
-                    Profile = $profileChoice
+                    MaintenanceProfile = $profileChoice
                     ScriptPath = $ScriptPath
                 }
 
                 if ($scheduleChoice -eq 'Monthly') {
-                    $dayInput = Read-Host "Day of month (1-28, default 15)"
-                    if ($dayInput -match '^\d+$' -and [int]$dayInput -ge 1 -and [int]$dayInput -le 28) {
+                    $dayInput = Read-Host "Day of month (1-31, default 15)"
+                    if ($dayInput -match '^\d+$' -and [int]$dayInput -ge 1 -and [int]$dayInput -le 31) {
                         $params.DayOfMonth = [int]$dayInput
                     }
                 } elseif ($scheduleChoice -eq 'Weekly') {
