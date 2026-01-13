@@ -73,6 +73,11 @@ $script:ServerMode = "Online"
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
 $script:OperationRunning = $false
+# Event subscription tracking for proper cleanup (prevents duplicates/leaks)
+$script:OutputEventJob = $null
+$script:ErrorEventJob = $null
+$script:ExitEventJob = $null
+$script:OpCheckTimer = $null
 
 function Write-Log { param([string]$Msg)
     try {
@@ -522,11 +527,11 @@ try {
 
 #region Create Window
 $reader = New-Object System.Xml.XmlNodeReader $xaml
-$window = [Windows.Markup.XamlReader]::Load($reader)
+$script:window = [Windows.Markup.XamlReader]::Load($reader)
 
-$controls = @{}
+$script:controls = @{}
 $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForEach-Object {
-    if ($_.Name) { $controls[$_.Name] = $window.FindName($_.Name) }
+    if ($_.Name) { $script:controls[$_.Name] = $script:window.FindName($_.Name) }
 }
 #endregion
 
@@ -706,6 +711,54 @@ function Enable-OperationButtons {
     }
 }
 
+function Stop-CurrentOperation {
+    # Properly cleans up all resources from a running operation
+    # Unregisters events, stops timer, disposes process, resets state
+    param([switch]$SuppressLog)
+
+    # 1. Stop the backup timer first (prevents race conditions)
+    if ($null -ne $script:OpCheckTimer) {
+        try {
+            $script:OpCheckTimer.Stop()
+            $script:OpCheckTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "Timer stop warning: $_" }
+        }
+    }
+
+    # 2. Unregister all event subscriptions (CRITICAL for preventing duplicates)
+    foreach ($job in @($script:OutputEventJob, $script:ErrorEventJob, $script:ExitEventJob)) {
+        if ($null -ne $job) {
+            try {
+                Unregister-Event -SourceIdentifier $job.Name -ErrorAction SilentlyContinue
+                Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+            } catch {
+                if (-not $SuppressLog) { Write-Log "Event cleanup warning: $_" }
+            }
+        }
+    }
+    $script:OutputEventJob = $null
+    $script:ErrorEventJob = $null
+    $script:ExitEventJob = $null
+
+    # 3. Dispose the process object
+    if ($null -ne $script:CurrentProcess) {
+        try {
+            if (-not $script:CurrentProcess.HasExited) {
+                $script:CurrentProcess.Kill()
+                $script:CurrentProcess.WaitForExit(1000)
+            }
+            $script:CurrentProcess.Dispose()
+        } catch {
+            if (-not $SuppressLog) { Write-Log "Process cleanup warning: $_" }
+        }
+        $script:CurrentProcess = $null
+    }
+
+    # 4. Reset operation state
+    $script:OperationRunning = $false
+}
+
 function Show-Panel {
     param([string]$Panel, [string]$Title, [string]$NavBtn)
     $controls.PageTitle.Text = $Title
@@ -872,7 +925,7 @@ function Show-ExportDialog {
     $dlg.Width = 450
     $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1012,7 +1065,7 @@ function Show-ImportDialog {
     $dlg.Width = 450
     $dlg.Height = 220
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1112,7 +1165,7 @@ function Show-RestoreDialog {
     $dlg.Width = 550
     $dlg.Height = 320
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1263,7 +1316,7 @@ function Show-MaintenanceDialog {
     $dlg.Width = 450
     $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1372,7 +1425,7 @@ function Show-ScheduleTaskDialog {
     $dlg.Width = 460
     $dlg.Height = 480
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1637,7 +1690,7 @@ function Show-TransferDialog {
     $dlg.Width = 500
     $dlg.Height = 380
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1824,7 +1877,7 @@ function Show-SettingsDialog {
     $dlg.Width = 400
     $dlg.Height = 220
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
 
@@ -2105,6 +2158,9 @@ function Invoke-LogOperation {
     Disable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Visible"
 
+    # Clear log before starting new operation (prevents old/new output mixing)
+    $controls.LogOutput.Clear()
+
     Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
 
@@ -2124,8 +2180,8 @@ function Invoke-LogOperation {
 
         # Create shared state object that can be modified from event handlers
         $eventData = @{
-            Window = $window
-            Controls = $controls
+            Window = $script:window
+            Controls = $script:controls
             Title = $Title
             OperationButtons = $script:OperationButtons
             OperationInputs = $script:OperationInputs
@@ -2136,18 +2192,25 @@ function Invoke-LogOperation {
             if ($line) {
                 $data = $Event.MessageData
                 $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
-                # Use BeginInvoke with Normal priority for non-blocking UI updates
+                # Format message BEFORE dispatch to capture values properly
+                $timestamp = Get-Date -Format "HH:mm:ss"
+                $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+                $formattedLine = "[$timestamp] $prefix $line`r`n"
+                $logOutput = $data.Controls.LogOutput
+                # Use BeginInvoke with closure to capture formatted values
                 $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
-                    $timestamp = Get-Date -Format "HH:mm:ss"
-                    $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
-                    $data.Controls.LogOutput.AppendText("[$timestamp] $prefix $line`r`n")
-                    $data.Controls.LogOutput.ScrollToEnd()
-                })
+                    $logOutput.AppendText($formattedLine)
+                    $logOutput.ScrollToEnd()
+                }.GetNewClosure())
             }
         }
 
         $exitHandler = {
             $data = $Event.MessageData
+            # Stop the timer IMMEDIATELY to prevent race conditions
+            if ($null -ne $script:OpCheckTimer) {
+                $script:OpCheckTimer.Stop()
+            }
             $data.Window.Dispatcher.Invoke([Action]{
                 $timestamp = Get-Date -Format "HH:mm:ss"
                 $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
@@ -2173,16 +2236,17 @@ function Invoke-LogOperation {
             $script:OperationRunning = $false
         }
 
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData | Out-Null
+        # Store event subscriptions for proper cleanup (prevents duplicates/leaks)
+        $script:OutputEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData
+        $script:ErrorEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData
+        $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
 
         $script:CurrentProcess.Start() | Out-Null
         $script:CurrentProcess.BeginOutputReadLine()
         $script:CurrentProcess.BeginErrorReadLine()
 
-        # Use a timer as backup to check process status and force UI refresh
-        # Note: Primary reset happens in exitHandler, timer is backup for edge cases
+        # Use a timer to force UI refresh (keeps log responsive)
+        # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
         $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
         $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
         $script:OpCheckTimer.Add_Tick({
@@ -2193,12 +2257,16 @@ function Invoke-LogOperation {
                 [Action]{ }
             )
 
+            # Backup cleanup: only if process exited but exitHandler didn't fire
             if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
-                $script:OperationRunning = $false
-                Enable-OperationButtons
-                $controls.BtnCancelOp.Visibility = "Collapsed"
-                $controls.StatusLabel.Text = " - Ready"
                 $this.Stop()
+                # Only do cleanup if exitHandler didn't already (check if still marked as running)
+                if ($script:OperationRunning) {
+                    $script:OperationRunning = $false
+                    Enable-OperationButtons
+                    $script:controls.BtnCancelOp.Visibility = "Collapsed"
+                    # Don't overwrite status - exitHandler sets completion timestamp
+                }
             }
         })
         $script:OpCheckTimer.Start()
@@ -2249,20 +2317,15 @@ $controls.BtnBrowseInstallPath.Add_Click({
 
 $controls.BtnRunInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
 
-# Cancel operation button
+# Cancel operation button - uses centralized cleanup
 $controls.BtnCancelOp.Add_Click({
-    if ($script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
-        try {
-            $script:CurrentProcess.Kill()
-            Write-LogOutput "Operation cancelled by user" -Level Warning
-        } catch {
-            Write-LogOutput "Failed to cancel operation: $_" -Level Error
-        }
-    }
-    $script:OperationRunning = $false
+    Write-LogOutput "Cancelling operation..." -Level Warning
+    # Call centralized cleanup (handles process kill, event unregister, timer stop, dispose)
+    Stop-CurrentOperation
     Enable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Collapsed"
-    Set-Status "Ready"
+    Set-Status "Cancelled"
+    Write-LogOutput "Operation cancelled by user" -Level Warning
 })
 
 $controls.HelpBtnOverview.Add_Click({ Show-Help "Overview" })
@@ -2399,9 +2462,10 @@ $timer.Add_Tick({
 })
 $timer.Start()
 
-$window.Add_Closing({
+$script:window.Add_Closing({
     $timer.Stop()
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
+    # Clean up any running operation (suppress log since we're closing)
+    Stop-CurrentOperation -SuppressLog
 })
 #endregion
 
@@ -2411,7 +2475,7 @@ Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 Write-Log "Running WPF form"
 
 try {
-    $window.ShowDialog() | Out-Null
+    $script:window.ShowDialog() | Out-Null
 }
 catch {
     $errorMsg = "A fatal error occurred:`n`n$($_.Exception.Message)"
@@ -2442,12 +2506,10 @@ finally {
     # Cleanup resources
     try {
         if ($timer) { $timer.Stop() }
-        if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) {
-            $script:CurrentProcess.Kill()
-        }
+        Stop-CurrentOperation -SuppressLog
     }
     catch {
-        Write-Log "Cleanup warning: $_"
+        # Silently ignore cleanup errors during shutdown
     }
 }
 
