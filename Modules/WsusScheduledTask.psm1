@@ -294,17 +294,27 @@ function New-WsusMaintenanceTask {
         $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
         $result.Message = "Scheduled task '$TaskName' created to run as $runAsMessage (no login required)"
         $result.Success = $true
-        Write-Host "[+] $($result.Message)" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "[+] SUCCESS: $($result.Message)" -ForegroundColor Green
+        Write-Host ""
 
     } catch {
-        $result.Message = "Failed to create scheduled task: $($_.Exception.Message)"
-        Write-Host "[-] $($result.Message)" -ForegroundColor Red
-        Write-Host "    Full error: $($_.ToString())" -ForegroundColor Red
+        $errorMsg = $_.Exception.Message
+        $result.Message = "Failed to create scheduled task: $errorMsg"
+        Write-Host ""
+        Write-Host "[-] FAILED: $errorMsg" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Common causes:" -ForegroundColor Yellow
+        Write-Host "  - Username or password is incorrect" -ForegroundColor Yellow
+        Write-Host "  - Account doesn't exist on this computer" -ForegroundColor Yellow
+        Write-Host "  - Account lacks 'Log on as batch job' right" -ForegroundColor Yellow
+        Write-Host ""
     } finally {
         # Clear password from memory
         $PlainPassword = $null
     }
 
+    # Return result but suppress default table output
     return $result
 }
 
