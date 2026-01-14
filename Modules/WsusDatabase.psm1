@@ -410,23 +410,48 @@ function Invoke-WsusDatabaseShrink {
     .PARAMETER TargetFreePercent
         Target free space percentage (default: 10)
 
+    .PARAMETER MaxRetries
+        Maximum retry attempts if blocked by backup operation (default: 3)
+
+    .PARAMETER RetryDelaySeconds
+        Seconds to wait between retries (default: 30)
+
     .OUTPUTS
         Boolean indicating success
     #>
     param(
         [string]$SqlInstance = ".\SQLEXPRESS",
-        [int]$TargetFreePercent = 10
+        [int]$TargetFreePercent = 10,
+        [int]$MaxRetries = 3,
+        [int]$RetryDelaySeconds = 30
     )
 
-    try {
-        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
-            -Query "DBCC SHRINKDATABASE(SUSDB, $TargetFreePercent) WITH NO_INFOMSGS" `
-            -QueryTimeout 0 | Out-Null
-        return $true
-    } catch {
-        Write-Warning "Database shrink failed: $($_.Exception.Message)"
-        return $false
+    $attempt = 0
+    while ($attempt -lt $MaxRetries) {
+        $attempt++
+        try {
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+                -Query "DBCC SHRINKDATABASE(SUSDB, $TargetFreePercent) WITH NO_INFOMSGS" `
+                -QueryTimeout 0 | Out-Null
+            return $true
+        } catch {
+            $errorMsg = $_.Exception.Message
+            # Check if error is due to backup/file operation in progress
+            if ($errorMsg -match "serialized|backup.*operation|file manipulation") {
+                if ($attempt -lt $MaxRetries) {
+                    Write-Warning "Database shrink blocked by ongoing operation. Waiting $RetryDelaySeconds seconds... (attempt $attempt/$MaxRetries)"
+                    Start-Sleep -Seconds $RetryDelaySeconds
+                } else {
+                    Write-Warning "Database shrink failed after $MaxRetries attempts: $errorMsg"
+                    return $false
+                }
+            } else {
+                Write-Warning "Database shrink failed: $errorMsg"
+                return $false
+            }
+        }
     }
+    return $false
 }
 
 function Get-WsusDatabaseSpace {

@@ -1139,13 +1139,13 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                         # Previous bug: Used @UpdateIdParam which caused "Must declare scalar variable"
                         # errors because T-SQL didn't recognize the undefined parameter.
                         # =========================================================================
-                        $deleteQuery = @"
+                        $deleteQuery = @'
 DECLARE @LocalUpdateID int
 DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
 SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
 IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
-"@
+'@
 
                         try {
                             # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
