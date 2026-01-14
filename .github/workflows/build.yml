@@ -417,11 +417,36 @@ jobs:
           Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
         }
 
+    - name: Prepare artifact for direct download
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $distDir = ".\dist"
+        $stagingFinal = "$distDir\staging-final"
+
+        # Create final staging with extracted contents (not the zip)
+        # This prevents the "zip within zip" issue when downloading artifacts
+        New-Item -ItemType Directory -Path $stagingFinal -Force | Out-Null
+
+        # Extract our zip to the staging-final folder so artifact download works directly
+        $zipPath = Get-ChildItem -Path $distDir -Filter "*.zip" | Select-Object -First 1
+        if ($zipPath) {
+          Expand-Archive -Path $zipPath.FullName -DestinationPath $stagingFinal -Force
+          Write-Host "Extracted $($zipPath.Name) for direct artifact download" -ForegroundColor Green
+
+          # Show final contents
+          Write-Host "`nArtifact contents:" -ForegroundColor Cyan
+          Get-ChildItem -Path $stagingFinal -Recurse | ForEach-Object {
+            $relativePath = $_.FullName.Replace((Get-Item $stagingFinal).FullName, "")
+            Write-Host "  $relativePath"
+          }
+        }
+
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WsusManager-${{ steps.version.outputs.VERSION }}
-        path: ./dist/
+        name: WsusManager-v${{ steps.version.outputs.VERSION }}
+        path: ./dist/staging-final/*
         retention-days: 30
 
   #############################################
