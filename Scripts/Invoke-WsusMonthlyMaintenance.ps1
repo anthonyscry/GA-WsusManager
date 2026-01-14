@@ -1121,8 +1121,24 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                     $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
 
                     foreach ($updateId in $batch) {
-                        # Build parameterized delete query using SQLCMD variable syntax $(varname)
-                        # The -Variable parameter substitutes $(UpdateIdParam) with the actual GUID
+                        # =========================================================================
+                        # SQLCMD VARIABLE SYNTAX FOR PARAMETERIZED QUERIES
+                        # =========================================================================
+                        # Invoke-Sqlcmd's -Variable parameter uses SQLCMD scripting variable syntax,
+                        # NOT T-SQL parameter syntax. This is a common source of confusion:
+                        #
+                        #   WRONG: @VariableName    (T-SQL parameter - requires SqlParameter objects)
+                        #   RIGHT: $(VariableName)  (SQLCMD variable - string substitution)
+                        #
+                        # The -Variable parameter format is: "name=value" (no quotes around value)
+                        # In the SQL query, $(name) is replaced with the literal value.
+                        #
+                        # For GUIDs assigned to uniqueidentifier, we must quote the substituted value:
+                        #   DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
+                        #
+                        # Previous bug: Used @UpdateIdParam which caused "Must declare scalar variable"
+                        # errors because T-SQL didn't recognize the undefined parameter.
+                        # =========================================================================
                         $deleteQuery = @"
 DECLARE @LocalUpdateID int
 DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'

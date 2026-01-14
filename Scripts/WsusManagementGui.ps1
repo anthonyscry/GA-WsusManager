@@ -1620,34 +1620,14 @@ function Show-ScheduleTaskDialog {
         Displays the Schedule Task dialog for configuring monthly maintenance automation.
 
     .DESCRIPTION
-        Creates a WPF modal dialog that allows users to configure:
-        - Schedule type (Weekly, Monthly, Daily)
-        - Day of week or day of month
-        - Start time
-        - Maintenance profile (Full, Quick, SyncOnly)
-        - Run-as credentials for unattended execution
-
-        The dialog uses script-scope variables ($script:ScheduleDialogControls, $script:ScheduleDialogResult)
-        to avoid closure issues with WPF event handlers.
+        Creates a WPF modal dialog using XAML for reliable dark theme styling.
+        Configures: Schedule type, day, time, maintenance profile, and credentials.
 
     .OUTPUTS
-        Hashtable with properties:
-        - Cancelled: [bool] True if user cancelled
-        - Schedule: [string] "Weekly", "Monthly", or "Daily"
-        - DayOfWeek: [string] Day name for weekly schedule
-        - DayOfMonth: [int] Day number for monthly schedule
-        - Time: [string] Start time in HH:mm format
-        - Profile: [string] Maintenance profile name
-        - RunAsUser: [string] Username for scheduled task
-        - Password: [string] Password for scheduled task
-
-    .NOTES
-        Event handlers access controls via $script:ScheduleDialogControls to avoid
-        PowerShell closure capture issues that can cause null reference exceptions.
+        Hashtable with: Cancelled, Schedule, DayOfWeek, DayOfMonth, Time, Profile, RunAsUser, Password
     #>
 
-    # Initialize result with default values
-    # Using script scope so event handlers can access and modify it
+    # Result object - modified by button click handlers
     $script:ScheduleDialogResult = @{
         Cancelled = $true
         Schedule = "Weekly"
@@ -1659,306 +1639,249 @@ function Show-ScheduleTaskDialog {
         Password = ""
     }
 
-    # Store control references for event handlers
-    # This avoids closure issues where variables might be captured at unexpected times
-    $script:ScheduleDialogControls = @{}
+    # =========================================================================
+    # XAML-BASED DIALOG WITH DARK THEME
+    # =========================================================================
+    # Using XAML instead of programmatic control creation allows for complete
+    # control over ComboBox styling via explicit ControlTemplates. This solves
+    # the white-on-white text issue that occurs with native Windows theming.
+    # =========================================================================
+    $xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Schedule Monthly Maintenance" Width="480" Height="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#0D1117">
+    <Window.Resources>
+        <!-- Dark theme colors -->
+        <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
+        <SolidColorBrush x:Key="BgMid" Color="#21262D"/>
+        <SolidColorBrush x:Key="BorderColor" Color="#30363D"/>
+        <SolidColorBrush x:Key="TextColor" Color="#E6EDF3"/>
+        <SolidColorBrush x:Key="LabelColor" Color="#8B949E"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#58A6FF"/>
 
-    # Create dialog window
-    $schedDlg = New-Object System.Windows.Window
-    $schedDlg.Title = "Schedule Monthly Maintenance"
-    $schedDlg.Width = 480
-    $schedDlg.Height = 540  # Height accommodates all fields including credentials
-    $schedDlg.WindowStartupLocation = "CenterScreen"  # Use CenterScreen if no owner
+        <!-- Dark ComboBox Style with custom template -->
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Grid.Column="0"
+                                        Content="{TemplateBinding SelectionBoxItem}"
+                                        ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                        VerticalAlignment="Center"
+                                        Margin="{TemplateBinding Padding}"/>
+                                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="#E6EDF3"
+                                          StrokeThickness="1.5" HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" Focusable="False">
+                                <Border Background="#21262D" BorderBrush="#30363D"
+                                        BorderThickness="1" MaxHeight="200">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                            <ToggleButton Grid.ColumnSpan="2" Opacity="0"
+                                IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-    # Set owner window if available (enables modal behavior)
+        <!-- Dark ComboBoxItem Style -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#58A6FF"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#58A6FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark TextBox Style -->
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#E6EDF3"/>
+        </Style>
+
+        <!-- Dark PasswordBox Style -->
+        <Style x:Key="DarkPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#E6EDF3"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="20">
+        <!-- Title -->
+        <TextBlock Text="Create Scheduled Task" FontSize="14" FontWeight="Bold"
+                   Foreground="#E6EDF3" Margin="0,0,0,8"/>
+        <TextBlock Text="Recommended: Weekly on Saturday at 02:00" FontSize="11"
+                   Foreground="#8B949E" Margin="0,0,0,16"/>
+
+        <!-- Schedule Type -->
+        <TextBlock Text="Schedule:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ScheduleCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+            <ComboBoxItem Content="Weekly" IsSelected="True"/>
+            <ComboBoxItem Content="Monthly"/>
+            <ComboBoxItem Content="Daily"/>
+        </ComboBox>
+
+        <!-- Day of Week (visible for Weekly) -->
+        <StackPanel x:Name="DayOfWeekPanel" Margin="0,0,0,12">
+            <TextBlock Text="Day of Week:" Foreground="#8B949E" Margin="0,0,0,4"/>
+            <ComboBox x:Name="DowCombo" Style="{StaticResource DarkComboBox}">
+                <ComboBoxItem Content="Sunday"/>
+                <ComboBoxItem Content="Monday"/>
+                <ComboBoxItem Content="Tuesday"/>
+                <ComboBoxItem Content="Wednesday"/>
+                <ComboBoxItem Content="Thursday"/>
+                <ComboBoxItem Content="Friday"/>
+                <ComboBoxItem Content="Saturday" IsSelected="True"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Day of Month (hidden by default) -->
+        <StackPanel x:Name="DayOfMonthPanel" Visibility="Collapsed" Margin="0,0,0,12">
+            <TextBlock Text="Day of Month (1-31):" Foreground="#8B949E" Margin="0,0,0,4"/>
+            <TextBox x:Name="DomBox" Text="1" Style="{StaticResource DarkTextBox}"/>
+        </StackPanel>
+
+        <!-- Start Time -->
+        <TextBlock Text="Start Time (HH:mm):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="TimeBox" Text="02:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+        <!-- Maintenance Profile -->
+        <TextBlock Text="Maintenance Profile:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ProfileCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+            <ComboBoxItem Content="Full" IsSelected="True"/>
+            <ComboBoxItem Content="Quick"/>
+            <ComboBoxItem Content="SyncOnly"/>
+        </ComboBox>
+
+        <!-- Credentials Section -->
+        <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
+                   FontSize="11" Margin="0,4,0,8"/>
+
+        <TextBlock Text="Username (e.g., dod_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="UserBox" Text="dod_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+        <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <PasswordBox x:Name="PassBox" Style="{StaticResource DarkPasswordBox}" Margin="0,0,0,16"/>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnCreate" Content="Create Task" Padding="14,6"
+                    Background="#58A6FF" Foreground="White" BorderThickness="0" Margin="0,0,8,0"/>
+            <Button x:Name="BtnCancel" Content="Cancel" Padding="14,6"
+                    Background="#21262D" Foreground="#E6EDF3" BorderThickness="0"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
+"@
+
+    # Parse XAML and create window
+    $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($xaml))
+    $dlg = [System.Windows.Markup.XamlReader]::Load($reader)
+
+    # Set owner if available
     if ($null -ne $script:window) {
-        $schedDlg.Owner = $script:window
-        $schedDlg.WindowStartupLocation = "CenterOwner"
+        $dlg.Owner = $script:window
     }
 
-    $schedDlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $schedDlg.ResizeMode = "NoResize"
+    # Get control references
+    $scheduleCombo = $dlg.FindName("ScheduleCombo")
+    $dowPanel = $dlg.FindName("DayOfWeekPanel")
+    $domPanel = $dlg.FindName("DayOfMonthPanel")
+    $dowCombo = $dlg.FindName("DowCombo")
+    $domBox = $dlg.FindName("DomBox")
+    $timeBox = $dlg.FindName("TimeBox")
+    $profileCombo = $dlg.FindName("ProfileCombo")
+    $userBox = $dlg.FindName("UserBox")
+    $passBox = $dlg.FindName("PassBox")
+    $btnCreate = $dlg.FindName("BtnCreate")
+    $btnCancel = $dlg.FindName("BtnCancel")
 
     # ESC key closes dialog
-    $schedDlg.Add_KeyDown({ param($sender,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $sender.Close() } })
+    $dlg.Add_KeyDown({
+        param($sender, $e)
+        if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $sender.Close() }
+    })
 
-    # Helper for dark theme colors
-    $brushDark = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $brushMid = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $brushBorder = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
-    $brushText = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $brushLabel = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $brushAccent = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-
-    # Create dark theme ItemContainerStyle for ComboBoxes
-    $comboItemStyle = New-Object System.Windows.Style
-    $comboItemStyle.TargetType = [System.Windows.Controls.ComboBoxItem]
-    $bgSetter = New-Object System.Windows.Setter
-    $bgSetter.Property = [System.Windows.Controls.Control]::BackgroundProperty
-    $bgSetter.Value = $brushMid
-    $comboItemStyle.Setters.Add($bgSetter) | Out-Null
-    $fgSetter = New-Object System.Windows.Setter
-    $fgSetter.Property = [System.Windows.Controls.Control]::ForegroundProperty
-    $fgSetter.Value = $brushText
-    $comboItemStyle.Setters.Add($fgSetter) | Out-Null
-    # Add hover trigger for better visibility
-    $hoverTrigger = New-Object System.Windows.Trigger
-    $hoverTrigger.Property = [System.Windows.Controls.ComboBoxItem]::IsMouseOverProperty
-    $hoverTrigger.Value = $true
-    $hoverBgSetter = New-Object System.Windows.Setter
-    $hoverBgSetter.Property = [System.Windows.Controls.Control]::BackgroundProperty
-    $hoverBgSetter.Value = $brushAccent
-    $hoverTrigger.Setters.Add($hoverBgSetter) | Out-Null
-    $comboItemStyle.Triggers.Add($hoverTrigger) | Out-Null
-
-    # Main stack panel
-    $mainStack = New-Object System.Windows.Controls.StackPanel
-    $mainStack.Margin = "20"
-
-    # Title
-    $titleTxt = New-Object System.Windows.Controls.TextBlock
-    $titleTxt.Text = "Create Scheduled Task"
-    $titleTxt.FontSize = 14
-    $titleTxt.FontWeight = "Bold"
-    $titleTxt.Foreground = $brushText
-    $titleTxt.Margin = "0,0,0,8"
-    $mainStack.Children.Add($titleTxt) | Out-Null
-
-    # Subtitle
-    $noteTxt = New-Object System.Windows.Controls.TextBlock
-    $noteTxt.Text = "Recommended: Weekly on Saturday at 02:00"
-    $noteTxt.FontSize = 11
-    $noteTxt.Foreground = $brushLabel
-    $noteTxt.Margin = "0,0,0,16"
-    $mainStack.Children.Add($noteTxt) | Out-Null
-
-    # Schedule Type label
-    $schedLbl = New-Object System.Windows.Controls.TextBlock
-    $schedLbl.Text = "Schedule:"
-    $schedLbl.Foreground = $brushLabel
-    $schedLbl.Margin = "0,0,0,4"
-    $mainStack.Children.Add($schedLbl) | Out-Null
-
-    # Schedule ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
-    $schedCombo = New-Object System.Windows.Controls.ComboBox
-    $schedCombo.Items.Add("Weekly") | Out-Null
-    $schedCombo.Items.Add("Monthly") | Out-Null
-    $schedCombo.Items.Add("Daily") | Out-Null
-    $schedCombo.SelectedIndex = 0
-    $schedCombo.Margin = "0,0,0,12"
-    $schedCombo.Background = $brushMid
-    $schedCombo.Foreground = $brushText
-    $schedCombo.BorderBrush = $brushBorder
-    $schedCombo.BorderThickness = "1"
-    $schedCombo.Padding = "6,4"
-    $schedCombo.FontSize = 13
-    $schedCombo.IsEditable = $true
-    $schedCombo.IsReadOnly = $true
-    $schedCombo.ItemContainerStyle = $comboItemStyle
-    $mainStack.Children.Add($schedCombo) | Out-Null
-    $script:ScheduleDialogControls.ScheduleCombo = $schedCombo
-
-    # Day of Week panel (visible by default for Weekly)
-    $dowPanel = New-Object System.Windows.Controls.StackPanel
-    $dowPanel.Margin = "0,0,0,12"
-    $script:ScheduleDialogControls.DayOfWeekPanel = $dowPanel
-
-    $dowLbl = New-Object System.Windows.Controls.TextBlock
-    $dowLbl.Text = "Day of Week:"
-    $dowLbl.Foreground = $brushLabel
-    $dowLbl.Margin = "0,0,0,4"
-    $dowPanel.Children.Add($dowLbl) | Out-Null
-
-    # Day of Week ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
-    $dowCombo = New-Object System.Windows.Controls.ComboBox
-    @("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday") | ForEach-Object { $dowCombo.Items.Add($_) | Out-Null }
-    $dowCombo.SelectedItem = "Saturday"
-    $dowCombo.Background = $brushMid
-    $dowCombo.Foreground = $brushText
-    $dowCombo.BorderBrush = $brushBorder
-    $dowCombo.BorderThickness = "1"
-    $dowCombo.Padding = "6,4"
-    $dowCombo.FontSize = 13
-    $dowCombo.IsEditable = $true
-    $dowCombo.IsReadOnly = $true
-    $dowCombo.ItemContainerStyle = $comboItemStyle
-    $dowPanel.Children.Add($dowCombo) | Out-Null
-    $script:ScheduleDialogControls.DowCombo = $dowCombo
-
-    $mainStack.Children.Add($dowPanel) | Out-Null
-
-    # Day of Month panel (hidden by default)
-    $domPanel = New-Object System.Windows.Controls.StackPanel
-    $domPanel.Margin = "0,0,0,12"
-    $domPanel.Visibility = "Collapsed"
-    $script:ScheduleDialogControls.DayOfMonthPanel = $domPanel
-
-    $domLbl = New-Object System.Windows.Controls.TextBlock
-    $domLbl.Text = "Day of Month (1-31):"
-    $domLbl.Foreground = $brushLabel
-    $domLbl.Margin = "0,0,0,4"
-    $domPanel.Children.Add($domLbl) | Out-Null
-
-    $domBox = New-Object System.Windows.Controls.TextBox
-    $domBox.Text = "1"
-    $domBox.Background = $brushMid
-    $domBox.Foreground = $brushText
-    $domBox.BorderBrush = $brushBorder
-    $domBox.BorderThickness = "1"
-    $domBox.Padding = "6,4"
-    $domPanel.Children.Add($domBox) | Out-Null
-    $script:ScheduleDialogControls.DomBox = $domBox
-
-    $mainStack.Children.Add($domPanel) | Out-Null
-
-    # Time label
-    $timeLbl = New-Object System.Windows.Controls.TextBlock
-    $timeLbl.Text = "Start Time (HH:mm):"
-    $timeLbl.Foreground = $brushLabel
-    $timeLbl.Margin = "0,0,0,4"
-    $mainStack.Children.Add($timeLbl) | Out-Null
-
-    # Time TextBox
-    $timeBox = New-Object System.Windows.Controls.TextBox
-    $timeBox.Text = "02:00"
-    $timeBox.Background = $brushMid
-    $timeBox.Foreground = $brushText
-    $timeBox.BorderBrush = $brushBorder
-    $timeBox.BorderThickness = "1"
-    $timeBox.Padding = "6,4"
-    $timeBox.Margin = "0,0,0,12"
-    $mainStack.Children.Add($timeBox) | Out-Null
-    $script:ScheduleDialogControls.TimeBox = $timeBox
-
-    # Profile label
-    $profLbl = New-Object System.Windows.Controls.TextBlock
-    $profLbl.Text = "Maintenance Profile:"
-    $profLbl.Foreground = $brushLabel
-    $profLbl.Margin = "0,0,0,4"
-    $mainStack.Children.Add($profLbl) | Out-Null
-
-    # Profile ComboBox - use IsEditable+IsReadOnly trick for dark theme compatibility
-    $profCombo = New-Object System.Windows.Controls.ComboBox
-    @("Full","Quick","SyncOnly") | ForEach-Object { $profCombo.Items.Add($_) | Out-Null }
-    $profCombo.SelectedItem = "Full"
-    $profCombo.Background = $brushMid
-    $profCombo.Foreground = $brushText
-    $profCombo.BorderBrush = $brushBorder
-    $profCombo.BorderThickness = "1"
-    $profCombo.Padding = "6,4"
-    $profCombo.FontSize = 13
-    $profCombo.IsEditable = $true
-    $profCombo.IsReadOnly = $true
-    $profCombo.ItemContainerStyle = $comboItemStyle
-    $profCombo.Margin = "0,0,0,12"
-    $mainStack.Children.Add($profCombo) | Out-Null
-    $script:ScheduleDialogControls.ProfileCombo = $profCombo
-
-    # Credentials section header
-    $credHdr = New-Object System.Windows.Controls.TextBlock
-    $credHdr.Text = "Run As Credentials (for unattended execution):"
-    $credHdr.Foreground = $brushLabel
-    $credHdr.FontSize = 11
-    $credHdr.Margin = "0,4,0,8"
-    $mainStack.Children.Add($credHdr) | Out-Null
-
-    # Username label
-    $userLbl = New-Object System.Windows.Controls.TextBlock
-    $userLbl.Text = "Username (e.g., dod_admin or DOMAIN\user):"
-    $userLbl.Foreground = $brushLabel
-    $userLbl.Margin = "0,0,0,4"
-    $mainStack.Children.Add($userLbl) | Out-Null
-
-    # Username TextBox
-    $userBox = New-Object System.Windows.Controls.TextBox
-    $userBox.Text = "dod_admin"
-    $userBox.Background = $brushMid
-    $userBox.Foreground = $brushText
-    $userBox.BorderBrush = $brushBorder
-    $userBox.BorderThickness = "1"
-    $userBox.Padding = "6,4"
-    $userBox.Margin = "0,0,0,12"
-    $mainStack.Children.Add($userBox) | Out-Null
-    $script:ScheduleDialogControls.UserBox = $userBox
-
-    # Password label
-    $passLbl = New-Object System.Windows.Controls.TextBlock
-    $passLbl.Text = "Password:"
-    $passLbl.Foreground = $brushLabel
-    $passLbl.Margin = "0,0,0,4"
-    $mainStack.Children.Add($passLbl) | Out-Null
-
-    # Password Box
-    $passBox = New-Object System.Windows.Controls.PasswordBox
-    $passBox.Background = $brushMid
-    $passBox.Foreground = $brushText
-    $passBox.BorderBrush = $brushBorder
-    $passBox.BorderThickness = "1"
-    $passBox.Padding = "6,4"
-    $passBox.Margin = "0,0,0,16"
-    $mainStack.Children.Add($passBox) | Out-Null
-    $script:ScheduleDialogControls.PassBox = $passBox
-
-    # Schedule type change handler - toggle day panels
-    $schedCombo.Add_SelectionChanged({
-        $ctrl = $script:ScheduleDialogControls
-        if ($null -eq $ctrl -or $null -eq $ctrl.ScheduleCombo) { return }
-        $sel = $ctrl.ScheduleCombo.SelectedItem
-        if ($null -eq $sel) { return }
-        $selStr = $sel.ToString()
-        if ($selStr -eq "Monthly") {
-            $ctrl.DayOfWeekPanel.Visibility = "Collapsed"
-            $ctrl.DayOfMonthPanel.Visibility = "Visible"
-        } elseif ($selStr -eq "Weekly") {
-            $ctrl.DayOfWeekPanel.Visibility = "Visible"
-            $ctrl.DayOfMonthPanel.Visibility = "Collapsed"
+    # Schedule type change - toggle day panels
+    $scheduleCombo.Add_SelectionChanged({
+        $selected = $scheduleCombo.SelectedItem.Content
+        if ($selected -eq "Monthly") {
+            $dowPanel.Visibility = "Collapsed"
+            $domPanel.Visibility = "Visible"
+        } elseif ($selected -eq "Weekly") {
+            $dowPanel.Visibility = "Visible"
+            $domPanel.Visibility = "Collapsed"
         } else {
-            $ctrl.DayOfWeekPanel.Visibility = "Collapsed"
-            $ctrl.DayOfMonthPanel.Visibility = "Collapsed"
+            $dowPanel.Visibility = "Collapsed"
+            $domPanel.Visibility = "Collapsed"
         }
     })
 
-    # Button panel
-    $btnStack = New-Object System.Windows.Controls.StackPanel
-    $btnStack.Orientation = "Horizontal"
-    $btnStack.HorizontalAlignment = "Right"
-
-    # Create Task button
-    $createBtn = New-Object System.Windows.Controls.Button
-    $createBtn.Content = "Create Task"
-    $createBtn.Padding = "14,6"
-    $createBtn.Background = $brushAccent
-    $createBtn.Foreground = "White"
-    $createBtn.BorderThickness = 0
-    $createBtn.Margin = "0,0,8,0"
-    $script:ScheduleDialogControls.Dialog = $schedDlg
-    $createBtn.Add_Click({
-        $ctrl = $script:ScheduleDialogControls
-        $res = $script:ScheduleDialogResult
-        if ($null -eq $ctrl -or $null -eq $res) { return }
-
+    # Create button click
+    $btnCreate.Add_Click({
         # Validate time format
-        $timeVal = $ctrl.TimeBox.Text.Trim()
+        $timeVal = $timeBox.Text.Trim()
         if ($timeVal -notmatch '^\d{1,2}:\d{2}$') {
             [System.Windows.MessageBox]::Show("Invalid time format. Use HH:mm (e.g., 02:00).", "Schedule", "OK", "Warning") | Out-Null
             return
         }
 
         # Get schedule type
-        $schedVal = $ctrl.ScheduleCombo.SelectedItem.ToString()
+        $schedVal = $scheduleCombo.SelectedItem.Content
 
         # Validate day of month if Monthly
         $domVal = 1
         if ($schedVal -eq "Monthly") {
-            if (-not [int]::TryParse($ctrl.DomBox.Text, [ref]$domVal) -or $domVal -lt 1 -or $domVal -gt 31) {
+            if (-not [int]::TryParse($domBox.Text, [ref]$domVal) -or $domVal -lt 1 -or $domVal -gt 31) {
                 [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning") | Out-Null
                 return
             }
         }
 
         # Validate credentials
-        $userVal = $ctrl.UserBox.Text.Trim()
-        $passVal = $ctrl.PassBox.Password
+        $userVal = $userBox.Text.Trim()
+        $passVal = $passBox.Password
         if ([string]::IsNullOrWhiteSpace($userVal)) {
             [System.Windows.MessageBox]::Show("Username is required for scheduled task execution.", "Schedule", "OK", "Warning") | Out-Null
             return
@@ -1969,41 +1892,25 @@ function Show-ScheduleTaskDialog {
         }
 
         # Store results
-        $res.Schedule = $schedVal
-        $res.DayOfWeek = $ctrl.DowCombo.SelectedItem.ToString()
-        $res.DayOfMonth = $domVal
-        $res.Time = $timeVal
-        $res.Profile = $ctrl.ProfileCombo.SelectedItem.ToString()
-        $res.RunAsUser = $userVal
-        $res.Password = $passVal
-        $res.Cancelled = $false
-        $ctrl.Dialog.Close()
+        $script:ScheduleDialogResult.Schedule = $schedVal
+        $script:ScheduleDialogResult.DayOfWeek = $dowCombo.SelectedItem.Content
+        $script:ScheduleDialogResult.DayOfMonth = $domVal
+        $script:ScheduleDialogResult.Time = $timeVal
+        $script:ScheduleDialogResult.Profile = $profileCombo.SelectedItem.Content
+        $script:ScheduleDialogResult.RunAsUser = $userVal
+        $script:ScheduleDialogResult.Password = $passVal
+        $script:ScheduleDialogResult.Cancelled = $false
+        $dlg.Close()
     })
-    $btnStack.Children.Add($createBtn) | Out-Null
 
-    # Cancel button
-    $cancelBtn = New-Object System.Windows.Controls.Button
-    $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
-    $cancelBtn.Background = $brushMid
-    $cancelBtn.Foreground = $brushText
-    $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({
-        $script:ScheduleDialogControls.Dialog.Close()
-    })
-    $btnStack.Children.Add($cancelBtn) | Out-Null
+    # Cancel button click
+    $btnCancel.Add_Click({ $dlg.Close() })
 
-    $mainStack.Children.Add($btnStack) | Out-Null
+    # Show dialog
+    $dlg.ShowDialog() | Out-Null
 
-    # Set content and show dialog
-    $schedDlg.Content = $mainStack
-    $schedDlg.ShowDialog() | Out-Null
-
-    # Return result and clean up
-    $finalResult = $script:ScheduleDialogResult
-    $script:ScheduleDialogControls = $null
-    $script:ScheduleDialogResult = $null
-    return $finalResult
+    # Return result
+    return $script:ScheduleDialogResult
 }
 
 function Show-TransferDialog {
@@ -2563,10 +2470,22 @@ function Invoke-LogOperation {
             $psi.FileName = "powershell.exe"
             # Configure console window size (font size controlled by user's PowerShell defaults)
             $setupConsole = "mode con: cols=80 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
-            # Wrap command in try/finally with 30-second auto-close countdown
-            # Note: The keystroke timer sends Enter every 2 seconds to flush output.
-            # To avoid the automatic Enter keys closing the window early, we only accept
-            # ESC or Q to close immediately - Enter keys are ignored during countdown.
+            # =========================================================================
+            # AUTO-CLOSE SCRIPT WITH RESPONSIVE KEY HANDLING
+            # =========================================================================
+            # After operation completes, show a 30-second countdown before auto-closing.
+            # User can press ESC or Q to close immediately.
+            #
+            # KEY HANDLING DESIGN:
+            # - Loop runs every 100ms (300 iterations = 30 seconds) for responsive input
+            # - Inner while loop drains ALL buffered keystrokes each iteration
+            # - Only ESC and Q keys trigger immediate close; Enter is ignored
+            # - Enter is ignored because the keystroke timer sends Enter every 2 seconds
+            #   to flush PowerShell output buffers, and we don't want those to close the window
+            #
+            # Previous issue: 1-second sleep between key checks caused "smashing" behavior
+            # where users had to press keys multiple times to register input.
+            # =========================================================================
             $autoCloseScript = @'
 Write-Host ''
 Write-Host '=== Operation Complete ===' -ForegroundColor Green
@@ -2574,7 +2493,7 @@ Write-Host ''
 Write-Host 'Window will close in 30 seconds. Press ESC or Q to close now...' -ForegroundColor Yellow
 $countdown = 300
 while ($countdown -gt 0) {
-    # Drain all available keys and check for ESC/Q
+    # Drain all available keys from buffer and check for ESC/Q
     while ([Console]::KeyAvailable) {
         $key = [Console]::ReadKey($true)
         if ($key.Key -eq [ConsoleKey]::Escape -or $key.Key -eq [ConsoleKey]::Q) {
@@ -2650,17 +2569,34 @@ while ($countdown -gt 0) {
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
 
-            # Position console window - slightly smaller than main window and centered
+            # =========================================================================
+            # LIVE TERMINAL WINDOW POSITIONING
+            # =========================================================================
+            # Position the PowerShell console window centered within the main app window.
+            # This creates a "nested" visual effect where the terminal appears on top of
+            # the main application, making it clear which window the user should interact with.
+            #
+            # Size: 60% of main window dimensions (with 400x300 minimum)
+            #   - Smaller percentages keep the window fully inside the main app
+            #   - The 80-column mode (set via 'mode con:') determines text wrapping
+            #
+            # Position: Centered horizontally and vertically within main window bounds
+            #   - Clamped to screen edges to prevent off-screen placement
+            #   - 10px/40px margins from screen edges for taskbar visibility
+            #
+            # Uses Win32 SetWindowPos via ConsoleWindowHelper P/Invoke class
+            # =========================================================================
             try {
                 $hWnd = $script:CurrentProcess.MainWindowHandle
                 if ($hWnd -ne [IntPtr]::Zero) {
-                    # Get main window position and size
+                    # Get main window position and size for centering calculation
                     $mainLeft = [int]$script:window.Left
                     $mainTop = [int]$script:window.Top
                     $mainWidth = [int]$script:window.ActualWidth
                     $mainHeight = [int]$script:window.ActualHeight
 
                     # Console is 60% of main window size (fits centered within app)
+                    # Min 400x300 ensures usability on small windows
                     $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.60))
                     $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.60))
 
@@ -2668,7 +2604,7 @@ while ($countdown -gt 0) {
                     $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)
                     $consoleY = $mainTop + [int](($mainHeight - $consoleHeight) / 2)
 
-                    # Apply screen bounds
+                    # Clamp to screen bounds to prevent off-screen placement
                     $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
                     $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
                     $consoleX = [math]::Max(0, [math]::Min($consoleX, $screenWidth - $consoleWidth - 10))
