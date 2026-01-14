@@ -1635,7 +1635,7 @@ function Show-ScheduleTaskDialog {
         DayOfMonth = 1
         Time = "02:00"
         Profile = "Full"
-        RunAsUser = "dod_admin"
+        RunAsUser = "DoD_Admin"
         Password = ""
     }
 
@@ -1798,8 +1798,8 @@ function Show-ScheduleTaskDialog {
         <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
                    FontSize="11" Margin="0,4,0,8"/>
 
-        <TextBlock Text="Username (e.g., dod_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="UserBox" Text="dod_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+        <TextBlock Text="Username (e.g., DoD_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
 
         <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
         <PasswordBox x:Name="PassBox" Style="{StaticResource DarkPasswordBox}" Margin="0,0,0,16"/>
