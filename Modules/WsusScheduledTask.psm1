@@ -207,32 +207,19 @@ function New-WsusMaintenanceTask {
     }
 
     # =========================================================================
-    # LOCAL ACCOUNT USERNAME NORMALIZATION
+    # USERNAME HANDLING NOTE
     # =========================================================================
-    # Register-ScheduledTask requires fully-qualified usernames for local accounts
-    # when running tasks with stored credentials ("whether user is logged on or not").
+    # Register-ScheduledTask handles username resolution internally.
+    # Pass the username as-is and let Windows resolve it:
+    #   - Bare username (dod_Admin) - Windows resolves to local account
+    #   - .\username - Explicit local account
+    #   - DOMAIN\username - Domain account
+    #   - user@domain - UPN format
     #
-    # The .\ prefix (e.g., .\dod_Admin) can cause "No mapping between account names
-    # and security IDs" errors (HRESULT 0x80070534) on some Windows configurations.
-    #
-    # Using COMPUTERNAME\username format (e.g., SERVER01\dod_Admin) is more reliable
-    # for Windows SID resolution and works consistently across all Windows versions.
-    #
-    # This code handles three input formats:
-    #   1. Bare username (dod_Admin) -> COMPUTERNAME\dod_Admin
-    #   2. Dot-prefix (.\dod_Admin) -> COMPUTERNAME\dod_Admin
-    #   3. Already qualified (DOMAIN\user or user@domain) -> unchanged
+    # Previous attempts to auto-prefix with COMPUTERNAME\ caused issues
+    # because the case and format must match exactly what Windows expects.
     # =========================================================================
-    if ($RunAsUser -notmatch '\\' -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
-        # Bare username - prefix with computer name for local account
-        $RunAsUser = "$env:COMPUTERNAME\$RunAsUser"
-        Write-Host "[i] Using local account format: $RunAsUser" -ForegroundColor Cyan
-    }
-    elseif ($RunAsUser -match '^\.\\') {
-        # Convert .\ prefix to COMPUTERNAME\ for better SID resolution
-        $RunAsUser = $RunAsUser -replace '^\.\\', "$env:COMPUTERNAME\"
-        Write-Host "[i] Converted to: $RunAsUser" -ForegroundColor Cyan
-    }
+    Write-Host "[i] Using account: $RunAsUser" -ForegroundColor Cyan
 
     $useServiceAccount = $RunAsUser -eq "SYSTEM"
 
