@@ -2,27 +2,41 @@
 ===============================================================================
 Module: WsusUtilities.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.1.0
-Date: 2026-01-10
+Version: 1.2.0
+Date: 2026-01-14
 ===============================================================================
 
 .SYNOPSIS
     Common utility functions for WSUS scripts
 
 .DESCRIPTION
-    Provides shared functionality including:
-    - Color output functions
-    - Logging functions (Start-WsusLogging, Stop-WsusLogging, Write-Log)
-    - Admin privilege checks
-    - SQL command wrapper (Invoke-WsusSqlcmd)
-    - Common helper functions
+    Provides shared functionality used by all WSUS Manager components:
+
+    Console Output:
+    - Write-Success, Write-Failure, Write-Info, Write-WsusWarning (color-coded output)
+
+    Logging:
+    - Start-WsusLogging, Stop-WsusLogging, Write-Log (file-based logging)
+
+    SQL Operations:
+    - Invoke-WsusSqlcmd (SQL command wrapper with TrustServerCertificate handling)
+    - Invoke-SqlScalar (scalar value queries)
+
+    Security:
+    - Test-AdminPrivileges (admin check with optional exit)
+    - Test-ValidPath, Test-SafePath, Get-EscapedPath (path validation/sanitization)
+
+    Helpers:
+    - Get-WsusContentPath (registry lookup)
+    - Test-WsusPath (path validation with creation)
 
 .NOTES
-    Required functions exported: Start-WsusLogging, Stop-WsusLogging, Write-Log, Invoke-WsusSqlcmd
+    This module is required by all other WSUS modules and scripts.
+    Automatically detects SqlServer module version for TrustServerCertificate compatibility.
 #>
 
 # Module version for compatibility checking
-$script:WsusUtilitiesVersion = '1.1.0'
+$script:WsusUtilitiesVersion = '1.2.0'
 
 # ===========================
 # CACHED MODULE DETECTION (Performance optimization)
@@ -417,13 +431,31 @@ function Invoke-WsusSqlcmd {
         Optional PSCredential for SQL authentication
 
     .PARAMETER Variable
-        Optional variable substitution (for parameterized queries)
+        Optional SQLCMD variable substitution in format "name=value".
+        In the query, use $(name) for substitution (NOT @name which is T-SQL syntax).
+        IMPORTANT: Use single-quote here-strings (@'...'@) in the caller to prevent
+        PowerShell from evaluating $(name) as a subexpression.
 
     .EXAMPLE
         Invoke-WsusSqlcmd -Query "SELECT COUNT(*) FROM tbUpdate"
+        # Simple query with no parameters
 
     .EXAMPLE
         Invoke-WsusSqlcmd -Query "BACKUP DATABASE SUSDB TO DISK=N'C:\WSUS\backup.bak'" -QueryTimeout 0
+        # Backup with unlimited timeout
+
+    .EXAMPLE
+        $query = @'
+        DECLARE @UpdateGuid uniqueidentifier = '$(UpdateId)'
+        SELECT * FROM tbUpdate WHERE UpdateID = @UpdateGuid
+        '@
+        Invoke-WsusSqlcmd -Query $query -Variable "UpdateId=$guid"
+        # Using SQLCMD variable substitution (note: single-quote here-string!)
+
+    .NOTES
+        - Uses TrustServerCertificate automatically for SqlServer module v21.1+
+        - For SQLCMD variables, use $(name) syntax in queries, NOT @name
+        - Always use single-quote here-strings (@'...'@) when queries contain $(...)
     #>
     [CmdletBinding()]
     param(

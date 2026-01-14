@@ -1122,6 +1122,7 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
 
                     foreach ($updateId in $batch) {
                         # =========================================================================
+                        # =========================================================================
                         # SQLCMD VARIABLE SYNTAX FOR PARAMETERIZED QUERIES
                         # =========================================================================
                         # Invoke-Sqlcmd's -Variable parameter uses SQLCMD scripting variable syntax,
@@ -1136,8 +1137,11 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                         # For GUIDs assigned to uniqueidentifier, we must quote the substituted value:
                         #   DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
                         #
-                        # Previous bug: Used @UpdateIdParam which caused "Must declare scalar variable"
-                        # errors because T-SQL didn't recognize the undefined parameter.
+                        # CRITICAL: Must use SINGLE-QUOTE here-string (@'...'@), not double-quote
+                        # (@"..."@). Double-quote here-strings cause PowerShell to evaluate
+                        # $(UpdateIdParam) as a subexpression, resulting in:
+                        #   "The term 'UpdateIdParam' is not recognized as a cmdlet"
+                        # Single-quote here-strings pass $(UpdateIdParam) literally to SQL Server.
                         # =========================================================================
                         $deleteQuery = @'
 DECLARE @LocalUpdateID int
