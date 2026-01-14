@@ -207,19 +207,41 @@ function New-WsusMaintenanceTask {
     }
 
     # =========================================================================
-    # USERNAME HANDLING NOTE
-    # =========================================================================
-    # Register-ScheduledTask handles username resolution internally.
-    # Pass the username as-is and let Windows resolve it:
-    #   - Bare username (dod_Admin) - Windows resolves to local account
-    #   - .\username - Explicit local account
-    #   - DOMAIN\username - Domain account
-    #   - user@domain - UPN format
-    #
-    # Previous attempts to auto-prefix with COMPUTERNAME\ caused issues
-    # because the case and format must match exactly what Windows expects.
+    # USERNAME HANDLING AND VERIFICATION
     # =========================================================================
     Write-Host "[i] Using account: $RunAsUser" -ForegroundColor Cyan
+
+    # Extract username without prefix for local account lookup
+    $localUsername = $RunAsUser
+    if ($RunAsUser -match '^\.\\(.+)$') {
+        $localUsername = $Matches[1]
+    }
+
+    # For local accounts, verify the account exists before attempting task creation
+    $isLocalAccount = ($RunAsUser -notmatch '.+\\.+') -or ($RunAsUser -match '^\.\\.+')
+    if ($isLocalAccount -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
+        try {
+            $localUser = Get-LocalUser -Name $localUsername -ErrorAction Stop
+            Write-Host "[i] Found local account: $($localUser.Name) (Enabled: $($localUser.Enabled))" -ForegroundColor Green
+            if (-not $localUser.Enabled) {
+                $result.Message = "Account '$localUsername' exists but is DISABLED"
+                Write-Host "[-] $($result.Message)" -ForegroundColor Red
+                return $result
+            }
+        } catch {
+            Write-Host ""
+            Write-Host "[!] ERROR: Local account '$localUsername' not found!" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Available local accounts on this computer:" -ForegroundColor Yellow
+            Get-LocalUser | ForEach-Object {
+                $status = if ($_.Enabled) { "Enabled" } else { "Disabled" }
+                Write-Host "    $($_.Name) ($status)" -ForegroundColor $(if ($_.Enabled) { "Gray" } else { "DarkGray" })
+            }
+            Write-Host ""
+            $result.Message = "Local account '$localUsername' does not exist on this computer"
+            return $result
+        }
+    }
 
     $useServiceAccount = $RunAsUser -eq "SYSTEM"
 
@@ -294,14 +316,27 @@ function New-WsusMaintenanceTask {
         $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
         $result.Message = "Scheduled task '$TaskName' created to run as $runAsMessage (no login required)"
         $result.Success = $true
+        Write-Host ""
+        Write-Host "[+] SUCCESS: $($result.Message)" -ForegroundColor Green
+        Write-Host ""
 
     } catch {
-        $result.Message = "Failed to create scheduled task: $($_.Exception.Message)"
+        $errorMsg = $_.Exception.Message
+        $result.Message = "Failed to create scheduled task: $errorMsg"
+        Write-Host ""
+        Write-Host "[-] FAILED: $errorMsg" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Common causes:" -ForegroundColor Yellow
+        Write-Host "  - Username or password is incorrect" -ForegroundColor Yellow
+        Write-Host "  - Account doesn't exist on this computer" -ForegroundColor Yellow
+        Write-Host "  - Account lacks 'Log on as batch job' right" -ForegroundColor Yellow
+        Write-Host ""
     } finally {
         # Clear password from memory
         $PlainPassword = $null
     }
 
+    # Return result but suppress default table output
     return $result
 }
 
