@@ -185,7 +185,7 @@ $script:StdinFlushTimer = $null
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WSUS Manager" Height="720" Width="950" MinHeight="600" MinWidth="800"
+        Title="WSUS Manager" Height="728" Width="950" MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen" Background="#0D1117">
     <Window.Resources>
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
