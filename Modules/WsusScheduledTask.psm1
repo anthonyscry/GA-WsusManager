@@ -294,9 +294,12 @@ function New-WsusMaintenanceTask {
         $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
         $result.Message = "Scheduled task '$TaskName' created to run as $runAsMessage (no login required)"
         $result.Success = $true
+        Write-Host "[+] $($result.Message)" -ForegroundColor Green
 
     } catch {
         $result.Message = "Failed to create scheduled task: $($_.Exception.Message)"
+        Write-Host "[-] $($result.Message)" -ForegroundColor Red
+        Write-Host "    Full error: $($_.ToString())" -ForegroundColor Red
     } finally {
         # Clear password from memory
         $PlainPassword = $null
