@@ -1,15 +1,27 @@
 <#
+===============================================================================
+Module: AsyncHelpers.psm1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 1.0.0
+Date: 2026-01-14
+===============================================================================
+
 .SYNOPSIS
-    Async helpers module for PowerShell GUI applications.
+    Async helpers module for PowerShell GUI applications
 
 .DESCRIPTION
     Provides helper functions for running background operations in WPF applications
     without blocking the UI thread. Designed for use with PS2EXE compiled applications.
 
+    Key features:
+    - Runspace pool management for efficient parallel execution
+    - Async invocation with completion callbacks
+    - WPF dispatcher helpers for safe UI updates from background threads
+    - Background operation wrapper with progress and error handling
+
 .NOTES
-    Author: GA-ASI Template
-    Module: AsyncHelpers
-    Version: 1.0.0
+    This module is used by the WSUS Manager GUI (WsusManagementGui.ps1) for
+    non-blocking operations. Can be reused in any WPF PowerShell application.
 #>
 
 #region Runspace Pool Management
