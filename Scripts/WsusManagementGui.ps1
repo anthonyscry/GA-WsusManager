@@ -2438,7 +2438,8 @@ function Invoke-LogOperation {
             }
 
             # Pass password as SecureString via environment variable (not visible in process list)
-            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd; Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }"
+            # Pipe result to Out-Null to suppress hashtable table output (messages use Write-Host)
+            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd | Out-Null; Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
