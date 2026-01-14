@@ -1151,22 +1151,31 @@ IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
 '@
 
+                        # Suppress error stream during deletion - spDeleteUpdate errors are expected
+                        # when updates have revision dependencies or deadlocks occur
+                        $ErrorActionPreference = 'SilentlyContinue'
+                        $deleteError = $null
                         try {
-                            # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
                             if ($script:UseSqlCredential -and $SqlCredential) {
-                                Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                     -Query $deleteQuery -QueryTimeout 300 `
                                     -Variable "UpdateIdParam=$updateId" `
-                                    -Credential $SqlCredential | Out-Null
+                                    -Credential $SqlCredential -TrustServerCertificate `
+                                    -ErrorVariable deleteError 2>$null | Out-Null
                             } else {
-                                Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
                                     -Query $deleteQuery -QueryTimeout 300 `
-                                    -Variable "UpdateIdParam=$updateId" | Out-Null
+                                    -Variable "UpdateIdParam=$updateId" `
+                                    -TrustServerCertificate `
+                                    -ErrorVariable deleteError 2>$null | Out-Null
                             }
-                            $totalDeleted++
+                            if (-not $deleteError) {
+                                $totalDeleted++
+                            }
                         } catch {
-                            Write-Verbose "Skipping update deletion error: $($_.Exception.Message)"
+                            # Silently skip - expected errors for updates with dependencies
                         }
+                        $ErrorActionPreference = 'Continue'
                     }
 
                     if ($currentBatch % 5 -eq 0) {
