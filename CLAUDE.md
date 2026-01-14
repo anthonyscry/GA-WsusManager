@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.7
+**Current Version:** 3.8.8
 
 ## Repository Structure
 
@@ -195,12 +195,16 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.7)
+## Recent Changes (v3.8.8)
 
-- **Monthly Maintenance Bug Fixes (2026-01-14):**
+- **Bug Fixes (2026-01-14):**
   - Fixed `UpdateIdParam` error in declined update purge: Changed here-string from `@"..."@` to `@'...'@` to prevent PowerShell from evaluating `$(UpdateIdParam)` as a subexpression
   - Fixed database shrink failing when backup is running: Added retry logic (3 attempts, 30s delay) when shrink is blocked by ongoing backup operations
   - Fixed artifact download creating zip-within-zip: GitHub Actions now extracts contents before uploading artifact
+  - Suppressed noisy `spDeleteUpdate` errors during declined update purge: Expected errors for updates with revision dependencies are now silently handled
+  - Increased window height by 8 pixels (720 → 728) for better layout
+
+### Previous (v3.8.7)
 
 - **Live Terminal Mode:**
   - New toggle button in log panel header to open operations in external PowerShell window
