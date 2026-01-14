@@ -197,6 +197,11 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 ## Recent Changes (v3.8.7)
 
+- **Monthly Maintenance Bug Fixes (2026-01-14):**
+  - Fixed `UpdateIdParam` error in declined update purge: Changed here-string from `@"..."@` to `@'...'@` to prevent PowerShell from evaluating `$(UpdateIdParam)` as a subexpression
+  - Fixed database shrink failing when backup is running: Added retry logic (3 attempts, 30s delay) when shrink is blocked by ongoing backup operations
+  - Fixed artifact download creating zip-within-zip: GitHub Actions now extracts contents before uploading artifact
+
 - **Live Terminal Mode:**
   - New toggle button in log panel header to open operations in external PowerShell window
   - Console window sized to 100x20 chars, positioned near log panel area
