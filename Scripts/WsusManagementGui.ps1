@@ -312,8 +312,7 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnHealth" Content="🔍 Health Check" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnRepair" Content="🔧 Repair" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -394,7 +393,7 @@ $script:StdinFlushTimer = $null
                 <StackPanel Grid.Row="1" Margin="0,0,0,16">
                     <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
-                        <Button x:Name="QBtnHealth" Content="Health Check" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnMaint" Content="Maintenance" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
@@ -761,7 +760,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -771,11 +770,11 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
-$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
 # Track WSUS installation status
 $script:WsusInstalled = $false
 
@@ -2442,8 +2441,7 @@ function Invoke-LogOperation {
             "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd | Out-Null; Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
-        "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
-        "repair"      { "`$null = & '$mgmtSafe' -Repair -ContentPath '$cp' -SqlInstance '$sql'" }
+        "diagnostics" { "`$null = & '$mgmtSafe' -Diagnostics -ContentPath '$cp' -SqlInstance '$sql'" }
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
@@ -2948,8 +2946,7 @@ $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
-$controls.BtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
-$controls.BtnRepair.Add_Click({ Invoke-LogOperation "repair" "Repair" })
+$controls.BtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
@@ -2990,7 +2987,7 @@ $controls.HelpBtnOperations.Add_Click({ Show-Help "Operations" })
 $controls.HelpBtnAirGap.Add_Click({ Show-Help "AirGap" })
 $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
-$controls.QBtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
+$controls.QBtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
 $controls.QBtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
 $controls.QBtnStart.Add_Click({

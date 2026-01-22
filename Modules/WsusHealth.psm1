@@ -2,20 +2,23 @@
 ===============================================================================
 Module: WsusHealth.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.1.0
-Date: 2026-01-10
+Version: 2.0.0
+Date: 2026-01-22
 ===============================================================================
 
 .SYNOPSIS
-    WSUS comprehensive health check functions
+    WSUS comprehensive diagnostics and auto-fix functions
 
 .DESCRIPTION
-    Provides health checking and diagnostic functions including:
-    - Service health checks
-    - Database connectivity
-    - Firewall verification
+    Provides comprehensive diagnostics and automatic repair including:
+    - Service health checks (SQL Server, SQL Browser, WSUS, IIS)
+    - SQL Server protocol configuration (TCP/IP, Named Pipes)
+    - Database connectivity and existence verification
+    - SQL login verification (NETWORK SERVICE)
+    - Firewall rule verification (WSUS and SQL ports)
     - Permission validation
-    - Overall system health reports
+    - WSUS Application Pool status
+    - Automated fixes for detected issues
 
 .NOTES
     Requires: WsusServices.psm1, WsusFirewall.psm1, WsusPermissions.psm1
@@ -407,10 +410,499 @@ function Repair-WsusHealth {
     return $results
 }
 
+# ===========================
+# COMPREHENSIVE DIAGNOSTICS
+# ===========================
+
+function Invoke-WsusDiagnostics {
+    <#
+    .SYNOPSIS
+        Performs comprehensive WSUS diagnostics with automatic fixes
+
+    .DESCRIPTION
+        Scans for common WSUS and SQL Server issues and offers automated fixes.
+        Checks include:
+        - SQL Server Express service
+        - SQL Browser service
+        - TCP/IP protocol configuration
+        - Named Pipes protocol configuration
+        - SQL Server firewall rules
+        - WSUS service
+        - IIS service
+        - WSUS Application Pool
+        - WSUS firewall rules
+        - SUSDB database existence
+        - NETWORK SERVICE SQL login
+        - WSUS content directory permissions
+
+    .PARAMETER ContentPath
+        Path to WSUS content directory (default: C:\WSUS)
+
+    .PARAMETER SqlInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+
+    .PARAMETER AutoFix
+        Automatically apply fixes for detected issues (default: $true)
+
+    .PARAMETER IncludeSqlProtocols
+        Include SQL protocol checks (TCP/IP, Named Pipes) - requires registry access
+
+    .OUTPUTS
+        Hashtable with diagnostic results and fixes applied
+    #>
+    param(
+        [string]$ContentPath = "C:\WSUS",
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [switch]$AutoFix = $true,
+        [switch]$IncludeSqlProtocols
+    )
+
+    Write-Host "`n=== WSUS + SQL Server Diagnostics ===" -ForegroundColor Cyan
+    Write-Host "Scanning for common issues...`n" -ForegroundColor Gray
+
+    $issues = @()
+    $fixesApplied = @()
+    $fixesFailed = @()
+
+    # Helper function for consistent check output
+    function Write-CheckResult {
+        param(
+            [string]$CheckName,
+            [ValidateSet('OK', 'FAIL', 'WARN', 'SKIP')]
+            [string]$Result,
+            [string]$Message = ""
+        )
+        Write-Host "[CHECK] $CheckName..." -NoNewline
+        switch ($Result) {
+            'OK'   { Write-Host " OK" -ForegroundColor Green }
+            'FAIL' { Write-Host " FAIL" -ForegroundColor Red }
+            'WARN' { Write-Host " WARN" -ForegroundColor Yellow }
+            'SKIP' { Write-Host " SKIP" -ForegroundColor Yellow }
+        }
+        if ($Message) {
+            Write-Host "        $Message" -ForegroundColor Gray
+        }
+    }
+
+    # -------------------------
+    # CHECK 1: SQL Server Service
+    # -------------------------
+    $sqlServiceName = 'MSSQL$SQLEXPRESS'
+    $sqlService = Get-Service $sqlServiceName -ErrorAction SilentlyContinue
+    if (-not $sqlService) {
+        Write-CheckResult "SQL Server Service Status" "FAIL"
+        $issues += @{
+            Severity = "CRITICAL"
+            Issue = "SQL Server service not found"
+            Fix = "Install SQL Server Express or verify instance name"
+            AutoFix = $null
+        }
+    } elseif ($sqlService.Status -ne "Running") {
+        Write-CheckResult "SQL Server Service Status" "FAIL" "Status: $($sqlService.Status)"
+        $issues += @{
+            Severity = "CRITICAL"
+            Issue = "SQL Server service is $($sqlService.Status)"
+            Fix = "Start SQL Server service"
+            AutoFix = { Start-Service 'MSSQL$SQLEXPRESS' -ErrorAction Stop }
+        }
+    } else {
+        Write-CheckResult "SQL Server Service Status" "OK"
+    }
+
+    # -------------------------
+    # CHECK 2: SQL Browser Service
+    # -------------------------
+    $browserService = Get-Service 'SQLBrowser' -ErrorAction SilentlyContinue
+    if (-not $browserService) {
+        Write-CheckResult "SQL Browser Service Status" "WARN"
+        $issues += @{
+            Severity = "MEDIUM"
+            Issue = "SQL Browser service not found"
+            Fix = "SQL Browser is recommended for named instances"
+            AutoFix = $null
+        }
+    } elseif ($browserService.Status -ne "Running") {
+        Write-CheckResult "SQL Browser Service Status" "FAIL" "Status: $($browserService.Status)"
+        $issues += @{
+            Severity = "MEDIUM"
+            Issue = "SQL Browser service is $($browserService.Status)"
+            Fix = "Start SQL Browser service"
+            AutoFix = {
+                Set-Service SQLBrowser -StartupType Automatic -ErrorAction SilentlyContinue
+                Start-Service SQLBrowser -ErrorAction Stop
+            }
+        }
+    } else {
+        Write-CheckResult "SQL Browser Service Status" "OK"
+    }
+
+    # -------------------------
+    # CHECK 3: TCP/IP Protocol (if requested)
+    # -------------------------
+    if ($IncludeSqlProtocols) {
+        # Try multiple SQL Server versions
+        $tcpPaths = @(
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Tcp",
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Tcp",
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL14.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Tcp"
+        )
+        $tcpPath = $tcpPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+        if ($tcpPath) {
+            $tcpEnabled = (Get-ItemProperty $tcpPath -ErrorAction SilentlyContinue).Enabled
+            if ($tcpEnabled -ne 1) {
+                Write-CheckResult "SQL TCP/IP Protocol" "FAIL"
+                $issues += @{
+                    Severity = "CRITICAL"
+                    Issue = "TCP/IP protocol is disabled"
+                    Fix = "Enable TCP/IP and set port 1433"
+                    AutoFix = {
+                        param($path)
+                        Set-ItemProperty $path -Name Enabled -Value 1
+                        Set-ItemProperty "$path\IPAll" -Name TcpDynamicPorts -Value "" -Force
+                        Set-ItemProperty "$path\IPAll" -Name TcpPort -Value "1433" -Force
+                        Restart-Service 'MSSQL$SQLEXPRESS' -Force
+                    }.GetNewClosure()
+                }
+            } else {
+                Write-CheckResult "SQL TCP/IP Protocol" "OK"
+            }
+        } else {
+            Write-CheckResult "SQL TCP/IP Protocol" "SKIP" "Registry path not found"
+        }
+
+        # -------------------------
+        # CHECK 4: Named Pipes Protocol
+        # -------------------------
+        $npPaths = @(
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Np",
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Np",
+            "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL14.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Np"
+        )
+        $npPath = $npPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+        if ($npPath) {
+            $npEnabled = (Get-ItemProperty $npPath -ErrorAction SilentlyContinue).Enabled
+            if ($npEnabled -ne 1) {
+                Write-CheckResult "SQL Named Pipes Protocol" "FAIL"
+                $issues += @{
+                    Severity = "HIGH"
+                    Issue = "Named Pipes protocol is disabled"
+                    Fix = "Enable Named Pipes"
+                    AutoFix = {
+                        param($path)
+                        Set-ItemProperty $path -Name Enabled -Value 1
+                        Restart-Service 'MSSQL$SQLEXPRESS' -Force
+                    }.GetNewClosure()
+                }
+            } else {
+                Write-CheckResult "SQL Named Pipes Protocol" "OK"
+            }
+        } else {
+            Write-CheckResult "SQL Named Pipes Protocol" "SKIP" "Registry path not found"
+        }
+    }
+
+    # -------------------------
+    # CHECK 5: SQL Firewall Rule
+    # -------------------------
+    $sqlFirewallCheck = Test-AllSqlFirewallRules
+    if (-not $sqlFirewallCheck.AllPresent) {
+        Write-CheckResult "SQL Server Firewall Rules" "FAIL" "Missing: $($sqlFirewallCheck.Missing -join ', ')"
+        $issues += @{
+            Severity = "HIGH"
+            Issue = "Missing SQL Server firewall rules: $($sqlFirewallCheck.Missing -join ', ')"
+            Fix = "Create firewall rules for SQL Server"
+            AutoFix = { $null = Repair-SqlFirewallRules }
+        }
+    } else {
+        Write-CheckResult "SQL Server Firewall Rules" "OK"
+    }
+
+    # -------------------------
+    # CHECK 6: WSUS Service
+    # -------------------------
+    $wsusService = Get-Service 'WsusService' -ErrorAction SilentlyContinue
+    if (-not $wsusService) {
+        Write-CheckResult "WSUS Service Status" "FAIL"
+        $issues += @{
+            Severity = "CRITICAL"
+            Issue = "WSUS service not found"
+            Fix = "Install WSUS role"
+            AutoFix = $null
+        }
+    } elseif ($wsusService.Status -ne "Running") {
+        Write-CheckResult "WSUS Service Status" "FAIL" "Status: $($wsusService.Status)"
+        $issues += @{
+            Severity = "CRITICAL"
+            Issue = "WSUS service is $($wsusService.Status)"
+            Fix = "Start WSUS service"
+            AutoFix = { Start-Service WsusService -ErrorAction Stop }
+        }
+    } else {
+        Write-CheckResult "WSUS Service Status" "OK"
+    }
+
+    # -------------------------
+    # CHECK 7: IIS Service
+    # -------------------------
+    $iisService = Get-Service 'W3SVC' -ErrorAction SilentlyContinue
+    if (-not $iisService) {
+        Write-CheckResult "IIS Service Status" "FAIL"
+        $issues += @{
+            Severity = "HIGH"
+            Issue = "IIS service not found"
+            Fix = "Install IIS"
+            AutoFix = $null
+        }
+    } elseif ($iisService.Status -ne "Running") {
+        Write-CheckResult "IIS Service Status" "FAIL" "Status: $($iisService.Status)"
+        $issues += @{
+            Severity = "HIGH"
+            Issue = "IIS service is $($iisService.Status)"
+            Fix = "Start IIS service"
+            AutoFix = { Start-Service W3SVC -ErrorAction Stop }
+        }
+    } else {
+        Write-CheckResult "IIS Service Status" "OK"
+    }
+
+    # -------------------------
+    # CHECK 8: WSUS Application Pool
+    # -------------------------
+    try {
+        Import-Module WebAdministration -ErrorAction Stop
+        $appPool = Get-WebAppPoolState -Name "WsusPool" -ErrorAction SilentlyContinue
+        if (-not $appPool) {
+            Write-CheckResult "WSUS Application Pool" "FAIL"
+            $issues += @{
+                Severity = "HIGH"
+                Issue = "WsusPool application pool not found"
+                Fix = "Reinstall WSUS or create app pool"
+                AutoFix = $null
+            }
+        } elseif ($appPool.Value -ne "Started") {
+            Write-CheckResult "WSUS Application Pool" "FAIL" "Status: $($appPool.Value)"
+            $issues += @{
+                Severity = "HIGH"
+                Issue = "WsusPool is $($appPool.Value)"
+                Fix = "Start WsusPool application pool"
+                AutoFix = { Start-WebAppPool -Name "WsusPool" -ErrorAction Stop }
+            }
+        } else {
+            Write-CheckResult "WSUS Application Pool" "OK"
+        }
+    } catch {
+        Write-CheckResult "WSUS Application Pool" "SKIP" "WebAdministration module not available"
+    }
+
+    # -------------------------
+    # CHECK 9: WSUS Firewall Rules
+    # -------------------------
+    $wsusFirewallCheck = Test-AllWsusFirewallRules
+    if (-not $wsusFirewallCheck.AllPresent) {
+        Write-CheckResult "WSUS Firewall Rules" "FAIL" "Missing: $($wsusFirewallCheck.Missing -join ', ')"
+        $issues += @{
+            Severity = "MEDIUM"
+            Issue = "Missing WSUS firewall rules: $($wsusFirewallCheck.Missing -join ', ')"
+            Fix = "Create firewall rules for WSUS ports 8530/8531"
+            AutoFix = { $null = Repair-WsusFirewallRules }
+        }
+    } else {
+        Write-CheckResult "WSUS Firewall Rules" "OK"
+    }
+
+    # -------------------------
+    # CHECK 10: SUSDB Database Exists
+    # -------------------------
+    if ($sqlService -and $sqlService.Status -eq "Running") {
+        try {
+            $dbCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "SELECT DB_ID('SUSDB') AS DatabaseID" -QueryTimeout 10
+            if ($null -ne $dbCheck.DatabaseID) {
+                Write-CheckResult "SUSDB Database" "OK"
+            } else {
+                Write-CheckResult "SUSDB Database" "FAIL"
+                $issues += @{
+                    Severity = "CRITICAL"
+                    Issue = "SUSDB database does not exist"
+                    Fix = "Run WSUS postinstall: wsusutil.exe postinstall"
+                    AutoFix = $null
+                }
+            }
+        } catch {
+            Write-CheckResult "SUSDB Database" "FAIL" "Cannot connect to SQL Server"
+            $issues += @{
+                Severity = "CRITICAL"
+                Issue = "Cannot connect to SQL Server to verify SUSDB"
+                Fix = "Verify SQL Server is running and accessible"
+                AutoFix = $null
+            }
+        }
+    } else {
+        Write-CheckResult "SUSDB Database" "SKIP" "SQL Server not running"
+    }
+
+    # -------------------------
+    # CHECK 11: NETWORK SERVICE Login
+    # -------------------------
+    if ($sqlService -and $sqlService.Status -eq "Running") {
+        try {
+            $loginCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "SELECT name FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE'" -QueryTimeout 10
+            if ($loginCheck -and $loginCheck.name) {
+                Write-CheckResult "NETWORK SERVICE SQL Login" "OK"
+            } else {
+                Write-CheckResult "NETWORK SERVICE SQL Login" "FAIL"
+                $issues += @{
+                    Severity = "HIGH"
+                    Issue = "NT AUTHORITY\NETWORK SERVICE login missing"
+                    Fix = "Create login and grant dbcreator role"
+                    AutoFix = {
+                        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -QueryTimeout 10 -ErrorAction SilentlyContinue
+                        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -QueryTimeout 10 -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        } catch {
+            Write-CheckResult "NETWORK SERVICE SQL Login" "SKIP" "Could not query SQL Server"
+        }
+    } else {
+        Write-CheckResult "NETWORK SERVICE SQL Login" "SKIP" "SQL Server not running"
+    }
+
+    # -------------------------
+    # CHECK 12: WSUS Content Directory Permissions
+    # -------------------------
+    $wsusContent = Join-Path $ContentPath "WsusContent"
+    if (Test-Path $wsusContent) {
+        $permCheck = Test-WsusContentPermissions -ContentPath $ContentPath
+        if (-not $permCheck.AllCorrect) {
+            Write-CheckResult "WSUS Content Permissions" "FAIL" "Missing: $($permCheck.Missing -join ', ')"
+            $issues += @{
+                Severity = "MEDIUM"
+                Issue = "Missing permissions on content directory: $($permCheck.Missing -join ', ')"
+                Fix = "Grant required permissions on $ContentPath"
+                AutoFix = { $null = Repair-WsusContentPermissions -ContentPath $ContentPath }
+            }
+        } else {
+            Write-CheckResult "WSUS Content Permissions" "OK"
+        }
+    } elseif (Test-Path $ContentPath) {
+        $permCheck = Test-WsusContentPermissions -ContentPath $ContentPath
+        if (-not $permCheck.AllCorrect) {
+            Write-CheckResult "WSUS Content Permissions" "FAIL" "Missing: $($permCheck.Missing -join ', ')"
+            $issues += @{
+                Severity = "MEDIUM"
+                Issue = "Missing permissions on content directory: $($permCheck.Missing -join ', ')"
+                Fix = "Grant required permissions on $ContentPath"
+                AutoFix = { $null = Repair-WsusContentPermissions -ContentPath $ContentPath }
+            }
+        } else {
+            Write-CheckResult "WSUS Content Permissions" "OK"
+        }
+    } else {
+        Write-CheckResult "WSUS Content Directory" "WARN" "Path does not exist: $ContentPath"
+    }
+
+    # -------------------------
+    # RESULTS SUMMARY
+    # -------------------------
+    Write-Host "`n=== SCAN RESULTS ===" -ForegroundColor Cyan
+
+    if ($issues.Count -eq 0) {
+        Write-Host "`n[SUCCESS] No issues detected! System is healthy." -ForegroundColor Green
+        return @{
+            Healthy = $true
+            IssuesFound = 0
+            IssuesFixed = 0
+            Issues = @()
+            FixesApplied = @()
+            FixesFailed = @()
+        }
+    }
+
+    Write-Host "`nFound $($issues.Count) issue(s):`n" -ForegroundColor Yellow
+
+    $fixableCount = 0
+    foreach ($issue in $issues) {
+        $color = switch ($issue.Severity) {
+            "CRITICAL" { "Red" }
+            "HIGH" { "Red" }
+            "MEDIUM" { "Yellow" }
+            "LOW" { "Gray" }
+            default { "White" }
+        }
+
+        Write-Host "[$($issue.Severity)] " -ForegroundColor $color -NoNewline
+        Write-Host $issue.Issue
+        Write-Host "    Fix: $($issue.Fix)" -ForegroundColor Gray
+
+        if ($issue.AutoFix) {
+            $fixableCount++
+            Write-Host "    [AUTO-FIX AVAILABLE]" -ForegroundColor Green
+        }
+        Write-Host ""
+    }
+
+    # -------------------------
+    # AUTO-FIX
+    # -------------------------
+    if ($AutoFix -and $fixableCount -gt 0) {
+        Write-Host "=== APPLYING AUTO-FIXES ===" -ForegroundColor Cyan
+        Write-Host "Fixing $fixableCount issue(s)...`n" -ForegroundColor Green
+
+        foreach ($issue in $issues) {
+            if ($issue.AutoFix) {
+                Write-Host "[FIX] $($issue.Issue)..." -NoNewline
+                try {
+                    & $issue.AutoFix
+                    Write-Host " SUCCESS" -ForegroundColor Green
+                    $fixesApplied += $issue.Issue
+                } catch {
+                    Write-Host " FAILED: $($_.Exception.Message)" -ForegroundColor Red
+                    $fixesFailed += $issue.Issue
+                }
+            }
+        }
+
+        Write-Host "`n[COMPLETE] Auto-fix process finished." -ForegroundColor Cyan
+
+        if ($fixesFailed.Count -gt 0) {
+            Write-Host "Some fixes failed. Please manually resolve these issues." -ForegroundColor Yellow
+        }
+    } elseif ($fixableCount -eq 0) {
+        Write-Host "No auto-fixes available. Please manually resolve the issues above." -ForegroundColor Yellow
+    }
+
+    # Get SSL status for summary
+    $sslStatus = Get-WsusSSLStatus
+
+    Write-Host "`n=== SUMMARY ===" -ForegroundColor Cyan
+    Write-Host "Issues Found: $($issues.Count)"
+    Write-Host "Auto-Fixes Applied: $($fixesApplied.Count)"
+    Write-Host "Fixes Failed: $($fixesFailed.Count)"
+    if ($sslStatus.SSLEnabled) {
+        Write-Host "Protocol: HTTPS (port 8531)" -ForegroundColor Green
+    } else {
+        Write-Host "Protocol: HTTP (port 8530)" -ForegroundColor Gray
+    }
+    Write-Host ""
+
+    return @{
+        Healthy = ($issues.Count -eq 0) -or ($fixesApplied.Count -eq $issues.Count -and $fixesFailed.Count -eq 0)
+        IssuesFound = $issues.Count
+        IssuesFixed = $fixesApplied.Count
+        Issues = $issues
+        FixesApplied = $fixesApplied
+        FixesFailed = $fixesFailed
+        SSL = $sslStatus
+    }
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Get-WsusSSLStatus',
     'Test-WsusDatabaseConnection',
     'Test-WsusHealth',
-    'Repair-WsusHealth'
+    'Repair-WsusHealth',
+    'Invoke-WsusDiagnostics'
 )

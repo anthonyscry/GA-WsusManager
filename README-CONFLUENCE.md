@@ -151,8 +151,7 @@ Mode is saved to user settings and persists across restarts.
 | Monthly Maintenance | Run WSUS cleanup and optimization | Online |
 | Schedule Task | Configure automated maintenance | Online |
 | Deep Cleanup | Aggressive cleanup for space recovery | Both |
-| Health Check | Verify configuration and connectivity | Both |
-| Health + Repair | Health check with automatic fixes | Both |
+| Diagnostics | Comprehensive scan with automatic fixes | Both |
 
 ---
 
@@ -240,6 +239,8 @@ Backup location: `C:\WSUS\SUSDB_backup_YYYYMMDD.bak`
 | 4 | Wait for restore to complete |
 | 5 | Verify dashboard shows database status |
 
+**Important:** After restoring the database, the WSUS server will need to re-verify and re-download update content. **This process can take 30+ minutes depending on your content size.** The dashboard may show "Update is downloading" status during this time - this is normal behavior. Do not interrupt the process. Large content stores (50GB+) may take several hours to fully re-verify.
+
 ### 12.3 SQL Sysadmin Permission Setup
 
 Required for database operations (Restore, Deep Cleanup, Maintenance).
@@ -300,14 +301,17 @@ wuauclt /detectnow /reportnow
 | Script not found | Missing folders | Ensure Scripts/ and Modules/ are with EXE |
 | DB size shows "Offline" | SQL not running | Start SQL Server Express service |
 
-### 14.2 Health Check Failures
+### 14.2 Diagnostics Failures
 
 | Check | Resolution |
 |-------|------------|
-| Services Stopped | Click "Health + Repair" to auto-recover |
-| Firewall Rules Missing | Repair creates required rules automatically |
-| Permissions Incorrect | Repair sets correct ACLs on content folder |
+| Services Stopped | Run **Diagnostics** to auto-recover |
+| SQL Browser Not Running | Diagnostics will start and set to Automatic |
+| Firewall Rules Missing | Diagnostics creates required rules automatically |
+| Permissions Incorrect | Diagnostics sets correct ACLs on content folder |
 | Database Connection Failed | Verify SQL Server is running, check sysadmin role |
+| NETWORK SERVICE Login Missing | Diagnostics creates SQL login with dbcreator role |
+| WSUS Application Pool Stopped | Diagnostics starts the WsusPool |
 
 ---
 
