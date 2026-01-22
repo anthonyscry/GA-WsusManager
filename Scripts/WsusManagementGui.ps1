@@ -1514,12 +1514,12 @@ function Show-RestoreDialog {
 }
 
 function Show-MaintenanceDialog {
-    $result = @{ Cancelled = $true; Profile = "" }
+    $result = @{ Cancelled = $true; Profile = ""; ExportPath = "" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Monthly Maintenance"
     $dlg.Width = 480
-    $dlg.Height = 360
+    $dlg.Height = 440
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1575,8 +1575,69 @@ function Show-MaintenanceDialog {
     $syncDesc.Text = "Synchronize and approve updates only"
     $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $syncDesc.FontSize = 11
-    $syncDesc.Margin = "20,0,0,20"
+    $syncDesc.Margin = "20,0,0,12"
     $stack.Children.Add($syncDesc)
+
+    # Export path section (visible only when Full is selected)
+    $exportPanel = New-Object System.Windows.Controls.StackPanel
+    $exportPanel.Margin = "0,8,0,12"
+
+    $exportLabel = New-Object System.Windows.Controls.TextBlock
+    $exportLabel.Text = "Export Path (optional):"
+    $exportLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportLabel.FontSize = 12
+    $exportLabel.Margin = "0,0,0,6"
+    $exportPanel.Children.Add($exportLabel)
+
+    $exportHint = New-Object System.Windows.Controls.TextBlock
+    $exportHint.Text = "Default: \\lab-hyperv\d\WSUS-Exports"
+    $exportHint.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $exportHint.FontSize = 10
+    $exportHint.Margin = "0,0,0,6"
+    $exportPanel.Children.Add($exportHint)
+
+    $exportInputPanel = New-Object System.Windows.Controls.Grid
+    $col1 = New-Object System.Windows.Controls.ColumnDefinition
+    $col1.Width = "*"
+    $col2 = New-Object System.Windows.Controls.ColumnDefinition
+    $col2.Width = "Auto"
+    $exportInputPanel.ColumnDefinitions.Add($col1)
+    $exportInputPanel.ColumnDefinitions.Add($col2)
+
+    $exportPathBox = New-Object System.Windows.Controls.TextBox
+    $exportPathBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $exportPathBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportPathBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $exportPathBox.Padding = "8,6"
+    $exportPathBox.FontSize = 12
+    [System.Windows.Controls.Grid]::SetColumn($exportPathBox, 0)
+    $exportInputPanel.Children.Add($exportPathBox)
+
+    $browseBtn = New-Object System.Windows.Controls.Button
+    $browseBtn.Content = "Browse..."
+    $browseBtn.Padding = "10,6"
+    $browseBtn.Margin = "6,0,0,0"
+    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.BorderThickness = 0
+    $browseBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select export destination folder"
+        $fbd.ShowNewFolderButton = $true
+        if ($fbd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $exportPathBox.Text = $fbd.SelectedPath
+        }
+    }.GetNewClosure())
+    [System.Windows.Controls.Grid]::SetColumn($browseBtn, 1)
+    $exportInputPanel.Children.Add($browseBtn)
+
+    $exportPanel.Children.Add($exportInputPanel)
+    $stack.Children.Add($exportPanel)
+
+    # Show/hide export panel based on Full selection
+    $radioFull.Add_Checked({ $exportPanel.Visibility = "Visible" }.GetNewClosure())
+    $radioQuick.Add_Checked({ $exportPanel.Visibility = "Collapsed" }.GetNewClosure())
+    $radioSync.Add_Checked({ $exportPanel.Visibility = "Collapsed" }.GetNewClosure())
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1594,6 +1655,7 @@ function Show-MaintenanceDialog {
         if ($radioFull.IsChecked) { $result.Profile = "Full" }
         elseif ($radioQuick.IsChecked) { $result.Profile = "Quick" }
         else { $result.Profile = "SyncOnly" }
+        $result.ExportPath = $exportPathBox.Text.Trim()
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -2414,7 +2476,16 @@ function Invoke-LogOperation {
             $opts = Show-MaintenanceDialog
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
-            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
+            $maintArgs = "-Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
+            if (-not [string]::IsNullOrWhiteSpace($opts.ExportPath)) {
+                if (-not (Test-SafePath $opts.ExportPath)) {
+                    [System.Windows.MessageBox]::Show("Invalid export path.", "Error", "OK", "Error")
+                    return
+                }
+                $exportPathSafe = Get-EscapedPath $opts.ExportPath
+                $maintArgs += " -ExportPath '$exportPathSafe'"
+            }
+            "& '$maintSafe' $maintArgs"
         }
         "schedule" {
             $opts = Show-ScheduleTaskDialog
