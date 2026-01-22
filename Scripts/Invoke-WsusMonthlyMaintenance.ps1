@@ -38,9 +38,13 @@ param(
     # Skip the heavy "ultimate cleanup" stage before the backup if needed.
     [switch]$SkipUltimateCleanup,
 
-    # Root path for exports (e.g., "\\lab-hyperv\d\WSUS-Exports")
-    # Full backup + content goes to root, archive copies go to Year\Month subfolder
-    [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
+    # Root path for full exports (e.g., "\\server\share\WSUS-Full")
+    # Full backup + complete content mirror goes here
+    [string]$ExportPath = "",
+
+    # Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive)
+    # If not specified, defaults to ExportPath\Year\Month subfolder
+    [string]$DifferentialExportPath = "",
 
     # Number of days to include in differential export (files modified within this many days)
     # If not specified via command line, user will be prompted (default: 30)
@@ -248,6 +252,7 @@ function Stop-Heartbeat {
 function Test-Prerequisites {
     param(
         [string]$ExportPath,
+        [string]$DifferentialExportPath,
         [bool]$SkipExport
     )
 
@@ -299,13 +304,25 @@ function Test-Prerequisites {
 
     # Check 4: Export path accessibility (if not skipping export)
     if (-not $SkipExport -and $ExportPath) {
-        Write-Host "  Export Path       " -NoNewline -ForegroundColor DarkGray
+        Write-Host "  Full Export Path  " -NoNewline -ForegroundColor DarkGray
         $exportAccessible = Test-ExportPathAccess -ExportPath $ExportPath
         if ($exportAccessible) {
             Write-Host "OK" -ForegroundColor Green
         } else {
             Write-Host "FAILED" -ForegroundColor Red
             $results.Warnings += "Cannot access export path: $ExportPath"
+        }
+    }
+
+    # Check 4b: Differential export path accessibility (if specified)
+    if (-not $SkipExport -and $DifferentialExportPath) {
+        Write-Host "  Differential Path " -NoNewline -ForegroundColor DarkGray
+        $diffAccessible = Test-ExportPathAccess -ExportPath $DifferentialExportPath
+        if ($diffAccessible) {
+            Write-Host "OK" -ForegroundColor Green
+        } else {
+            Write-Host "FAILED" -ForegroundColor Red
+            $results.Warnings += "Cannot access differential export path: $DifferentialExportPath"
         }
     }
 
@@ -450,12 +467,13 @@ function Show-OperationSummary {
         [bool]$SkipUltimateCleanup,
         [bool]$SkipExport,
         [string]$ExportPath,
+        [string]$DifferentialExportPath,
         [int]$ExportDays,
         [bool]$Unattended
     )
 
     Write-Host ""
-    Write-Host "  WSUS Monthly Maintenance v$ScriptVersion" -ForegroundColor Cyan
+    Write-Host "  WSUS Online Sync v$ScriptVersion" -ForegroundColor Cyan
     Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
     Write-Host ""
 
@@ -472,16 +490,23 @@ function Show-OperationSummary {
     Write-Host "  Operations:   " -NoNewline -ForegroundColor DarkGray
     Write-Host ($flow -join " > ") -ForegroundColor White
 
-    if (-not $SkipExport -and $ExportPath) {
-        $year = (Get-Date).ToString("yyyy")
-        $month = (Get-Date).ToString("MMM")
-        $archivePath = [System.IO.Path]::Combine($ExportPath, $year, $month)
-        Write-Host "  Root Export:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host $ExportPath -ForegroundColor White
-        Write-Host "  Archive Path: " -NoNewline -ForegroundColor DarkGray
-        Write-Host $archivePath -ForegroundColor White
+    if (-not $SkipExport -and ($ExportPath -or $DifferentialExportPath)) {
+        if ($ExportPath) {
+            Write-Host "  Full Export:  " -NoNewline -ForegroundColor DarkGray
+            Write-Host $ExportPath -ForegroundColor White
+        }
+        if ($DifferentialExportPath) {
+            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
+            Write-Host $DifferentialExportPath -ForegroundColor White
+        } elseif ($ExportPath) {
+            $year = (Get-Date).ToString("yyyy")
+            $month = (Get-Date).ToString("MMM")
+            $archivePath = [System.IO.Path]::Combine($ExportPath, $year, $month)
+            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
+            Write-Host "$archivePath (auto)" -ForegroundColor White
+        }
         Write-Host "  Export Days:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "$ExportDays days (for archive differential)" -ForegroundColor White
+        Write-Host "$ExportDays days" -ForegroundColor White
     }
 
     Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
@@ -580,10 +605,11 @@ Write-Status "Heads-up: some maintenance phases can take several minutes with mi
 
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
-    -SkipExport $SkipExport -ExportPath $ExportPath -ExportDays $ExportDays -Unattended $Unattended
+    -SkipExport $SkipExport -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath `
+    -ExportDays $ExportDays -Unattended $Unattended
 
 # === PRE-FLIGHT CHECKS ===
-$preflightResults = Test-Prerequisites -ExportPath $ExportPath -SkipExport $SkipExport
+$preflightResults = Test-Prerequisites -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath -SkipExport $SkipExport
 
 if (-not $preflightResults.Success) {
     Write-Status "Pre-flight checks failed!" -Type Error
@@ -888,18 +914,19 @@ if ($allUpdates.Count -gt 0) {
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
                 $_.UpdateClassificationTitle -eq "Update Rollups" -or
                 $_.UpdateClassificationTitle -eq "Service Packs" -or
-                $_.UpdateClassificationTitle -eq "Updates"
-                # Excluding "Definition Updates" (too frequent) and "Upgrades" (need manual review)
+                $_.UpdateClassificationTitle -eq "Updates" -or
+                $_.UpdateClassificationTitle -eq "Definition Updates"
+                # Excluding "Upgrades" (need manual review)
             )
         })
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
-        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates only, released within 6mo, not superseded/expired"
-        Write-Log "  Excluded: Definition Updates, Upgrades, Preview/Beta updates"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
+        Write-Log "  Excluded: Upgrades, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
-            # Safety check - don't auto-approve more than 100 updates
-            if ($pendingUpdates.Count -gt 100) {
+            # Safety check - don't auto-approve more than 200 updates
+            if ($pendingUpdates.Count -gt 200) {
                 Write-Warning "Found $($pendingUpdates.Count) updates to approve - this seems high!"
                 Write-Warning "SKIPPING auto-approval for safety. Review updates in WSUS Console."
                 Write-Log "Top 10 pending updates:"
@@ -1350,13 +1377,20 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         }
         Write-Log "Differential export will include files modified within last $ExportDays days"
 
-    # Create year/month structure for archive (no day subfolder)
+    # Determine differential export destination
+    # If DifferentialExportPath is specified, use it directly
+    # Otherwise, create year/month structure under ExportPath
     $year = (Get-Date).ToString("yyyy")
     $month = (Get-Date).ToString("MMM")
-    $archiveDestination = [System.IO.Path]::Combine($ExportPath, $year, $month)
+    if ($DifferentialExportPath) {
+        $archiveDestination = $DifferentialExportPath
+        Write-Log "Using separate differential export path: $DifferentialExportPath"
+    } else {
+        $archiveDestination = [System.IO.Path]::Combine($ExportPath, $year, $month)
+    }
 
     Write-Log "Root export path: $ExportPath"
-    Write-Log "Archive path: $archiveDestination"
+    Write-Log "Differential path: $archiveDestination"
 
     # Check if export path is accessible using improved test
     if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
