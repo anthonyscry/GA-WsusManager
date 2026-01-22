@@ -888,18 +888,19 @@ if ($allUpdates.Count -gt 0) {
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
                 $_.UpdateClassificationTitle -eq "Update Rollups" -or
                 $_.UpdateClassificationTitle -eq "Service Packs" -or
-                $_.UpdateClassificationTitle -eq "Updates"
-                # Excluding "Definition Updates" (too frequent) and "Upgrades" (need manual review)
+                $_.UpdateClassificationTitle -eq "Updates" -or
+                $_.UpdateClassificationTitle -eq "Definition Updates"
+                # Excluding "Upgrades" (need manual review)
             )
         })
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
-        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates only, released within 6mo, not superseded/expired"
-        Write-Log "  Excluded: Definition Updates, Upgrades, Preview/Beta updates"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
+        Write-Log "  Excluded: Upgrades, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
-            # Safety check - don't auto-approve more than 100 updates
-            if ($pendingUpdates.Count -gt 100) {
+            # Safety check - don't auto-approve more than 500 updates (increased for Definition Updates)
+            if ($pendingUpdates.Count -gt 500) {
                 Write-Warning "Found $($pendingUpdates.Count) updates to approve - this seems high!"
                 Write-Warning "SKIPPING auto-approval for safety. Review updates in WSUS Console."
                 Write-Log "Top 10 pending updates:"
