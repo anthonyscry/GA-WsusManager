@@ -899,8 +899,8 @@ if ($allUpdates.Count -gt 0) {
         Write-Log "  Excluded: Upgrades, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
-            # Safety check - don't auto-approve more than 500 updates (increased for Definition Updates)
-            if ($pendingUpdates.Count -gt 500) {
+            # Safety check - don't auto-approve more than 200 updates
+            if ($pendingUpdates.Count -gt 200) {
                 Write-Warning "Found $($pendingUpdates.Count) updates to approve - this seems high!"
                 Write-Warning "SKIPPING auto-approval for safety. Review updates in WSUS Console."
                 Write-Log "Top 10 pending updates:"
