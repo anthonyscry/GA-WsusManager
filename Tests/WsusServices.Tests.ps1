@@ -465,3 +465,77 @@ Describe "Stop-AllWsusServices" {
         }
     }
 }
+
+Describe "Start-SqlBrowserService" {
+    Context "Module export validation" {
+        It "Should export Start-SqlBrowserService function" {
+            Get-Command Start-SqlBrowserService -Module WsusServices | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "With mocked service" {
+        BeforeAll {
+            Mock Get-Service {
+                [PSCustomObject]@{
+                    Name = "SQLBrowser"
+                    Status = "Stopped"
+                }
+            } -ModuleName WsusServices
+            Mock Set-Service { } -ModuleName WsusServices
+            Mock Start-WsusService { $true } -ModuleName WsusServices
+        }
+
+        It "Should call Start-WsusService with SQLBrowser" {
+            Start-SqlBrowserService
+            Should -Invoke Start-WsusService -ModuleName WsusServices -ParameterFilter {
+                $ServiceName -eq 'SQLBrowser'
+            }
+        }
+    }
+
+    Context "When service does not exist" {
+        BeforeAll {
+            Mock Get-Service { $null } -ModuleName WsusServices
+        }
+
+        It "Should return false when service does not exist" {
+            $result = Start-SqlBrowserService
+            $result | Should -Be $false
+        }
+    }
+}
+
+Describe "Stop-SqlBrowserService" {
+    Context "Module export validation" {
+        It "Should export Stop-SqlBrowserService function" {
+            Get-Command Stop-SqlBrowserService -Module WsusServices | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "With mocked service" {
+        BeforeAll {
+            Mock Stop-WsusService { $true } -ModuleName WsusServices
+        }
+
+        It "Should call Stop-WsusService with SQLBrowser" {
+            Stop-SqlBrowserService
+            Should -Invoke Stop-WsusService -ModuleName WsusServices -ParameterFilter {
+                $ServiceName -eq 'SQLBrowser'
+            }
+        }
+    }
+}
+
+Describe "Get-WsusServiceStatus with SQL Browser" {
+    Context "With IncludeSqlBrowser switch" {
+        It "Should include SQL Browser when switch is provided" {
+            $result = Get-WsusServiceStatus -IncludeSqlBrowser
+            $result.Keys | Should -Contain "SQL Browser"
+        }
+
+        It "Should not include SQL Browser by default" {
+            $result = Get-WsusServiceStatus
+            $result.Keys | Should -Not -Contain "SQL Browser"
+        }
+    }
+}
