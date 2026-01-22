@@ -78,14 +78,6 @@ param(
     [Parameter(ParameterSetName = 'Export')]
     [switch]$Export,
 
-    # Export parameters
-    [Parameter(ParameterSetName = 'Export')]
-    [ValidateSet('Full', 'Differential')]
-    [string]$ExportMode = 'Differential',
-
-    [Parameter(ParameterSetName = 'Export')]
-    [int]$ExportDays = 30,
-
     [Parameter(ParameterSetName = 'Health')]
     [switch]$Health,
 
@@ -105,6 +97,27 @@ param(
     # Restore parameters
     [Parameter(ParameterSetName = 'Restore')]
     [string]$BackupPath,
+
+    # Export/Import parameters (for non-interactive mode)
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [string]$SourcePath,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [string]$DestinationPath,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [ValidateSet('Full', 'Differential')]
+    [string]$CopyMode = "Full",
+
+    [Parameter(ParameterSetName = 'Export')]
+    [int]$DaysOld = 30,
+
+    # Non-interactive mode (skip prompts, fail on missing required paths)
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [switch]$NonInteractive,
 
     # Common
     [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
@@ -193,11 +206,17 @@ function Write-Log($msg, $color = "White") {
 }
 
 function Write-Banner($title) {
+    # Banner sized for 90-column console window
+    $lineWidth = 88
+    $line = "=" * $lineWidth
+    # Center the title
+    $padding = [math]::Max(0, [math]::Floor(($lineWidth - $title.Length) / 2))
+    $centeredTitle = (" " * $padding) + $title
     $banner = @"
 
-===============================================================================
-                    $title
-===============================================================================
+$line
+$centeredTitle
+$line
 
 "@
     Write-Host $banner -ForegroundColor Cyan
@@ -286,6 +305,98 @@ function Test-ValidPath {
     return $result
 }
 
+function Test-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Checks if the current user has sysadmin permissions on SQL Server
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .OUTPUTS
+        Hashtable with HasPermission (bool), Message (string), and UserName (string)
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS"
+    )
+
+    $result = @{
+        HasPermission = $false
+        Message = ""
+        UserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    }
+
+    try {
+        # First check if SQL Server is running
+        $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if (-not $sqlService -or $sqlService.Status -ne 'Running') {
+            $result.Message = "SQL Server is not running"
+            return $result
+        }
+
+        # Check sysadmin membership using Invoke-Sqlcmd
+        $query = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+        $checkResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Query $query -ErrorAction Stop
+
+        if ($checkResult.IsSysAdmin -eq 1) {
+            $result.HasPermission = $true
+            $result.Message = "User has sysadmin permissions"
+        } else {
+            $result.Message = "User '$($result.UserName)' does not have sysadmin permissions on SQL Server"
+        }
+    } catch {
+        $result.Message = "Failed to check SQL permissions: $($_.Exception.Message)"
+    }
+
+    return $result
+}
+
+function Assert-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Verifies sysadmin permissions and exits with error if not granted
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .PARAMETER OperationName
+        Name of the operation being attempted (for error message)
+    .OUTPUTS
+        Returns $true if permissions OK, exits script if not
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [string]$OperationName = "database operation"
+    )
+
+    Write-Host "Checking SQL Server permissions..." -ForegroundColor Yellow
+
+    $permCheck = Test-SqlSysadmin -SqlInstance $SqlInstance
+
+    if (-not $permCheck.HasPermission) {
+        $errLine = "=" * 88
+        Write-Host ""
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host "  PERMISSION ERROR - Operation Cancelled" -ForegroundColor Red
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  User: $($permCheck.UserName)" -ForegroundColor White
+        Write-Host "  Error: $($permCheck.Message)" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  The '$OperationName' operation requires SQL Server sysadmin permissions." -ForegroundColor White
+        Write-Host ""
+        Write-Host "  To grant sysadmin permissions, run as SA or existing sysadmin:" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "    USE [master]" -ForegroundColor Gray
+        Write-Host "    ALTER SERVER ROLE [sysadmin] ADD MEMBER [$($permCheck.UserName)]" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host ""
+
+        Write-Log "PERMISSION ERROR: $($permCheck.Message)" "Red"
+        return $false
+    }
+
+    Write-Host "  Permissions OK: $($permCheck.UserName)" -ForegroundColor Green
+    return $true
+}
+
 # ============================================================================
 # RESTORE OPERATION
 # ============================================================================
@@ -298,6 +409,11 @@ function Invoke-WsusRestore {
     )
 
     Write-Banner "WSUS DATABASE RESTORE"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Database Restore")) {
+        return
+    }
 
     $SqlCmdExe = Get-SqlCmd
     if (-not $SqlCmdExe) {
@@ -352,8 +468,10 @@ function Invoke-WsusRestore {
 
     # Restore database
     Write-Log "Restoring database..." "Yellow"
+    # Escape single quotes in path for SQL safety (double them)
+    $safePath = $selectedBackup.FullName -replace "'", "''"
     & $SqlCmdExe -S $SqlInstance -Q "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;" -b 2>$null
-    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$($selectedBackup.FullName)' WITH REPLACE, STATS=10" -b
+    & $SqlCmdExe -S $SqlInstance -Q "RESTORE DATABASE SUSDB FROM DISK='$safePath' WITH REPLACE, STATS=10" -b
     & $SqlCmdExe -S $SqlInstance -Q "ALTER DATABASE SUSDB SET MULTI_USER;" -b 2>$null
 
     # Start services
@@ -491,7 +609,8 @@ function Select-Destination {
 function Invoke-FullCopy {
     param(
         [string]$ExportSource,
-        [string]$ContentPath
+        [string]$ContentPath,
+        [string]$DestinationPath  # When provided, skips interactive destination selection
     )
 
     Write-Banner "FULL COPY - LATEST EXPORT"
@@ -539,8 +658,13 @@ function Invoke-FullCopy {
         Write-Host "  $contentFiles files ($(Format-SizeDisplay $contentSize))"
     }
 
-    $destination = Select-Destination -DefaultPath $ContentPath
-    if (-not $destination) { return }
+    # Use DestinationPath if provided (non-interactive), otherwise prompt
+    if ($DestinationPath) {
+        $destination = $DestinationPath
+    } else {
+        $destination = Select-Destination -DefaultPath $ContentPath
+        if (-not $destination) { return }
+    }
 
     Write-Host ""
     Write-Host "Configuration:" -ForegroundColor Yellow
@@ -549,8 +673,11 @@ function Invoke-FullCopy {
     Write-Host "  Mode: Differential copy (only newer/missing files)"
     Write-Host ""
 
-    $confirm = Read-Host "Proceed with copy? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) { return }
+    # Skip confirmation if DestinationPath was provided (non-interactive mode)
+    if (-not $DestinationPath) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
 
     Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
         -IncludeDatabase:($null -ne $rootBak) -IncludeContent:$hasRootContent
@@ -573,9 +700,9 @@ function Invoke-BrowseArchive {
     # YEAR SELECTION
     :yearLoop while ($true) {
         Clear-Host
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host "              BROWSE ARCHIVE - SELECT YEAR" -ForegroundColor Cyan
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host ""
 
         $years = Get-ChildItem -Path $searchPath -Directory -ErrorAction SilentlyContinue |
@@ -613,9 +740,9 @@ function Invoke-BrowseArchive {
             # MONTH SELECTION
             :monthLoop while ($true) {
                 Clear-Host
-                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host ("=" * 88) -ForegroundColor Cyan
                 Write-Host "              BROWSE ARCHIVE - SELECT MONTH ($($selectedYear.Name))" -ForegroundColor Cyan
-                Write-Host "=================================================================" -ForegroundColor Cyan
+                Write-Host ("=" * 88) -ForegroundColor Cyan
                 Write-Host ""
 
                 $months = Get-ChildItem -Path $selectedYear.FullName -Directory -ErrorAction SilentlyContinue |
@@ -654,9 +781,9 @@ function Invoke-BrowseArchive {
                     # BACKUP SELECTION
                     :backupLoop while ($true) {
                         Clear-Host
-                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
                         Write-Host "       SELECT BACKUP ($($selectedYear.Name) / $($selectedMonth.Name))" -ForegroundColor Cyan
-                        Write-Host "=================================================================" -ForegroundColor Cyan
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
                         Write-Host ""
 
                         # Find all .bak files directly in the month folder
@@ -780,10 +907,19 @@ function Invoke-CopyForAirGap {
         Import WSUS data from external media (Apricorn, optical, USB) to air-gap server
     .DESCRIPTION
         Prompts for source path (where external media is mounted) and copies to local WSUS
+    .PARAMETER SourcePath
+        Path to external media containing WSUS export data
+    .PARAMETER DestinationPath
+        Destination path on WSUS server (default: C:\WSUS)
+    .PARAMETER NonInteractive
+        Skip all interactive prompts - requires SourcePath and DestinationPath
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
-        [string]$ContentPath
+        [string]$ContentPath,
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [switch]$NonInteractive
     )
 
     Write-Banner "IMPORT FROM EXTERNAL MEDIA"
@@ -797,14 +933,18 @@ function Invoke-CopyForAirGap {
         $DefaultSource = "C:\"
     }
 
-    # Prompt for source path
-    Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
-    Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
-    Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
-    Write-Host ""
-    $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+    $ExportSource = if ($SourcePath) { $SourcePath } else { $DefaultSource }
 
-    $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+    if (-not $NonInteractive) {
+        # Prompt for source path
+        Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
+        Write-Host ""
+        $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+
+        $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+    }
 
     # Validate the source path
     $validation = Test-ValidPath -Path $ExportSource -MustExist -PathType Container
@@ -815,11 +955,18 @@ function Invoke-CopyForAirGap {
     }
     $ExportSource = $validation.CleanPath
 
+    if ($NonInteractive) {
+        # Use DestinationPath if provided, otherwise fall back to ContentPath
+        $destPath = if ($DestinationPath) { $DestinationPath } else { $ContentPath }
+        Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath -DestinationPath $destPath
+        return
+    }
+
     :mainLoop while ($true) {
         Clear-Host
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host "              IMPORT FROM EXTERNAL MEDIA" -ForegroundColor Cyan
-        Write-Host "=================================================================" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host ""
         Write-Host "Source: $ExportSource" -ForegroundColor Gray
         Write-Host ""
@@ -1042,21 +1189,28 @@ function Invoke-ExportToMedia {
         Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
         Prompts for source and destination, supports full or differential copy modes.
-        When Mode and Days parameters are provided, skips interactive prompts.
+        When DestinationPath is provided, runs in non-interactive mode (for GUI).
     #>
     param(
         [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
         [string]$ContentPath = "C:\WSUS",
-        [string]$Destination = "",
-        [ValidateSet('Full', 'Differential', '')]
-        [string]$Mode = "",
-        [int]$Days = 0
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [ValidateSet('Full', 'Differential')]
+        [string]$ExportCopyMode = "Full",
+        [int]$ExportDaysOld = 30
     )
+
+    # Determine if running in non-interactive mode (GUI mode)
+    $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
 
     Write-Banner "COPY DATA TO EXTERNAL MEDIA"
 
     Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
+    if ($nonInteractive) {
+        Write-Host "Copy mode: $ExportCopyMode$(if($ExportCopyMode -eq 'Differential'){" (last $ExportDaysOld days)"})" -ForegroundColor Cyan
+    }
     Write-Host ""
 
     # Validate paths - use defaults if empty
@@ -1067,13 +1221,12 @@ function Invoke-ExportToMedia {
         $ContentPath = "C:\WSUS"
     }
 
-    # If Mode is provided via parameter, skip interactive prompt
-    if ($Mode -ne "") {
-        $copyMode = $Mode
-        $maxAgeDays = if ($Mode -eq "Full") { 0 } elseif ($Days -gt 0) { $Days } else { 30 }
-        Write-Host "Copy mode: $copyMode$(if ($copyMode -eq 'Differential') { " (last $maxAgeDays days)" })" -ForegroundColor Cyan
-    } else {
-        # Prompt for copy mode
+    # Set copy mode variables
+    $copyMode = $ExportCopyMode
+    $maxAgeDays = $ExportDaysOld
+
+    if (-not $nonInteractive) {
+        # Interactive mode: Prompt for copy mode
         Write-Host "Copy mode:" -ForegroundColor Cyan
         Write-Host "  1. Full copy (all files)"
         Write-Host "  2. Differential copy (files from last 30 days) [Default]"
@@ -1081,9 +1234,6 @@ function Invoke-ExportToMedia {
         Write-Host ""
         $modeChoice = Read-Host "Select mode (1/2/3) [2]"
         if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
-
-        $copyMode = "Differential"
-        $maxAgeDays = 30
 
         switch ($modeChoice) {
             "1" {
@@ -1109,14 +1259,13 @@ function Invoke-ExportToMedia {
                 $maxAgeDays = 30
             }
         }
+        Write-Host ""
     }
 
-    Write-Host ""
-
-    # CLI mode: use DefaultSource directly, skip prompts
-    if ($Destination -ne "") {
-        $source = $DefaultSource
-        Write-Host "Source: $source" -ForegroundColor Cyan
+    # Determine source path
+    if ($nonInteractive) {
+        # Non-interactive: Use SourcePath if provided, otherwise use ContentPath (local WSUS)
+        $source = if (-not [string]::IsNullOrWhiteSpace($SourcePath)) { $SourcePath } else { $ContentPath }
     } else {
         # Interactive mode: Prompt for source
         Write-Host "Source options:" -ForegroundColor Cyan
@@ -1174,10 +1323,10 @@ function Invoke-ExportToMedia {
     }
     Write-Host ""
 
-    # CLI mode: use provided destination, skip prompt
-    if ($Destination -ne "") {
-        $destination = $Destination
-        Write-Host "Destination: $destination" -ForegroundColor Cyan
+    # Determine destination path
+    if ($nonInteractive) {
+        # Non-interactive: Use provided DestinationPath
+        $destination = $DestinationPath
     } else {
         # Interactive mode: Prompt for destination
         Write-Host "Destination (external media path):" -ForegroundColor Cyan
@@ -1217,8 +1366,11 @@ function Invoke-ExportToMedia {
     }
     Write-Host ""
 
-    $confirm = Read-Host "Proceed with copy? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) { return }
+    # Skip confirmation in non-interactive mode
+    if (-not $nonInteractive) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
 
     # Copy database
     if ($sourceBak) {
@@ -1267,7 +1419,7 @@ function Invoke-ExportToMedia {
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Safely eject the external media"
     Write-Host "  2. Transport to air-gap server"
-    Write-Host "  3. On air-gap server, run option 3 (Copy Data from External Media)"
+    Write-Host "  3. Import to air-gap server using WSUS Manager"
     Write-Host ""
 }
 
@@ -1339,6 +1491,11 @@ function Invoke-WsusCleanup {
     )
 
     Write-Banner "WSUS DEEP CLEANUP"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Deep Cleanup")) {
+        return
+    }
 
     # Use the globally resolved modules folder
     if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
@@ -1428,10 +1585,10 @@ function Invoke-WsusReset {
 
 function Show-Menu {
     Clear-Host
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host "              WSUS Management v3.3.0" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host ""
     Write-Host "INSTALLATION" -ForegroundColor Yellow
     Write-Host "  1. Install WSUS with SQL Express 2022"
@@ -1455,7 +1612,7 @@ function Show-Menu {
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
-    Write-Host "=================================================================" -ForegroundColor Cyan
+    Write-Host ("=" * 88) -ForegroundColor Cyan
 }
 
 function Invoke-MenuScript {
@@ -1504,9 +1661,26 @@ function Start-InteractiveMenu {
 if ($Restore) {
     Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance -BackupPath $BackupPath
 } elseif ($Import) {
-    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath
+    # Use SourcePath if provided, otherwise fall back to ExportRoot
+    $importSource = if ($SourcePath) { $SourcePath } else { $ExportRoot }
+    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath -SourcePath $importSource -DestinationPath $DestinationPath -NonInteractive
 } elseif ($Export) {
-    Invoke-ExportToMedia -DefaultSource $ExportRoot -ContentPath $ContentPath -Mode $ExportMode -Days $ExportDays
+    # For backward compatibility with current GUI:
+    # - If DestinationPath is set explicitly, use it
+    # - Otherwise, if ExportRoot differs from default, interpret it as the destination
+    $actualDestination = $DestinationPath
+    $actualSource = $SourcePath
+    $defaultExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+
+    if ([string]::IsNullOrWhiteSpace($actualDestination) -and $ExportRoot -ne $defaultExportRoot) {
+        # GUI is passing destination as ExportRoot - use it as destination, use ContentPath as source
+        $actualDestination = $ExportRoot
+        $actualSource = $ContentPath
+    }
+
+    Invoke-ExportToMedia -DefaultSource $defaultExportRoot -ContentPath $ContentPath `
+        -SourcePath $actualSource -DestinationPath $actualDestination `
+        -ExportCopyMode $CopyMode -ExportDaysOld $DaysOld
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

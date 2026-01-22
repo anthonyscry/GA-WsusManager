@@ -50,7 +50,13 @@ param(
     [switch]$SkipExport,
 
     # SQL Server credentials for database operations (prompted if not provided)
-    [System.Management.Automation.PSCredential]$SqlCredential
+    [System.Management.Automation.PSCredential]$SqlCredential,
+
+    # Skip transcript logging (use when called from GUI which captures stdout/stderr)
+    [switch]$NoTranscript,
+
+    # Force Windows Authentication (logged-in user) for all DB operations
+    [switch]$UseWindowsAuth
 )
 
 # Import shared modules
@@ -152,17 +158,23 @@ $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Obj
 $ScriptVersion = "3.0.5"
 
 # === SQL CREDENTIAL HANDLING ===
+# UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
 # Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
-# Unattended/Scheduled task mode: Use stored SQL credential (dod_admin)
-if ($Unattended) {
+# Unattended/Scheduled task mode: Use stored SQL credential if available
+if ($UseWindowsAuth) {
+    # Force Windows Authentication (typically when called from GUI)
+    Write-Host "[i] Using Windows Integrated Authentication (logged-in user) for SQL operations" -ForegroundColor Cyan
+    $SqlCredential = $null
+    $script:UseSqlCredential = $false
+} elseif ($Unattended) {
     # Scheduled task mode - use stored SQL credential
     if (-not $SqlCredential) {
         $SqlCredential = Get-WsusSqlCredential -Quiet
         if ($SqlCredential) {
             Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
         } else {
-            Write-Warning "No SQL credential available for unattended mode. Direct SQL operations will be skipped."
-            Write-Warning "Run 'Set-WsusSqlCredential' to store credentials for scheduled task use."
+            Write-Warning "No SQL credential available for unattended mode."
+            Write-Warning "Using Windows Integrated Authentication instead."
         }
     }
     $script:UseSqlCredential = ($null -ne $SqlCredential)
@@ -207,6 +219,29 @@ function Write-Status {
     Write-Host $Message
     # Force output buffer flush for GUI redirection
     [Console]::Out.Flush()
+}
+
+function Start-Heartbeat {
+    param([string]$Message = "Still working... please wait.")
+    Stop-Heartbeat
+    $script:HeartbeatTimer = New-Object System.Timers.Timer 30000
+    $script:HeartbeatTimer.AutoReset = $true
+    $script:HeartbeatEvent = Register-ObjectEvent -InputObject $script:HeartbeatTimer -EventName Elapsed -MessageData $Message -Action {
+        Write-Status $Event.MessageData -Type Info
+    }
+    $script:HeartbeatTimer.Start()
+}
+
+function Stop-Heartbeat {
+    if ($script:HeartbeatTimer) {
+        $script:HeartbeatTimer.Stop()
+        $script:HeartbeatTimer.Dispose()
+        $script:HeartbeatTimer = $null
+    }
+    if ($script:HeartbeatEvent) {
+        Unregister-Event -SourceIdentifier $script:HeartbeatEvent.Name -ErrorAction SilentlyContinue
+        $script:HeartbeatEvent = $null
+    }
 }
 
 # Pre-flight validation
@@ -286,6 +321,31 @@ function Test-Prerequisites {
     } catch {
         Write-Host "FAILED" -ForegroundColor Red
         $results.Errors += "Cannot connect to WSUS: $($_.Exception.Message)"
+        $results.Success = $false
+    }
+
+    # Check 6: SQL Server sysadmin permissions
+    Write-Host "  SQL Sysadmin      " -NoNewline -ForegroundColor DarkGray
+    try {
+        $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if ($sqlService -and $sqlService.Status -eq 'Running') {
+            $permQuery = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+            $permResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Query $permQuery -ErrorAction Stop
+            if ($permResult.IsSysAdmin -eq 1) {
+                Write-Host "OK" -ForegroundColor Green
+            } else {
+                Write-Host "FAILED" -ForegroundColor Red
+                $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                $results.Errors += "User '$currentUser' does not have SQL sysadmin permissions. Run: ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]"
+                $results.Success = $false
+            }
+        } else {
+            Write-Host "SKIP" -ForegroundColor Yellow
+            Write-Host "  (SQL not running)" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "Cannot verify SQL permissions: $($_.Exception.Message)"
         $results.Success = $false
     }
 
@@ -504,9 +564,19 @@ if ($Unattended) {
 }
 
 # Setup logging using module function
-$null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+# Use shared daily log when called from GUI, per-script log when run standalone
+if ($NoTranscript) {
+    # From GUI - use shared daily log (all operations in one file)
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -SharedLog
+} else {
+    # Standalone - use timestamped per-script log
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+}
 
 Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
+
+# UI note: some phases are long-running and may appear idle in the GUI log.
+Write-Status "Heads-up: some maintenance phases can take several minutes with minimal output. GUI status refreshes every ~30 seconds." -Type Info
 
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
@@ -545,11 +615,23 @@ try {
     # Use Add-Type instead of deprecated LoadWithPartialName
     Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
+
+    # Validate WSUS connection - GetUpdateServer may return null without throwing
+    if ($null -eq $wsus) {
+        throw "GetUpdateServer returned null - WSUS service may not be running or configured"
+    }
+
     Write-Log "WSUS connection successful"
     Write-Status "WSUS connection successful" -Type Success
 
     Start-Sleep -Seconds 2
     $subscription = $wsus.GetSubscription()
+
+    # Validate subscription object
+    if ($null -eq $subscription) {
+        throw "Failed to get WSUS subscription object"
+    }
+
     Write-Log "Subscription object retrieved"
 
 } catch {
@@ -567,6 +649,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
     $syncStart = Get-Date
     $syncPhase = @{ Name = "Synchronization"; Status = "In Progress"; Duration = "" }
 
+    Start-Heartbeat "Synchronization running... this may take several minutes."
     try {
         $lastSync = $subscription.GetLastSynchronizationInfo()
         if ($lastSync) {
@@ -586,7 +669,8 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
         $syncIterations = 0
         $maxIterations = 120
-        $lastProgressUpdate = Get-Date
+        $lastPhase = ""
+        $lastProcessed = 0
 
         do {
             # Split the 30-second wait into smaller chunks with heartbeat
@@ -605,7 +689,24 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             $syncProgress = $subscription.GetSynchronizationProgress()
 
             if ($syncStatus -eq "Running") {
-                Write-Log "Syncing: $($syncProgress.Phase) | Items: $($syncProgress.ProcessedItems)/$($syncProgress.TotalItems)"
+                # Null-safe access to sync progress properties
+                $currentPhase = if ($null -ne $syncProgress -and $null -ne $syncProgress.Phase) {
+                    $syncProgress.Phase.ToString()
+                } else { "Unknown" }
+                $processed = if ($null -ne $syncProgress) { $syncProgress.ProcessedItems } else { 0 }
+                $total = if ($null -ne $syncProgress) { $syncProgress.TotalItems } else { 0 }
+                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } else { 0 }
+
+                # Log if: phase changed, 10% progress jump, first iteration, or near completion (95%+)
+                $phaseChanged = ($currentPhase -ne $lastPhase)
+                $progressJump = ($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1))
+                $nearCompletion = ($pct -ge 95) -and ($processed -ne $lastProcessed)
+
+                if ($phaseChanged -or $progressJump -or $nearCompletion -or $syncIterations -eq 0) {
+                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$total"
+                    $lastPhase = $currentPhase
+                    $lastProcessed = $processed
+                }
                 $syncIterations++
             } elseif ($syncStatus -eq "NotProcessing") {
                 Write-Log "Sync completed or not running"
@@ -647,6 +748,8 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
         Write-Status "Sync failed: $($_.Exception.Message)" -Type Error
         $MaintenanceResults.Errors += "Sync failed: $($_.Exception.Message)"
         $syncPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
     }
     $MaintenanceResults.Phases += $syncPhase
 } else {
@@ -842,6 +945,7 @@ if (Test-ShouldRunOperation "Cleanup" $Operations) {
     Write-Log "Running WSUS cleanup..."
     $cleanupPhase = @{ Name = "WSUS Cleanup"; Status = "In Progress"; Duration = "" }
     $cleanupStart = Get-Date
+    Start-Heartbeat "Cleanup running... this may take several minutes."
 
     try {
         Import-Module UpdateServices -ErrorAction SilentlyContinue
@@ -923,6 +1027,8 @@ SELECT
         Write-Status "Cleanup failed: $($_.Exception.Message)" -Type Error
         $MaintenanceResults.Errors += "Cleanup failed: $($_.Exception.Message)"
         $cleanupPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
     }
     $MaintenanceResults.Phases += $cleanupPhase
 
@@ -966,106 +1072,141 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
     Write-Log "Running ultimate cleanup steps before backup..."
     $ultimatePhase = @{ Name = "Ultimate Cleanup"; Status = "In Progress"; Duration = "" }
     $ultimateStart = Get-Date
+    Start-Heartbeat "Ultimate cleanup running... this may take several minutes."
 
-    # Stop WSUS to reduce contention while manipulating SUSDB.
-    if (Test-ServiceRunning -ServiceName "WSUSService") {
-        Write-Log "Stopping WSUS Service for ultimate cleanup..."
-        if (Stop-WsusServer -Force) {
-            Write-Log "WSUS Service stopped"
-        } else {
-            Write-Warning "Failed to stop WSUS Service"
-        }
-    }
-
-    # Remove supersession records using module functions
-    $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance ".\SQLEXPRESS"
-    Write-Log "Removed $deletedDeclined supersession records for declined updates"
-
-    # Remove supersession records for superseded updates
-    $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance ".\SQLEXPRESS" -ShowProgress
-    Write-Log "Removed $deletedSuperseded supersession records for superseded updates"
-
-    # Delete declined updates using the official spDeleteUpdate procedure.
     try {
-        if (-not $allUpdates -or $allUpdates.Count -eq 0) {
-            Write-Log "Reloading updates for declined purge..."
-            $allUpdates = $wsus.GetUpdates()
+        # Stop WSUS to reduce contention while manipulating SUSDB.
+        if (Test-ServiceRunning -ServiceName "WSUSService") {
+            Write-Log "Stopping WSUS Service for ultimate cleanup..."
+            if (Stop-WsusServer -Force) {
+                Write-Log "WSUS Service stopped"
+            } else {
+                Write-Warning "Failed to stop WSUS Service"
+            }
         }
 
-        $declinedIDs = @($allUpdates | Where-Object { $_.IsDeclined } |
-            Select-Object -ExpandProperty Id |
-            ForEach-Object { $_.UpdateId })
+        # Remove supersession records using module functions
+        $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance ".\SQLEXPRESS"
+        Write-Log "Removed $deletedDeclined supersession records for declined updates"
 
-        # SQL operations use Windows Integrated Authentication by default
-        # This works for both interactive mode and scheduled tasks running as users with SQL access
-        $canRunSql = $true
+        # Remove supersession records for superseded updates
+        $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance ".\SQLEXPRESS" -ShowProgress
+        Write-Log "Removed $deletedSuperseded supersession records for superseded updates"
 
-        if ($declinedIDs.Count -gt 0 -and $canRunSql) {
-            Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
+        # Delete declined updates using the official spDeleteUpdate procedure.
+        try {
+            if (-not $allUpdates -or $allUpdates.Count -eq 0) {
+                Write-Log "Reloading updates for declined purge..."
+                $allUpdates = $wsus.GetUpdates()
+            }
 
-            $batchSize = 100
-            $totalDeleted = 0
-            $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
-            $currentBatch = 0
+            $declinedIDs = @($allUpdates | Where-Object { $_.IsDeclined } |
+                Select-Object -ExpandProperty Id |
+                ForEach-Object { $_.UpdateId })
 
-            for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
-                $currentBatch++
-                $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+            # SQL operations use Windows Integrated Authentication by default
+            # This works for both interactive mode and scheduled tasks running as users with SQL access
+            $canRunSql = $true
 
-                foreach ($updateId in $batch) {
-                    # Use parameterized query to prevent SQL injection
-                    $deleteQuery = @"
+            if ($declinedIDs.Count -gt 0 -and $canRunSql) {
+                Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
+
+                $batchSize = 100
+                $totalDeleted = 0
+                $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
+                $currentBatch = 0
+
+                for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
+                    $currentBatch++
+                    $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+
+                    foreach ($updateId in $batch) {
+                        # =========================================================================
+                        # =========================================================================
+                        # SQLCMD VARIABLE SYNTAX FOR PARAMETERIZED QUERIES
+                        # =========================================================================
+                        # Invoke-Sqlcmd's -Variable parameter uses SQLCMD scripting variable syntax,
+                        # NOT T-SQL parameter syntax. This is a common source of confusion:
+                        #
+                        #   WRONG: @VariableName    (T-SQL parameter - requires SqlParameter objects)
+                        #   RIGHT: $(VariableName)  (SQLCMD variable - string substitution)
+                        #
+                        # The -Variable parameter format is: "name=value" (no quotes around value)
+                        # In the SQL query, $(name) is replaced with the literal value.
+                        #
+                        # For GUIDs assigned to uniqueidentifier, we must quote the substituted value:
+                        #   DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
+                        #
+                        # CRITICAL: Must use SINGLE-QUOTE here-string (@'...'@), not double-quote
+                        # (@"..."@). Double-quote here-strings cause PowerShell to evaluate
+                        # $(UpdateIdParam) as a subexpression, resulting in:
+                        #   "The term 'UpdateIdParam' is not recognized as a cmdlet"
+                        # Single-quote here-strings pass $(UpdateIdParam) literally to SQL Server.
+                        # =========================================================================
+                        $deleteQuery = @'
 DECLARE @LocalUpdateID int
-DECLARE @UpdateGuid uniqueidentifier = @UpdateIdParam
+DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
 SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
 IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
-"@
+'@
 
-                    try {
-                        # Use Invoke-WsusSqlcmd wrapper for automatic TrustServerCertificate handling
-                        if ($script:UseSqlCredential -and $SqlCredential) {
-                            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                                -Query $deleteQuery -QueryTimeout 300 `
-                                -Variable "UpdateIdParam='$updateId'" `
-                                -Credential $SqlCredential | Out-Null
-                        } else {
-                            Invoke-WsusSqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                                -Query $deleteQuery -QueryTimeout 300 `
-                                -Variable "UpdateIdParam='$updateId'" | Out-Null
+                        # Suppress error stream during deletion - spDeleteUpdate errors are expected
+                        # when updates have revision dependencies or deadlocks occur
+                        $ErrorActionPreference = 'SilentlyContinue'
+                        $deleteError = $null
+                        try {
+                            if ($script:UseSqlCredential -and $SqlCredential) {
+                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                    -Query $deleteQuery -QueryTimeout 300 `
+                                    -Variable "UpdateIdParam=$updateId" `
+                                    -Credential $SqlCredential -TrustServerCertificate `
+                                    -ErrorVariable deleteError 2>$null | Out-Null
+                            } else {
+                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
+                                    -Query $deleteQuery -QueryTimeout 300 `
+                                    -Variable "UpdateIdParam=$updateId" `
+                                    -TrustServerCertificate `
+                                    -ErrorVariable deleteError 2>$null | Out-Null
+                            }
+                            if (-not $deleteError) {
+                                $totalDeleted++
+                            }
+                        } catch {
+                            # Silently skip - expected errors for updates with dependencies
                         }
-                        $totalDeleted++
-                    } catch {
-                        Write-Verbose "Skipping update deletion error: $($_.Exception.Message)"
+                        $ErrorActionPreference = 'Continue'
+                    }
+
+                    if ($currentBatch % 5 -eq 0) {
+                        $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                        Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
                     }
                 }
 
-                if ($currentBatch % 5 -eq 0) {
-                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
-                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
-                }
+                Write-Log "Declined update purge complete: $totalDeleted deleted"
+            } elseif ($declinedIDs.Count -gt 0 -and -not $canRunSql) {
+                Write-Log "Skipping declined update deletion - no SQL credential available for unattended mode"
+            } else {
+                Write-Log "No declined updates found to delete"
             }
-
-            Write-Log "Declined update purge complete: $totalDeleted deleted"
-        } elseif ($declinedIDs.Count -gt 0 -and -not $canRunSql) {
-            Write-Log "Skipping declined update deletion - no SQL credential available for unattended mode"
-        } else {
-            Write-Log "No declined updates found to delete"
+        } catch {
+            Write-Warning "Declined update purge failed: $($_.Exception.Message)"
         }
-    } catch {
-        Write-Warning "Declined update purge failed: $($_.Exception.Message)"
-    }
 
-    # Optional shrink after heavy cleanup to reclaim space (can be slow).
-    Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
-    if (Invoke-WsusDatabaseShrink -SqlInstance ".\SQLEXPRESS") {
-        Write-Log "SUSDB shrink completed"
-    }
+        # Optional shrink after heavy cleanup to reclaim space (can be slow).
+        Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
+        if (Invoke-WsusDatabaseShrink -SqlInstance ".\SQLEXPRESS") {
+            Write-Log "SUSDB shrink completed"
+        }
 
-    # Start WSUS service back up after database maintenance.
-    if (-not (Test-ServiceRunning -ServiceName "WSUSService")) {
-        Write-Log "Starting WSUS Service..."
-        Start-WsusServer | Out-Null
+        # Start WSUS service back up after database maintenance.
+        if (-not (Test-ServiceRunning -ServiceName "WSUSService")) {
+            Write-Log "Starting WSUS Service..."
+            Start-WsusServer | Out-Null
+        }
+    } finally {
+        Stop-Heartbeat
     }
 
     $ultimateDuration = [math]::Round(((Get-Date) - $ultimateStart).TotalMinutes, 1)
@@ -1095,6 +1236,7 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
 
     Write-Log "Starting backup: $backupFile"
     $backupStart = Get-Date
+    Start-Heartbeat "Backup running... this may take several minutes."
 
     try {
         $dbSize = Get-WsusDatabaseSize -SqlInstance ".\SQLEXPRESS"
@@ -1128,6 +1270,8 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
         Write-Status "Backup failed: $($_.Exception.Message)" -Type Error
         $MaintenanceResults.Errors += "Backup failed: $($_.Exception.Message)"
         $backupPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
     }
     $MaintenanceResults.Phases += $backupPhase
 } else {
@@ -1189,20 +1333,22 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
     Write-Log "Starting export to network share..."
     $exportPhase = @{ Name = "Export"; Status = "In Progress"; Duration = "" }
     $exportStart = Get-Date
+    Start-Heartbeat "Export running... this may take several minutes."
 
-    # Prompt for days if not specified via command line (skip in unattended mode)
-    if ($ExportDays -eq 0) {
-        if ($Unattended) {
-            $ExportDays = 30
-        } else {
-            Write-Host ""
-            Write-Host "Differential Export Configuration" -ForegroundColor Yellow
-            Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
-            $daysInput = Read-Host "Days"
-            $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
+    try {
+        # Prompt for days if not specified via command line (skip in unattended mode)
+        if ($ExportDays -eq 0) {
+            if ($Unattended) {
+                $ExportDays = 30
+            } else {
+                Write-Host ""
+                Write-Host "Differential Export Configuration" -ForegroundColor Yellow
+                Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
+                $daysInput = Read-Host "Days"
+                $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
+            }
         }
-    }
-    Write-Log "Differential export will include files modified within last $ExportDays days"
+        Write-Log "Differential export will include files modified within last $ExportDays days"
 
     # Create year/month structure for archive (no day subfolder)
     $year = (Get-Date).ToString("yyyy")
@@ -1343,6 +1489,9 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         $exportPhase.Duration = "$exportDuration min"
         Write-Log "Export complete: Root=$ExportPath, Archive=$archiveDestination"
         Write-Status "Export completed ($exportDuration min)" -Type Success
+    }
+    } finally {
+        Stop-Heartbeat
     }
     $MaintenanceResults.Phases += $exportPhase
 } elseif ($SkipExport) {

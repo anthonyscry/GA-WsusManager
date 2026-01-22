@@ -93,10 +93,11 @@ For WSUS servers on disconnected networks:
 
 ### Changing Modes
 
-1. Click the **Server Mode** toggle in the sidebar
-2. The mode switches between Online/Air-Gap
+Server Mode is auto-detected based on internet connectivity.
+
+1. Ensure the server has internet access for Online mode
+2. Disconnect to switch to Air-Gap mode
 3. Menu items update automatically
-4. Setting is saved and persists across restarts
 
 ---
 
@@ -112,10 +113,45 @@ Installs WSUS with SQL Server Express from scratch.
 3. Click **Install**
 4. Wait 15-30 minutes for completion
 
+> **Note:** If the default installer folder is missing SQL/SSMS files, the installer will prompt you to select the correct folder.
+
 **Prerequisites:**
 - SQL installers in selected folder
 - No existing WSUS installation
 - Administrator privileges
+
+### Create GPO
+
+Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Controller.
+
+**Steps:**
+1. Click **Create GPO**
+2. Confirm the copy operation
+3. Copy the `C:\WSUS\WSUS GPO` folder to the Domain Controller
+4. On the DC, run as Administrator:
+   ```powershell
+   cd 'C:\WSUS\WSUS GPO'
+   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
+   ```
+
+**To force clients to update:**
+```powershell
+# On individual clients:
+gpupdate /force
+
+# From DC (all domain computers):
+Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force }
+
+# Verify on clients:
+gpresult /r | findstr WSUS
+```
+
+**GPOs Created:**
+| GPO Name | Purpose | Link Target |
+|----------|---------|-------------|
+| WSUS Update Policy | Client update settings | Domain root |
+| WSUS Inbound Allow | Firewall rules for WSUS server | Member Servers\WSUS Server |
+| WSUS Outbound Allow | Firewall rules for clients | Workstations, Member Servers, DCs |
 
 ### Restore Database
 
@@ -158,17 +194,31 @@ Imports updates from USB media to an air-gapped server.
 
 **Steps:**
 1. Click **Import from Media**
-2. Select source folder (USB drive)
-3. Click **Import**
+2. In the Transfer dialog:
+   - Select **Import** direction
+   - Browse to **Source (External Media)** folder on USB drive
+   - Browse to **Destination (WSUS Server)** folder (default: `C:\WSUS`)
+3. Click **Start Transfer**
 4. Wait for import to complete
 
+> **Note:** The import runs fully non-interactive using the selected folders and will not prompt for additional input during the copy operation.
+
+**Dialog Options:**
+| Field | Description | Default |
+|-------|-------------|---------|
+| Source (External Media) | USB drive or network path containing export | (Browse required) |
+| Destination (WSUS Server) | Local WSUS content directory | `C:\WSUS` |
+
 **Prerequisites:**
-- Valid export folder structure
-- Sufficient disk space
+- Valid export folder structure on source media
+- Sufficient disk space on destination
+- WSUS services running
 
 ### Monthly Maintenance
 
 Runs comprehensive maintenance tasks.
+
+> **Online-only:** Run Monthly Maintenance on the **Online** WSUS server.
 
 **What it does:**
 1. Synchronizes with Microsoft Update
@@ -182,6 +232,23 @@ Runs comprehensive maintenance tasks.
 - Monthly (recommended)
 - After initial sync
 - When database grows large
+
+**UX Note:** Some phases can be quiet for several minutes; the GUI refreshes status roughly every 30 seconds.
+
+### Schedule Maintenance Task
+
+Creates or updates the scheduled task that runs Monthly Maintenance.
+
+> **Online-only:** Create the schedule on the **Online** WSUS server.
+
+**Steps:**
+1. Click **Schedule Task** in the Maintenance section
+2. Choose schedule (Weekly/Monthly/Daily)
+3. Set the start time (default: Saturday at 02:00)
+4. Select the maintenance profile
+5. Click **Create Task**
+
+**Default Recommendation:** Weekly on Saturday at 02:00.
 
 ### Deep Cleanup
 

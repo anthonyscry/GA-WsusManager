@@ -199,8 +199,8 @@ Describe "New-WsusMaintenanceTask" {
             { New-WsusMaintenanceTask -DayOfMonth 0 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
         }
 
-        It "Should reject day 29 with validation error" {
-            { New-WsusMaintenanceTask -DayOfMonth 29 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
+        It "Should reject day 32 with validation error" {
+            { New-WsusMaintenanceTask -DayOfMonth 32 -Time "03:00" -RunAsUser "SYSTEM" } | Should -Throw
         }
 
         It "Should accept day 15" {

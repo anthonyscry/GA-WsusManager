@@ -202,9 +202,14 @@ Record the hash for verification on the air-gap side.
 1. Connect USB drive to **Air-Gap** server
 2. Launch WSUS Manager
 3. Click **Import from Media**
-4. Select the export folder on USB
-5. Click **Import**
+4. In the Transfer dialog:
+   - Select **Import** direction
+   - **Source (External Media)**: Browse to the export folder on USB (e.g., `E:\WSUS_Export_2026-01-11`)
+   - **Destination (WSUS Server)**: Verify destination folder (default: `C:\WSUS`)
+5. Click **Start Transfer**
 6. Wait for import to complete
+
+> **Note:** The import runs fully non-interactive using the selected folders. No additional prompts will appear during the copy operation.
 
 ### Post-Import Steps
 
@@ -247,8 +252,8 @@ After import:
 
 On the **Online** server, schedule Monthly Maintenance:
 
-1. Click **Settings** (if task not created)
-2. The task is created during maintenance
+1. Click **Schedule Task** in the Maintenance section
+2. Choose Weekly/Monthly/Daily and set the start time (recommended: Saturday at 02:00)
 
 Or manually:
 ```powershell
@@ -312,12 +317,12 @@ Maintain backups on both servers:
 │  │   Sync      │───>│   Approve   │───>│ Monthly Maintenance │  │
 │  │   Updates   │    │   Updates   │    │                     │  │
 │  └─────────────┘    └─────────────┘    └──────────┬──────────┘  │
-│                                                    │              │
-│                                        ┌───────────▼───────────┐ │
-│                                        │   Export to Media     │ │
-│                                        │   (Full/Differential) │ │
-│                                        └───────────┬───────────┘ │
-└────────────────────────────────────────────────────┼─────────────┘
+│                                                    │             │
+│                                       ┌────────────▼───────────┐ │
+│                                       │   Export to Media      │ │
+│                                       │   (Full/Differential)  │ │
+│                                       └────────────┬───────────┘ │
+└────────────────────────────────────────────────────┼────────────┘
                                                      │
                                           ┌──────────▼──────────┐
                                           │     USB Drive       │
