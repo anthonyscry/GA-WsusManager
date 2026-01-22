@@ -1665,12 +1665,11 @@ function Show-Menu {
     Write-Host "  6. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
-    Write-Host "  7. Health Check"
-    Write-Host "  8. Health Check + Repair"
-    Write-Host "  9. Reset Content Download"
+    Write-Host "  7. Diagnostics (Scan + Auto-Fix)"
+    Write-Host "  8. Reset Content Download (30+ min)"
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
-    Write-Host "  10. Force Client Check-In (run on client)"
+    Write-Host "  9. Force Client Check-In (run on client)"
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -1704,10 +1703,9 @@ function Start-InteractiveMenu {
             '4'  { Invoke-ExportToMedia -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }
             '5'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
             '6'  { Invoke-WsusCleanup; pause }
-            '7'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
-            '8'  { $null = Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair; pause }
-            '9'  { Invoke-WsusReset; pause }
-            '10' { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '7'  { $null = Invoke-WsusDiagnosticsOperation -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '8'  { Invoke-WsusReset; pause }
+            '9'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
             'D'  { Invoke-ExportToDvd -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
             'Q'  { Write-Log "Exiting WSUS Management" "Green"; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
