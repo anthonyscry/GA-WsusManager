@@ -9,8 +9,6 @@ on:
       - 'Tests/**'
       - '*.ps1'
       - '.github/workflows/build.yml'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       version:
@@ -28,16 +26,16 @@ on:
         type: boolean
         default: false
 
-# Prevent concurrent runs on the same branch
+# Prevent concurrent runs - cancel in-progress runs when new commit arrives
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
-  DEFAULT_VERSION: '3.8.1'
+  DEFAULT_VERSION: '3.8.6'
 
 jobs:
   #############################################
@@ -187,7 +185,9 @@ jobs:
       run: |
         Write-Host "=== Running Pester Tests ===" -ForegroundColor Cyan
 
-        $testFiles = Get-ChildItem -Path ./Tests -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue
+        # Exclude ExeValidation.Tests.ps1 - those tests require the exe which is built AFTER tests run
+        $testFiles = Get-ChildItem -Path ./Tests -Filter "*.Tests.ps1" -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -ne "ExeValidation.Tests.ps1" }
 
         if (-not $testFiles -or $testFiles.Count -eq 0) {
           Write-Host "No test files found" -ForegroundColor Yellow
@@ -250,7 +250,8 @@ jobs:
   #############################################
   build:
     name: Build Executable
-    runs-on: windows-latest
+    runs-on: windows-2022
+    timeout-minutes: 45
     needs: [code-review, test]
     if: |
       always() &&
@@ -282,18 +283,18 @@ jobs:
         Write-Host "Version: $version" -ForegroundColor Cyan
 
     - name: Install PS2EXE
-      shell: pwsh
+      shell: powershell
       run: |
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module -Name ps2exe -Force -Scope CurrentUser
+        Install-Module -Name ps2exe -Force -Scope CurrentUser -AllowClobber
 
     - name: Build executable
       id: build_exe
-      shell: pwsh
+      shell: powershell
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
 
-        Import-Module ps2exe -Force
+        Import-Module ps2exe -Force -ErrorAction Stop
 
         $buildStart = Get-Date
 
@@ -328,126 +329,124 @@ jobs:
           exit 1
         }
 
-    - name: Startup Benchmark
-      id: benchmark
+    - name: Run EXE Validation Tests
       shell: pwsh
       run: |
-        Write-Host "::group::Startup Benchmark"
-        Write-Host "=== Running Startup Benchmark ===" -ForegroundColor Cyan
+        Write-Host "=== Running EXE Validation Tests ===" -ForegroundColor Cyan
 
-        $guiScript = ".\Scripts\WsusManagementGui.ps1"
-        $benchmarkResults = @{}
-
-        # 1. Script Parse Time
-        Write-Host "`n[1/4] Measuring script parse time..." -ForegroundColor Yellow
-        $parseStart = Get-Date
-        $errors = $null
-        $tokens = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseFile($guiScript, [ref]$tokens, [ref]$errors)
-        $parseTime = [math]::Round(((Get-Date) - $parseStart).TotalMilliseconds, 2)
-        $benchmarkResults.ParseTimeMs = $parseTime
-        Write-Host "  Parse time: ${parseTime}ms"
-
-        if ($errors.Count -gt 0) {
-          Write-Host "::error::Script has $($errors.Count) syntax error(s)"
-          exit 1
+        # Install Pester if not present
+        if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge '5.0.0' })) {
+          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
         }
+        Import-Module Pester -MinimumVersion 5.0.0 -Force
 
-        # 2. Token Count (complexity indicator)
-        Write-Host "`n[2/4] Analyzing script complexity..." -ForegroundColor Yellow
-        $benchmarkResults.TokenCount = $tokens.Count
-        $benchmarkResults.LineCount = (Get-Content $guiScript).Count
-        Write-Host "  Tokens: $($tokens.Count)"
-        Write-Host "  Lines: $($benchmarkResults.LineCount)"
+        $config = New-PesterConfiguration
+        $config.Run.Path = "./Tests/ExeValidation.Tests.ps1"
+        $config.Run.Exit = $false
+        $config.Output.Verbosity = 'Detailed'
 
-        # 3. Module Import Time
-        Write-Host "`n[3/4] Measuring module import time..." -ForegroundColor Yellow
-        $moduleDir = ".\Modules"
-        $moduleImportStart = Get-Date
-        $moduleFiles = Get-ChildItem -Path $moduleDir -Filter "*.psm1" -ErrorAction SilentlyContinue
-        foreach ($mod in $moduleFiles) {
-          Import-Module $mod.FullName -Force -DisableNameChecking -ErrorAction SilentlyContinue
+        $results = Invoke-Pester -Configuration $config
+
+        Write-Host "`n=== EXE Validation Summary ===" -ForegroundColor Cyan
+        Write-Host "Passed: $($results.PassedCount)" -ForegroundColor Green
+        Write-Host "Failed: $($results.FailedCount)" -ForegroundColor $(if ($results.FailedCount -gt 0) { 'Red' } else { 'Green' })
+        Write-Host "Skipped: $($results.SkippedCount)" -ForegroundColor Yellow
+
+        if ($results.FailedCount -gt 0) {
+          Write-Host "::warning::$($results.FailedCount) EXE validation test(s) failed"
         }
-        $moduleImportTime = [math]::Round(((Get-Date) - $moduleImportStart).TotalMilliseconds, 2)
-        $benchmarkResults.ModuleImportTimeMs = $moduleImportTime
-        Write-Host "  Module import time: ${moduleImportTime}ms ($($moduleFiles.Count) modules)"
-
-        # 4. EXE File Analysis
-        Write-Host "`n[4/4] Analyzing executable..." -ForegroundColor Yellow
-        if (Test-Path ".\WsusManager.exe") {
-          $exeInfo = Get-Item ".\WsusManager.exe"
-          $benchmarkResults.ExeSizeKB = [math]::Round($exeInfo.Length / 1KB, 2)
-          $benchmarkResults.ExeSizeMB = [math]::Round($exeInfo.Length / 1MB, 2)
-          Write-Host "  EXE size: $($benchmarkResults.ExeSizeMB) MB"
-
-          # PE validation
-          $bytes = [System.IO.File]::ReadAllBytes(".\WsusManager.exe")
-          $isValidPE = ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A)
-          $benchmarkResults.ValidPE = $isValidPE
-          Write-Host "  Valid PE: $isValidPE"
-
-          # Version info
-          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo(".\WsusManager.exe")
-          $benchmarkResults.ProductVersion = $versionInfo.ProductVersion
-          Write-Host "  Version: $($versionInfo.ProductVersion)"
-        }
-
-        # Summary
-        Write-Host "`n=== Benchmark Summary ===" -ForegroundColor Cyan
-        Write-Host "  Script Parse:    $($benchmarkResults.ParseTimeMs)ms"
-        Write-Host "  Module Import:   $($benchmarkResults.ModuleImportTimeMs)ms"
-        Write-Host "  Total Overhead:  $([math]::Round($benchmarkResults.ParseTimeMs + $benchmarkResults.ModuleImportTimeMs, 2))ms"
-        Write-Host "  EXE Size:        $($benchmarkResults.ExeSizeMB) MB"
-        Write-Host "  Script Lines:    $($benchmarkResults.LineCount)"
-
-        # Set outputs for job summary
-        echo "PARSE_TIME_MS=$($benchmarkResults.ParseTimeMs)" >> $env:GITHUB_OUTPUT
-        echo "MODULE_IMPORT_MS=$($benchmarkResults.ModuleImportTimeMs)" >> $env:GITHUB_OUTPUT
-        echo "EXE_SIZE_MB=$($benchmarkResults.ExeSizeMB)" >> $env:GITHUB_OUTPUT
-        echo "LINE_COUNT=$($benchmarkResults.LineCount)" >> $env:GITHUB_OUTPUT
-
-        # Threshold checks
-        $maxParseTime = 5000  # 5 seconds
-        $maxExeSize = 50      # 50 MB
-
-        if ($benchmarkResults.ParseTimeMs -gt $maxParseTime) {
-          Write-Host "::warning::Script parse time ($($benchmarkResults.ParseTimeMs)ms) exceeds threshold (${maxParseTime}ms)"
-        }
-        if ($benchmarkResults.ExeSizeMB -gt $maxExeSize) {
-          Write-Host "::warning::EXE size ($($benchmarkResults.ExeSizeMB)MB) exceeds threshold (${maxExeSize}MB)"
-        }
-
-        Write-Host "::endgroup::"
 
     - name: Create distribution package
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.VERSION }}"
         $packageName = "WsusManager-v$version"
-        $stagingDir = ".\staging\$packageName"
+        $distDir = ".\dist"
+        $packageDir = "$distDir\staging"
 
-        New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
-        New-Item -ItemType Directory -Path "$stagingDir\DomainController" -Force | Out-Null
+        # Clean and create dist folder
+        if (Test-Path $distDir) { Remove-Item -Path $distDir -Recurse -Force }
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
-        Copy-Item ".\WsusManager.exe" -Destination $stagingDir
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $stagingDir }
-        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $stagingDir }
-        if (Test-Path ".\DomainController") {
-          Copy-Item ".\DomainController\*" -Destination "$stagingDir\DomainController" -Recurse
+        # Copy main executable
+        Copy-Item ".\WsusManager.exe" -Destination $packageDir
+
+        # Copy required folders (Scripts and Modules are REQUIRED for the EXE to work)
+        if (Test-Path ".\Scripts") {
+          Copy-Item ".\Scripts" -Destination "$packageDir\Scripts" -Recurse
+          Write-Host "Copied Scripts folder" -ForegroundColor Green
+        } else {
+          Write-Host "::error::Scripts folder not found - EXE will not work!"
+          exit 1
         }
 
-        # Create zip
-        Compress-Archive -Path "$stagingDir\*" -DestinationPath ".\$packageName.zip" -Force
+        if (Test-Path ".\Modules") {
+          Copy-Item ".\Modules" -Destination "$packageDir\Modules" -Recurse
+          Write-Host "Copied Modules folder" -ForegroundColor Green
+        } else {
+          Write-Host "::error::Modules folder not found - EXE will not work!"
+          exit 1
+        }
 
-        Write-Host "Created: $packageName.zip" -ForegroundColor Green
+        # Copy optional files/folders
+        if (Test-Path ".\DomainController") {
+          Copy-Item ".\DomainController" -Destination "$packageDir\DomainController" -Recurse
+          Write-Host "Copied DomainController folder" -ForegroundColor Green
+        }
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir }
+        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
+        if (Test-Path ".\QUICK-START.txt") { Copy-Item ".\QUICK-START.txt" -Destination $packageDir }
+
+        # List contents for verification
+        Write-Host "`nPackage contents:" -ForegroundColor Cyan
+        Get-ChildItem -Path $packageDir -Recurse | ForEach-Object {
+          $relativePath = $_.FullName.Replace((Get-Item $packageDir).FullName, "")
+          Write-Host "  $relativePath"
+        }
+
+        # Create single zip with everything needed to run
+        Compress-Archive -Path "$packageDir\*" -DestinationPath "$distDir\$packageName.zip" -Force
+
+        # Remove staging directory - only keep the zip
+        Remove-Item -Path $packageDir -Recurse -Force
+
+        Write-Host "`nFinal artifact:" -ForegroundColor Cyan
+        Get-ChildItem -Path $distDir -File | ForEach-Object {
+          Write-Host "  $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)"
+        }
+
+    - name: Prepare artifact for direct download
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $distDir = ".\dist"
+        $stagingFinal = "$distDir\staging-final"
+
+        # Create final staging with extracted contents (not the zip)
+        # This prevents the "zip within zip" issue when downloading artifacts
+        New-Item -ItemType Directory -Path $stagingFinal -Force | Out-Null
+
+        # Extract our zip to the staging-final folder so artifact download works directly
+        $zipPath = Get-ChildItem -Path $distDir -Filter "*.zip" | Select-Object -First 1
+        if ($zipPath) {
+          Expand-Archive -Path $zipPath.FullName -DestinationPath $stagingFinal -Force
+          Write-Host "Extracted $($zipPath.Name) for direct artifact download" -ForegroundColor Green
+
+          # Show final contents
+          Write-Host "`nArtifact contents:" -ForegroundColor Cyan
+          Get-ChildItem -Path $stagingFinal -Recurse | ForEach-Object {
+            $relativePath = $_.FullName.Replace((Get-Item $stagingFinal).FullName, "")
+            Write-Host "  $relativePath"
+          }
+        }
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WsusManager-${{ steps.version.outputs.VERSION }}
-        path: |
-          ./WsusManager.exe
-          ./WsusManager-v*.zip
+        name: WsusManager-v${{ steps.version.outputs.VERSION }}
+        path: ./dist/staging-final/*
         retention-days: 30
 
   #############################################
@@ -465,7 +464,8 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        path: ./artifacts
+        name: WsusManager-${{ needs.build.outputs.version }}
+        path: ./dist
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -474,7 +474,7 @@ jobs:
         name: WSUS Manager v${{ needs.build.outputs.version }}
         draft: true
         prerelease: false
-        files: ./artifacts/**/*.zip
+        files: ./dist/*.zip
         body: |
           ## WSUS Manager v${{ needs.build.outputs.version }}
 

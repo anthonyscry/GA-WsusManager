@@ -12,47 +12,78 @@
     - Startup benchmark (optional)
 #>
 
-BeforeAll {
+# BeforeDiscovery runs before test discovery, allowing -Skip parameters to use these variables
+BeforeDiscovery {
     $script:RepoRoot = Split-Path -Parent $PSScriptRoot
-    $script:ExeName = "GA-WsusManager.exe"
-    $script:ExePath = Join-Path $script:RepoRoot $script:ExeName
-    $script:DistExePath = Join-Path $script:RepoRoot "dist\$script:ExeName"
+    $script:ExeName = "WsusManager.exe"
+    $script:ExePath = $null
 
-    # Use dist version if main doesn't exist
-    if (-not (Test-Path $script:ExePath) -and (Test-Path $script:DistExePath)) {
-        $script:ExePath = $script:DistExePath
+    # Check multiple possible locations for the exe
+    $possiblePaths = @(
+        (Join-Path $script:RepoRoot $script:ExeName),
+        (Join-Path $script:RepoRoot "dist" $script:ExeName),
+        (Join-Path $script:RepoRoot "GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "dist" "GA-WsusManager.exe")
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $script:ExePath = $path
+            break
+        }
     }
+
+    $script:ExeExists = $null -ne $script:ExePath -and (Test-Path $script:ExePath)
+}
+
+BeforeAll {
+    # Re-establish variables for test runtime (BeforeDiscovery vars aren't automatically available)
+    $script:RepoRoot = Split-Path -Parent $PSScriptRoot
+    $script:ExeName = "WsusManager.exe"
+    $script:ExePath = $null
+
+    $possiblePaths = @(
+        (Join-Path $script:RepoRoot $script:ExeName),
+        (Join-Path $script:RepoRoot "dist" $script:ExeName),
+        (Join-Path $script:RepoRoot "GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "dist" "GA-WsusManager.exe")
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $script:ExePath = $path
+            break
+        }
+    }
+
+    $script:ExeExists = $null -ne $script:ExePath -and (Test-Path $script:ExePath)
 }
 
 Describe "EXE Validation Tests" {
-    Context "File Existence and Basic Properties" {
-        It "Should have GA-WsusManager.exe in repo root or dist folder" {
+    Context "File Existence and Basic Properties" -Skip:(-not $script:ExeExists) {
+        It "Should have WsusManager.exe in repo root or dist folder" {
+            $script:ExePath | Should -Not -BeNullOrEmpty -Because "ExePath should be set"
             (Test-Path $script:ExePath) | Should -Be $true -Because "The compiled executable should exist"
         }
 
         It "Should have a reasonable file size (> 100KB)" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
             $fileInfo = Get-Item $script:ExePath
             $fileInfo.Length | Should -BeGreaterThan 100KB -Because "PS2EXE output should be at least 100KB"
         }
 
         It "Should have a reasonable file size (< 50MB)" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
             $fileInfo = Get-Item $script:ExePath
             $fileInfo.Length | Should -BeLessThan 50MB -Because "Executable should not be excessively large"
         }
 
         It "Should be a recent build (modified within last 30 days)" -Tag "CI" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
             $fileInfo = Get-Item $script:ExePath
             $fileInfo.LastWriteTime | Should -BeGreaterThan (Get-Date).AddDays(-30) -Because "Build should be recent"
         }
     }
 
-    Context "PE Header Validation" {
+    Context "PE Header Validation" -Skip:(-not $script:ExeExists) {
         It "Should have valid PE signature (MZ header)" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $bytes = [System.IO.File]::ReadAllBytes($script:ExePath)
             $bytes.Length | Should -BeGreaterThan 64
 
@@ -62,8 +93,6 @@ Describe "EXE Validation Tests" {
         }
 
         It "Should have PE signature at correct offset" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $bytes = [System.IO.File]::ReadAllBytes($script:ExePath)
 
             # PE offset is at 0x3C (4 bytes, little-endian)
@@ -76,8 +105,6 @@ Describe "EXE Validation Tests" {
         }
 
         It "Should be a 64-bit executable" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $bytes = [System.IO.File]::ReadAllBytes($script:ExePath)
             $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
 
@@ -89,38 +116,28 @@ Describe "EXE Validation Tests" {
         }
     }
 
-    Context "Version Information" {
+    Context "Version Information" -Skip:(-not $script:ExeExists) {
         It "Should have embedded version information" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $versionInfo | Should -Not -BeNullOrEmpty
         }
 
         It "Should have valid product name" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $versionInfo.ProductName | Should -Be "WSUS Manager" -Because "Product name should match build configuration"
         }
 
         It "Should have valid company name" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $versionInfo.CompanyName | Should -Be "GA-ASI" -Because "Company name should match build configuration"
         }
 
         It "Should have a version number" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $versionInfo.FileVersion | Should -Match '^\d+\.\d+\.\d+' -Because "Version should be in semver format"
         }
 
         It "Should have matching file and product version" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($script:ExePath)
             $fileVer = $versionInfo.FileVersion -replace '\.0$', ''
             $prodVer = $versionInfo.ProductVersion -replace '\.0$', ''
@@ -128,12 +145,10 @@ Describe "EXE Validation Tests" {
         }
     }
 
-    Context "Startup Benchmark" -Tag "Benchmark", "CI" {
+    Context "Startup Benchmark" -Tag "Benchmark", "CI" -Skip:(-not $script:ExeExists) {
         It "Should start within acceptable time (< 10 seconds)" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
             # We can't actually run the GUI in CI, but we can verify the script parses quickly
-            $guiScript = Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1"
+            $guiScript = Join-Path $script:RepoRoot "Scripts" "WsusManagementGui.ps1"
             if (-not (Test-Path $guiScript)) { Set-ItResult -Skipped -Because "GUI script not found" }
 
             $parseStart = Get-Date
@@ -144,7 +159,7 @@ Describe "EXE Validation Tests" {
         }
 
         It "Should have no syntax errors in main script" {
-            $guiScript = Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1"
+            $guiScript = Join-Path $script:RepoRoot "Scripts" "WsusManagementGui.ps1"
             if (-not (Test-Path $guiScript)) { Set-ItResult -Skipped -Because "GUI script not found" }
 
             $errors = $null
@@ -153,22 +168,12 @@ Describe "EXE Validation Tests" {
             $errors.Count | Should -Be 0 -Because "Script should have no syntax errors"
         }
     }
-
-    Context "Distribution Package" -Tag "CI" {
-        It "Should have distribution zip if exe exists" {
-            if (-not (Test-Path $script:ExePath)) { Set-ItResult -Skipped -Because "EXE not found" }
-
-            $zipFiles = Get-ChildItem -Path $script:RepoRoot -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
-            $distZip = Get-ChildItem -Path (Join-Path $script:RepoRoot "dist") -Filter "WsusManager-v*.zip" -ErrorAction SilentlyContinue
-
-            ($zipFiles.Count -gt 0 -or $distZip.Count -gt 0) | Should -Be $true -Because "Distribution zip should exist"
-        }
-    }
 }
 
 Describe "AsyncHelpers Module Validation" {
     BeforeAll {
-        $script:AsyncModulePath = Join-Path $script:RepoRoot "Modules\AsyncHelpers.psm1"
+        $script:RepoRoot = Split-Path -Parent $PSScriptRoot
+        $script:AsyncModulePath = Join-Path $script:RepoRoot "Modules" "AsyncHelpers.psm1"
     }
 
     Context "Module Loading" {

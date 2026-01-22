@@ -105,7 +105,7 @@ function New-WsusMaintenanceTask {
         When to run: Monthly, Weekly, Daily (default: Monthly)
 
     .PARAMETER DayOfMonth
-        Day of month to run (1-28, default: 15) - for Monthly schedule
+        Day of month to run (1-31, default: 15) - for Monthly schedule
 
     .PARAMETER DayOfWeek
         Day of week to run (Sunday-Saturday, default: Sunday) - for Weekly schedule
@@ -117,7 +117,7 @@ function New-WsusMaintenanceTask {
         Maintenance profile to use: Full, Quick, SyncOnly (default: Full)
 
     .PARAMETER RunAsUser
-        User account to run the task as (default: .\dod_admin)
+        User account to run the task as (default: dod_admin)
 
     .PARAMETER UserPassword
         Password for the user account (will prompt if not provided)
@@ -133,18 +133,18 @@ function New-WsusMaintenanceTask {
         [ValidateSet('Monthly', 'Weekly', 'Daily')]
         [string]$Schedule = 'Monthly',
 
-        [ValidateRange(1, 28)]
+        [ValidateRange(1, 31)]
         [int]$DayOfMonth = 15,
 
         [ValidateSet('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')]
         [string]$DayOfWeek = 'Saturday',
 
-        [string]$Time = "01:00",
+        [string]$Time = "02:00",
 
         [ValidateSet('Full', 'Quick', 'SyncOnly')]
         [string]$MaintenanceProfile = 'Full',
 
-        [string]$RunAsUser = ".\dod_admin",
+        [string]$RunAsUser = "dod_admin",
 
         [securestring]$UserPassword
     )
@@ -206,17 +206,58 @@ function New-WsusMaintenanceTask {
         return $result
     }
 
-    # Prompt for password if not provided
-    if (-not $UserPassword) {
-        Write-Host "Enter password for $RunAsUser to run scheduled task:" -ForegroundColor Yellow
-        $UserPassword = Read-Host -AsSecureString "Password"
+    # =========================================================================
+    # USERNAME HANDLING AND VERIFICATION
+    # =========================================================================
+    Write-Host "[i] Using account: $RunAsUser" -ForegroundColor Cyan
+
+    # Extract username without prefix for local account lookup
+    $localUsername = $RunAsUser
+    if ($RunAsUser -match '^\.\\(.+)$') {
+        $localUsername = $Matches[1]
     }
 
-    # Validate password was provided
-    $PlainPassword = ConvertFrom-SecureStringToPlainText -SecureString $UserPassword
-    if ([string]::IsNullOrEmpty($PlainPassword)) {
-        $result.Message = "Password is required for scheduled task creation"
-        return $result
+    # For local accounts, verify the account exists before attempting task creation
+    $isLocalAccount = ($RunAsUser -notmatch '.+\\.+') -or ($RunAsUser -match '^\.\\.+')
+    if ($isLocalAccount -and $RunAsUser -notmatch '@' -and $RunAsUser -ne "SYSTEM") {
+        try {
+            $localUser = Get-LocalUser -Name $localUsername -ErrorAction Stop
+            Write-Host "[i] Found local account: $($localUser.Name) (Enabled: $($localUser.Enabled))" -ForegroundColor Green
+            if (-not $localUser.Enabled) {
+                $result.Message = "Account '$localUsername' exists but is DISABLED"
+                Write-Host "[-] $($result.Message)" -ForegroundColor Red
+                return $result
+            }
+        } catch {
+            Write-Host ""
+            Write-Host "[!] ERROR: Local account '$localUsername' not found!" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Available local accounts on this computer:" -ForegroundColor Yellow
+            Get-LocalUser | ForEach-Object {
+                $status = if ($_.Enabled) { "Enabled" } else { "Disabled" }
+                Write-Host "    $($_.Name) ($status)" -ForegroundColor $(if ($_.Enabled) { "Gray" } else { "DarkGray" })
+            }
+            Write-Host ""
+            $result.Message = "Local account '$localUsername' does not exist on this computer"
+            return $result
+        }
+    }
+
+    $useServiceAccount = $RunAsUser -eq "SYSTEM"
+
+    if (-not $useServiceAccount) {
+        # Prompt for password if not provided
+        if (-not $UserPassword) {
+            Write-Host "Enter password for $RunAsUser to run scheduled task:" -ForegroundColor Yellow
+            $UserPassword = Read-Host -AsSecureString "Password"
+        }
+
+        # Validate password was provided
+        $PlainPassword = ConvertFrom-SecureStringToPlainText -SecureString $UserPassword
+        if ([string]::IsNullOrEmpty($PlainPassword)) {
+            $result.Message = "Password is required for scheduled task creation"
+            return $result
+        }
     }
 
     try {
@@ -251,25 +292,51 @@ function New-WsusMaintenanceTask {
             Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false | Out-Null
         }
 
-        # Create task with user credentials - runs whether user is logged on or not
-        Register-ScheduledTask -TaskName $TaskName `
-            -Action $action `
-            -Trigger $trigger `
-            -Settings $settings `
-            -User $RunAsUser `
-            -Password $PlainPassword `
-            -RunLevel Highest | Out-Null
+        if ($useServiceAccount) {
+            Register-ScheduledTask -TaskName $TaskName `
+                -Action $action `
+                -Trigger $trigger `
+                -Settings $settings `
+                -User "SYSTEM" `
+                -LogonType ServiceAccount `
+                -RunLevel Highest `
+                -ErrorAction Stop | Out-Null
+        } else {
+            # Create task with user credentials - runs whether user is logged on or not
+            Register-ScheduledTask -TaskName $TaskName `
+                -Action $action `
+                -Trigger $trigger `
+                -Settings $settings `
+                -User $RunAsUser `
+                -Password $PlainPassword `
+                -RunLevel Highest `
+                -ErrorAction Stop | Out-Null
+        }
 
-        $result.Message = "Scheduled task '$TaskName' created to run as $RunAsUser (no login required)"
+        $runAsMessage = if ($useServiceAccount) { "SYSTEM" } else { $RunAsUser }
+        $result.Message = "Scheduled task '$TaskName' created to run as $runAsMessage (no login required)"
         $result.Success = $true
+        Write-Host ""
+        Write-Host "[+] SUCCESS: $($result.Message)" -ForegroundColor Green
+        Write-Host ""
 
     } catch {
-        $result.Message = "Failed to create scheduled task: $($_.Exception.Message)"
+        $errorMsg = $_.Exception.Message
+        $result.Message = "Failed to create scheduled task: $errorMsg"
+        Write-Host ""
+        Write-Host "[-] FAILED: $errorMsg" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Common causes:" -ForegroundColor Yellow
+        Write-Host "  - Username or password is incorrect" -ForegroundColor Yellow
+        Write-Host "  - Account doesn't exist on this computer" -ForegroundColor Yellow
+        Write-Host "  - Account lacks 'Log on as batch job' right" -ForegroundColor Yellow
+        Write-Host ""
     } finally {
         # Clear password from memory
         $PlainPassword = $null
     }
 
+    # Return result but suppress default table output
     return $result
 }
 
@@ -429,7 +496,7 @@ function Show-WsusScheduledTaskMenu {
 
         switch ($choice.ToUpper()) {
             '1' {
-                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "01:00" -Profile Full -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Monthly -DayOfMonth 15 -Time "01:00" -MaintenanceProfile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
@@ -439,7 +506,7 @@ function Show-WsusScheduledTaskMenu {
                 Read-Host "Press Enter to continue"
             }
             '2' {
-                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Saturday -Time "01:00" -Profile Full -ScriptPath $ScriptPath
+                $result = New-WsusMaintenanceTask -Schedule Weekly -DayOfWeek Saturday -Time "01:00" -MaintenanceProfile Full -ScriptPath $ScriptPath
                 Write-Host ""
                 if ($result.Success) {
                     Write-Host $result.Message -ForegroundColor Green
@@ -464,13 +531,13 @@ function Show-WsusScheduledTaskMenu {
                 $params = @{
                     Schedule = $scheduleChoice
                     Time = $timeInput
-                    Profile = $profileChoice
+                    MaintenanceProfile = $profileChoice
                     ScriptPath = $ScriptPath
                 }
 
                 if ($scheduleChoice -eq 'Monthly') {
-                    $dayInput = Read-Host "Day of month (1-28, default 15)"
-                    if ($dayInput -match '^\d+$' -and [int]$dayInput -ge 1 -and [int]$dayInput -le 28) {
+                    $dayInput = Read-Host "Day of month (1-31, default 15)"
+                    if ($dayInput -match '^\d+$' -and [int]$dayInput -ge 1 -and [int]$dayInput -le 31) {
                         $params.DayOfMonth = [int]$dayInput
                     }
                 } elseif ($scheduleChoice -eq 'Weekly') {

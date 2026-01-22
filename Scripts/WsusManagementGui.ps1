@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.8.0
+Version: 3.8.7
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -47,7 +47,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "3.8.3"
+$script:AppVersion = "3.8.8"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -62,15 +62,27 @@ if ($exePath -and $exePath -notmatch 'powershell\.exe$|pwsh\.exe$') {
 }
 
 $script:LogDir = "C:\WSUS\Logs"
-$script:LogPath = Join-Path $script:LogDir "WsusGui_$(Get-Date -Format 'yyyy-MM-dd').log"
+# Use shared daily log file - all operations go to one log
+$script:LogPath = Join-Path $script:LogDir "WsusOperations_$(Get-Date -Format 'yyyy-MM-dd').log"
 $script:SettingsFile = Join-Path $env:APPDATA "WsusManager\settings.json"
 $script:ContentPath = "C:\WSUS"
 $script:SqlInstance = ".\SQLEXPRESS"
 $script:ExportRoot = "C:\"
+$script:InstallPath = "C:\WSUS\SQLDB"
+$script:SaUser = "sa"
 $script:ServerMode = "Online"
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
 $script:OperationRunning = $false
+# Event subscription tracking for proper cleanup (prevents duplicates/leaks)
+$script:OutputEventJob = $null
+$script:ErrorEventJob = $null
+$script:ExitEventJob = $null
+$script:OpCheckTimer = $null
+# Deduplication tracking - prevents same line appearing multiple times
+$script:RecentLines = @{}
+# Live Terminal Mode - launches operations in visible console window
+$script:LiveTerminalMode = $false
 
 function Write-Log { param([string]$Msg)
     try {
@@ -87,6 +99,7 @@ function Import-WsusSettings {
             if ($s.SqlInstance) { $script:SqlInstance = $s.SqlInstance }
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
+            if ($null -ne $s.LiveTerminalMode) { $script:LiveTerminalMode = $s.LiveTerminalMode }
         }
     } catch { Write-Log "Failed to load settings: $_" }
 }
@@ -95,7 +108,7 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode } |
+        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
@@ -113,7 +126,9 @@ function Get-EscapedPath { param([string]$Path)
 function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     if ($Path -match '[`$;|&<>]') { return $false }
-    if ($Path -notmatch '^[A-Za-z]:\\') { return $false }
+    # Accept both local paths (C:\) and UNC paths (\\server\share or \\server\share$)
+    # UNC pattern: \\server\share where share can include $ for admin shares
+    if ($Path -notmatch '^([A-Za-z]:\\|\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.$-]+)') { return $false }
     return $true
 }
 
@@ -125,11 +140,52 @@ try {
 } catch { Write-Log "Admin check failed: $_" }
 #endregion
 
+#region Console Window Helpers for Live Terminal
+# P/Invoke for keystrokes and window positioning
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class ConsoleWindowHelper {
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    public const int VK_RETURN = 0x0D;
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_NOACTIVATE = 0x0010;
+
+    public static void SendEnter(IntPtr hWnd) {
+        if (hWnd != IntPtr.Zero) {
+            PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
+            PostMessage(hWnd, WM_KEYUP, VK_RETURN, 0);
+        }
+    }
+
+    public static void PositionWindow(IntPtr hWnd, int x, int y, int width, int height) {
+        if (hWnd != IntPtr.Zero) {
+            MoveWindow(hWnd, x, y, width, height, true);
+        }
+    }
+}
+"@ -ErrorAction SilentlyContinue
+
+$script:KeystrokeTimer = $null
+$script:StdinFlushTimer = $null
+#endregion
+
 #region XAML
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WSUS Manager" Height="720" Width="950" MinHeight="600" MinWidth="800"
+        Title="WSUS Manager" Height="736" Width="950" MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen" Background="#0D1117">
     <Window.Resources>
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
@@ -245,12 +301,14 @@ try {
                         <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
@@ -272,7 +330,10 @@ try {
             <!-- Header -->
             <DockPanel Margin="0,0,0,12">
                 <Border DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
-                    <TextBlock x:Name="AdminBadge" Text="Admin" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Green}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
+                    </StackPanel>
                 </Border>
                 <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
             </DockPanel>
@@ -367,6 +428,33 @@ try {
                                 <Button x:Name="BtnOpenLog" Content="Open" FontSize="9" Padding="6,1" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Install Panel -->
+            <Grid x:Name="InstallPanel" Grid.Row="1" Visibility="Collapsed">
+                <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Install WSUS + SQL Express" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                        <TextBlock Text="Select the folder containing SQL Server installers. Default is C:\WSUS\SQLDB." FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="InstallPathBox" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                            <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="10,6" Margin="8,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="Confirm SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPasswordConfirm" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                            <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -469,6 +557,7 @@ try {
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
+                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
@@ -489,11 +578,11 @@ try {
 
 #region Create Window
 $reader = New-Object System.Xml.XmlNodeReader $xaml
-$window = [Windows.Markup.XamlReader]::Load($reader)
+$script:window = [Windows.Markup.XamlReader]::Load($reader)
 
-$controls = @{}
+$script:controls = @{}
 $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForEach-Object {
-    if ($_.Name) { $controls[$_.Name] = $window.FindName($_.Name) }
+    if ($_.Name) { $script:controls[$_.Name] = $script:window.FindName($_.Name) }
 }
 #endregion
 
@@ -562,42 +651,117 @@ function Get-TaskStatus {
     return "Not Set"
 }
 
-function Update-Dashboard {
-    $svc = Get-ServiceStatus
-    $controls.Card1Value.Text = if($svc.Running -eq 3){"All Running"}else{"$($svc.Running)/3"}
-    $controls.Card1Sub.Text = if($svc.Names.Count -gt 0){$svc.Names -join ", "}else{"Stopped"}
-    $controls.Card1Bar.Background = if($svc.Running -eq 3){"#3FB950"}elseif($svc.Running -gt 0){"#D29922"}else{"#F85149"}
+function Test-InternetConnection {
+    # Use .NET Ping with short timeout (500ms) to avoid blocking UI
+    $ping = $null
+    try {
+        $ping = New-Object System.Net.NetworkInformation.Ping
+        $reply = $ping.Send("8.8.8.8", 500)  # Google DNS, 500ms timeout
+        return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $ping) { $ping.Dispose() }
+    }
+}
 
-    $db = Get-DatabaseSizeGB
-    if ($db -ge 0) {
-        $controls.Card2Value.Text = "$db / 10 GB"
-        $controls.Card2Sub.Text = if($db -ge 9){"Critical!"}elseif($db -ge 7){"Warning"}else{"Healthy"}
-        $controls.Card2Bar.Background = if($db -ge 9){"#F85149"}elseif($db -ge 7){"#D29922"}else{"#3FB950"}
-    } else {
-        $controls.Card2Value.Text = "Offline"
-        $controls.Card2Sub.Text = "SQL stopped"
-        $controls.Card2Bar.Background = "#D29922"
+function Update-ServerMode {
+    $isOnline = Test-InternetConnection
+    $script:ServerMode = if ($isOnline) { "Online" } else { "Air-Gap" }
+
+    if ($controls.InternetStatusDot -and $controls.InternetStatusText) {
+        $controls.InternetStatusDot.Fill = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
+        $controls.InternetStatusText.Text = if ($isOnline) { "Online" } else { "Offline" }
+        $controls.InternetStatusText.Foreground = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
     }
 
+    if ($controls.BtnMaintenance) {
+        $controls.BtnMaintenance.IsEnabled = $isOnline
+        $controls.BtnMaintenance.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
+    }
+    if ($controls.BtnSchedule) {
+        $controls.BtnSchedule.IsEnabled = $isOnline
+        $controls.BtnSchedule.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
+    }
+}
+
+function Update-Dashboard {
+    Update-ServerMode
+
+    # Check if WSUS is installed first
+    $wsusInstalled = Test-WsusInstalled
+
+    # Card 1: Services
+    $svc = Get-ServiceStatus
+    if ($null -ne $svc -and $controls.Card1Value -and $controls.Card1Sub -and $controls.Card1Bar) {
+        if (-not $wsusInstalled) {
+            # WSUS not installed
+            $controls.Card1Value.Text = "Not Installed"
+            $controls.Card1Sub.Text = "Use Install WSUS"
+            $controls.Card1Bar.Background = "#F85149"
+        } else {
+            $running = if ($null -ne $svc.Running) { $svc.Running } else { 0 }
+            $names = if ($null -ne $svc.Names) { $svc.Names } else { @() }
+            $controls.Card1Value.Text = if ($running -eq 3) { "All Running" } else { "$running/3" }
+            $controls.Card1Sub.Text = if ($names.Count -gt 0) { $names -join ", " } else { "Stopped" }
+            $controls.Card1Bar.Background = if ($running -eq 3) { "#3FB950" } elseif ($running -gt 0) { "#D29922" } else { "#F85149" }
+        }
+    }
+
+    # Card 2: Database
+    if ($controls.Card2Value -and $controls.Card2Sub -and $controls.Card2Bar) {
+        if (-not $wsusInstalled) {
+            $controls.Card2Value.Text = "N/A"
+            $controls.Card2Sub.Text = "WSUS not installed"
+            $controls.Card2Bar.Background = "#30363D"
+        } else {
+            $db = Get-DatabaseSizeGB
+            if ($db -ge 0) {
+                $controls.Card2Value.Text = "$db / 10 GB"
+                $controls.Card2Sub.Text = if ($db -ge 9) { "Critical!" } elseif ($db -ge 7) { "Warning" } else { "Healthy" }
+                $controls.Card2Bar.Background = if ($db -ge 9) { "#F85149" } elseif ($db -ge 7) { "#D29922" } else { "#3FB950" }
+            } else {
+                $controls.Card2Value.Text = "Offline"
+                $controls.Card2Sub.Text = "SQL stopped"
+                $controls.Card2Bar.Background = "#D29922"
+            }
+        }
+    }
+
+    # Card 3: Disk
     $disk = Get-DiskFreeGB
-    $controls.Card3Value.Text = "$disk GB"
-    $controls.Card3Sub.Text = if($disk -lt 10){"Critical!"}elseif($disk -lt 50){"Low"}else{"OK"}
-    $controls.Card3Bar.Background = if($disk -lt 10){"#F85149"}elseif($disk -lt 50){"#D29922"}else{"#3FB950"}
+    if ($controls.Card3Value -and $controls.Card3Sub -and $controls.Card3Bar) {
+        $controls.Card3Value.Text = "$disk GB"
+        $controls.Card3Sub.Text = if ($disk -lt 10) { "Critical!" } elseif ($disk -lt 50) { "Low" } else { "OK" }
+        $controls.Card3Bar.Background = if ($disk -lt 10) { "#F85149" } elseif ($disk -lt 50) { "#D29922" } else { "#3FB950" }
+    }
 
-    $task = Get-TaskStatus
-    $controls.Card4Value.Text = $task
-    $controls.Card4Bar.Background = if($task -eq "Ready"){"#3FB950"}else{"#D29922"}
+    # Card 4: Task
+    if ($controls.Card4Value -and $controls.Card4Bar) {
+        if (-not $wsusInstalled) {
+            $controls.Card4Value.Text = "N/A"
+            $controls.Card4Bar.Background = "#30363D"
+        } else {
+            $task = Get-TaskStatus
+            $controls.Card4Value.Text = $task
+            $controls.Card4Bar.Background = if ($task -eq "Ready") { "#3FB950" } else { "#D29922" }
+        }
+    }
 
-    $controls.CfgContentPath.Text = $script:ContentPath
-    $controls.CfgSqlInstance.Text = $script:SqlInstance
-    $controls.CfgExportRoot.Text = $script:ExportRoot
-    $controls.CfgLogPath.Text = $script:LogDir
-    $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')"
+    # Configuration display
+    if ($controls.CfgContentPath) { $controls.CfgContentPath.Text = $script:ContentPath }
+    if ($controls.CfgSqlInstance) { $controls.CfgSqlInstance.Text = $script:SqlInstance }
+    if ($controls.CfgExportRoot) { $controls.CfgExportRoot.Text = $script:ExportRoot }
+    if ($controls.CfgLogPath) { $controls.CfgLogPath.Text = $script:LogDir }
+    if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
+
+    # Check WSUS installation and update button states
+    Update-WsusButtonState
 }
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -607,13 +771,26 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnTransfer","BtnMaintenance","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+# Input fields that should be disabled during operations
+$script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
+# Buttons that require WSUS to be installed (all except Install WSUS)
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnHealth","BtnRepair","QBtnHealth","QBtnCleanup","QBtnMaint","QBtnStart")
+# Track WSUS installation status
+$script:WsusInstalled = $false
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
         if ($controls[$b]) {
             $controls[$b].IsEnabled = $false
             $controls[$b].Opacity = 0.5
+        }
+    }
+    # Also disable input fields during operations
+    foreach ($i in $script:OperationInputs) {
+        if ($controls[$i]) {
+            $controls[$i].IsEnabled = $false
+            $controls[$i].Opacity = 0.5
         }
     }
 }
@@ -625,12 +802,129 @@ function Enable-OperationButtons {
             $controls[$b].Opacity = 1.0
         }
     }
+    # Also re-enable input fields
+    foreach ($i in $script:OperationInputs) {
+        if ($controls[$i]) {
+            $controls[$i].IsEnabled = $true
+            $controls[$i].Opacity = 1.0
+        }
+    }
+    # Re-check WSUS installation to disable buttons if WSUS not installed
+    Update-WsusButtonState
+}
+
+function Test-WsusInstalled {
+    # Check if WSUS service exists (not just running, but installed)
+    try {
+        $svc = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+        return ($null -ne $svc)
+    } catch {
+        return $false
+    }
+}
+
+function Update-WsusButtonState {
+    # Disable/enable buttons based on WSUS installation status
+    $script:WsusInstalled = Test-WsusInstalled
+
+    if (-not $script:WsusInstalled) {
+        # WSUS not installed - disable all buttons except Install WSUS
+        foreach ($b in $script:WsusRequiredButtons) {
+            if ($controls[$b]) {
+                $controls[$b].IsEnabled = $false
+                $controls[$b].Opacity = 0.5
+                $controls[$b].ToolTip = "WSUS is not installed. Use 'Install WSUS' first."
+            }
+        }
+        Write-Log "WSUS not installed - operations disabled"
+    } else {
+        # WSUS installed - enable buttons (unless operation is running)
+        if (-not $script:OperationRunning) {
+            foreach ($b in $script:WsusRequiredButtons) {
+                if ($controls[$b]) {
+                    $controls[$b].IsEnabled = $true
+                    $controls[$b].Opacity = 1.0
+                    $controls[$b].ToolTip = $null
+                }
+            }
+        }
+    }
+}
+
+function Stop-CurrentOperation {
+    # Properly cleans up all resources from a running operation
+    # Unregisters events, stops timers, disposes process, resets state
+    param([switch]$SuppressLog)
+
+    # 1. Stop all timers first (prevents race conditions)
+    if ($null -ne $script:OpCheckTimer) {
+        try {
+            $script:OpCheckTimer.Stop()
+            $script:OpCheckTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "Timer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:KeystrokeTimer) {
+        try {
+            $script:KeystrokeTimer.Stop()
+            $script:KeystrokeTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "KeystrokeTimer stop warning: $_" }
+        }
+    }
+
+    if ($null -ne $script:StdinFlushTimer) {
+        try {
+            $script:StdinFlushTimer.Stop()
+            $script:StdinFlushTimer = $null
+        } catch {
+            if (-not $SuppressLog) { Write-Log "StdinFlushTimer stop warning: $_" }
+        }
+    }
+
+    # 2. Unregister all event subscriptions (CRITICAL for preventing duplicates)
+    foreach ($job in @($script:OutputEventJob, $script:ErrorEventJob, $script:ExitEventJob)) {
+        if ($null -ne $job) {
+            try {
+                Unregister-Event -SourceIdentifier $job.Name -ErrorAction SilentlyContinue
+                Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+            } catch {
+                if (-not $SuppressLog) { Write-Log "Event cleanup warning: $_" }
+            }
+        }
+    }
+    $script:OutputEventJob = $null
+    $script:ErrorEventJob = $null
+    $script:ExitEventJob = $null
+
+    # 3. Dispose the process object
+    if ($null -ne $script:CurrentProcess) {
+        try {
+            if (-not $script:CurrentProcess.HasExited) {
+                $script:CurrentProcess.Kill()
+                $script:CurrentProcess.WaitForExit(1000)
+            }
+            $script:CurrentProcess.Dispose()
+        } catch {
+            if (-not $SuppressLog) { Write-Log "Process cleanup warning: $_" }
+        }
+        $script:CurrentProcess = $null
+    }
+
+    # 4. Clear deduplication cache
+    $script:RecentLines = @{}
+
+    # 5. Reset operation state
+    $script:OperationRunning = $false
 }
 
 function Show-Panel {
     param([string]$Panel, [string]$Title, [string]$NavBtn)
     $controls.PageTitle.Text = $Title
     $controls.DashboardPanel.Visibility = if($Panel -eq "Dashboard"){"Visible"}else{"Collapsed"}
+    $controls.InstallPanel.Visibility = if($Panel -eq "Install"){"Visible"}else{"Collapsed"}
     $controls.OperationPanel.Visibility = if($Panel -eq "Operation"){"Visible"}else{"Collapsed"}
     $controls.AboutPanel.Visibility = if($Panel -eq "About"){"Visible"}else{"Collapsed"}
     $controls.HelpPanel.Visibility = if($Panel -eq "Help"){"Visible"}else{"Collapsed"}
@@ -658,7 +952,7 @@ QUICK START
 1. Run WsusManager.exe as Administrator
 2. Use 'Install WSUS' for fresh installation
 3. Dashboard shows real-time status
-4. Toggle Mode for Online/Air-Gap operations
+4. Server Mode auto-detects Online vs Air-Gap based on internet access
 
 REQUIREMENTS
 • Windows Server 2019+
@@ -712,7 +1006,8 @@ TRANSFER
 • Import (Air-Gap) - Import from external media
 
 MAINTENANCE
-• Monthly - Sync, decline superseded, cleanup, backup
+• Monthly (Online only) - Sync, decline superseded, cleanup, backup
+• Schedule Task (Online only) - Create/update the maintenance scheduled task
 • Deep Cleanup - Remove obsolete, shrink database
 
 DIAGNOSTICS
@@ -788,10 +1083,10 @@ function Show-ExportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Export to Media"
-    $dlg.Width = 450
-    $dlg.Height = 340
+    $dlg.Width = 480
+    $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -875,7 +1170,8 @@ function Show-ExportDialog {
 
     $destBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath }
+        try { if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($destPanel)
 
@@ -924,14 +1220,14 @@ function Show-ExportDialog {
 }
 
 function Show-ImportDialog {
-    $result = @{ Cancelled = $true; SourcePath = "" }
+    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = "C:\WSUS" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Import from Media"
-    $dlg.Width = 450
-    $dlg.Height = 220
+    $dlg.Width = 480
+    $dlg.Height = 320
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -947,14 +1243,15 @@ function Show-ImportDialog {
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
+    # Source folder section
     $srcLbl = New-Object System.Windows.Controls.TextBlock
-    $srcLbl.Text = "Source folder:"
+    $srcLbl.Text = "Source folder (external media):"
     $srcLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
 
     $srcPanel = New-Object System.Windows.Controls.DockPanel
-    $srcPanel.Margin = "0,0,0,20"
+    $srcPanel.Margin = "0,0,0,16"
 
     $srcBtn = New-Object System.Windows.Controls.Button
     $srcBtn.Content = "Browse"
@@ -974,9 +1271,47 @@ function Show-ImportDialog {
 
     $srcBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath }
+        $fbd.Description = "Select source folder containing WSUS export data"
+        try { if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($srcPanel)
+
+    # Destination folder section
+    $dstLbl = New-Object System.Windows.Controls.TextBlock
+    $dstLbl.Text = "Destination folder (WSUS server):"
+    $dstLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dstLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($dstLbl)
+
+    $dstPanel = New-Object System.Windows.Controls.DockPanel
+    $dstPanel.Margin = "0,0,0,20"
+
+    $dstBtn = New-Object System.Windows.Controls.Button
+    $dstBtn.Content = "Browse"
+    $dstBtn.Padding = "10,4"
+    $dstBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($dstBtn, "Right")
+    $dstPanel.Children.Add($dstBtn)
+
+    $dstTxt = New-Object System.Windows.Controls.TextBox
+    $dstTxt.Text = "C:\WSUS"
+    $dstTxt.Margin = "0,0,8,0"
+    $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $dstTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstTxt.Padding = "6,4"
+    $dstPanel.Children.Add($dstTxt)
+
+    $dstBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select destination folder on WSUS server"
+        $fbd.SelectedPath = $dstTxt.Text
+        try { if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
+    }.GetNewClosure())
+    $stack.Children.Add($dstPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -994,8 +1329,13 @@ function Show-ImportDialog {
             [System.Windows.MessageBox]::Show("Select source folder.", "Import", "OK", "Warning")
             return
         }
+        if ([string]::IsNullOrWhiteSpace($dstTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select destination folder.", "Import", "OK", "Warning")
+            return
+        }
         $result.Cancelled = $false
         $result.SourcePath = $srcTxt.Text
+        $result.DestinationPath = $dstTxt.Text
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($importBtn)
@@ -1028,10 +1368,10 @@ function Show-RestoreDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Restore Database"
-    $dlg.Width = 550
-    $dlg.Height = 320
+    $dlg.Width = 480
+    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1179,10 +1519,10 @@ function Show-MaintenanceDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Monthly Maintenance"
-    $dlg.Width = 450
-    $dlg.Height = 340
+    $dlg.Width = 480
+    $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1274,15 +1614,314 @@ function Show-MaintenanceDialog {
     return $result
 }
 
+function Show-ScheduleTaskDialog {
+    <#
+    .SYNOPSIS
+        Displays the Schedule Task dialog for configuring monthly maintenance automation.
+
+    .DESCRIPTION
+        Creates a WPF modal dialog using XAML for reliable dark theme styling.
+        Configures: Schedule type, day, time, maintenance profile, and credentials.
+
+    .OUTPUTS
+        Hashtable with: Cancelled, Schedule, DayOfWeek, DayOfMonth, Time, Profile, RunAsUser, Password
+    #>
+
+    # Result object - modified by button click handlers
+    $script:ScheduleDialogResult = @{
+        Cancelled = $true
+        Schedule = "Weekly"
+        DayOfWeek = "Saturday"
+        DayOfMonth = 1
+        Time = "02:00"
+        Profile = "Full"
+        RunAsUser = "DoD_Admin"
+        Password = ""
+    }
+
+    # =========================================================================
+    # XAML-BASED DIALOG WITH DARK THEME
+    # =========================================================================
+    # Using XAML instead of programmatic control creation allows for complete
+    # control over ComboBox styling via explicit ControlTemplates. This solves
+    # the white-on-white text issue that occurs with native Windows theming.
+    # =========================================================================
+    $xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Schedule Monthly Maintenance" Width="480" Height="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#0D1117">
+    <Window.Resources>
+        <!-- Dark theme colors -->
+        <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
+        <SolidColorBrush x:Key="BgMid" Color="#21262D"/>
+        <SolidColorBrush x:Key="BorderColor" Color="#30363D"/>
+        <SolidColorBrush x:Key="TextColor" Color="#E6EDF3"/>
+        <SolidColorBrush x:Key="LabelColor" Color="#8B949E"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#58A6FF"/>
+
+        <!-- Dark ComboBox Style with custom template -->
+        <Style x:Key="DarkComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Grid.Column="0"
+                                        Content="{TemplateBinding SelectionBoxItem}"
+                                        ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                        VerticalAlignment="Center"
+                                        Margin="{TemplateBinding Padding}"/>
+                                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="#E6EDF3"
+                                          StrokeThickness="1.5" HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" Focusable="False">
+                                <Border Background="#21262D" BorderBrush="#30363D"
+                                        BorderThickness="1" MaxHeight="200">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                            <ToggleButton Grid.ColumnSpan="2" Opacity="0"
+                                IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ComboBoxItem Style -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#58A6FF"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#58A6FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark TextBox Style -->
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#E6EDF3"/>
+        </Style>
+
+        <!-- Dark PasswordBox Style -->
+        <Style x:Key="DarkPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#E6EDF3"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#E6EDF3"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="20">
+        <!-- Title -->
+        <TextBlock Text="Create Scheduled Task" FontSize="14" FontWeight="Bold"
+                   Foreground="#E6EDF3" Margin="0,0,0,8"/>
+        <TextBlock Text="Recommended: Weekly on Saturday at 02:00" FontSize="11"
+                   Foreground="#8B949E" Margin="0,0,0,16"/>
+
+        <!-- Schedule Type -->
+        <TextBlock Text="Schedule:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ScheduleCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+            <ComboBoxItem Content="Weekly" IsSelected="True"/>
+            <ComboBoxItem Content="Monthly"/>
+            <ComboBoxItem Content="Daily"/>
+        </ComboBox>
+
+        <!-- Day of Week (visible for Weekly) -->
+        <StackPanel x:Name="DayOfWeekPanel" Margin="0,0,0,12">
+            <TextBlock Text="Day of Week:" Foreground="#8B949E" Margin="0,0,0,4"/>
+            <ComboBox x:Name="DowCombo" Style="{StaticResource DarkComboBox}">
+                <ComboBoxItem Content="Sunday"/>
+                <ComboBoxItem Content="Monday"/>
+                <ComboBoxItem Content="Tuesday"/>
+                <ComboBoxItem Content="Wednesday"/>
+                <ComboBoxItem Content="Thursday"/>
+                <ComboBoxItem Content="Friday"/>
+                <ComboBoxItem Content="Saturday" IsSelected="True"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Day of Month (hidden by default) -->
+        <StackPanel x:Name="DayOfMonthPanel" Visibility="Collapsed" Margin="0,0,0,12">
+            <TextBlock Text="Day of Month (1-31):" Foreground="#8B949E" Margin="0,0,0,4"/>
+            <TextBox x:Name="DomBox" Text="1" Style="{StaticResource DarkTextBox}"/>
+        </StackPanel>
+
+        <!-- Start Time -->
+        <TextBlock Text="Start Time (HH:mm):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="TimeBox" Text="02:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+        <!-- Maintenance Profile -->
+        <TextBlock Text="Maintenance Profile:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ProfileCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+            <ComboBoxItem Content="Full" IsSelected="True"/>
+            <ComboBoxItem Content="Quick"/>
+            <ComboBoxItem Content="SyncOnly"/>
+        </ComboBox>
+
+        <!-- Credentials Section -->
+        <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
+                   FontSize="11" Margin="0,4,0,8"/>
+
+        <TextBlock Text="Username (e.g., DoD_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+
+        <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <PasswordBox x:Name="PassBox" Style="{StaticResource DarkPasswordBox}" Margin="0,0,0,16"/>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnCreate" Content="Create Task" Padding="14,6"
+                    Background="#58A6FF" Foreground="White" BorderThickness="0" Margin="0,0,8,0"/>
+            <Button x:Name="BtnCancel" Content="Cancel" Padding="14,6"
+                    Background="#21262D" Foreground="#E6EDF3" BorderThickness="0"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
+"@
+
+    # Parse XAML and create window
+    $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($xaml))
+    $dlg = [System.Windows.Markup.XamlReader]::Load($reader)
+
+    # Set owner if available
+    if ($null -ne $script:window) {
+        $dlg.Owner = $script:window
+    }
+
+    # Get control references
+    $scheduleCombo = $dlg.FindName("ScheduleCombo")
+    $dowPanel = $dlg.FindName("DayOfWeekPanel")
+    $domPanel = $dlg.FindName("DayOfMonthPanel")
+    $dowCombo = $dlg.FindName("DowCombo")
+    $domBox = $dlg.FindName("DomBox")
+    $timeBox = $dlg.FindName("TimeBox")
+    $profileCombo = $dlg.FindName("ProfileCombo")
+    $userBox = $dlg.FindName("UserBox")
+    $passBox = $dlg.FindName("PassBox")
+    $btnCreate = $dlg.FindName("BtnCreate")
+    $btnCancel = $dlg.FindName("BtnCancel")
+
+    # ESC key closes dialog
+    $dlg.Add_KeyDown({
+        param($sender, $e)
+        if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $sender.Close() }
+    })
+
+    # Schedule type change - toggle day panels
+    $scheduleCombo.Add_SelectionChanged({
+        $selected = $scheduleCombo.SelectedItem.Content
+        if ($selected -eq "Monthly") {
+            $dowPanel.Visibility = "Collapsed"
+            $domPanel.Visibility = "Visible"
+        } elseif ($selected -eq "Weekly") {
+            $dowPanel.Visibility = "Visible"
+            $domPanel.Visibility = "Collapsed"
+        } else {
+            $dowPanel.Visibility = "Collapsed"
+            $domPanel.Visibility = "Collapsed"
+        }
+    })
+
+    # Create button click
+    $btnCreate.Add_Click({
+        # Validate time format
+        $timeVal = $timeBox.Text.Trim()
+        if ($timeVal -notmatch '^\d{1,2}:\d{2}$') {
+            [System.Windows.MessageBox]::Show("Invalid time format. Use HH:mm (e.g., 02:00).", "Schedule", "OK", "Warning") | Out-Null
+            return
+        }
+
+        # Get schedule type
+        $schedVal = $scheduleCombo.SelectedItem.Content
+
+        # Validate day of month if Monthly
+        $domVal = 1
+        if ($schedVal -eq "Monthly") {
+            if (-not [int]::TryParse($domBox.Text, [ref]$domVal) -or $domVal -lt 1 -or $domVal -gt 31) {
+                [System.Windows.MessageBox]::Show("Day of month must be between 1 and 31.", "Schedule", "OK", "Warning") | Out-Null
+                return
+            }
+        }
+
+        # Validate credentials
+        $userVal = $userBox.Text.Trim()
+        $passVal = $passBox.Password
+        if ([string]::IsNullOrWhiteSpace($userVal)) {
+            [System.Windows.MessageBox]::Show("Username is required for scheduled task execution.", "Schedule", "OK", "Warning") | Out-Null
+            return
+        }
+        if ([string]::IsNullOrWhiteSpace($passVal)) {
+            [System.Windows.MessageBox]::Show("Password is required for scheduled task execution.`n`nThe task needs credentials to run whether the user is logged on or not.", "Schedule", "OK", "Warning") | Out-Null
+            return
+        }
+
+        # Store results
+        $script:ScheduleDialogResult.Schedule = $schedVal
+        $script:ScheduleDialogResult.DayOfWeek = $dowCombo.SelectedItem.Content
+        $script:ScheduleDialogResult.DayOfMonth = $domVal
+        $script:ScheduleDialogResult.Time = $timeVal
+        $script:ScheduleDialogResult.Profile = $profileCombo.SelectedItem.Content
+        $script:ScheduleDialogResult.RunAsUser = $userVal
+        $script:ScheduleDialogResult.Password = $passVal
+        $script:ScheduleDialogResult.Cancelled = $false
+        $dlg.Close()
+    })
+
+    # Cancel button click
+    $btnCancel.Add_Click({ $dlg.Close() })
+
+    # Show dialog
+    $dlg.ShowDialog() | Out-Null
+
+    # Return result
+    return $script:ScheduleDialogResult
+}
+
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = ""; ExportMode = "Differential"; ExportDays = 30 }
+    $result = @{ Cancelled = $true; Direction = ""; Path = ""; SourcePath = ""; DestinationPath = "C:\WSUS"; ExportMode = "Full"; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Transfer Data"
-    $dlg.Width = 500
-    $dlg.Height = 400
+    $dlg.Width = 480
+    $dlg.Height = 460
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
@@ -1315,12 +1954,12 @@ function Show-TransferDialog {
     $radioImport = New-Object System.Windows.Controls.RadioButton
     $radioImport.Content = "Import (Media to air-gapped server)"
     $radioImport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $radioImport.Margin = "0,0,0,16"
+    $radioImport.Margin = "0,0,0,12"
     $stack.Children.Add($radioImport)
 
-    # Export Mode selection (only shown for Export)
+    # Export Mode section (only visible when Export is selected)
     $exportModePanel = New-Object System.Windows.Controls.StackPanel
-    $exportModePanel.Margin = "0,0,0,16"
+    $exportModePanel.Margin = "0,0,0,12"
 
     $modeLbl = New-Object System.Windows.Controls.TextBlock
     $modeLbl.Text = "Export Mode:"
@@ -1351,39 +1990,29 @@ function Show-TransferDialog {
     $radioDiffCustom.Content = "Differential (custom days):"
     $radioDiffCustom.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioDiffCustom.GroupName = "ExportMode"
+    $radioDiffCustom.Margin = "0,0,8,0"
     $diffCustomPanel.Children.Add($radioDiffCustom)
 
-    $daysTextBox = New-Object System.Windows.Controls.TextBox
-    $daysTextBox.Width = 50
-    $daysTextBox.Margin = "8,0,0,0"
-    $daysTextBox.Text = "30"
-    $daysTextBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $daysTextBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $daysTextBox.Padding = "4,2"
-    $daysTextBox.IsEnabled = $false
-    $diffCustomPanel.Children.Add($daysTextBox)
+    $txtDays = New-Object System.Windows.Controls.TextBox
+    $txtDays.Text = "30"
+    $txtDays.Width = 50
+    $txtDays.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $txtDays.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txtDays.Padding = "4,2"
+    $diffCustomPanel.Children.Add($txtDays)
 
     $exportModePanel.Children.Add($diffCustomPanel)
-
-    # Enable/disable days textbox based on custom radio selection
-    $radioDiffCustom.Add_Checked({ $daysTextBox.IsEnabled = $true }.GetNewClosure())
-    $radioDiffCustom.Add_Unchecked({ $daysTextBox.IsEnabled = $false }.GetNewClosure())
-
     $stack.Children.Add($exportModePanel)
 
-    # Show/hide export mode based on direction
-    $radioExport.Add_Checked({ $exportModePanel.Visibility = "Visible" }.GetNewClosure())
-    $radioImport.Add_Checked({ $exportModePanel.Visibility = "Collapsed" }.GetNewClosure())
-
-    # Path selection
+    # Path selection - Export destination / Import source
     $pathLbl = New-Object System.Windows.Controls.TextBlock
-    $pathLbl.Text = "Folder path:"
+    $pathLbl.Text = "Destination folder:"
     $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $pathLbl.Margin = "0,0,0,6"
     $stack.Children.Add($pathLbl)
 
     $pathPanel = New-Object System.Windows.Controls.DockPanel
-    $pathPanel.Margin = "0,0,0,16"
+    $pathPanel.Margin = "0,0,0,12"
 
     $browseBtn = New-Object System.Windows.Controls.Button
     $browseBtn.Content = "Browse"
@@ -1403,10 +2032,72 @@ function Show-TransferDialog {
 
     $browseBtn.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder for import" }
-        if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
+        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder (external media)" }
+        try { if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
     }.GetNewClosure())
     $stack.Children.Add($pathPanel)
+
+    # Import destination panel (only visible when Import is selected)
+    $importDestPanel = New-Object System.Windows.Controls.StackPanel
+    $importDestPanel.Visibility = "Collapsed"
+    $importDestPanel.Margin = "0,0,0,12"
+
+    $importDestLbl = New-Object System.Windows.Controls.TextBlock
+    $importDestLbl.Text = "WSUS destination folder:"
+    $importDestLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $importDestLbl.Margin = "0,0,0,6"
+    $importDestPanel.Children.Add($importDestLbl)
+
+    $importDestDock = New-Object System.Windows.Controls.DockPanel
+
+    $importDestBtn = New-Object System.Windows.Controls.Button
+    $importDestBtn.Content = "Browse"
+    $importDestBtn.Padding = "10,4"
+    $importDestBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($importDestBtn, "Right")
+    $importDestDock.Children.Add($importDestBtn)
+
+    $importDestTxt = New-Object System.Windows.Controls.TextBox
+    $importDestTxt.Text = "C:\WSUS"
+    $importDestTxt.Margin = "0,0,8,0"
+    $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $importDestTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestTxt.Padding = "6,4"
+    $importDestDock.Children.Add($importDestTxt)
+
+    $importDestBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select WSUS destination folder"
+        $fbd.SelectedPath = $importDestTxt.Text
+        try { if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
+    }.GetNewClosure())
+    $importDestPanel.Children.Add($importDestDock)
+    $stack.Children.Add($importDestPanel)
+
+    # Show/hide panels based on direction (must be AFTER $importDestPanel and $pathLbl are created)
+    $radioExport.Add_Checked({
+        $exportModePanel.Visibility = "Visible"
+        $importDestPanel.Visibility = "Collapsed"
+        $pathLbl.Text = "Destination folder:"
+    }.GetNewClosure())
+    $radioImport.Add_Checked({
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }.GetNewClosure())
+
+    # Auto-select mode based on detected server mode
+    if ($script:ServerMode -eq "Air-Gap") {
+        $radioExport.IsEnabled = $false
+        $radioImport.IsChecked = $true
+        $exportModePanel.Visibility = "Collapsed"
+        $importDestPanel.Visibility = "Visible"
+        $pathLbl.Text = "Source folder (external media):"
+    }
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -1421,29 +2112,37 @@ function Show-TransferDialog {
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Select a folder path.", "Transfer", "OK", "Warning")
+            $msg = if ($radioExport.IsChecked) { "Select destination folder." } else { "Select source folder." }
+            [System.Windows.MessageBox]::Show($msg, "Transfer", "OK", "Warning")
+            return
+        }
+        # Validate import destination
+        if ($radioImport.IsChecked -and [string]::IsNullOrWhiteSpace($importDestTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Select WSUS destination folder.", "Transfer", "OK", "Warning")
             return
         }
         $result.Cancelled = $false
         $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
         $result.Path = $pathTxt.Text
-
-        # Capture export mode if exporting
-        if ($radioExport.IsChecked) {
-            if ($radioFull.IsChecked) {
-                $result.ExportMode = "Full"
-                $result.ExportDays = 0
-            } elseif ($radioDiff30.IsChecked) {
-                $result.ExportMode = "Differential"
-                $result.ExportDays = 30
-            } elseif ($radioDiffCustom.IsChecked) {
-                $result.ExportMode = "Differential"
-                $days = 30
-                if ([int]::TryParse($daysTextBox.Text, [ref]$days) -and $days -gt 0) {
-                    $result.ExportDays = $days
-                } else {
-                    $result.ExportDays = 30
-                }
+        # For Import, also set SourcePath and DestinationPath
+        if ($radioImport.IsChecked) {
+            $result.SourcePath = $pathTxt.Text
+            $result.DestinationPath = $importDestTxt.Text
+        }
+        # Determine export mode
+        if ($radioFull.IsChecked) {
+            $result.ExportMode = "Full"
+            $result.DaysOld = 0
+        } elseif ($radioDiff30.IsChecked) {
+            $result.ExportMode = "Differential"
+            $result.DaysOld = 30
+        } else {
+            $result.ExportMode = "Differential"
+            $daysVal = 30
+            if ([int]::TryParse($txtDays.Text, [ref]$daysVal) -and $daysVal -gt 0) {
+                $result.DaysOld = $daysVal
+            } else {
+                $result.DaysOld = 30
             }
         }
         $dlg.Close()
@@ -1465,192 +2164,13 @@ function Show-TransferDialog {
     return $result
 }
 
-function Show-InstallDialog {
-    $result = @{ Cancelled = $true; InstallerPath = ""; SAPassword = $null }
-
-    $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Install WSUS with SQL Express"
-    $dlg.Width = 520
-    $dlg.Height = 380
-    $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $dlg.ResizeMode = "NoResize"
-    $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
-
-    $stack = New-Object System.Windows.Controls.StackPanel
-    $stack.Margin = "20"
-
-    $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Install WSUS with SQL Express"
-    $title.FontSize = 14
-    $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $title.Margin = "0,0,0,8"
-    $stack.Children.Add($title)
-
-    $desc = New-Object System.Windows.Controls.TextBlock
-    $desc.Text = "This will install SQL Server Express 2022, SSMS, and configure WSUS."
-    $desc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $desc.TextWrapping = "Wrap"
-    $desc.Margin = "0,0,0,16"
-    $stack.Children.Add($desc)
-
-    # Installer Path section
-    $pathLbl = New-Object System.Windows.Controls.TextBlock
-    $pathLbl.Text = "Installer Folder (containing SQL Express & SSMS installers):"
-    $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $pathLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($pathLbl)
-
-    $pathPanel = New-Object System.Windows.Controls.DockPanel
-    $pathPanel.Margin = "0,0,0,16"
-
-    $browseBtn = New-Object System.Windows.Controls.Button
-    $browseBtn.Content = "Browse"
-    $browseBtn.Padding = "10,4"
-    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $browseBtn.BorderThickness = 0
-    [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
-    $pathPanel.Children.Add($browseBtn)
-
-    $pathTxt = New-Object System.Windows.Controls.TextBox
-    $pathTxt.Margin = "0,0,8,0"
-    $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $pathTxt.Padding = "6,4"
-    # Set default path
-    $defaultPath = "C:\WSUS\SQLDB"
-    if (Test-Path $defaultPath) { $pathTxt.Text = $defaultPath }
-    $pathPanel.Children.Add($pathTxt)
-
-    $browseBtn.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select folder containing SQL Server installers"
-        $fbd.SelectedPath = "C:\WSUS"
-        if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath }
-    }.GetNewClosure())
-    $stack.Children.Add($pathPanel)
-
-    # SA Password section
-    $pwdLbl = New-Object System.Windows.Controls.TextBlock
-    $pwdLbl.Text = "SQL Server SA Password (15+ chars, 1 number, 1 special):"
-    $pwdLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $pwdLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($pwdLbl)
-
-    $pwd1 = New-Object System.Windows.Controls.PasswordBox
-    $pwd1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $pwd1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $pwd1.Padding = "6,4"
-    $pwd1.Margin = "0,0,0,8"
-    $stack.Children.Add($pwd1)
-
-    $pwd2Lbl = New-Object System.Windows.Controls.TextBlock
-    $pwd2Lbl.Text = "Confirm SA Password:"
-    $pwd2Lbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $pwd2Lbl.Margin = "0,0,0,6"
-    $stack.Children.Add($pwd2Lbl)
-
-    $pwd2 = New-Object System.Windows.Controls.PasswordBox
-    $pwd2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $pwd2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $pwd2.Padding = "6,4"
-    $pwd2.Margin = "0,0,0,16"
-    $stack.Children.Add($pwd2)
-
-    # Buttons
-    $btnPanel = New-Object System.Windows.Controls.StackPanel
-    $btnPanel.Orientation = "Horizontal"
-    $btnPanel.HorizontalAlignment = "Right"
-
-    $runBtn = New-Object System.Windows.Controls.Button
-    $runBtn.Content = "Start Installation"
-    $runBtn.Padding = "14,6"
-    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
-    $runBtn.Foreground = "White"
-    $runBtn.BorderThickness = 0
-    $runBtn.Margin = "0,0,8,0"
-    $runBtn.Add_Click({
-        # Validate installer path
-        if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Please select the installer folder.", "Validation Error", "OK", "Warning")
-            return
-        }
-        $sqlInstaller = Join-Path $pathTxt.Text "SQLEXPRADV_x64_ENU.exe"
-        if (-not (Test-Path $sqlInstaller)) {
-            [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in selected folder.`n`nPlease select the folder containing the SQL Server installation files.", "Validation Error", "OK", "Warning")
-            return
-        }
-
-        # Validate password - use SecurePassword property to get SecureString directly
-        $secPwd1 = $pwd1.SecurePassword
-        $secPwd2 = $pwd2.SecurePassword
-
-        # Convert to plaintext only for validation (then clear from memory)
-        $bstr1 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd1)
-        $bstr2 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd2)
-        try {
-            $p1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr1)
-            $p2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr2)
-
-            if ([string]::IsNullOrWhiteSpace($p1)) {
-                [System.Windows.MessageBox]::Show("Please enter the SA password.", "Validation Error", "OK", "Warning")
-                return
-            }
-            if ($p1 -ne $p2) {
-                [System.Windows.MessageBox]::Show("Passwords do not match.", "Validation Error", "OK", "Warning")
-                return
-            }
-            if ($p1.Length -lt 15) {
-                [System.Windows.MessageBox]::Show("Password must be at least 15 characters.", "Validation Error", "OK", "Warning")
-                return
-            }
-            if ($p1 -notmatch "\d") {
-                [System.Windows.MessageBox]::Show("Password must contain at least one number.", "Validation Error", "OK", "Warning")
-                return
-            }
-            if ($p1 -notmatch "[^a-zA-Z0-9]") {
-                [System.Windows.MessageBox]::Show("Password must contain at least one special character.", "Validation Error", "OK", "Warning")
-                return
-            }
-
-            $result.Cancelled = $false
-            $result.InstallerPath = $pathTxt.Text
-            # Use SecureString directly from PasswordBox
-            $result.SAPassword = $secPwd1.Copy()
-            $dlg.Close()
-        } finally {
-            # Zero out the BSTR memory for security
-            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr1)
-            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
-        }
-    }.GetNewClosure())
-    $btnPanel.Children.Add($runBtn)
-
-    $cancelBtn = New-Object System.Windows.Controls.Button
-    $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
-    $btnPanel.Children.Add($cancelBtn)
-
-    $stack.Children.Add($btnPanel)
-    $dlg.Content = $stack
-    $dlg.ShowDialog() | Out-Null
-    return $result
-}
-
 function Show-SettingsDialog {
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Settings"
-    $dlg.Width = 400
-    $dlg.Height = 220
+    $dlg.Width = 480
+    $dlg.Height = 280
     $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $window
+    $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
     $dlg.ResizeMode = "NoResize"
 
@@ -1737,6 +2257,12 @@ function Invoke-LogOperation {
         return
     }
 
+    # Guard Online-only operations
+    if ($script:ServerMode -eq "Air-Gap" -and $Id -in @("maintenance", "schedule")) {
+        [System.Windows.MessageBox]::Show("This operation is only available on the Online WSUS server.", "Online Only", "OK", "Warning")
+        return
+    }
+
     Write-Log "Run-LogOp: $Id"
 
     $sr = $script:ScriptRoot
@@ -1761,22 +2287,35 @@ function Invoke-LogOperation {
         if (Test-Path $loc) { $maint = $loc; break }
     }
 
-    # Validate scripts exist before proceeding
-    if (-not $mgmt) {
-        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusManagement.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
-        Write-Log "ERROR: Invoke-WsusManagement.ps1 not found in $sr or $sr\Scripts"
-        return
+    # Find scheduled task module - check multiple locations
+    $taskModule = $null
+    $taskModuleLocations = @(
+        (Join-Path $sr "Modules\WsusScheduledTask.psm1"),
+        (Join-Path (Split-Path $sr -Parent) "Modules\WsusScheduledTask.psm1")
+    )
+    foreach ($loc in $taskModuleLocations) {
+        if (Test-Path $loc) { $taskModule = $loc; break }
     }
-    if (-not $maint) {
-        [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusMonthlyMaintenance.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
-        Write-Log "ERROR: Invoke-WsusMonthlyMaintenance.ps1 not found in $sr or $sr\Scripts"
-        return
+
+    # Validate scripts exist before proceeding
+    if ($Id -ne "schedule") {
+        if (-not $mgmt) {
+            [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusManagement.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+            Write-Log "ERROR: Invoke-WsusManagement.ps1 not found in $sr or $sr\Scripts"
+            return
+        }
+        if ($Id -eq "maintenance" -and -not $maint) {
+            [System.Windows.MessageBox]::Show("Cannot find Invoke-WsusMonthlyMaintenance.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe", "Script Not Found", "OK", "Error")
+            Write-Log "ERROR: Invoke-WsusMonthlyMaintenance.ps1 not found in $sr or $sr\Scripts"
+            return
+        }
     }
 
     $cp = Get-EscapedPath $script:ContentPath
     $sql = Get-EscapedPath $script:SqlInstance
-    $mgmtSafe = Get-EscapedPath $mgmt
-    $maintSafe = Get-EscapedPath $maint
+    $mgmtSafe = if ($mgmt) { Get-EscapedPath $mgmt } else { $null }
+    $maintSafe = if ($maint) { Get-EscapedPath $maint } else { $null }
+    $taskModuleSafe = if ($taskModule) { Get-EscapedPath $taskModule } else { $null }
 
     # Handle dialog-based operations
     $cmd = switch ($Id) {
@@ -1797,29 +2336,45 @@ function Invoke-LogOperation {
                 return
             }
 
-            # Show install dialog for installer path and SA password
-            $opts = Show-InstallDialog
-            if ($opts.Cancelled) { return }
-
-            $installerPath = $opts.InstallerPath
+            $installerPath = if ($controls.InstallPathBox) { $controls.InstallPathBox.Text } else { $script:InstallPath }
+            $installerPath = $installerPath.Trim()
             if (-not (Test-SafePath $installerPath)) {
-                [System.Windows.MessageBox]::Show("Invalid installer path.", "Error", "OK", "Error")
+                [System.Windows.MessageBox]::Show("Invalid installer path. Please select a valid folder.", "Error", "OK", "Error")
                 return
             }
+            if (-not (Test-Path $installerPath)) {
+                [System.Windows.MessageBox]::Show("Installer folder not found: $installerPath", "Error", "OK", "Error")
+                return
+            }
+            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
+            if (-not (Test-Path $sqlInstaller)) {
+                [System.Windows.MessageBox]::Show("SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files.", "Error", "OK", "Error")
+                return
+            }
+            $script:InstallPath = $installerPath
 
-            # Save the SA password to the expected location so the script can use it
-            $passwordFile = Join-Path $installerPath "sa.encrypted"
-            try {
-                $opts.SAPassword | ConvertFrom-SecureString | Set-Content $passwordFile -Force
-                Write-Log "Saved SA password to $passwordFile"
-            } catch {
-                [System.Windows.MessageBox]::Show("Failed to save SA password: $_", "Error", "OK", "Error")
+            $saPassword = if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPassword)) {
+                [System.Windows.MessageBox]::Show("SA password is required.", "Error", "OK", "Error")
+                return
+            }
+            $saPasswordConfirm = if ($controls.InstallSaPasswordConfirm) { $controls.InstallSaPasswordConfirm.Password } else { "" }
+            if ([string]::IsNullOrWhiteSpace($saPasswordConfirm)) {
+                [System.Windows.MessageBox]::Show("SA password confirmation is required.", "Error", "OK", "Error")
+                return
+            }
+            if ($saPassword -ne $saPasswordConfirm) {
+                [System.Windows.MessageBox]::Show("SA passwords do not match.", "Error", "OK", "Error")
                 return
             }
 
             $installScriptSafe = Get-EscapedPath $installScript
             $installerPathSafe = Get-EscapedPath $installerPath
-            "& '$installScriptSafe' -InstallerPath '$installerPathSafe'"
+            $saUserSafe = $script:SaUser -replace "'", "''"
+            # Security: Pass password via environment variable instead of command line
+            # This prevents password exposure in process listings and event logs
+            $env:WSUS_INSTALL_SA_PASSWORD = $saPassword
+            "& '$installScriptSafe' -InstallerPath '$installerPathSafe' -SaUsername '$saUserSafe' -SaPassword `$env:WSUS_INSTALL_SA_PASSWORD -NonInteractive; Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue"
         }
         "restore" {
             $opts = Show-RestoreDialog
@@ -1839,21 +2394,52 @@ function Invoke-LogOperation {
                 return
             }
             $path = Get-EscapedPath $opts.Path
-            $Title = $opts.Direction
             if ($opts.Direction -eq "Export") {
-                $exportMode = $opts.ExportMode
-                $exportDays = $opts.ExportDays
-                $Title = "Export ($exportMode$(if ($exportMode -eq 'Differential') { ", $exportDays days" }))"
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -ExportRoot '$path' -ExportMode '$exportMode' -ExportDays $exportDays"
+                # Build title with export mode info
+                $modeDesc = if ($opts.ExportMode -eq "Full") { "Full" } else { "Differential, $($opts.DaysOld) days" }
+                $Title = "Export ($modeDesc)"
+                "& '$mgmtSafe' -Export -ContentPath '$cp' -DestinationPath '$path' -CopyMode '$($opts.ExportMode)' -DaysOld $($opts.DaysOld)"
             } else {
-                "& '$mgmtSafe' -Import -ContentPath '$cp' -ExportRoot '$path'"
+                # Import - validate destination path too
+                if (-not (Test-SafePath $opts.DestinationPath)) {
+                    [System.Windows.MessageBox]::Show("Invalid destination path.", "Error", "OK", "Error")
+                    return
+                }
+                $srcPath = Get-EscapedPath $opts.SourcePath
+                $destPath = Get-EscapedPath $opts.DestinationPath
+                $Title = "Import"
+                "& '$mgmtSafe' -Import -ContentPath '$cp' -SourcePath '$srcPath' -DestinationPath '$destPath' -NonInteractive"
             }
         }
         "maintenance" {
             $opts = Show-MaintenanceDialog
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
-            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)'"
+            "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
+        }
+        "schedule" {
+            $opts = Show-ScheduleTaskDialog
+            if ($opts.Cancelled) { return }
+            if (-not $taskModuleSafe) {
+                [System.Windows.MessageBox]::Show("Cannot find WsusScheduledTask.psm1`n`nSearched in:`n- $sr\Modules`n- $(Split-Path $sr -Parent)\Modules`n`nMake sure the Modules folder is in the same directory as WsusManager.exe", "Module Not Found", "OK", "Error")
+                Write-Log "ERROR: WsusScheduledTask.psm1 not found"
+                return
+            }
+
+            $Title = "Schedule Task ($($opts.Schedule))"
+            $runAsUser = $opts.RunAsUser -replace "'", "''"
+            # Security: Pass password via environment variable instead of command line
+            $env:WSUS_TASK_PASSWORD = $opts.Password
+            $args = "-Schedule '$($opts.Schedule)' -Time '$($opts.Time)' -MaintenanceProfile '$($opts.Profile)' -RunAsUser '$runAsUser'"
+            if ($opts.Schedule -eq "Weekly") {
+                $args += " -DayOfWeek '$($opts.DayOfWeek)'"
+            } elseif ($opts.Schedule -eq "Monthly") {
+                $args += " -DayOfMonth $($opts.DayOfMonth)"
+            }
+
+            # Pass password as SecureString via environment variable (not visible in process list)
+            # Pipe result to Out-Null to suppress hashtable table output (messages use Write-Host)
+            "& { Import-Module '$taskModuleSafe' -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd | Out-Null; Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }"
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "health"      { "`$null = & '$mgmtSafe' -Health -ContentPath '$cp' -SqlInstance '$sql'" }
@@ -1873,96 +2459,378 @@ function Invoke-LogOperation {
     Disable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Visible"
 
-    Write-LogOutput "Starting $Title..." -Level Info
     Set-Status "Running: $Title"
 
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = "powershell.exe"
-        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
-        $psi.UseShellExecute = $false
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.CreateNoWindow = $true
-        $psi.WorkingDirectory = $sr
+    # Branch based on Live Terminal mode
+    if ($script:LiveTerminalMode) {
+        # LIVE TERMINAL MODE: Launch in visible console window
+        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
 
-        $script:CurrentProcess = New-Object System.Diagnostics.Process
-        $script:CurrentProcess.StartInfo = $psi
-        $script:CurrentProcess.EnableRaisingEvents = $true
-
-        # Create shared state object that can be modified from event handlers
-        $eventData = @{
-            Window = $window
-            Controls = $controls
-            Title = $Title
-            OperationButtons = $script:OperationButtons
+        try {
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = "powershell.exe"
+            # Configure console window size (font size controlled by user's PowerShell defaults)
+            $setupConsole = "mode con: cols=80 lines=25; `$Host.UI.RawUI.WindowTitle = 'WSUS Manager - $Title'"
+            # =========================================================================
+            # AUTO-CLOSE SCRIPT WITH RESPONSIVE KEY HANDLING
+            # =========================================================================
+            # After operation completes, show a 30-second countdown before auto-closing.
+            # User can press ESC or Q to close immediately.
+            #
+            # KEY HANDLING DESIGN:
+            # - Loop runs every 100ms (300 iterations = 30 seconds) for responsive input
+            # - Inner while loop drains ALL buffered keystrokes each iteration
+            # - Only ESC and Q keys trigger immediate close; Enter is ignored
+            # - Enter is ignored because the keystroke timer sends Enter every 2 seconds
+            #   to flush PowerShell output buffers, and we don't want those to close the window
+            #
+            # Previous issue: 1-second sleep between key checks caused "smashing" behavior
+            # where users had to press keys multiple times to register input.
+            # =========================================================================
+            $autoCloseScript = @'
+Write-Host ''
+Write-Host '=== Operation Complete ===' -ForegroundColor Green
+Write-Host ''
+Write-Host 'Window will close in 30 seconds. Press ESC or Q to close now...' -ForegroundColor Yellow
+$countdown = 300
+while ($countdown -gt 0) {
+    # Drain all available keys from buffer and check for ESC/Q
+    while ([Console]::KeyAvailable) {
+        $key = [Console]::ReadKey($true)
+        if ($key.Key -eq [ConsoleKey]::Escape -or $key.Key -eq [ConsoleKey]::Q) {
+            $countdown = 0
+            break
         }
+    }
+    if ($countdown -eq 0) { break }
+    Start-Sleep -Milliseconds 100
+    $countdown--
+}
+'@
+            $wrappedCmd = "$setupConsole; try { $cmd } catch { Write-Host ('ERROR: ' + `$_.Exception.Message) -ForegroundColor Red }; $autoCloseScript"
+            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
+            $psi.UseShellExecute = $true
+            $psi.CreateNoWindow = $false
+            $psi.WorkingDirectory = $sr
 
-        $outputHandler = {
-            $line = $Event.SourceEventArgs.Data
-            if ($line) {
+            $script:CurrentProcess = New-Object System.Diagnostics.Process
+            $script:CurrentProcess.StartInfo = $psi
+            $script:CurrentProcess.EnableRaisingEvents = $true
+
+            # For UseShellExecute, we can't redirect output but we can still track exit
+            $exitHandler = {
                 $data = $Event.MessageData
-                $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
+                # Stop all timers
+                if ($null -ne $script:OpCheckTimer) {
+                    $script:OpCheckTimer.Stop()
+                }
+                if ($null -ne $script:KeystrokeTimer) {
+                    $script:KeystrokeTimer.Stop()
+                }
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
-                    $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
-                    $data.Controls.LogOutput.AppendText("[$timestamp] $prefix $line`r`n")
-                    $data.Controls.LogOutput.ScrollToEnd()
+                    $data.Controls.LogOutput.AppendText("`r`n[$timestamp] [+] Console closed - $($data.Title) finished`r`n")
+                    $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
+                    $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                    foreach ($btnName in $data.OperationButtons) {
+                        if ($data.Controls[$btnName]) {
+                            $data.Controls[$btnName].IsEnabled = $true
+                            $data.Controls[$btnName].Opacity = 1.0
+                        }
+                    }
+                    foreach ($inputName in $data.OperationInputs) {
+                        if ($data.Controls[$inputName]) {
+                            $data.Controls[$inputName].IsEnabled = $true
+                            $data.Controls[$inputName].Opacity = 1.0
+                        }
+                    }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
                 })
+                $script:OperationRunning = $false
             }
-        }
 
-        $exitHandler = {
-            $data = $Event.MessageData
-            $data.Window.Dispatcher.Invoke([Action]{
-                $timestamp = Get-Date -Format "HH:mm:ss"
-                $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
-                $data.Controls.LogOutput.ScrollToEnd()
-                $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
-                $data.Controls.BtnCancelOp.Visibility = "Collapsed"
-                # Re-enable all operation buttons
-                foreach ($btnName in $data.OperationButtons) {
-                    if ($data.Controls[$btnName]) {
-                        $data.Controls[$btnName].IsEnabled = $true
-                        $data.Controls[$btnName].Opacity = 1.0
+            $eventData = @{
+                Window = $script:window
+                Controls = $script:controls
+                Title = $Title
+                OperationButtons = $script:OperationButtons
+                OperationInputs = $script:OperationInputs
+            }
+
+            $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
+
+            $script:CurrentProcess.Start() | Out-Null
+
+            # Security: Clear password environment variables from parent process immediately after child starts
+            # The child process has already inherited these values, so we can safely remove them here
+            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
+            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+
+            # Give the process a moment to create its window
+            Start-Sleep -Milliseconds 500
+
+            # =========================================================================
+            # LIVE TERMINAL WINDOW POSITIONING
+            # =========================================================================
+            # Position the PowerShell console window centered within the main app window.
+            # This creates a "nested" visual effect where the terminal appears on top of
+            # the main application, making it clear which window the user should interact with.
+            #
+            # Size: 60% of main window dimensions (with 400x300 minimum)
+            #   - Smaller percentages keep the window fully inside the main app
+            #   - The 80-column mode (set via 'mode con:') determines text wrapping
+            #
+            # Position: Centered horizontally and vertically within main window bounds
+            #   - Clamped to screen edges to prevent off-screen placement
+            #   - 10px/40px margins from screen edges for taskbar visibility
+            #
+            # Uses Win32 SetWindowPos via ConsoleWindowHelper P/Invoke class
+            # =========================================================================
+            try {
+                $hWnd = $script:CurrentProcess.MainWindowHandle
+                if ($hWnd -ne [IntPtr]::Zero) {
+                    # Get main window position and size for centering calculation
+                    $mainLeft = [int]$script:window.Left
+                    $mainTop = [int]$script:window.Top
+                    $mainWidth = [int]$script:window.ActualWidth
+                    $mainHeight = [int]$script:window.ActualHeight
+
+                    # Console is 60% of main window size (fits centered within app)
+                    # Min 400x300 ensures usability on small windows
+                    $consoleWidth = [math]::Max(400, [int]($mainWidth * 0.60))
+                    $consoleHeight = [math]::Max(300, [int]($mainHeight * 0.60))
+
+                    # Center console within main window
+                    $consoleX = $mainLeft + [int](($mainWidth - $consoleWidth) / 2)
+                    $consoleY = $mainTop + [int](($mainHeight - $consoleHeight) / 2)
+
+                    # Clamp to screen bounds to prevent off-screen placement
+                    $screenWidth = [System.Windows.SystemParameters]::VirtualScreenWidth
+                    $screenHeight = [System.Windows.SystemParameters]::VirtualScreenHeight
+                    $consoleX = [math]::Max(0, [math]::Min($consoleX, $screenWidth - $consoleWidth - 10))
+                    $consoleY = [math]::Max(0, [math]::Min($consoleY, $screenHeight - $consoleHeight - 40))
+
+                    [ConsoleWindowHelper]::PositionWindow($hWnd, $consoleX, $consoleY, $consoleWidth, $consoleHeight)
+                }
+            } catch {
+                # Silently ignore positioning errors - window will just use default position
+            }
+
+            # Keystroke timer - sends Enter to console every 2 seconds to flush output buffer
+            $script:KeystrokeTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:KeystrokeTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        $hWnd = $script:CurrentProcess.MainWindowHandle
+                        if ($hWnd -ne [IntPtr]::Zero) {
+                            [ConsoleWindowHelper]::SendEnter($hWnd)
+                        }
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore keystroke errors
+                }
+            })
+            $script:KeystrokeTimer.Start()
+
+            # Timer for backup cleanup (in case exit event doesn't fire)
+            $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+            $script:OpCheckTimer.Add_Tick({
+                if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
+                    $this.Stop()
+                    if ($null -ne $script:KeystrokeTimer) {
+                        $script:KeystrokeTimer.Stop()
+                    }
+                    if ($script:OperationRunning) {
+                        $script:OperationRunning = $false
+                        Enable-OperationButtons
+                        $script:controls.BtnCancelOp.Visibility = "Collapsed"
+                        $timestamp = Get-Date -Format "HH:mm:ss"
+                        $script:controls.StatusLabel.Text = " - Completed at $timestamp"
                     }
                 }
             })
-            # Reset the operation running flag (script scope accessible from event handler)
+            $script:OpCheckTimer.Start()
+
+        } catch {
+            $controls.LogOutput.AppendText("`r`nERROR: $_`r`n")
+            Set-Status "Ready"
             $script:OperationRunning = $false
-        }
-
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData | Out-Null
-        Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData | Out-Null
-
-        $script:CurrentProcess.Start() | Out-Null
-        $script:CurrentProcess.BeginOutputReadLine()
-        $script:CurrentProcess.BeginErrorReadLine()
-
-        # Use a timer as backup to check process status and force UI refresh
-        # Note: Primary reset happens in exitHandler, timer is backup for edge cases
-        $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
-        $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
-        $script:OpCheckTimer.Add_Tick({
-            # Force UI to process pending events (keeps log responsive)
-            [System.Windows.Forms.Application]::DoEvents()
-
-            if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
-                $script:OperationRunning = $false
-                Enable-OperationButtons
-                $controls.BtnCancelOp.Visibility = "Collapsed"
-                $controls.StatusLabel.Text = " - Ready"
-                $this.Stop()
+            Enable-OperationButtons
+            $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:KeystrokeTimer) {
+                $script:KeystrokeTimer.Stop()
             }
-        })
-        $script:OpCheckTimer.Start()
-    } catch {
-        Write-LogOutput "ERROR: $_" -Level Error
-        Set-Status "Ready"
-        $script:OperationRunning = $false
-        Enable-OperationButtons
-        $controls.BtnCancelOp.Visibility = "Collapsed"
+        }
+    } else {
+        # EMBEDDED LOG MODE: Capture output to log panel (original behavior)
+        $controls.LogOutput.Clear()
+        $script:RecentLines = @{}
+        Write-LogOutput "Starting $Title..." -Level Info
+
+        try {
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = "powershell.exe"
+            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`""
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.RedirectStandardInput = $true
+            $psi.CreateNoWindow = $true
+            $psi.WorkingDirectory = $sr
+
+            $script:CurrentProcess = New-Object System.Diagnostics.Process
+            $script:CurrentProcess.StartInfo = $psi
+            $script:CurrentProcess.EnableRaisingEvents = $true
+
+            # Create shared state object that can be modified from event handlers
+            $eventData = @{
+                Window = $script:window
+                Controls = $script:controls
+                Title = $Title
+                OperationButtons = $script:OperationButtons
+                OperationInputs = $script:OperationInputs
+            }
+
+            $outputHandler = {
+                $line = $Event.SourceEventArgs.Data
+                # Skip empty or whitespace-only lines
+                if ([string]::IsNullOrWhiteSpace($line)) { return }
+
+                # Deduplication: Skip if we just saw this exact line (within 2 second window)
+                $lineHash = $line.Trim().GetHashCode().ToString()
+                $now = [DateTime]::UtcNow.Ticks
+                $lastSeen = $script:RecentLines[$lineHash]
+                if ($lastSeen -and ($now - $lastSeen) -lt 20000000) {  # 2 seconds in ticks
+                    return  # Skip duplicate
+                }
+                $script:RecentLines[$lineHash] = $now
+
+                $data = $Event.MessageData
+                $level = if($line -match 'ERROR|FAIL'){'Error'}elseif($line -match 'WARN'){'Warning'}elseif($line -match 'OK|Success|\[PASS\]|\[\+\]'){'Success'}else{'Info'}
+                # Format message BEFORE dispatch to capture values properly
+                $timestamp = Get-Date -Format "HH:mm:ss"
+                $prefix = switch ($level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
+                $formattedLine = "[$timestamp] $prefix $line`r`n"
+                $logOutput = $data.Controls.LogOutput
+                # Use BeginInvoke with closure to capture formatted values
+                $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
+                    $logOutput.AppendText($formattedLine)
+                    $logOutput.ScrollToEnd()
+                }.GetNewClosure())
+            }
+
+            $exitHandler = {
+                $data = $Event.MessageData
+                # Stop all timers IMMEDIATELY to prevent race conditions
+                if ($null -ne $script:OpCheckTimer) {
+                    $script:OpCheckTimer.Stop()
+                }
+                if ($null -ne $script:StdinFlushTimer) {
+                    $script:StdinFlushTimer.Stop()
+                }
+                $data.Window.Dispatcher.Invoke([Action]{
+                    $timestamp = Get-Date -Format "HH:mm:ss"
+                    $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
+                    $data.Controls.LogOutput.ScrollToEnd()
+                    $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
+                    $data.Controls.BtnCancelOp.Visibility = "Collapsed"
+                    # Re-enable all operation buttons
+                    foreach ($btnName in $data.OperationButtons) {
+                        if ($data.Controls[$btnName]) {
+                            $data.Controls[$btnName].IsEnabled = $true
+                            $data.Controls[$btnName].Opacity = 1.0
+                        }
+                    }
+                    # Re-enable all operation input fields
+                    foreach ($inputName in $data.OperationInputs) {
+                        if ($data.Controls[$inputName]) {
+                            $data.Controls[$inputName].IsEnabled = $true
+                            $data.Controls[$inputName].Opacity = 1.0
+                        }
+                    }
+                    # Re-check WSUS installation to disable buttons if WSUS not installed
+                    Update-WsusButtonState
+                })
+                # Reset the operation running flag (script scope accessible from event handler)
+                $script:OperationRunning = $false
+            }
+
+            # Store event subscriptions for proper cleanup (prevents duplicates/leaks)
+            $script:OutputEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName OutputDataReceived -Action $outputHandler -MessageData $eventData
+            $script:ErrorEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData
+            $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
+
+            $script:CurrentProcess.Start() | Out-Null
+
+            # Security: Clear password environment variables from parent process immediately after child starts
+            # The child process has already inherited these values, so we can safely remove them here
+            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
+            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+
+            $script:CurrentProcess.BeginOutputReadLine()
+            $script:CurrentProcess.BeginErrorReadLine()
+
+            # Stdin flush timer - sends newlines to StandardInput every 2 seconds to flush output buffer
+            $script:StdinFlushTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:StdinFlushTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:StdinFlushTimer.Add_Tick({
+                try {
+                    if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
+                        # Write empty line to stdin to help flush any buffered output
+                        $script:CurrentProcess.StandardInput.WriteLine("")
+                        $script:CurrentProcess.StandardInput.Flush()
+                    } else {
+                        $this.Stop()
+                    }
+                } catch {
+                    # Silently ignore stdin write errors (process may have exited)
+                }
+            })
+            $script:StdinFlushTimer.Start()
+
+            # Use a timer to force UI refresh (keeps log responsive)
+            # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
+            $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+            $script:OpCheckTimer.Add_Tick({
+                # Force WPF to process pending dispatcher operations (keeps log responsive)
+                # This is the WPF equivalent of DoEvents - pushes all queued dispatcher frames
+                [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+                    [System.Windows.Threading.DispatcherPriority]::Background,
+                    [Action]{ }
+                )
+
+                # Backup cleanup: only if process exited but exitHandler didn't fire
+                if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
+                    $this.Stop()
+                    if ($null -ne $script:StdinFlushTimer) {
+                        $script:StdinFlushTimer.Stop()
+                    }
+                    # Only do cleanup if exitHandler didn't already (check if still marked as running)
+                    if ($script:OperationRunning) {
+                        $script:OperationRunning = $false
+                        Enable-OperationButtons
+                        $script:controls.BtnCancelOp.Visibility = "Collapsed"
+                        # Don't overwrite status - exitHandler sets completion timestamp
+                    }
+                }
+            })
+            $script:OpCheckTimer.Start()
+        } catch {
+            Write-LogOutput "ERROR: $_" -Level Error
+            Set-Status "Ready"
+            $script:OperationRunning = $false
+            Enable-OperationButtons
+            $controls.BtnCancelOp.Visibility = "Collapsed"
+            if ($null -ne $script:StdinFlushTimer) {
+                $script:StdinFlushTimer.Stop()
+            }
+        }
     }
 }
 
@@ -1970,10 +2838,115 @@ function Invoke-LogOperation {
 
 #region Event Handlers
 $controls.BtnDashboard.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
-$controls.BtnInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
+$controls.BtnInstall.Add_Click({
+    $controls.InstallPathBox.Text = $script:InstallPath
+    if ($controls.InstallSaPassword) { $controls.InstallSaPassword.Password = "" }
+    if ($controls.InstallSaPasswordConfirm) { $controls.InstallSaPasswordConfirm.Password = "" }
+    Show-Panel "Install" "Install WSUS" "BtnInstall"
+})
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
+$controls.BtnCreateGpo.Add_Click({
+    # Create GPO files for DC admin
+    $sr = $script:ScriptRoot
+    $sourceDir = $null
+    $locations = @(
+        (Join-Path $sr "DomainController"),
+        (Join-Path $sr "Scripts\DomainController"),
+        (Join-Path (Split-Path $sr -Parent) "DomainController")
+    )
+    foreach ($loc in $locations) {
+        if (Test-Path $loc) { $sourceDir = $loc; break }
+    }
+
+    if (-not $sourceDir) {
+        [System.Windows.MessageBox]::Show("DomainController folder not found.`n`nExpected locations:`n- $sr\DomainController`n- $sr\Scripts\DomainController", "Error", "OK", "Error")
+        return
+    }
+
+    $destDir = "C:\WSUS\WSUS GPO"
+
+    # Confirm dialog
+    $result = [System.Windows.MessageBox]::Show(
+        "This will copy GPO files to:`n$destDir`n`nContinue?",
+        "Create GPO Files", "YesNo", "Question")
+
+    if ($result -ne "Yes") { return }
+
+    # Disable buttons during operation
+    Disable-OperationButtons
+
+    # Expand log panel and show progress
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 250
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+
+    Write-LogOutput "=== Creating GPO Files ===" -Level Info
+
+    try {
+        # Create destination folder
+        if (-not (Test-Path $destDir)) {
+            New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+            Write-LogOutput "Created folder: $destDir" -Level Success
+        }
+
+        # Copy files
+        Write-LogOutput "Copying from: $sourceDir" -Level Info
+        Copy-Item -Path "$sourceDir\*" -Destination $destDir -Recurse -Force
+        Write-LogOutput "Files copied successfully" -Level Success
+
+        # Count items
+        $gpoCount = (Get-ChildItem "$destDir\WSUS GPOs" -Directory -ErrorAction SilentlyContinue).Count
+        $scriptFile = Test-Path "$destDir\Set-WsusGroupPolicy.ps1"
+
+        Write-LogOutput "GPO backups found: $gpoCount" -Level Info
+        Write-LogOutput "Import script: $(if($scriptFile){'Present'}else{'Missing'})" -Level $(if($scriptFile){'Success'}else{'Warning'})
+
+        # Show instructions
+        $instructions = @"
+GPO files copied to: $destDir
+
+=== NEXT STEPS ===
+
+1. Copy 'C:\WSUS\WSUS GPO' folder to the Domain Controller
+
+2. On the DC, run as Administrator:
+   cd 'C:\WSUS\WSUS GPO'
+   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
+
+3. To force clients to update immediately:
+   gpupdate /force
+
+   Or from DC (all domain computers):
+   Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer `$_.Name -Force }
+
+4. Verify on clients:
+   gpresult /r | findstr WSUS
+"@
+
+        Write-LogOutput "" -Level Info
+        Write-LogOutput "=== INSTRUCTIONS ===" -Level Info
+        Write-LogOutput $instructions -Level Info
+
+        Set-Status "GPO files created"
+
+        # Also show message box with summary
+        [System.Windows.MessageBox]::Show(
+            "GPO files created at:`n$destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands.",
+            "GPO Files Created", "OK", "Information")
+
+    } catch {
+        Write-LogOutput "Error: $_" -Level Error
+        [System.Windows.MessageBox]::Show("Failed to create GPO files: $_", "Error", "OK", "Error")
+    } finally {
+        # Re-enable buttons (respects WSUS installation status)
+        Enable-OperationButtons
+    }
+})
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnHealth.Add_Click({ Invoke-LogOperation "health" "Health Check" })
 $controls.BtnRepair.Add_Click({ Invoke-LogOperation "repair" "Repair" })
@@ -1981,20 +2954,34 @@ $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
 
-# Cancel operation button
-$controls.BtnCancelOp.Add_Click({
-    if ($script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
-        try {
-            $script:CurrentProcess.Kill()
-            Write-LogOutput "Operation cancelled by user" -Level Warning
-        } catch {
-            Write-LogOutput "Failed to cancel operation: $_" -Level Error
+$controls.BtnBrowseInstallPath.Add_Click({
+    $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+    $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
+    $fbd.SelectedPath = $script:InstallPath
+    try {
+        if ($fbd.ShowDialog() -eq "OK") {
+            $p = $fbd.SelectedPath
+            if (-not (Test-SafePath $p)) {
+                [System.Windows.MessageBox]::Show("Invalid path.", "Error", "OK", "Error")
+                return
+            }
+            $controls.InstallPathBox.Text = $p
+            $script:InstallPath = $p
         }
-    }
-    $script:OperationRunning = $false
+    } finally { $fbd.Dispose() }
+})
+
+$controls.BtnRunInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
+
+# Cancel operation button - uses centralized cleanup
+$controls.BtnCancelOp.Add_Click({
+    Write-LogOutput "Cancelling operation..." -Level Warning
+    # Call centralized cleanup (handles process kill, event unregister, timer stop, dispose)
+    Stop-CurrentOperation
     Enable-OperationButtons
     $controls.BtnCancelOp.Visibility = "Collapsed"
-    Set-Status "Ready"
+    Set-Status "Cancelled"
+    Write-LogOutput "Operation cancelled by user" -Level Warning
 })
 
 $controls.HelpBtnOverview.Add_Click({ Show-Help "Overview" })
@@ -2045,6 +3032,20 @@ $controls.BtnOpenLog.Add_Click({
 })
 
 # Log panel buttons
+$controls.BtnLiveTerminal.Add_Click({
+    $script:LiveTerminalMode = -not $script:LiveTerminalMode
+    if ($script:LiveTerminalMode) {
+        $controls.BtnLiveTerminal.Content = "Live Terminal: On"
+        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+        $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+    } else {
+        $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
+        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $controls.LogOutput.Clear()
+    }
+    Save-Settings
+})
+
 $controls.BtnToggleLog.Add_Click({
     if ($script:LogExpanded) {
         $controls.LogPanel.Height = 36
@@ -2071,16 +3072,23 @@ $controls.BtnSaveLog.Add_Click({
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
+    Stop-CurrentOperation
+    Enable-OperationButtons
     $controls.BtnCancel.Visibility = "Collapsed"
+    Set-Status "Cancelled"
 })
 #endregion
 
 #region Initialize
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
-$controls.AdminBadge.Text = if($script:IsAdmin){"Admin"}else{"Limited"}
-$controls.AdminBadge.Foreground = if($script:IsAdmin){"#3FB950"}else{"#D29922"}
+
+# Initialize Live Terminal button state from saved settings
+if ($script:LiveTerminalMode) {
+    $controls.BtnLiveTerminal.Content = "Live Terminal: On"
+    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+    $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+}
 
 try {
     $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
@@ -2123,6 +3131,15 @@ try {
 
 Update-Dashboard
 
+# Show message if WSUS is not installed
+if (-not $script:WsusInstalled) {
+    $controls.LogOutput.Text = "WSUS is not installed on this server.`r`n`r`nMost operations are disabled until WSUS is installed.`r`nUse 'Install WSUS' from the Setup menu to begin installation.`r`n"
+    # Expand log panel to show message
+    $controls.LogPanel.Height = 250
+    $controls.BtnToggleLog.Content = "Hide"
+    $script:LogExpanded = $true
+}
+
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromSeconds(30)
 $timer.Add_Tick({
@@ -2133,9 +3150,10 @@ $timer.Add_Tick({
 })
 $timer.Start()
 
-$window.Add_Closing({
+$script:window.Add_Closing({
     $timer.Stop()
-    if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) { $script:CurrentProcess.Kill() }
+    # Clean up any running operation (suppress log since we're closing)
+    Stop-CurrentOperation -SuppressLog
 })
 #endregion
 
@@ -2145,7 +3163,7 @@ Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 Write-Log "Running WPF form"
 
 try {
-    $window.ShowDialog() | Out-Null
+    $script:window.ShowDialog() | Out-Null
 }
 catch {
     $errorMsg = "A fatal error occurred:`n`n$($_.Exception.Message)"
@@ -2176,12 +3194,10 @@ finally {
     # Cleanup resources
     try {
         if ($timer) { $timer.Stop() }
-        if ($script:CurrentProcess -and !$script:CurrentProcess.HasExited) {
-            $script:CurrentProcess.Kill()
-        }
+        Stop-CurrentOperation -SuppressLog
     }
     catch {
-        Write-Log "Cleanup warning: $_"
+        # Silently ignore cleanup errors during shutdown
     }
 }
 

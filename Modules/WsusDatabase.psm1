@@ -2,20 +2,29 @@
 ===============================================================================
 Module: WsusDatabase.psm1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.0.1
-Date: 2026-01-09
+Version: 1.1.0
+Date: 2026-01-14
 ===============================================================================
 
 .SYNOPSIS
     WSUS database cleanup and optimization functions
 
 .DESCRIPTION
-    Provides shared database maintenance functionality including:
-    - Supersession record cleanup
-    - Declined update deletion
-    - Index optimization
-    - Statistics updates
-    - Database size queries
+    Provides shared database maintenance functionality for SUSDB including:
+    - Database size monitoring (Get-WsusDatabaseSize, Get-WsusDatabaseStats)
+    - Supersession record cleanup (Remove-DeclinedSupersessionRecords, Remove-SupersededSupersessionRecords)
+    - Index optimization (Optimize-WsusIndexes, Add-WsusPerformanceIndexes)
+    - Statistics updates (Update-WsusStatistics)
+    - Database shrink operations (Invoke-WsusDatabaseShrink, Get-WsusDatabaseSpace)
+
+    SQL Express has a 10GB database limit. Regular maintenance is critical to
+    keep SUSDB within this limit. This module provides functions to monitor
+    database size and optimize storage usage.
+
+.NOTES
+    Requires: WsusUtilities.psm1 (for Invoke-WsusSqlcmd wrapper)
+    Database: SUSDB on SQL Server Express
+    Permissions: Requires SQL sysadmin or db_owner on SUSDB for most operations
 #>
 
 # Import WsusUtilities for Invoke-WsusSqlcmd wrapper
@@ -402,31 +411,81 @@ function Update-WsusStatistics {
 function Invoke-WsusDatabaseShrink {
     <#
     .SYNOPSIS
-        Shrinks the WSUS database
+        Shrinks the WSUS database to reclaim unused space
+
+    .DESCRIPTION
+        Executes DBCC SHRINKDATABASE on SUSDB to reclaim unused space after
+        cleanup operations. Includes automatic retry logic when the shrink
+        operation is blocked by an ongoing backup or file manipulation operation.
+
+        SQL Server requires exclusive access for shrink operations. If a backup
+        is running concurrently, this function will wait and retry automatically.
 
     .PARAMETER SqlInstance
-        SQL Server instance name
+        SQL Server instance name (default: .\SQLEXPRESS)
 
     .PARAMETER TargetFreePercent
-        Target free space percentage (default: 10)
+        Target percentage of free space to leave in the database after shrink.
+        Default is 10%. Lower values recover more space but may cause more
+        frequent auto-growth events.
+
+    .PARAMETER MaxRetries
+        Maximum number of retry attempts if blocked by an ongoing backup or
+        file operation. Default is 3 attempts.
+
+    .PARAMETER RetryDelaySeconds
+        Number of seconds to wait between retry attempts. Default is 30 seconds.
+        This allows time for concurrent operations to complete.
 
     .OUTPUTS
-        Boolean indicating success
+        Boolean - $true if shrink succeeded, $false if all retries failed
+
+    .EXAMPLE
+        Invoke-WsusDatabaseShrink
+        # Shrinks SUSDB with default settings (10% free space, 3 retries)
+
+    .EXAMPLE
+        Invoke-WsusDatabaseShrink -TargetFreePercent 5 -MaxRetries 5
+        # More aggressive shrink with extra retries for busy servers
+
+    .NOTES
+        - Shrink operations can be slow on large databases (several minutes)
+        - QueryTimeout is set to unlimited (0) to prevent timeout errors
+        - Always run after cleanup operations for best results
     #>
     param(
         [string]$SqlInstance = ".\SQLEXPRESS",
-        [int]$TargetFreePercent = 10
+        [int]$TargetFreePercent = 10,
+        [int]$MaxRetries = 3,
+        [int]$RetryDelaySeconds = 30
     )
 
-    try {
-        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
-            -Query "DBCC SHRINKDATABASE(SUSDB, $TargetFreePercent) WITH NO_INFOMSGS" `
-            -QueryTimeout 0 | Out-Null
-        return $true
-    } catch {
-        Write-Warning "Database shrink failed: $($_.Exception.Message)"
-        return $false
+    $attempt = 0
+    while ($attempt -lt $MaxRetries) {
+        $attempt++
+        try {
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+                -Query "DBCC SHRINKDATABASE(SUSDB, $TargetFreePercent) WITH NO_INFOMSGS" `
+                -QueryTimeout 0 | Out-Null
+            return $true
+        } catch {
+            $errorMsg = $_.Exception.Message
+            # Check if error is due to backup/file operation in progress
+            if ($errorMsg -match "serialized|backup.*operation|file manipulation") {
+                if ($attempt -lt $MaxRetries) {
+                    Write-Warning "Database shrink blocked by ongoing operation. Waiting $RetryDelaySeconds seconds... (attempt $attempt/$MaxRetries)"
+                    Start-Sleep -Seconds $RetryDelaySeconds
+                } else {
+                    Write-Warning "Database shrink failed after $MaxRetries attempts: $errorMsg"
+                    return $false
+                }
+            } else {
+                Write-Warning "Database shrink failed: $errorMsg"
+                return $false
+            }
+        }
     }
+    return $false
 }
 
 function Get-WsusDatabaseSpace {

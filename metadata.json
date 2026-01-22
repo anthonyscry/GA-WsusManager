@@ -1,0 +1,8 @@
+
+{
+  "name": "GA-WsusManager Pro",
+  "description": "Desktop Portable WSUS Management Suite (Electron Build)",
+  "version": "3.8.6",
+  "environment": "Desktop/Win32",
+  "requestFramePermissions": []
+}

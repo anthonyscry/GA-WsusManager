@@ -1,250 +1,127 @@
 # WSUS Manager
 
-**Author:** Tony Tran, ISSO, GA-ASI | **Version:** 3.8.3
+**Version:** 3.8.8
+**Author:** Tony Tran, ISSO, Classified Computing, GA-ASI
 
-A WSUS + SQL Server Express 2022 automation suite for Windows Server. Supports both online and air-gapped networks.
+A comprehensive PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. Provides both a modern WPF GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
----
+## Features
 
-## What's New in v3.8.3
-
-### Bug Fixes
-- **Fixed script not found error** - GUI now validates scripts exist before running operations
-- **Fixed buttons not disabling** - Operation buttons are now disabled (grayed out) while an operation is running
-- **Fixed OperationRunning flag** - Flag now properly resets in all code paths (completion, error, cancel)
-- **Fixed Export parameters** - Removed invalid CLI parameters that were causing errors
-- **Fixed distribution package** - Zip now includes required Scripts/ and Modules/ folders
-
-### Previous (v3.8.1)
-- DPI awareness for high-resolution displays
-- Global error handling with user-friendly dialogs
-- Startup time logging for performance monitoring
-
-### Previous (v3.8.0)
-- ESC key support for all dialogs
-- PSScriptAnalyzer code quality improvements
-
-### Previous (v3.7.0)
-- Output log panel 250px tall and open by default
-- Unified Export/Import into single Transfer dialog
-- Restore dialog auto-detects backup files
-- Cancel button to stop running operations
-- Concurrent operation blocking
-
-### Previous (v3.5.x)
-- Server Mode Toggle (Online/Air-Gap)
-- Modern WPF GUI with dark theme
-- Database Size Indicator with 10GB limit warnings
-- 323 Pester unit tests
-- PSScriptAnalyzer integration in build
-
----
+- **Modern WPF GUI** - Dark theme dashboard with real-time status monitoring
+- **Health Monitoring** - Automated health checks with auto-recovery capabilities
+- **Database Maintenance** - Deep cleanup, index optimization, and backup/restore
+- **Air-Gap Support** - Export/import operations for offline networks
+- **Scheduled Maintenance** - Automated monthly maintenance with configurable profiles
+- **HTTPS/SSL Support** - Easy SSL certificate configuration
 
 ## Quick Start
 
-### Option 1: Portable Executable (Recommended)
+### Download Pre-built EXE
 
-1. Download the latest `WsusManager-vX.X.X.zip`
-2. **Extract the entire folder** to your WSUS server (e.g., `C:\WSUS\WsusManager`)
-3. Run **`WsusManager.exe`** as Administrator
+1. Go to the [Releases](../../releases) page
+2. Download `WsusManager-vX.X.X.zip`
+3. Extract to `C:\WSUS\` (recommended) or any folder
+4. Run `WsusManager.exe` as Administrator
 
-**Important:** Keep the folder structure intact:
-```
-WsusManager-vX.X.X/
-├── WsusManager.exe      # Main application
-├── Scripts/             # Required - do not delete!
-├── Modules/             # Required - do not delete!
-└── DomainController/    # Optional - GPO scripts
-```
+**Important:** Keep the `Scripts/` and `Modules/` folders in the same directory as the EXE.
 
-> ⚠️ **Do not move WsusManager.exe without its Scripts and Modules folders!**
-
-Features:
-- Modern dark-themed WPF interface
-- Auto-refresh dashboard (30-second interval)
-- Database size monitoring with 10GB limit warnings
-- Buttons disabled during operations to prevent conflicts
-
-### Option 2: PowerShell Scripts
+### Building from Source
 
 ```powershell
-.\Scripts\Invoke-WsusManagement.ps1
+# Clone the repository
+git clone https://github.com/anthonyscry/GA-WsusManager.git
+cd GA-WsusManager
+
+# Run the build script (requires PS2EXE module)
+.\build.ps1
+
+# Output will be in dist/WsusManager.exe
 ```
 
----
+Build options:
+```powershell
+.\build.ps1              # Full build with tests and code review
+.\build.ps1 -SkipTests   # Build without running tests
+.\build.ps1 -TestOnly    # Run tests only (no build)
+```
 
 ## Requirements
 
-| Requirement | Specification |
-|-------------|---------------|
-| OS | Windows Server 2019+ |
-| CPU | 4+ cores |
-| RAM | 16+ GB |
-| Disk | 50+ GB for updates |
-| PowerShell | 5.1+ |
-| SQL Server | SQL Server Express 2022 |
+- **Windows Server** 2016, 2019, 2022, or Windows 10/11
+- **PowerShell** 5.1 or later
+- **Administrator privileges** (required for WSUS operations)
+- **SQL Server Express** 2022 (installed by the Install WSUS feature)
 
-### Required Installers (place in `C:\WSUS\SQLDB\`)
-
-- `SQLEXPRADV_x64_ENU.exe` - SQL Server Express 2022
-- `SSMS-Setup-ENU.exe` - SQL Server Management Studio
-
----
-
-## Dashboard
-
-The dashboard displays four status cards with auto-refresh:
-
-| Card | Information | Color Coding |
-|------|-------------|--------------|
-| Services | SQL/WSUS/IIS status | Green=All running, Orange=Partial, Red=Stopped |
-| Database | SUSDB size / 10GB limit | Green=<7GB, Yellow=7-9GB, Red=>9GB |
-| Disk Space | Free space on C: | Green=>50GB, Yellow=10-50GB, Red=<10GB |
-| Automation | Scheduled task status | Green=Ready, Orange=Not Set |
-
-**Quick Actions:** Health Check, Deep Cleanup, Maintenance, Start Services
-
----
-
-## Server Mode
-
-Toggle between **Online** and **Air-Gap** modes using the switch in the sidebar. This shows only the relevant menu options for your server type.
-
-| Mode | Visible Operations | Hidden |
-|------|-------------------|--------|
-| **Online** | Export to Media, Monthly Maintenance | Import from Media |
-| **Air-Gap** | Import from Media | Export to Media, Monthly Maintenance |
-
-The mode is saved to your user settings and persists across restarts.
-
----
-
-## Main Operations
-
-| Menu Item | Mode | Description |
-|-----------|------|-------------|
-| Install WSUS | Both | Install WSUS + SQL Express from scratch |
-| Restore Database | Both | Restore SUSDB from backup |
-| Export to Media | Online | Export DB and content to USB (Full or Differential) |
-| Import from Media | Air-Gap | Import from USB to air-gapped server |
-| Monthly Maintenance | Online | Sync with Microsoft, cleanup, and backup |
-| Deep Cleanup | Both | Aggressive cleanup for space recovery |
-| Health Check | Both | Verify WSUS configuration and connectivity |
-| Health + Repair | Both | Health check with automatic fixes |
-
----
-
-## Air-Gapped Workflow
-
-```
-Online WSUS → Monthly Maintenance
-                    ↓
-              Export to Media (Full or Differential)
-                    ↓
-            [Physical Transfer via USB]
-                    ↓
-Air-Gap WSUS → Import from Media
-                    ↓
-              Restore Database (if full export)
-```
-
-**Export Options:**
-- **Full Export** - Complete database and all content files
-- **Differential Export** - Only updates from the last N days (default: 30)
-
----
-
-## Domain Controller Setup
-
-Run on the DC (not WSUS server):
-
-```powershell
-.\DomainController\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
-```
-
-Imports 3 GPOs: Update Policy, Inbound Firewall, Outbound Firewall.
-
----
-
-## Directory Layout
-
-```
-C:\WSUS\              # Content directory (required path)
-C:\WSUS\SQLDB\        # SQL/SSMS installers
-C:\WSUS\Logs\         # Log files
-C:\WSUS\WsusContent\  # Update files (auto-created)
-```
-
-> **Important:** Content path must be `C:\WSUS` - NOT `C:\WSUS\wsuscontent`
-
----
-
-## Repository Structure
+## Project Structure
 
 ```
 GA-WsusManager/
-├── WsusManager.exe              # Portable GUI (RECOMMENDED)
-├── wsus-icon.ico                # Application icon
-├── build.ps1                    # Build script for EXE
-├── Scripts/
-│   ├── WsusManagementGui.ps1    # GUI source (WPF/XAML)
-│   ├── Invoke-WsusManagement.ps1
+├── Scripts/                 # PowerShell operation scripts
+│   ├── WsusManagementGui.ps1       # Main GUI application
+│   ├── Invoke-WsusManagement.ps1   # CLI for all operations
 │   ├── Invoke-WsusMonthlyMaintenance.ps1
 │   ├── Install-WsusWithSqlExpress.ps1
-│   ├── Invoke-WsusClientCheckIn.ps1
-│   └── Set-WsusHttps.ps1
-├── Modules/
-│   ├── WsusUtilities.psm1       # Logging, colors, helpers
-│   ├── WsusDatabase.psm1        # Database operations
-│   ├── WsusHealth.psm1          # Health checks
-│   ├── WsusServices.psm1        # Service management
-│   ├── WsusFirewall.psm1        # Firewall rules
-│   ├── WsusPermissions.psm1     # Directory permissions
-│   ├── WsusConfig.psm1          # Configuration
-│   ├── WsusExport.psm1          # Export/import
-│   ├── WsusScheduledTask.psm1   # Scheduled tasks
-│   └── WsusAutoDetection.psm1   # Server detection
-├── Tests/                       # Pester unit tests (323 tests)
-└── DomainController/            # GPO deployment scripts
+│   ├── Set-WsusHttps.ps1
+│   └── Invoke-WsusClientCheckIn.ps1
+├── Modules/                 # Reusable PowerShell modules (11 total)
+├── Tests/                   # Pester unit tests (323 tests)
+├── DomainController/        # GPO deployment scripts
+├── build.ps1               # Build script
+└── CLAUDE.md               # Development documentation
 ```
 
----
-
-## Building from Source
+## CLI Usage
 
 ```powershell
-# Full build with tests and code review
-.\build.ps1
+# Run health check
+.\Scripts\Invoke-WsusManagement.ps1 -Health
 
-# Quick build (skip tests and review)
-.\build.ps1 -SkipTests -SkipCodeReview
+# Run health check with auto-repair
+.\Scripts\Invoke-WsusManagement.ps1 -Health -Repair
 
-# Run tests only
-.\build.ps1 -TestOnly
+# Run deep cleanup
+.\Scripts\Invoke-WsusManagement.ps1 -Cleanup
+
+# Export for air-gapped network
+.\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "E:\WSUS-Export"
+
+# Schedule monthly maintenance
+.\Scripts\Invoke-WsusManagement.ps1 -Schedule -MaintenanceProfile Full
 ```
 
----
+## Documentation
 
-## Troubleshooting
+- **[CLAUDE.md](CLAUDE.md)** - Comprehensive development documentation
+- **[Modules/README.md](Modules/README.md)** - PowerShell module reference
+- **[wiki/](wiki/)** - User guides and troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Endless downloads | Use `C:\WSUS` NOT `C:\WSUS\wsuscontent` |
-| Clients not updating | Run `gpupdate /force`, check ports 8530/8531 |
-| Database errors | Grant sysadmin role to your account in SSMS |
-| Services not starting | Use "Start Services" button on dashboard |
-| Script not found error | Ensure Scripts folder is alongside the EXE |
-| DB size shows "Offline" | SQL Server Express service not running |
+## Testing
 
----
+```powershell
+# Run all tests
+Invoke-Pester -Path .\Tests -Output Detailed
 
-## References
+# Run specific module tests
+Invoke-Pester -Path .\Tests\WsusHealth.Tests.ps1
 
-- [WSUS Maintenance Guide](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
-- [SQL Server 2022 Express Download](https://www.microsoft.com/en-us/download/details.aspx?id=104781)
-- [WSUS Best Practices](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment)
-- [PowerShell Gallery - PS2EXE](https://www.powershellgallery.com/packages/ps2exe)
+# Run tests with code coverage
+Invoke-Pester -Path .\Tests -CodeCoverage .\Modules\*.psm1
+```
 
----
+## Contributing
 
-*Internal use - General Atomics Aeronautical Systems, Inc.*
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests before committing (`.\build.ps1 -TestOnly`)
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+## License
+
+This project is proprietary software developed for GA-ASI internal use.
+
+## Support
+
+- **Issues:** [GitHub Issues](../../issues)
+- **Documentation:** See [CLAUDE.md](CLAUDE.md) for detailed development docs
