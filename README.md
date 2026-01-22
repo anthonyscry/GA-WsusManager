@@ -73,11 +73,11 @@ GA-WsusManager/
 ## CLI Usage
 
 ```powershell
-# Run health check
-.\Scripts\Invoke-WsusManagement.ps1 -Health
+# Run comprehensive diagnostics (scans and auto-fixes issues)
+.\Scripts\Invoke-WsusManagement.ps1 -Diagnostics
 
-# Run health check with auto-repair
-.\Scripts\Invoke-WsusManagement.ps1 -Health -Repair
+# Run health check only (no auto-fix)
+.\Scripts\Invoke-WsusManagement.ps1 -Health
 
 # Run deep cleanup
 .\Scripts\Invoke-WsusManagement.ps1 -Cleanup
@@ -88,6 +88,17 @@ GA-WsusManager/
 # Schedule monthly maintenance
 .\Scripts\Invoke-WsusManagement.ps1 -Schedule -MaintenanceProfile Full
 ```
+
+## Important Notes
+
+### Database Restore / Reset Time
+
+After restoring a WSUS database or performing a reset operation, the WSUS server will need to re-verify and re-download update content. **This process can take 30+ minutes depending on the size of your update content.** During this time:
+
+- The dashboard may show "Update is downloading" status
+- This is normal behavior - do not interrupt the process
+- Content verification happens automatically in the background
+- Large content stores (50GB+) may take several hours to fully re-verify
 
 ## Documentation
 

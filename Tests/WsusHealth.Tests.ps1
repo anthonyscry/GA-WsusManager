@@ -194,3 +194,80 @@ Describe "Repair-WsusHealth" {
         }
     }
 }
+
+Describe "Invoke-WsusDiagnostics" {
+    Context "Module export validation" {
+        It "Should export Invoke-WsusDiagnostics function" {
+            Get-Command Invoke-WsusDiagnostics -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Healthy key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "Healthy"
+        }
+
+        It "Should contain IssuesFound key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "IssuesFound"
+        }
+
+        It "Should contain IssuesFixed key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "IssuesFixed"
+        }
+
+        It "Should contain Issues key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "Issues"
+        }
+
+        It "Should contain FixesApplied key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "FixesApplied"
+        }
+
+        It "Should contain FixesFailed key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "FixesFailed"
+        }
+
+        It "Healthy should be boolean" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Healthy | Should -BeOfType [bool]
+        }
+
+        It "IssuesFound should be a number" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.IssuesFound | Should -BeOfType [int]
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should accept ContentPath parameter" {
+            $result = Invoke-WsusDiagnostics -ContentPath "C:\WSUS" -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept SqlInstance parameter" {
+            $result = Invoke-WsusDiagnostics -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept AutoFix switch parameter" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept IncludeSqlProtocols switch parameter" {
+            $result = Invoke-WsusDiagnostics -IncludeSqlProtocols -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+    }
+}
