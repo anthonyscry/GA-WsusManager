@@ -307,7 +307,7 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
@@ -395,7 +395,7 @@ $script:StdinFlushTimer = $null
                     <WrapPanel>
                         <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
-                        <Button x:Name="QBtnMaint" Content="Maintenance" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
@@ -989,7 +989,7 @@ TASK CARD
 QUICK ACTIONS
 • Health Check - Diagnostics only
 • Deep Cleanup - Aggressive cleanup
-• Maintenance - Monthly routine
+• Online Sync - Sync with Microsoft
 • Start Services - Start all services
 "@
 
@@ -1053,7 +1053,7 @@ DATABASE OFFLINE
 DATABASE >9 GB
 • Run Deep Cleanup
 • Decline unneeded updates
-• Run Monthly Maintenance
+• Run Online Sync
 
 CLIENTS NOT UPDATING
 • Verify GPO (gpresult /h)
@@ -1517,7 +1517,7 @@ function Show-MaintenanceDialog {
     $result = @{ Cancelled = $true; Profile = "" }
 
     $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Monthly Maintenance"
+    $dlg.Title = "Online Sync"
     $dlg.Width = 480
     $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
@@ -1530,7 +1530,7 @@ function Show-MaintenanceDialog {
     $stack.Margin = "20"
 
     $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Select Maintenance Type"
+    $title.Text = "Select Sync Profile"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
     $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
@@ -1539,7 +1539,7 @@ function Show-MaintenanceDialog {
 
     # Radio buttons for maintenance options
     $radioFull = New-Object System.Windows.Controls.RadioButton
-    $radioFull.Content = "Full Maintenance"
+    $radioFull.Content = "Full Sync"
     $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioFull.Margin = "0,0,0,4"
     $radioFull.IsChecked = $true
@@ -1553,7 +1553,7 @@ function Show-MaintenanceDialog {
     $stack.Children.Add($fullDesc)
 
     $radioQuick = New-Object System.Windows.Controls.RadioButton
-    $radioQuick.Content = "Quick Maintenance"
+    $radioQuick.Content = "Quick Sync"
     $radioQuick.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioQuick.Margin = "0,0,0,4"
     $stack.Children.Add($radioQuick)
@@ -1583,7 +1583,7 @@ function Show-MaintenanceDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $runBtn = New-Object System.Windows.Controls.Button
-    $runBtn.Content = "Run Maintenance"
+    $runBtn.Content = "Run Sync"
     $runBtn.Padding = "14,6"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
     $runBtn.Foreground = "White"
@@ -1648,7 +1648,7 @@ function Show-ScheduleTaskDialog {
     $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Schedule Monthly Maintenance" Width="480" Height="560"
+        Title="Schedule Online Sync" Width="480" Height="560"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="#0D1117">
     <Window.Resources>
@@ -2943,7 +2943,7 @@ GPO files copied to: $destDir
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
-$controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
@@ -2989,7 +2989,7 @@ $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
 $controls.QBtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
 $controls.QBtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
-$controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
