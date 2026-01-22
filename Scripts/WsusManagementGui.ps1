@@ -1575,7 +1575,7 @@ function Show-MaintenanceDialog {
     $syncDesc.Text = "Synchronize and approve updates only (no export)"
     $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $syncDesc.FontSize = 11
-    $syncDesc.Margin = "20,0,0,20"
+    $syncDesc.Margin = "20,0,0,12"
     $stack.Children.Add($syncDesc)
 
     # Export Settings Section
