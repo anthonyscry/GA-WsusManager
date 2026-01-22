@@ -307,7 +307,7 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnMaintenance" Content="📅 Monthly" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
 
@@ -395,7 +395,7 @@ $script:StdinFlushTimer = $null
                     <WrapPanel>
                         <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
-                        <Button x:Name="QBtnMaint" Content="Maintenance" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
@@ -989,7 +989,7 @@ TASK CARD
 QUICK ACTIONS
 • Health Check - Diagnostics only
 • Deep Cleanup - Aggressive cleanup
-• Maintenance - Monthly routine
+• Online Sync - Sync with Microsoft
 • Start Services - Start all services
 "@
 
@@ -1053,7 +1053,7 @@ DATABASE OFFLINE
 DATABASE >9 GB
 • Run Deep Cleanup
 • Decline unneeded updates
-• Run Monthly Maintenance
+• Run Online Sync
 
 CLIENTS NOT UPDATING
 • Verify GPO (gpresult /h)
@@ -1514,12 +1514,12 @@ function Show-RestoreDialog {
 }
 
 function Show-MaintenanceDialog {
-    $result = @{ Cancelled = $true; Profile = ""; ExportPath = "" }
+    $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; DifferentialPath = ""; ExportDays = 30 }
 
     $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Monthly Maintenance"
-    $dlg.Width = 480
-    $dlg.Height = 440
+    $dlg.Title = "Online Sync"
+    $dlg.Width = 520
+    $dlg.Height = 580
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -1530,16 +1530,16 @@ function Show-MaintenanceDialog {
     $stack.Margin = "20"
 
     $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Select Maintenance Type"
+    $title.Text = "Select Sync Profile"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
     $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $title.Margin = "0,0,0,16"
     $stack.Children.Add($title)
 
-    # Radio buttons for maintenance options
+    # Radio buttons for sync options
     $radioFull = New-Object System.Windows.Controls.RadioButton
-    $radioFull.Content = "Full Maintenance"
+    $radioFull.Content = "Full Sync"
     $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioFull.Margin = "0,0,0,4"
     $radioFull.IsChecked = $true
@@ -1553,7 +1553,7 @@ function Show-MaintenanceDialog {
     $stack.Children.Add($fullDesc)
 
     $radioQuick = New-Object System.Windows.Controls.RadioButton
-    $radioQuick.Content = "Quick Maintenance"
+    $radioQuick.Content = "Quick Sync"
     $radioQuick.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $radioQuick.Margin = "0,0,0,4"
     $stack.Children.Add($radioQuick)
@@ -1572,79 +1572,141 @@ function Show-MaintenanceDialog {
     $stack.Children.Add($radioSync)
 
     $syncDesc = New-Object System.Windows.Controls.TextBlock
-    $syncDesc.Text = "Synchronize and approve updates only"
+    $syncDesc.Text = "Synchronize and approve updates only (no export)"
     $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
     $syncDesc.FontSize = 11
     $syncDesc.Margin = "20,0,0,12"
     $stack.Children.Add($syncDesc)
 
-    # Export path section (visible only when Full is selected)
-    $exportPanel = New-Object System.Windows.Controls.StackPanel
-    $exportPanel.Margin = "0,8,0,12"
+    # Export Settings Section
+    $exportTitle = New-Object System.Windows.Controls.TextBlock
+    $exportTitle.Text = "Export Settings (optional)"
+    $exportTitle.FontSize = 12
+    $exportTitle.FontWeight = "SemiBold"
+    $exportTitle.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportTitle.Margin = "0,0,0,12"
+    $stack.Children.Add($exportTitle)
 
+    # Full Export Path
     $exportLabel = New-Object System.Windows.Controls.TextBlock
-    $exportLabel.Text = "Export Path (optional):"
-    $exportLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $exportLabel.FontSize = 12
-    $exportLabel.Margin = "0,0,0,6"
-    $exportPanel.Children.Add($exportLabel)
+    $exportLabel.Text = "Full Export Path (backup + all content):"
+    $exportLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $exportLabel.FontSize = 11
+    $exportLabel.Margin = "0,0,0,4"
+    $stack.Children.Add($exportLabel)
 
-    $exportHint = New-Object System.Windows.Controls.TextBlock
-    $exportHint.Text = "Default: \\lab-hyperv\d\WSUS-Exports"
-    $exportHint.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $exportHint.FontSize = 10
-    $exportHint.Margin = "0,0,0,6"
-    $exportPanel.Children.Add($exportHint)
+    $exportPanel = New-Object System.Windows.Controls.DockPanel
+    $exportPanel.Margin = "0,0,0,12"
 
-    $exportInputPanel = New-Object System.Windows.Controls.Grid
-    $col1 = New-Object System.Windows.Controls.ColumnDefinition
-    $col1.Width = "*"
-    $col2 = New-Object System.Windows.Controls.ColumnDefinition
-    $col2.Width = "Auto"
-    $exportInputPanel.ColumnDefinitions.Add($col1)
-    $exportInputPanel.ColumnDefinitions.Add($col2)
+    $exportBrowse = New-Object System.Windows.Controls.Button
+    $exportBrowse.Content = "..."
+    $exportBrowse.Width = 30
+    $exportBrowse.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $exportBrowse.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportBrowse.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($exportBrowse, "Right")
+    $exportPanel.Children.Add($exportBrowse)
 
-    $exportPathBox = New-Object System.Windows.Controls.TextBox
-    $exportPathBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $exportPathBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $exportPathBox.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
-    $exportPathBox.Padding = "8,6"
-    $exportPathBox.FontSize = 12
-    [System.Windows.Controls.Grid]::SetColumn($exportPathBox, 0)
-    $exportInputPanel.Children.Add($exportPathBox)
+    $exportBox = New-Object System.Windows.Controls.TextBox
+    $exportBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $exportBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportBox.BorderThickness = 0
+    $exportBox.Padding = "8,6"
+    $exportBox.Margin = "0,0,4,0"
+    $exportPanel.Children.Add($exportBox)
 
-    $browseBtn = New-Object System.Windows.Controls.Button
-    $browseBtn.Content = "Browse..."
-    $browseBtn.Padding = "10,6"
-    $browseBtn.Margin = "6,0,0,0"
-    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $browseBtn.BorderThickness = 0
-    $browseBtn.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select export destination folder"
-        $fbd.ShowNewFolderButton = $true
-        if ($fbd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $exportPathBox.Text = $fbd.SelectedPath
-        }
-    }.GetNewClosure())
-    [System.Windows.Controls.Grid]::SetColumn($browseBtn, 1)
-    $exportInputPanel.Children.Add($browseBtn)
-
-    $exportPanel.Children.Add($exportInputPanel)
     $stack.Children.Add($exportPanel)
 
-    # Show/hide export panel based on Full selection
-    $radioFull.Add_Checked({ $exportPanel.Visibility = "Visible" }.GetNewClosure())
-    $radioQuick.Add_Checked({ $exportPanel.Visibility = "Collapsed" }.GetNewClosure())
-    $radioSync.Add_Checked({ $exportPanel.Visibility = "Collapsed" }.GetNewClosure())
+    # Differential Export Path
+    $diffLabel = New-Object System.Windows.Controls.TextBlock
+    $diffLabel.Text = "Differential Export Path (recent changes only):"
+    $diffLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $diffLabel.FontSize = 11
+    $diffLabel.Margin = "0,0,0,4"
+    $stack.Children.Add($diffLabel)
 
+    $diffPanel = New-Object System.Windows.Controls.DockPanel
+    $diffPanel.Margin = "0,0,0,12"
+
+    $diffBrowse = New-Object System.Windows.Controls.Button
+    $diffBrowse.Content = "..."
+    $diffBrowse.Width = 30
+    $diffBrowse.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $diffBrowse.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $diffBrowse.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($diffBrowse, "Right")
+    $diffPanel.Children.Add($diffBrowse)
+
+    $diffBox = New-Object System.Windows.Controls.TextBox
+    $diffBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $diffBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $diffBox.BorderThickness = 0
+    $diffBox.Padding = "8,6"
+    $diffBox.Margin = "0,0,4,0"
+    $diffPanel.Children.Add($diffBox)
+
+    $stack.Children.Add($diffPanel)
+
+    # Export Days
+    $daysPanel = New-Object System.Windows.Controls.StackPanel
+    $daysPanel.Orientation = "Horizontal"
+    $daysPanel.Margin = "0,0,0,20"
+
+    $daysLabel = New-Object System.Windows.Controls.TextBlock
+    $daysLabel.Text = "Differential includes files from last"
+    $daysLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $daysLabel.FontSize = 11
+    $daysLabel.VerticalAlignment = "Center"
+    $daysPanel.Children.Add($daysLabel)
+
+    $daysBox = New-Object System.Windows.Controls.TextBox
+    $daysBox.Text = "30"
+    $daysBox.Width = 50
+    $daysBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $daysBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysBox.BorderThickness = 0
+    $daysBox.Padding = "8,4"
+    $daysBox.Margin = "8,0,8,0"
+    $daysBox.HorizontalContentAlignment = "Center"
+    $daysPanel.Children.Add($daysBox)
+
+    $daysLabel2 = New-Object System.Windows.Controls.TextBlock
+    $daysLabel2.Text = "days"
+    $daysLabel2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $daysLabel2.FontSize = 11
+    $daysLabel2.VerticalAlignment = "Center"
+    $daysPanel.Children.Add($daysLabel2)
+
+    $stack.Children.Add($daysPanel)
+
+    # Browse button handlers
+    $exportBrowse.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select full export destination (network share or local path)"
+        try {
+            if ($fbd.ShowDialog() -eq "OK") {
+                $exportBox.Text = $fbd.SelectedPath
+            }
+        } finally { $fbd.Dispose() }
+    }.GetNewClosure())
+
+    $diffBrowse.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select differential export destination (e.g., USB drive)"
+        try {
+            if ($fbd.ShowDialog() -eq "OK") {
+                $diffBox.Text = $fbd.SelectedPath
+            }
+        } finally { $fbd.Dispose() }
+    }.GetNewClosure())
+
+    # Button panel
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
 
     $runBtn = New-Object System.Windows.Controls.Button
-    $runBtn.Content = "Run Maintenance"
+    $runBtn.Content = "Run Sync"
     $runBtn.Padding = "14,6"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
     $runBtn.Foreground = "White"
@@ -1655,7 +1717,10 @@ function Show-MaintenanceDialog {
         if ($radioFull.IsChecked) { $result.Profile = "Full" }
         elseif ($radioQuick.IsChecked) { $result.Profile = "Quick" }
         else { $result.Profile = "SyncOnly" }
-        $result.ExportPath = $exportPathBox.Text.Trim()
+        $result.ExportPath = $exportBox.Text.Trim()
+        $result.DifferentialPath = $diffBox.Text.Trim()
+        $days = 30
+        if ([int]::TryParse($daysBox.Text, [ref]$days)) { $result.ExportDays = $days }
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -1710,7 +1775,7 @@ function Show-ScheduleTaskDialog {
     $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Schedule Monthly Maintenance" Width="480" Height="560"
+        Title="Schedule Online Sync" Width="480" Height="560"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="#0D1117">
     <Window.Resources>
@@ -2476,16 +2541,19 @@ function Invoke-LogOperation {
             $opts = Show-MaintenanceDialog
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
-            $maintArgs = "-Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
-            if (-not [string]::IsNullOrWhiteSpace($opts.ExportPath)) {
-                if (-not (Test-SafePath $opts.ExportPath)) {
-                    [System.Windows.MessageBox]::Show("Invalid export path.", "Error", "OK", "Error")
-                    return
-                }
+            $maintCmd = "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
+            if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
-                $maintArgs += " -ExportPath '$exportPathSafe'"
+                $maintCmd += " -ExportPath '$exportPathSafe'"
             }
-            "& '$maintSafe' $maintArgs"
+            if ($opts.DifferentialPath) {
+                $diffPathSafe = Get-EscapedPath $opts.DifferentialPath
+                $maintCmd += " -DifferentialExportPath '$diffPathSafe'"
+            }
+            if ($opts.ExportDays -and $opts.ExportDays -gt 0) {
+                $maintCmd += " -ExportDays $($opts.ExportDays)"
+            }
+            $maintCmd
         }
         "schedule" {
             $opts = Show-ScheduleTaskDialog
@@ -3014,7 +3082,7 @@ GPO files copied to: $destDir
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
-$controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
@@ -3060,7 +3128,7 @@ $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
 $controls.QBtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
 $controls.QBtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
-$controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Monthly Maintenance" })
+$controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
