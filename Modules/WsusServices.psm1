@@ -317,6 +317,53 @@ function Stop-SqlServerExpress {
     return Stop-WsusService -ServiceName $serviceName -Force:$Force
 }
 
+function Start-SqlBrowserService {
+    <#
+    .SYNOPSIS
+        Starts SQL Server Browser service
+
+    .DESCRIPTION
+        Starts the SQL Browser service and sets it to Automatic startup.
+        SQL Browser is recommended for named SQL Server instances.
+
+    .OUTPUTS
+        Boolean indicating success
+    #>
+    try {
+        $service = Get-Service -Name 'SQLBrowser' -ErrorAction SilentlyContinue
+        if (-not $service) {
+            Write-Warning "  SQL Browser service not found"
+            return $false
+        }
+
+        # Set to Automatic startup
+        Set-Service -Name 'SQLBrowser' -StartupType Automatic -ErrorAction SilentlyContinue
+
+        return Start-WsusService -ServiceName 'SQLBrowser' -TimeoutSeconds 30
+    } catch {
+        Write-Warning "  Failed to start SQL Browser: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Stop-SqlBrowserService {
+    <#
+    .SYNOPSIS
+        Stops SQL Server Browser service
+
+    .PARAMETER Force
+        Force stop the service
+
+    .OUTPUTS
+        Boolean indicating success
+    #>
+    param(
+        [switch]$Force
+    )
+
+    return Stop-WsusService -ServiceName 'SQLBrowser' -Force:$Force
+}
+
 function Start-WsusServer {
     <#
     .SYNOPSIS
@@ -442,13 +489,24 @@ function Get-WsusServiceStatus {
     .SYNOPSIS
         Gets status of all WSUS-related services
 
+    .PARAMETER IncludeSqlBrowser
+        Include SQL Browser service in the status check (default: $false)
+
     .OUTPUTS
         Hashtable with service status information
     #>
+    param(
+        [switch]$IncludeSqlBrowser
+    )
+
     $services = @{
         "SQL Server Express" = "MSSQL`$SQLEXPRESS"
         "WSUS Service" = "WSUSService"
         "IIS" = "W3SVC"
+    }
+
+    if ($IncludeSqlBrowser) {
+        $services["SQL Browser"] = "SQLBrowser"
     }
 
     $status = @{}
@@ -484,6 +542,8 @@ Export-ModuleMember -Function @(
     'Restart-WsusService',
     'Start-SqlServerExpress',
     'Stop-SqlServerExpress',
+    'Start-SqlBrowserService',
+    'Stop-SqlBrowserService',
     'Start-WsusServer',
     'Stop-WsusServer',
     'Start-IISService',

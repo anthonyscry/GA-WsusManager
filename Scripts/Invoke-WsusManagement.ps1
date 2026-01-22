@@ -84,6 +84,9 @@ param(
     [Parameter(ParameterSetName = 'Repair')]
     [switch]$Repair,
 
+    [Parameter(ParameterSetName = 'Diagnostics')]
+    [switch]$Diagnostics,
+
     [Parameter(ParameterSetName = 'Cleanup')]
     [switch]$Cleanup,
 
@@ -1482,6 +1485,65 @@ function Invoke-WsusHealthCheck {
 }
 
 # ============================================================================
+# COMPREHENSIVE DIAGNOSTICS OPERATION
+# ============================================================================
+
+function Invoke-WsusDiagnosticsOperation {
+    <#
+    .SYNOPSIS
+        Runs comprehensive WSUS diagnostics with automatic fixes
+
+    .DESCRIPTION
+        Performs comprehensive system scan including:
+        - All service checks (SQL Server, SQL Browser, WSUS, IIS)
+        - SQL protocol configuration (TCP/IP, Named Pipes)
+        - Database connectivity and SUSDB existence
+        - SQL login verification (NETWORK SERVICE)
+        - Firewall rules (WSUS and SQL ports)
+        - Content directory permissions
+        - WSUS Application Pool status
+        Automatically applies fixes for detected issues.
+    #>
+    param(
+        [string]$ContentPath,
+        [string]$SqlInstance
+    )
+
+    Write-Banner "WSUS COMPREHENSIVE DIAGNOSTICS"
+
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusHealth.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHealth.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
+
+        # Run comprehensive diagnostics with auto-fix enabled
+        $result = Invoke-WsusDiagnostics -ContentPath $ContentPath -SqlInstance $SqlInstance -AutoFix
+
+        if ($result.Healthy) {
+            Write-Host "`n[SUCCESS] System is healthy!" -ForegroundColor Green
+        } elseif ($result.IssuesFixed -gt 0) {
+            Write-Host "`n[INFO] $($result.IssuesFixed) issue(s) were automatically fixed." -ForegroundColor Yellow
+            if ($result.FixesFailed.Count -gt 0) {
+                Write-Host "[WARNING] $($result.FixesFailed.Count) fix(es) failed - manual intervention required." -ForegroundColor Red
+            }
+        } else {
+            Write-Host "`n[WARNING] Issues detected that require manual intervention." -ForegroundColor Red
+        }
+
+        return $result
+    } else {
+        # Fallback to basic health check if modules not found
+        Write-Host "Modules not found, falling back to basic check..." -ForegroundColor Yellow
+        Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair
+    }
+}
+
+# ============================================================================
 # CLEANUP OPERATION
 # ============================================================================
 
@@ -1685,6 +1747,8 @@ if ($Restore) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair
+} elseif ($Diagnostics) {
+    Invoke-WsusDiagnosticsOperation -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Cleanup) {
     Invoke-WsusCleanup -Force:$Force
 } elseif ($Reset) {
