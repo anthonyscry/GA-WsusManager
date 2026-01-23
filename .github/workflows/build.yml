@@ -234,17 +234,6 @@ jobs:
         path: ./test-results.xml
         retention-days: 14
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      if: always()
-      with:
-        files: coverage.xml
-        flags: unittests
-        fail_ci_if_error: false
-        verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   #############################################
   # Build Executable
   #############################################
