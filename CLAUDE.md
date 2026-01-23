@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.9
+**Current Version:** 3.8.10
 
 ## Repository Structure
 
@@ -195,7 +195,33 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.9)
+## Recent Changes (v3.8.10)
+
+- **Deep Cleanup Fix - Now performs full database maintenance:**
+  - Previously only called `Invoke-WsusServerCleanup` (basic WSUS cleanup)
+  - Now performs complete 6-step database maintenance:
+    1. WSUS built-in cleanup (decline superseded, remove obsolete)
+    2. Remove supersession records for declined updates
+    3. Remove supersession records for superseded updates (batched, 10k/batch)
+    4. Delete declined updates from database via `spDeleteUpdate` (100/batch)
+    5. Rebuild/reorganize fragmented indexes + update statistics
+    6. Shrink database to reclaim disk space
+  - Shows progress and timing for each step
+  - Reports database size before/after shrink
+
+- **Unified Diagnostics:**
+  - Consolidated Health Check + Repair into single "Diagnostics" operation
+  - Single button in GUI performs comprehensive scan with automatic fixes
+  - Clear pass/fail reporting for all checks
+
+- **Documentation Updates:**
+  - Updated README.md with Deep Cleanup fix details
+  - Updated GitHub Wiki (User Guide, Changelog)
+  - Updated Confluence SOP with all recent features
+  - Documented Security Definitions auto-approval feature
+  - Documented Reset Content button for air-gap import fix
+
+### Previous (v3.8.9)
 
 - **Renamed Monthly Maintenance to Online Sync:**
   - Nav button: "📅 Monthly" → "🔄 Online Sync"

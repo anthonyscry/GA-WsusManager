@@ -1,6 +1,6 @@
 # WSUS Manager
 
-**Version:** 3.8.9
+**Version:** 3.8.10
 **Author:** Tony Tran, ISSO, Classified Computing, GA-ASI
 
 A comprehensive PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. Provides both a modern WPF GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
@@ -8,10 +8,11 @@ A comprehensive PowerShell-based automation suite for Windows Server Update Serv
 ## Features
 
 - **Modern WPF GUI** - Dark theme dashboard with real-time status monitoring
-- **Health Monitoring** - Automated health checks with auto-recovery capabilities
-- **Database Maintenance** - Deep cleanup, index optimization, and backup/restore
-- **Air-Gap Support** - Export/import operations for offline networks
-- **Scheduled Maintenance** - Automated monthly maintenance with configurable profiles
+- **Unified Diagnostics** - Comprehensive health checks with automatic repair in one operation
+- **Deep Cleanup** - Full database maintenance including supersession cleanup, index optimization, and compaction
+- **Air-Gap Support** - Export/import operations for offline networks with Reset Content for post-import fixes
+- **Definition Updates** - Security definitions (antivirus signatures) now auto-approved alongside critical updates
+- **Scheduled Maintenance** - Automated online sync with configurable profiles
 - **HTTPS/SSL Support** - Easy SSL certificate configuration
 
 ## Quick Start
@@ -76,18 +77,45 @@ GA-WsusManager/
 # Run comprehensive diagnostics (scans and auto-fixes issues)
 .\Scripts\Invoke-WsusManagement.ps1 -Diagnostics
 
-# Run health check only (no auto-fix)
-.\Scripts\Invoke-WsusManagement.ps1 -Health
+# Run deep cleanup (supersession records, indexes, compaction)
+.\Scripts\Invoke-WsusManagement.ps1 -Cleanup -Force
 
-# Run deep cleanup
-.\Scripts\Invoke-WsusManagement.ps1 -Cleanup
+# Reset content verification (use after database import on air-gapped servers)
+.\Scripts\Invoke-WsusManagement.ps1 -Reset
 
 # Export for air-gapped network
 .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "E:\WSUS-Export"
 
-# Schedule monthly maintenance
+# Schedule online sync
 .\Scripts\Invoke-WsusManagement.ps1 -Schedule -MaintenanceProfile Full
 ```
+
+## Recent Changes (v3.8.10)
+
+### Deep Cleanup Fix
+The Deep Cleanup operation now performs all advertised database maintenance:
+1. **WSUS built-in cleanup** - Decline superseded, remove obsolete updates
+2. **Supersession record cleanup** - Removes stale records from `tbRevisionSupersedesUpdate`
+3. **Declined update deletion** - Purges declined updates via `spDeleteUpdate`
+4. **Index optimization** - Rebuilds/reorganizes fragmented indexes
+5. **Statistics update** - Refreshes query optimizer statistics
+6. **Database compaction** - Shrinks database to reclaim disk space
+
+### Unified Diagnostics
+Health Check and Repair have been consolidated into a single **Diagnostics** operation that:
+- Scans all WSUS components (services, database, firewall, permissions)
+- Automatically fixes detected issues
+- Reports results with clear pass/fail status
+
+### Security Definitions Auto-Approval
+Definition Updates (antivirus signatures, security definitions) are now automatically approved alongside other update classifications:
+- Critical Updates, Security Updates, Update Rollups, Service Packs, Updates, **Definition Updates**
+- Upgrades still require manual review
+
+### Reset Content Button
+New button for air-gapped servers to fix "content is still downloading" status after database import:
+- Runs `wsusutil reset` to re-verify content files against database
+- Use after importing a database backup when content files are already present
 
 ## Important Notes
 

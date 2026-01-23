@@ -4,6 +4,38 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.10] - January 2026
+
+### Bug Fixes
+- **Fixed**: Deep Cleanup now actually performs all database operations
+  - Previously only called `Invoke-WsusServerCleanup` (basic WSUS cleanup)
+  - Now performs complete database maintenance as advertised
+
+### Features
+- **Deep Cleanup Enhancement**: Full 6-step database maintenance:
+  1. WSUS built-in cleanup (decline superseded, remove obsolete)
+  2. Remove supersession records for declined updates
+  3. Remove supersession records for superseded updates (batched, 10k/batch)
+  4. Delete declined updates from database via `spDeleteUpdate`
+  5. Rebuild/reorganize fragmented indexes + update statistics
+  6. Shrink database to reclaim disk space
+  - Shows progress and timing for each step
+  - Reports database size before/after shrink
+
+- **Unified Diagnostics**: Consolidated Health Check + Repair into single operation
+  - Single "Diagnostics" button in GUI (was separate Health Check and Repair)
+  - Automatically scans and fixes issues in one pass
+  - Clear pass/fail reporting for all checks
+
+### Documentation
+- **Updated**: README.md with Deep Cleanup fix details
+- **Updated**: GitHub Wiki (User Guide, Changelog)
+- **Updated**: Confluence SOP with all recent features
+- **Documented**: Security Definitions auto-approval feature
+- **Documented**: Reset Content button for air-gap import fix
+
+---
+
 ## [3.8.9] - January 2026
 
 ### Features
