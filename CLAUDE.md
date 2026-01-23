@@ -195,7 +195,42 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.8)
+## Recent Changes (v3.8.9)
+
+- **Renamed Monthly Maintenance to Online Sync:**
+  - Nav button: "📅 Monthly" → "🔄 Online Sync"
+  - Quick action button: "Maintenance" → "Online Sync"
+  - Dialog title and options updated (Full/Quick Sync, Sync Only)
+  - Schedule dialog title updated
+  - CLI script header updated
+  - Windows Task Scheduler task name unchanged for backward compatibility
+
+- **Online Sync dialog with export path options:**
+  - Added Full Export Path field with browse button (for complete backup + content mirror)
+  - Added Differential Export Path field with browse button (for USB/air-gap transfer)
+  - Added Export Days field (default: 30 days) for differential age filter
+  - All export fields are optional - if not specified, export is skipped
+  - Dialog height increased to 580px to accommodate new fields
+
+- **CLI export path improvements (Invoke-WsusMonthlyMaintenance.ps1):**
+  - Added `-DifferentialExportPath` parameter for separate differential destination
+  - Removed hardcoded default export path (was `\\lab-hyperv\d\WSUS-Exports`)
+  - If DifferentialExportPath not specified, defaults to `{ExportPath}\Year\Month`
+  - Pre-flight checks validate access to both export paths
+  - Operation summary displays both paths
+
+- **Definition Updates now auto-approved:**
+  - Added "Definition Updates" to approved classifications (security definitions, antivirus signatures)
+  - Previously excluded as "too frequent" but superseded cleanup handles this
+  - Approved classifications: Critical, Security, Update Rollups, Service Packs, Updates, Definition Updates
+  - Still excluded: Upgrades (require manual review)
+
+- **Updated MaxAutoApproveCount to 200:**
+  - Increased from 100 to provide buffer for Definition Updates
+  - Superseded updates are declined before approval runs, so accumulation is minimal
+  - Safety check skips auto-approval if count exceeds 200
+
+### Previous (v3.8.8)
 
 - **Bug Fixes (2026-01-14):**
   - Fixed `UpdateIdParam` error in declined update purge: Changed here-string from `@"..."@` to `@'...'@` to prevent PowerShell from evaluating `$(UpdateIdParam)` as a subexpression
