@@ -34,8 +34,8 @@
     Skip the heavy "ultimate cleanup" stage before the backup.
 
 .PARAMETER ExportPath
-    Root path for full exports (e.g., "\\server\share\WSUS-Full").
-    Full backup + complete content mirror goes here.
+    Root path for full exports. Full backup + complete content mirror goes here.
+    Default: \\lab-hyperv\d\WSUS-Exports
 
 .PARAMETER DifferentialExportPath
     Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive).
@@ -100,7 +100,7 @@ param(
 
     # Root path for full exports (e.g., "\\server\share\WSUS-Full")
     # Full backup + complete content mirror goes here
-    [string]$ExportPath = "",
+    [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
 
     # Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive)
     # If not specified, defaults to ExportPath\Year\Month subfolder
