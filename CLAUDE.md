@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.8
+**Current Version:** 3.8.9
 
 ## Repository Structure
 
