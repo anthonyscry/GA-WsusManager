@@ -348,6 +348,7 @@ wuauclt /detectnow /reportnow
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Endless downloads | Wrong content path | Set content path to `C:\WSUS\` (not `C:\WSUS\wsuscontent\`) |
+| "Content downloading" after import | DB/content mismatch | Click **Reset Content** to re-verify files |
 | Clients not updating | GPO not applied | Run `gpupdate /force`, check ports 8530/8531 |
 | Database errors | Missing sysadmin | Grant sysadmin role in SSMS |
 | Services not starting | Dependency issues | Use "Start Services" button on dashboard |
@@ -372,7 +373,7 @@ wuauclt /detectnow /reportnow
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.8.9 | Jan 2026 | Renamed Monthly Maintenance to Online Sync, export path options in dialog, Definition Updates auto-approved, config extraction, CLI integration tests |
+| 3.8.9 | Jan 2026 | Reset Content button for air-gap import fix, renamed Monthly Maintenance to Online Sync, export path options, Definition Updates auto-approved |
 | 3.8.8 | Jan 2026 | Fixed declined update purge error, database shrink retry logic, suppressed noisy spDeleteUpdate errors |
 | 3.8.7 | Jan 2026 | Live Terminal mode, import dialog improvements, Create GPO button, non-blocking network check |
 | 3.8.6 | Jan 2026 | Input fields disabled during operations, code cleanup |
