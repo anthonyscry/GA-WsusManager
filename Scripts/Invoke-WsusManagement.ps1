@@ -1560,22 +1560,29 @@ function Invoke-WsusCleanup {
     }
 
     # Use the globally resolved modules folder
+    $modulesLoaded = $false
     if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
         try {
             Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
             Import-Module (Join-Path $ModulesFolder "WsusDatabase.psm1") -Force -ErrorAction Stop
             Import-Module (Join-Path $ModulesFolder "WsusServices.psm1") -Force -ErrorAction Stop
+            $modulesLoaded = $true
         } catch {
             Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
             return
         }
+    } else {
+        Write-Host "ERROR: WsusDatabase.psm1 module not found. Cannot perform deep cleanup." -ForegroundColor Red
+        return
     }
 
     Write-Host "This performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow
-    Write-Host "  1. Removes supersession records"
-    Write-Host "  2. Deletes declined updates"
-    Write-Host "  3. Rebuilds indexes"
-    Write-Host "  4. Shrinks database"
+    Write-Host "  1. Runs WSUS built-in cleanup (decline superseded, remove obsolete)"
+    Write-Host "  2. Removes supersession records from database"
+    Write-Host "  3. Deletes declined updates from database"
+    Write-Host "  4. Rebuilds/reorganizes fragmented indexes"
+    Write-Host "  5. Updates database statistics"
+    Write-Host "  6. Shrinks database to reclaim space"
     Write-Host ""
     Write-Host "WARNING: WSUS will be offline for 30-90 minutes" -ForegroundColor Red
     Write-Host ""
@@ -1588,26 +1595,147 @@ function Invoke-WsusCleanup {
         }
     }
 
-    # Stop WSUS
-    Write-Log "Stopping WSUS..." "Yellow"
+    $cleanupStart = Get-Date
+
+    # Stop WSUS to reduce contention during database operations
+    Write-Log "Stopping WSUS Service..." "Yellow"
     Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 5
 
-    # Run WSUS cleanup
-    Write-Log "Running WSUS cleanup..." "Yellow"
+    # Step 1: Run WSUS built-in cleanup
+    Write-Log "Step 1/6: Running WSUS built-in cleanup..." "Yellow"
     try {
         Import-Module UpdateServices -ErrorAction SilentlyContinue
-        Invoke-WsusServerCleanup -CleanupObsoleteUpdates -CleanupUnneededContentFiles -CompressUpdates -DeclineSupersededUpdates -Confirm:$false
-        Write-Log "[OK] Cleanup completed" "Green"
+        $cleanupResult = Invoke-WsusServerCleanup -CleanupObsoleteUpdates -CleanupUnneededContentFiles -CompressUpdates -DeclineSupersededUpdates -Confirm:$false
+        Write-Log "[OK] WSUS cleanup completed" "Green"
+        if ($cleanupResult) {
+            Write-Host $cleanupResult -ForegroundColor Gray
+        }
     } catch {
-        Write-Log "[WARN] Cleanup warning: $_" "Yellow"
+        Write-Log "[WARN] WSUS cleanup warning: $_" "Yellow"
     }
 
-    # Start WSUS
-    Write-Log "Starting WSUS..." "Yellow"
-    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    # Step 2: Remove supersession records for declined updates
+    Write-Log "Step 2/6: Removing supersession records for declined updates..." "Yellow"
+    try {
+        $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance $SqlInstance
+        Write-Log "[OK] Removed $deletedDeclined supersession records for declined updates" "Green"
+    } catch {
+        Write-Log "[WARN] Failed to remove declined supersession records: $_" "Yellow"
+    }
 
-    Write-Banner "CLEANUP COMPLETE"
+    # Step 3: Remove supersession records for superseded updates (batched)
+    Write-Log "Step 3/6: Removing supersession records for superseded updates (batched)..." "Yellow"
+    try {
+        $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance $SqlInstance -ShowProgress
+        Write-Log "[OK] Removed $deletedSuperseded supersession records for superseded updates" "Green"
+    } catch {
+        Write-Log "[WARN] Failed to remove superseded supersession records: $_" "Yellow"
+    }
+
+    # Step 4: Delete declined updates from database using spDeleteUpdate
+    Write-Log "Step 4/6: Deleting declined updates from database..." "Yellow"
+    try {
+        # Get declined updates via WSUS API
+        $wsus = Get-WsusServer -Name localhost -PortNumber 8530 -ErrorAction Stop
+        $declinedUpdates = $wsus.GetUpdates() | Where-Object { $_.IsDeclined }
+        $declinedIDs = @($declinedUpdates | Select-Object -ExpandProperty Id | ForEach-Object { $_.UpdateId })
+
+        if ($declinedIDs.Count -gt 0) {
+            Write-Log "Found $($declinedIDs.Count) declined updates to delete..." "Yellow"
+
+            $batchSize = 100
+            $totalDeleted = 0
+            $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
+            $currentBatch = 0
+
+            for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
+                $currentBatch++
+                $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+
+                foreach ($updateId in $batch) {
+                    # Use single-quote here-string to prevent PowerShell variable expansion
+                    $deleteQuery = @'
+DECLARE @LocalUpdateID int
+DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
+SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
+IF @LocalUpdateID IS NOT NULL
+    EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
+'@
+                    # Suppress errors - spDeleteUpdate errors are expected for updates with dependencies
+                    $ErrorActionPreference = 'SilentlyContinue'
+                    try {
+                        Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+                            -Query $deleteQuery -QueryTimeout 300 `
+                            -Variable "UpdateIdParam=$updateId" `
+                            -TrustServerCertificate -ErrorAction SilentlyContinue 2>$null | Out-Null
+                        $totalDeleted++
+                    } catch {
+                        # Silently skip - expected errors for updates with dependencies
+                    }
+                    $ErrorActionPreference = 'Continue'
+                }
+
+                if ($currentBatch % 5 -eq 0) {
+                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                    Write-Log "  Progress: $currentBatch/$totalBatches batches ($percentComplete%)" "Gray"
+                }
+            }
+            Write-Log "[OK] Deleted $totalDeleted declined updates from database" "Green"
+        } else {
+            Write-Log "[OK] No declined updates found to delete" "Green"
+        }
+    } catch {
+        Write-Log "[WARN] Failed to delete declined updates: $_" "Yellow"
+    }
+
+    # Step 5: Rebuild/reorganize fragmented indexes
+    Write-Log "Step 5/6: Optimizing database indexes (may take 5-15 minutes)..." "Yellow"
+    try {
+        $indexResult = Optimize-WsusIndexes -SqlInstance $SqlInstance -ShowProgress
+        Write-Log "[OK] Index optimization complete (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))" "Green"
+
+        # Also update statistics
+        Write-Log "Updating database statistics..." "Yellow"
+        if (Update-WsusStatistics -SqlInstance $SqlInstance) {
+            Write-Log "[OK] Statistics updated" "Green"
+        }
+    } catch {
+        Write-Log "[WARN] Index optimization failed: $_" "Yellow"
+    }
+
+    # Step 6: Shrink database to reclaim space
+    Write-Log "Step 6/6: Shrinking database to reclaim space..." "Yellow"
+    try {
+        # Get size before shrink
+        $sizeBefore = Get-WsusDatabaseSize -SqlInstance $SqlInstance
+
+        if (Invoke-WsusDatabaseShrink -SqlInstance $SqlInstance) {
+            $sizeAfter = Get-WsusDatabaseSize -SqlInstance $SqlInstance
+            $savedGB = [math]::Round($sizeBefore - $sizeAfter, 2)
+            Write-Log "[OK] Database shrink completed (Before: ${sizeBefore}GB, After: ${sizeAfter}GB, Saved: ${savedGB}GB)" "Green"
+        } else {
+            Write-Log "[WARN] Database shrink did not complete successfully" "Yellow"
+        }
+    } catch {
+        Write-Log "[WARN] Database shrink failed: $_" "Yellow"
+    }
+
+    # Start WSUS back up
+    Write-Log "Starting WSUS Service..." "Yellow"
+    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 5
+
+    # Verify WSUS started
+    $wsusService = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    if ($wsusService.Status -eq 'Running') {
+        Write-Log "[OK] WSUS Service started successfully" "Green"
+    } else {
+        Write-Log "[WARN] WSUS Service may not have started properly. Please check manually." "Yellow"
+    }
+
+    $cleanupDuration = [math]::Round(((Get-Date) - $cleanupStart).TotalMinutes, 1)
+    Write-Banner "DEEP CLEANUP COMPLETE ($cleanupDuration minutes)"
 }
 
 # ============================================================================

@@ -272,40 +272,47 @@ Creates or updates the scheduled task that runs Online Sync.
 
 ### Deep Cleanup
 
-Aggressive cleanup for space recovery.
+Comprehensive database cleanup for space recovery and performance optimization.
 
-**What it does:**
-1. Removes obsolete updates
-2. Cleans superseded updates
-3. Removes unneeded content files
-4. Shrinks database
-5. Compacts content directory
+**What it does (6 steps):**
+1. **WSUS built-in cleanup** - Declines superseded updates, removes obsolete updates, cleans unneeded content files
+2. **Remove declined supersession records** - Cleans `tbRevisionSupersedesUpdate` table for declined updates
+3. **Remove superseded supersession records** - Batched cleanup (10,000 records per batch) for superseded updates
+4. **Delete declined updates** - Purges declined updates from database via `spDeleteUpdate` (100-record batches)
+5. **Index optimization** - Rebuilds highly fragmented indexes (>30%), reorganizes moderately fragmented (10-30%), updates statistics
+6. **Database shrink** - Compacts database to reclaim disk space (with retry logic for backup contention)
+
+**Progress reporting:**
+- Shows step number and description for each phase
+- Reports batch progress during large operations
+- Displays database size before and after shrink
+- Shows total duration at completion
 
 **When to use:**
-- Database approaching 10GB limit
+- Database approaching 10GB limit (SQL Express)
 - Disk space critically low
-- After declining many updates
+- After declining many updates manually
+- Quarterly maintenance
 
-### Health Check
+**Duration:** 30-90 minutes depending on database size
 
-Verifies WSUS configuration without making changes.
+### Diagnostics
 
-**Checks performed:**
-- Service status (SQL, WSUS, IIS)
-- Database connectivity
-- Firewall rules
-- Directory permissions
-- SSL/HTTPS configuration
+Comprehensive health check with automatic repair (combines former Health Check and Health + Repair).
 
-### Health + Repair
+**What it checks and fixes:**
+- **Services**: SQL Server, WSUS, IIS - starts stopped services, sets correct startup type
+- **SQL Browser**: Starts and sets to Automatic if not running
+- **Database connectivity**: Verifies connection to SUSDB
+- **SQL Login**: Creates NETWORK SERVICE login with dbcreator role if missing
+- **Firewall rules**: Creates inbound rules for ports 8530/8531 if missing
+- **Directory permissions**: Sets correct ACLs on WSUS content folder
+- **Application Pool**: Starts WsusPool if stopped
 
-Runs health check and automatically fixes issues.
-
-**What it fixes:**
-- Starts stopped services
-- Creates missing firewall rules
-- Sets directory permissions
-- Repairs service dependencies
+**Output:**
+- Clear pass/fail status for each check
+- Automatic fix applied when issues detected
+- Summary of all findings at completion
 
 ### Reset Content
 
@@ -333,10 +340,10 @@ The dashboard provides quick action buttons for common tasks:
 
 | Button | Action |
 |--------|--------|
-| **Health Check** | Run health verification |
-| **Deep Cleanup** | Run aggressive cleanup |
+| **Diagnostics** | Run comprehensive health check with automatic repair |
+| **Deep Cleanup** | Run full database cleanup (supersession, indexes, shrink) |
 | **Online Sync** | Run online sync with Microsoft Update |
-| **Start Services** | Start all WSUS services |
+| **Start Services** | Start all WSUS services (SQL, WSUS, IIS) |
 
 ### Start Services
 

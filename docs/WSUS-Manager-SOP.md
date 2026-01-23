@@ -1,6 +1,6 @@
-# WSUS Manager v3.8.9 - Standard Operating Procedure
+# WSUS Manager v3.8.10 - Standard Operating Procedure
 
-**Version:** 3.8.9
+**Version:** 3.8.10
 **Author:** Tony Tran, ISSO, GA-ASI
 **Last Updated:** January 2026
 
@@ -38,7 +38,7 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v3.8.9.zip | Complete distribution package |
+| WsusManager-v3.8.10.zip | Complete distribution package |
 
 **Package Contents:**
 
@@ -141,7 +141,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v3.8.9.zip` to `C:\WSUS\` |
+| 2 | Extract `WsusManager-v3.8.10.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `WsusManager.exe` → Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
@@ -164,7 +164,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v3.8.9 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v3.8.10 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
 
 - **Dashboard** with auto-refresh (30-second interval)
 - **Server Mode** toggle (Online vs Air-Gap)
@@ -193,15 +193,27 @@ WSUS Manager v3.8.9 includes a full GUI application (`WsusManager.exe`) built wi
 | Button | Function |
 |--------|----------|
 | **Install WSUS** | Install WSUS + SQL Server Express 2022 |
-| **Health Check** | Read-only diagnostics |
-| **Repair Health** | Auto-fix common issues |
-| **Deep Cleanup** | Aggressive database cleanup |
-| **Monthly Maintenance** | Profile-based maintenance (Light/Standard/Deep) |
+| **Diagnostics** | Comprehensive health check with automatic repair |
+| **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
+| **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
 | **Transfer** | Export/Import dialog for air-gap operations |
 | **Restore Database** | Restore SUSDB from backup file |
-| **Schedule Task** | Create scheduled maintenance task |
+| **Reset Content** | Re-verify content files after DB import (air-gap) |
+| **Schedule Task** | Create scheduled online sync task |
 | **Create GPO** | Copy GPO files to C:\WSUS\WSUS GPO |
 | **Settings** | Configure server mode, paths, preferences |
+
+### Update Classifications
+
+The following update classifications are automatically approved:
+- Critical Updates
+- Security Updates
+- Update Rollups
+- Service Packs
+- Updates
+- **Definition Updates** (antivirus signatures, security definitions)
+
+Excluded (require manual review): Upgrades
 
 ### Server Mode
 
