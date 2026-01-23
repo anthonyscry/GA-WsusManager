@@ -307,6 +307,24 @@ Runs health check and automatically fixes issues.
 - Sets directory permissions
 - Repairs service dependencies
 
+### Reset Content
+
+Forces WSUS to re-verify all content files against the database.
+
+> **Air-Gap Tip:** Use this after importing a database backup when WSUS shows "content is still downloading" even though files exist.
+
+**What it does:**
+1. Stops WSUS service
+2. Runs `wsusutil reset`
+3. Restarts WSUS service
+
+**When to use:**
+- After database restore/import on air-gapped servers
+- When WSUS shows download status but content files are present
+- To fix content verification mismatches
+
+**Note:** This operation can take several minutes depending on content size, as WSUS re-verifies each file.
+
 ---
 
 ## Quick Actions

@@ -30,6 +30,12 @@ All notable changes to WSUS Manager are documented here.
   - Extracted retry settings (attempt counts, delays)
   - New helper functions: `Get-WsusGuiSetting`, `Get-WsusRetrySetting`, `Get-WsusDialogSize`, `Get-WsusTimerInterval`
 
+- **Reset Content Button (Air-Gap):**
+  - Added "Reset Content" button in Diagnostics section
+  - Runs `wsusutil reset` to re-verify content files against database
+  - Fixes "content is still downloading" status after database import
+  - Useful for air-gapped servers after importing database backups
+
 ### Improvements
 - **CLI Export Path Improvements:**
   - Added `-DifferentialExportPath` parameter for separate differential destination
