@@ -77,6 +77,73 @@ $script:WsusConfig = @{
     DvdExport = @{
         VolumeSizeMB = 4300  # 4.3 GB for single-layer DVD
     }
+
+    # GUI Configuration
+    Gui = @{
+        # Main Window
+        MainWindow = @{
+            Width = 950
+            Height = 736
+            MinWidth = 800
+            MinHeight = 600
+        }
+
+        # Standard Dialog Sizes
+        Dialogs = @{
+            Small = @{ Width = 480; Height = 280 }      # Simple confirmations
+            Medium = @{ Width = 480; Height = 360 }     # Settings, About
+            Large = @{ Width = 480; Height = 460 }      # Transfer dialog
+            ExtraLarge = @{ Width = 520; Height = 580 } # Online Sync with export options
+            Schedule = @{ Width = 480; Height = 560 }   # Schedule task dialog
+        }
+
+        # Panel Heights
+        LogPanelHeight = 250
+        NavPanelWidth = 180
+
+        # Timer Intervals (milliseconds)
+        Timers = @{
+            DashboardRefresh = 30000        # 30 seconds - auto-refresh dashboard
+            UiUpdate = 250                   # 250ms - UI responsiveness
+            OpCheck = 500                    # 500ms - operation status check
+            KeystrokeFlush = 2000            # 2 seconds - flush console buffer
+            ProcessWait = 100                # 100ms - wait for process start
+        }
+
+        # Console Window (Live Terminal mode)
+        Console = @{
+            MinWidth = 400
+            MinHeight = 300
+            WidthRatio = 0.60               # 60% of main window width
+            HeightRatio = 0.60              # 60% of main window height
+        }
+
+        # List Controls
+        ListBox = @{
+            MaxHeight = 100
+            ComboMaxHeight = 200
+        }
+    }
+
+    # Retry Configuration
+    Retry = @{
+        # Database operations
+        DbShrinkAttempts = 3
+        DbShrinkDelaySeconds = 30
+
+        # Service operations
+        ServiceStartAttempts = 3
+        ServiceStartDelaySeconds = 5
+
+        # Sync operations
+        SyncProgressDelaySeconds = 5
+        SyncWaitDelaySeconds = 2
+
+        # General
+        DefaultDelaySeconds = 3
+        ShortDelaySeconds = 1
+        LongDelaySeconds = 15
+    }
 }
 
 # ===========================
@@ -382,6 +449,109 @@ function Export-WsusConfigToFile {
     }
 }
 
+function Get-WsusGuiSetting {
+    <#
+    .SYNOPSIS
+        Gets a GUI configuration setting
+
+    .PARAMETER Setting
+        Setting path using dot notation (e.g., "Dialogs.Medium", "Timers.DashboardRefresh")
+
+    .EXAMPLE
+        Get-WsusGuiSetting -Setting "Dialogs.Medium"
+        # Returns @{ Width = 480; Height = 360 }
+
+    .EXAMPLE
+        Get-WsusGuiSetting -Setting "Timers.DashboardRefresh"
+        # Returns 30000
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Setting
+    )
+
+    $keys = $Setting -split '\.'
+    $value = $script:WsusConfig.Gui
+
+    foreach ($k in $keys) {
+        if ($value -is [hashtable] -and $value.ContainsKey($k)) {
+            $value = $value[$k]
+        } else {
+            return $null
+        }
+    }
+
+    return $value
+}
+
+function Get-WsusRetrySetting {
+    <#
+    .SYNOPSIS
+        Gets a retry configuration setting
+
+    .PARAMETER Setting
+        Setting name (e.g., "DbShrinkAttempts", "ServiceStartDelaySeconds")
+
+    .EXAMPLE
+        Get-WsusRetrySetting -Setting "DbShrinkAttempts"
+        # Returns 3
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('DbShrinkAttempts', 'DbShrinkDelaySeconds', 'ServiceStartAttempts',
+                     'ServiceStartDelaySeconds', 'SyncProgressDelaySeconds', 'SyncWaitDelaySeconds',
+                     'DefaultDelaySeconds', 'ShortDelaySeconds', 'LongDelaySeconds')]
+        [string]$Setting
+    )
+
+    return $script:WsusConfig.Retry[$Setting]
+}
+
+function Get-WsusDialogSize {
+    <#
+    .SYNOPSIS
+        Gets dialog dimensions for a specific dialog type
+
+    .PARAMETER Type
+        Dialog type: Small, Medium, Large, ExtraLarge, Schedule
+
+    .OUTPUTS
+        Hashtable with Width and Height properties
+
+    .EXAMPLE
+        $size = Get-WsusDialogSize -Type "Medium"
+        $dlg.Width = $size.Width
+        $dlg.Height = $size.Height
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('Small', 'Medium', 'Large', 'ExtraLarge', 'Schedule')]
+        [string]$Type
+    )
+
+    return $script:WsusConfig.Gui.Dialogs[$Type]
+}
+
+function Get-WsusTimerInterval {
+    <#
+    .SYNOPSIS
+        Gets a timer interval in milliseconds
+
+    .PARAMETER Timer
+        Timer type: DashboardRefresh, UiUpdate, OpCheck, KeystrokeFlush, ProcessWait
+
+    .OUTPUTS
+        Integer interval in milliseconds
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('DashboardRefresh', 'UiUpdate', 'OpCheck', 'KeystrokeFlush', 'ProcessWait')]
+        [string]$Timer
+    )
+
+    return $script:WsusConfig.Gui.Timers[$Timer]
+}
+
 # ===========================
 # INITIALIZATION
 # ===========================
@@ -404,5 +574,9 @@ Export-ModuleMember -Function @(
     'Get-WsusMaintenanceSetting',
     'Get-WsusConnectionString',
     'Initialize-WsusConfigFromFile',
-    'Export-WsusConfigToFile'
+    'Export-WsusConfigToFile',
+    'Get-WsusGuiSetting',
+    'Get-WsusRetrySetting',
+    'Get-WsusDialogSize',
+    'Get-WsusTimerInterval'
 )
