@@ -1,6 +1,6 @@
-# WSUS Manager v3.8.8 - Standard Operating Procedure
+# WSUS Manager v3.8.9 - Standard Operating Procedure
 
-**Version:** 3.8.8
+**Version:** 3.8.9
 **Author:** Tony Tran, ISSO, GA-ASI
 **Last Updated:** January 2026
 
@@ -38,7 +38,7 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v3.8.8.zip | Complete distribution package |
+| WsusManager-v3.8.9.zip | Complete distribution package |
 
 **Package Contents:**
 
@@ -141,7 +141,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v3.8.8.zip` to `C:\WSUS\` |
+| 2 | Extract `WsusManager-v3.8.9.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `WsusManager.exe` → Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
@@ -164,7 +164,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v3.8.8 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v3.8.9 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
 
 - **Dashboard** with auto-refresh (30-second interval)
 - **Server Mode** toggle (Online vs Air-Gap)
