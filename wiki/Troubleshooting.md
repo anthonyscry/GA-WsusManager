@@ -549,6 +549,49 @@ The Health Check verifies:
 4. **Run Health Check after import**
    - Identify any remaining issues
 
+### Content Shows "Downloading" After Import (Air-Gap)
+
+**Symptoms:**
+- After importing database to air-gapped server, WSUS console shows updates as "downloading"
+- Dashboard shows download progress but content files already exist on disk
+- Updates never transition to "ready to install" status
+
+**Root Cause:**
+When you restore a database backup, WSUS doesn't know that the content files are already present. The database metadata says "needs download" but the actual .cab/.exe files exist in `C:\WSUS\WsusContent\`.
+
+**Solutions:**
+
+1. **Use Reset Content button** (Recommended)
+   - In WSUS Manager, click **Reset Content** (in Diagnostics section)
+   - This runs `wsusutil reset` which:
+     - Stops WSUS service
+     - Re-verifies all content files against database
+     - Updates database to reflect actual file status
+     - Restarts WSUS service
+   - Takes several minutes depending on content size
+
+2. **Manual CLI method**
+   ```powershell
+   # Stop WSUS
+   Stop-Service WSUSService
+
+   # Reset content verification
+   & "C:\Program Files\Update Services\Tools\wsusutil.exe" reset
+
+   # Restart WSUS
+   Start-Service WSUSService
+   ```
+
+3. **Verify content path matches**
+   - Database expects content in specific location
+   - Ensure you imported content to `C:\WSUS\WsusContent\`
+   - Content path in database must match actual file location
+
+**Prevention:**
+- Always export database AND content files together
+- Use the same content path on source and destination servers
+- Run Reset Content immediately after any database import
+
 ---
 
 ## Error Reference
