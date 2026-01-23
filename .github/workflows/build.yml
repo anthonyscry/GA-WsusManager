@@ -431,11 +431,18 @@ jobs:
           }
         }
 
-    - name: Upload build artifact
+    - name: Upload build artifact (extracted for direct download)
       uses: actions/upload-artifact@v4
       with:
         name: WsusManager-v${{ steps.version.outputs.VERSION }}
         path: ./dist/staging-final/*
+        retention-days: 30
+
+    - name: Upload release artifact (zip for GitHub releases)
+      uses: actions/upload-artifact@v4
+      with:
+        name: WsusManager-v${{ steps.version.outputs.VERSION }}-release
+        path: ./dist/*.zip
         retention-days: 30
 
   #############################################
@@ -450,10 +457,10 @@ jobs:
       contents: write
 
     steps:
-    - name: Download artifacts
+    - name: Download release artifact
       uses: actions/download-artifact@v4
       with:
-        name: WsusManager-${{ needs.build.outputs.version }}
+        name: WsusManager-v${{ needs.build.outputs.version }}-release
         path: ./dist
 
     - name: Create Release
