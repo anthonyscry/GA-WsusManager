@@ -468,16 +468,32 @@ jobs:
       with:
         tag_name: v${{ needs.build.outputs.version }}
         name: WSUS Manager v${{ needs.build.outputs.version }}
-        draft: true
+        draft: false
         prerelease: false
         files: ./dist/*.zip
         body: |
           ## WSUS Manager v${{ needs.build.outputs.version }}
 
+          ### What's New
+
+          **Deep Cleanup Fix** - Now performs full 6-step database maintenance:
+          1. WSUS built-in cleanup (decline superseded, remove obsolete)
+          2. Remove supersession records for declined updates
+          3. Remove supersession records for superseded updates (batched)
+          4. Delete declined updates from database via `spDeleteUpdate`
+          5. Rebuild/reorganize fragmented indexes + update statistics
+          6. Shrink database to reclaim disk space
+
+          **Unified Diagnostics** - Combined Health Check + Repair into single operation with automatic fixes
+
+          **Security Definitions** - Definition Updates (antivirus signatures) now auto-approved
+
+          **Reset Content Button** - Fix "content downloading" status after air-gap database import
+
           ### Downloads
           | Package | Description |
           |---------|-------------|
-          | `WsusManager-v*.zip` | Complete distribution package |
+          | `WsusManager-v${{ needs.build.outputs.version }}.zip` | Complete distribution package |
 
           ### Requirements
           - Windows Server 2016, 2019, 2022, or 2025
@@ -486,11 +502,10 @@ jobs:
 
           ### Installation
           1. Extract the zip file
-          2. Run `WsusManager.exe` as Administrator
+          2. Keep `Scripts/` and `Modules/` folders with the EXE
+          3. Run `WsusManager.exe` as Administrator
 
-          ### Code Quality
-          - PSScriptAnalyzer: Passed
-          - Security Scan: Passed
-          - Pester Tests: Passed
+          ### Full Changelog
+          See [CHANGELOG](https://github.com/anthonyscry/GA-WsusManager/wiki/Changelog) for details.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
