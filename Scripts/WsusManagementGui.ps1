@@ -313,6 +313,7 @@ $script:StdinFlushTimer = $null
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnReset" Content="🔄 Reset Content" Style="{StaticResource NavBtn}"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -760,7 +761,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -770,11 +771,11 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
-$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
 # Track WSUS installation status
 $script:WsusInstalled = $false
 
@@ -2581,6 +2582,7 @@ function Invoke-LogOperation {
         }
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "diagnostics" { "`$null = & '$mgmtSafe' -Diagnostics -ContentPath '$cp' -SqlInstance '$sql'" }
+        "reset"       { "& '$mgmtSafe' -Reset" }
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
@@ -3086,6 +3088,7 @@ $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online S
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
 $controls.BtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
+$controls.BtnReset.Add_Click({ Invoke-LogOperation "reset" "Reset Content" })
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })

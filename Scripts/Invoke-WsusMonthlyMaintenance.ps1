@@ -1,24 +1,84 @@
 <#
-===============================================================================
-Script: Invoke-WsusMonthlyMaintenance.ps1
-Author: Tony Tran, ISSO, GA-ASI
-Version: 3.0.1
-Date: 2026-01-09
-===============================================================================
-Purpose: Monthly WSUS maintenance automation.
-Overview:
-  - Synchronizes WSUS, monitors download progress, and applies approvals.
-  - Runs WSUS cleanup tasks and SUSDB index/stat maintenance.
-  - Optionally runs an aggressive cleanup stage before the backup.
-  - Exports full backup + content to root WSUS-Exports folder.
-  - Creates differential archive copy in year/month subfolder.
-Notes:
-  - Run as Administrator on the WSUS server.
-  - Use -Unattended for scheduled tasks (no prompts, uses defaults).
-  - Use -Profile to select preset configurations (Quick, Full, SyncOnly).
-  - Use -Operations to run specific phases only.
-  - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
-===============================================================================
+.SYNOPSIS
+    Monthly WSUS maintenance automation script.
+
+.DESCRIPTION
+    Comprehensive WSUS maintenance automation that performs:
+    - Synchronizes WSUS with Microsoft Update and monitors download progress
+    - Declines expired, superseded, and old updates (released over 6 months ago)
+    - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
+    - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
+    - Optionally runs an aggressive "ultimate cleanup" stage before backup
+    - Exports full backup + content to root export folder
+    - Creates differential archive copy in year/month subfolder
+
+    Excludes "Upgrades" from auto-approval (require manual review).
+
+    Author: Tony Tran, ISSO, GA-ASI
+    Version: 3.0.1
+
+.PARAMETER Unattended
+    Run in unattended mode (no prompts, uses all defaults). Ideal for scheduled tasks.
+
+.PARAMETER MaintenanceProfile
+    Preset configuration profiles: Quick, Full, or SyncOnly.
+    - Quick: Sync + Cleanup + Backup (skip heavy cleanup)
+    - Full: Sync + Cleanup + Ultimate Cleanup + Backup + Export
+    - SyncOnly: Just synchronize and approve updates
+
+.PARAMETER Operations
+    Specific operations to run. Valid values: Sync, Cleanup, UltimateCleanup, Backup, Export, All.
+    Default: All
+
+.PARAMETER SkipUltimateCleanup
+    Skip the heavy "ultimate cleanup" stage before the backup.
+
+.PARAMETER ExportPath
+    Root path for full exports (e.g., "\\server\share\WSUS-Full").
+    Full backup + complete content mirror goes here.
+
+.PARAMETER DifferentialExportPath
+    Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive).
+    If not specified, defaults to ExportPath\Year\Month subfolder.
+
+.PARAMETER ExportDays
+    Number of days to include in differential export (files modified within this many days).
+    Default: 30 days.
+
+.PARAMETER SkipExport
+    Skip the export step entirely.
+
+.PARAMETER SqlCredential
+    SQL Server credentials for database operations (prompted if not provided in unattended mode).
+
+.PARAMETER NoTranscript
+    Skip transcript logging. Use when called from GUI which captures stdout/stderr.
+
+.PARAMETER UseWindowsAuth
+    Force Windows Authentication (logged-in user) for all database operations.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1
+    Run interactively with menu selection.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full -Unattended
+    Run full maintenance in unattended mode.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile SyncOnly
+    Only synchronize and approve updates.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -Operations Sync,Cleanup -SkipExport
+    Run only sync and cleanup operations, skip export.
+
+.NOTES
+    - Run as Administrator on the WSUS server.
+    - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
+    - Use -Unattended for scheduled tasks (no prompts, uses defaults).
+    - Use -Profile to select preset configurations (Quick, Full, SyncOnly).
+    - Use -Operations to run specific phases only.
 #>
 
 [CmdletBinding()]
