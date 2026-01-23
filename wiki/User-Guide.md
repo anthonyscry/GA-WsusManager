@@ -83,13 +83,13 @@ WSUS Manager supports two server modes to show only relevant operations:
 
 ### Online Mode
 For WSUS servers connected to the internet:
-- **Visible**: Export to Media, Monthly Maintenance
+- **Visible**: Export to Media, Online Sync (sync with Microsoft Update)
 - **Hidden**: Import from Media
 
 ### Air-Gap Mode
 For WSUS servers on disconnected networks:
 - **Visible**: Import from Media
-- **Hidden**: Export to Media, Monthly Maintenance
+- **Hidden**: Export to Media, Online Sync
 
 ### Changing Modes
 
@@ -214,41 +214,61 @@ Imports updates from USB media to an air-gapped server.
 - Sufficient disk space on destination
 - WSUS services running
 
-### Monthly Maintenance
+### Online Sync
 
-Runs comprehensive maintenance tasks.
+Runs comprehensive sync and maintenance tasks.
 
-> **Online-only:** Run Monthly Maintenance on the **Online** WSUS server.
+> **Online-only:** Run Online Sync on the **Online** WSUS server.
 
-**What it does:**
+**Sync Profiles:**
+| Profile | Operations | Use When |
+|---------|------------|----------|
+| **Full Sync** | Sync → Cleanup → Ultimate Cleanup → Backup → Export | Monthly maintenance |
+| **Quick Sync** | Sync → Cleanup → Backup (skip heavy cleanup) | Weekly quick sync |
+| **Sync Only** | Synchronize and approve updates only | Just need updates |
+
+**What Full Sync does:**
 1. Synchronizes with Microsoft Update
-2. Declines superseded updates
-3. Runs WSUS cleanup wizard
-4. Cleans database records
-5. Optimizes indexes
-6. Backs up database
+2. Declines superseded, expired, and old updates
+3. Approves new updates (Critical, Security, Rollups, Service Packs, Updates, Definition Updates)
+4. Runs WSUS cleanup wizard
+5. Cleans database records and purges declined updates
+6. Optimizes indexes
+7. Backs up database
+8. Exports to configured paths (optional)
+
+**Export Options (Optional):**
+| Field | Description |
+|-------|-------------|
+| **Full Export Path** | Network share for complete backup + content mirror |
+| **Differential Export Path** | Destination for recent changes only (e.g., USB drive for air-gap) |
+| **Export Days** | Age filter for differential export (default: 30 days) |
+
+> **Note:** Export fields are optional. If not specified, the export step is skipped.
 
 **When to run:**
-- Monthly (recommended)
+- Monthly (Full Sync recommended)
+- Weekly (Quick Sync)
 - After initial sync
 - When database grows large
 
 **UX Note:** Some phases can be quiet for several minutes; the GUI refreshes status roughly every 30 seconds.
 
-### Schedule Maintenance Task
+### Schedule Online Sync Task
 
-Creates or updates the scheduled task that runs Monthly Maintenance.
+Creates or updates the scheduled task that runs Online Sync.
 
 > **Online-only:** Create the schedule on the **Online** WSUS server.
 
 **Steps:**
-1. Click **Schedule Task** in the Maintenance section
+1. Click **Schedule Task** in the Online Sync section
 2. Choose schedule (Weekly/Monthly/Daily)
 3. Set the start time (default: Saturday at 02:00)
-4. Select the maintenance profile
-5. Click **Create Task**
+4. Select the sync profile (Full, Quick, or SyncOnly)
+5. Enter credentials for unattended execution
+6. Click **Create Task**
 
-**Default Recommendation:** Weekly on Saturday at 02:00.
+**Default Recommendation:** Weekly Full Sync on Saturday at 02:00.
 
 ### Deep Cleanup
 
@@ -297,7 +317,7 @@ The dashboard provides quick action buttons for common tasks:
 |--------|--------|
 | **Health Check** | Run health verification |
 | **Deep Cleanup** | Run aggressive cleanup |
-| **Maintenance** | Run monthly maintenance |
+| **Online Sync** | Run online sync with Microsoft Update |
 | **Start Services** | Start all WSUS services |
 
 ### Start Services
@@ -370,7 +390,7 @@ Currently, WSUS Manager operates primarily via mouse. Keyboard navigation:
 ## Tips and Best Practices
 
 ### Regular Maintenance
-- Run **Monthly Maintenance** on a schedule
+- Run **Online Sync** on a schedule
 - Monitor database size (aim for < 7 GB)
 - Keep at least 50 GB free disk space
 

@@ -3,7 +3,7 @@
 | **Document Information** | |
 |--------------------------|-------------------------|
 | **Author** | Tony Tran, ISSO, GA-ASI |
-| **Version** | 3.8.8 |
+| **Version** | 3.8.9 |
 | **Last Updated** | January 2026 |
 | **Classification** | Internal Use Only |
 
@@ -119,7 +119,7 @@ The dashboard displays real-time status with auto-refresh every 30 seconds.
 |--------|----------|
 | Health Check | Verify WSUS configuration and connectivity |
 | Deep Cleanup | Remove obsolete updates, optimize database |
-| Monthly Maintenance | Run full maintenance cycle |
+| Online Sync | Run sync with Microsoft Update and maintenance |
 | Start Services | Auto-recover stopped services |
 
 ---
@@ -130,7 +130,7 @@ The application auto-detects network connectivity and configures the appropriate
 
 | Mode | Description | Available Operations |
 |------|-------------|---------------------|
-| **Online** | Internet-connected WSUS server | Export, Monthly Maintenance, Sync |
+| **Online** | Internet-connected WSUS server | Export, Online Sync |
 | **Air-Gap** | Isolated network WSUS server | Import, Restore Database |
 
 Mode is saved to user settings and persists across restarts.
@@ -148,8 +148,8 @@ Mode is saved to user settings and persists across restarts.
 | Create GPO | Copy GPO files to `C:\WSUS GPO` for DC import | Both |
 | Export to Media | Export DB and content to USB drive | Online |
 | Import from Media | Import updates from USB drive | Air-Gap |
-| Monthly Maintenance | Run WSUS cleanup and optimization | Online |
-| Schedule Task | Configure automated maintenance | Online |
+| Online Sync | Run sync with Microsoft Update and optimization | Online |
+| Schedule Task | Configure automated Online Sync | Online |
 | Deep Cleanup | Aggressive cleanup for space recovery | Both |
 | Diagnostics | Comprehensive scan with automatic fixes | Both |
 
@@ -165,19 +165,24 @@ Mode is saved to user settings and persists across restarts.
 | Database Size | Below 9 GB |
 | Disk Space | Above 10 GB free |
 
-### 10.2 Monthly Maintenance Procedure
+### 10.2 Online Sync Procedure
 
 | Step | Action | Notes |
 |------|--------|-------|
 | 1 | Launch WSUS Manager as Administrator | |
 | 2 | Verify all services are running | Use "Start Services" if needed |
-| 3 | Click **Monthly Maintenance** | |
-| 4 | Select maintenance profile: | |
-| | - **Quick**: Basic cleanup | 5-10 minutes |
-| | - **Standard**: Cleanup + optimization | 15-30 minutes |
-| | - **Full**: Complete maintenance cycle | 30-60 minutes |
-| 5 | Monitor progress in log panel | Some phases may be quiet for several minutes |
-| 6 | Verify completion message | |
+| 3 | Click **Online Sync** | |
+| 4 | Select sync profile: | |
+| | - **Sync Only**: Just sync and approve | 5-10 minutes |
+| | - **Quick Sync**: Sync + cleanup + backup | 15-30 minutes |
+| | - **Full Sync**: Complete maintenance cycle | 30-60 minutes |
+| 5 | (Optional) Configure export paths: | |
+| | - **Full Export Path**: Network share for backup | |
+| | - **Differential Path**: USB drive for air-gap | |
+| | - **Export Days**: Age filter (default: 30) | |
+| 6 | Click **Run Sync** | |
+| 7 | Monitor progress in log panel | Some phases may be quiet for several minutes |
+| 8 | Verify completion message | |
 
 ### 10.3 Scheduling Automated Maintenance
 
@@ -197,8 +202,8 @@ Mode is saved to user settings and persists across restarts.
 
 | Step | Location | Action |
 |------|----------|--------|
-| 1 | Online WSUS | Run Monthly Maintenance to prepare updates |
-| 2 | Online WSUS | Click **Export to Media** |
+| 1 | Online WSUS | Run **Online Sync** to prepare updates |
+| 2 | Online WSUS | Click **Export to Media** (or use export options in Online Sync dialog) |
 | 3 | Online WSUS | Select export type: |
 | | | - **Full**: Complete database and all content |
 | | | - **Differential**: Only updates from last N days |
@@ -319,6 +324,7 @@ wuauclt /detectnow /reportnow
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.8.9 | Jan 2026 | Renamed Monthly Maintenance to Online Sync, export path options in dialog, Definition Updates auto-approved, config extraction, CLI integration tests |
 | 3.8.8 | Jan 2026 | Fixed declined update purge error, database shrink retry logic, suppressed noisy spDeleteUpdate errors |
 | 3.8.7 | Jan 2026 | Live Terminal mode, import dialog improvements, Create GPO button, non-blocking network check |
 | 3.8.6 | Jan 2026 | Input fields disabled during operations, code cleanup |
