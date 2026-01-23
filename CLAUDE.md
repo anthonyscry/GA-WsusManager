@@ -246,6 +246,13 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Export path handling tests (DifferentialExportPath, year/month fallback)
   - Help documentation presence tests (SYNOPSIS, DESCRIPTION, PARAMETER)
 
+- **Reset Content button (Air-Gap):**
+  - New "Reset Content" button in GUI Diagnostics section
+  - Runs `wsusutil reset` to re-verify content files against database
+  - Fixes "content is still downloading" status after database import on air-gapped servers
+  - Added to OperationButtons and WsusRequiredButtons arrays
+  - Uses existing `-Reset` parameter in `Invoke-WsusManagement.ps1`
+
 ### Previous (v3.8.8)
 
 - **Bug Fixes (2026-01-14):**
