@@ -214,6 +214,12 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Single button in GUI performs comprehensive scan with automatic fixes
   - Clear pass/fail reporting for all checks
 
+- **GitHub Actions Workflow Fixes:**
+  - Fixed artifact naming mismatch (release job was missing "v" prefix)
+  - Split artifacts: one for direct download (extracted), one for releases (zip)
+  - Release now auto-publishes (not draft) with detailed release notes
+  - Release notes include all v3.8.10 features
+
 - **Documentation Updates:**
   - Updated README.md with Deep Cleanup fix details
   - Updated GitHub Wiki (User Guide, Changelog)
