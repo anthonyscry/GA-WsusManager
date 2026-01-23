@@ -230,6 +230,22 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
   - Superseded updates are declined before approval runs, so accumulation is minimal
   - Safety check skips auto-approval if count exceeds 200
 
+- **Extracted magic numbers to WsusConfig.psm1:**
+  - GUI configuration: dialog sizes, timer intervals, panel heights, console window settings
+  - Retry configuration: attempt counts and delay values for DB, service, and sync operations
+  - New helper functions: `Get-WsusGuiSetting`, `Get-WsusRetrySetting`, `Get-WsusDialogSize`, `Get-WsusTimerInterval`
+  - Dialog size presets: Small (480x280), Medium (480x360), Large (480x460), ExtraLarge (520x580), Schedule (480x560)
+  - Timer presets: DashboardRefresh (30s), UiUpdate (250ms), OpCheck (500ms), KeystrokeFlush (2s)
+
+- **Added CLI integration tests (`Tests/CliIntegration.Tests.ps1`):**
+  - Parameter validation for all CLI scripts (Maintenance, Management, Install)
+  - Verifies MaintenanceProfile, Operations, ExportPath, DifferentialExportPath parameters
+  - Tests switch parameters (SkipExport, Unattended, NonInteractive, etc.)
+  - Config module integration tests for GUI/Retry settings
+  - Update classifications verification (Definition Updates approved, Upgrades excluded)
+  - Export path handling tests (DifferentialExportPath, year/month fallback)
+  - Help documentation presence tests (SYNOPSIS, DESCRIPTION, PARAMETER)
+
 ### Previous (v3.8.8)
 
 - **Bug Fixes (2026-01-14):**
