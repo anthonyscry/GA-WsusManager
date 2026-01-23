@@ -4,6 +4,67 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.9] - January 2026
+
+### Features
+- **Renamed Monthly Maintenance to Online Sync:**
+  - Nav button: "📅 Monthly" → "🔄 Online Sync"
+  - Quick action button: "Maintenance" → "Online Sync"
+  - Dialog shows Full Sync, Quick Sync, Sync Only options
+  - Schedule dialog title updated
+  - Windows Task Scheduler task name unchanged for backward compatibility
+
+- **Online Sync Export Options:**
+  - Added Full Export Path field with browse button
+  - Added Differential Export Path field for USB/air-gap transfer
+  - Added Export Days field (default: 30 days)
+  - All export fields optional - if not specified, export is skipped
+
+- **Definition Updates Auto-Approval:**
+  - Added "Definition Updates" to approved classifications
+  - Approved: Critical, Security, Update Rollups, Service Packs, Updates, Definition Updates
+  - Excluded: Upgrades (require manual review)
+
+- **Centralized Configuration:**
+  - Extracted GUI magic numbers to WsusConfig.psm1 (dialog sizes, timers, panel heights)
+  - Extracted retry settings (attempt counts, delays)
+  - New helper functions: `Get-WsusGuiSetting`, `Get-WsusRetrySetting`, `Get-WsusDialogSize`, `Get-WsusTimerInterval`
+
+### Improvements
+- **CLI Export Path Improvements:**
+  - Added `-DifferentialExportPath` parameter for separate differential destination
+  - Removed hardcoded default export path
+  - Pre-flight checks validate access to both export paths
+
+- **Updated MaxAutoApproveCount to 200:**
+  - Increased from 100 to provide buffer for Definition Updates
+  - Superseded updates declined before approval, so accumulation is minimal
+
+### Testing
+- **Added CLI Integration Tests (`Tests/CliIntegration.Tests.ps1`):**
+  - Parameter validation for all CLI scripts
+  - Config module integration tests
+  - Update classifications verification
+  - Export path handling tests
+  - Help documentation presence tests
+
+---
+
+## [3.8.8] - January 2026
+
+### Bug Fixes
+- **Fixed**: `UpdateIdParam` error in declined update purge
+  - Changed here-string from `@"..."@` to `@'...'@` to prevent subexpression evaluation
+- **Fixed**: Database shrink failing when backup is running
+  - Added retry logic (3 attempts, 30s delay) when blocked by backup
+- **Fixed**: Artifact download creating zip-within-zip
+  - GitHub Actions now extracts contents before uploading
+- **Fixed**: Noisy `spDeleteUpdate` errors during declined update purge
+  - Expected errors for updates with revision dependencies now silently handled
+- **Fixed**: Window height increased by 8 pixels (720 → 728)
+
+---
+
 ## [3.8.7] - January 2026
 
 ### Features
