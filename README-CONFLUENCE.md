@@ -3,7 +3,7 @@
 | **Document Information** | |
 |--------------------------|-------------------------|
 | **Author** | Tony Tran, ISSO, GA-ASI |
-| **Version** | 3.8.8 |
+| **Version** | 3.8.9 |
 | **Last Updated** | January 2026 |
 | **Classification** | Internal Use Only |
 
@@ -26,9 +26,56 @@ This SOP applies to:
 
 ---
 
-## 3. Downloads
+## 3. Quick Start Workflows
 
-### 3.1 WSUS Manager Application
+### 3.1 First-Time Setup (5 steps)
+
+```
+1. Download → Extract WsusManager to C:\WSUS\
+2. Download → SQL Express + SSMS to C:\WSUS\SQLDB\
+3. Run → WsusManager.exe as Administrator
+4. Click → Install WSUS
+5. Wait → 15-30 minutes for completion
+```
+
+### 3.2 Weekly Online Sync (3 steps)
+
+```
+1. Open → WsusManager.exe as Administrator
+2. Click → Online Sync → Select "Quick Sync"
+3. Wait → 15-30 minutes for completion
+```
+
+### 3.3 Air-Gap Transfer Workflow
+
+**On Online Server:**
+```
+1. Run Online Sync → Full Sync profile
+2. Click Export to Media → Select USB drive
+3. Wait for export to complete
+```
+
+**On Air-Gapped Server:**
+```
+1. Connect USB drive
+2. Click Import from Media → Select USB folder
+3. Click Reset Content (if "downloading" status persists)
+```
+
+### 3.4 Emergency Recovery
+
+| Problem | Quick Fix |
+|---------|-----------|
+| Services stopped | Click **Start Services** on dashboard |
+| Database issues | Click **Diagnostics** → auto-fixes problems |
+| Content mismatch | Click **Reset Content** (after import) |
+| Database too large | Click **Deep Cleanup** |
+
+---
+
+## 4. Downloads
+
+### 4.1 WSUS Manager Application
 
 | File | Description |
 |------|-------------|
@@ -38,7 +85,7 @@ This SOP applies to:
 
 **Important:** The EXE requires the `Scripts/` and `Modules/` folders in the same directory.
 
-### 3.2 Required Installers
+### 4.2 Required Installers
 
 Download and save to `C:\WSUS\SQLDB\` before installation:
 
@@ -49,7 +96,7 @@ Download and save to `C:\WSUS\SQLDB\` before installation:
 
 ---
 
-## 4. System Requirements
+## 5. System Requirements
 
 | Requirement | Minimum Specification |
 |-------------|----------------------|
@@ -63,7 +110,7 @@ Download and save to `C:\WSUS\SQLDB\` before installation:
 
 ---
 
-## 5. Directory Structure
+## 6. Directory Structure
 
 | Path | Purpose |
 |------|---------|
@@ -76,9 +123,9 @@ Download and save to `C:\WSUS\SQLDB\` before installation:
 
 ---
 
-## 6. Installation Procedure
+## 7. Installation Procedure
 
-### 6.1 Pre-Installation Checklist
+### 7.1 Pre-Installation Checklist
 
 | Step | Action | Verification |
 |------|--------|--------------|
@@ -88,7 +135,7 @@ Download and save to `C:\WSUS\SQLDB\` before installation:
 | 4 | Verify disk space | Minimum 50 GB free on C: |
 | 5 | Verify admin privileges | Right-click > Run as Administrator |
 
-### 6.2 Installation Steps
+### 7.2 Installation Steps
 
 | Step | Action |
 |------|--------|
@@ -100,11 +147,11 @@ Download and save to `C:\WSUS\SQLDB\` before installation:
 
 ---
 
-## 7. Dashboard Overview
+## 8. Dashboard Overview
 
 The dashboard displays real-time status with auto-refresh every 30 seconds.
 
-### 7.1 Status Cards
+### 8.1 Status Cards
 
 | Card | Information | Status Colors |
 |------|-------------|---------------|
@@ -113,33 +160,33 @@ The dashboard displays real-time status with auto-refresh every 30 seconds.
 | **Disk Space** | Free space on system drive | Green = >50GB, Yellow = 10-50GB, Red = <10GB |
 | **Automation** | Scheduled task status | Green = Configured, Orange = Not configured |
 
-### 7.2 Quick Actions
+### 8.2 Quick Actions
 
 | Button | Function |
 |--------|----------|
 | Health Check | Verify WSUS configuration and connectivity |
 | Deep Cleanup | Remove obsolete updates, optimize database |
-| Monthly Maintenance | Run full maintenance cycle |
+| Online Sync | Run sync with Microsoft Update and maintenance |
 | Start Services | Auto-recover stopped services |
 
 ---
 
-## 8. Server Mode Configuration
+## 9. Server Mode Configuration
 
 The application auto-detects network connectivity and configures the appropriate mode.
 
 | Mode | Description | Available Operations |
 |------|-------------|---------------------|
-| **Online** | Internet-connected WSUS server | Export, Monthly Maintenance, Sync |
+| **Online** | Internet-connected WSUS server | Export, Online Sync |
 | **Air-Gap** | Isolated network WSUS server | Import, Restore Database |
 
 Mode is saved to user settings and persists across restarts.
 
 ---
 
-## 9. Operations Reference
+## 10. Operations Reference
 
-### 9.1 Operations Menu
+### 10.1 Operations Menu
 
 | Operation | Description | Mode |
 |-----------|-------------|------|
@@ -148,16 +195,17 @@ Mode is saved to user settings and persists across restarts.
 | Create GPO | Copy GPO files to `C:\WSUS GPO` for DC import | Both |
 | Export to Media | Export DB and content to USB drive | Online |
 | Import from Media | Import updates from USB drive | Air-Gap |
-| Monthly Maintenance | Run WSUS cleanup and optimization | Online |
-| Schedule Task | Configure automated maintenance | Online |
+| Online Sync | Run sync with Microsoft Update and optimization | Online |
+| Schedule Task | Configure automated Online Sync | Online |
 | Deep Cleanup | Aggressive cleanup for space recovery | Both |
 | Diagnostics | Comprehensive scan with automatic fixes | Both |
+| Reset Content | Re-verify content files after DB import | Air-Gap |
 
 ---
 
-## 10. Routine Maintenance Procedures
+## 11. Routine Maintenance Procedures
 
-### 10.1 Daily Checks (Automated)
+### 11.1 Daily Checks (Automated)
 
 | Check | Expected Result |
 |-------|-----------------|
@@ -165,21 +213,26 @@ Mode is saved to user settings and persists across restarts.
 | Database Size | Below 9 GB |
 | Disk Space | Above 10 GB free |
 
-### 10.2 Monthly Maintenance Procedure
+### 11.2 Online Sync Procedure
 
 | Step | Action | Notes |
 |------|--------|-------|
 | 1 | Launch WSUS Manager as Administrator | |
 | 2 | Verify all services are running | Use "Start Services" if needed |
-| 3 | Click **Monthly Maintenance** | |
-| 4 | Select maintenance profile: | |
-| | - **Quick**: Basic cleanup | 5-10 minutes |
-| | - **Standard**: Cleanup + optimization | 15-30 minutes |
-| | - **Full**: Complete maintenance cycle | 30-60 minutes |
-| 5 | Monitor progress in log panel | Some phases may be quiet for several minutes |
-| 6 | Verify completion message | |
+| 3 | Click **Online Sync** | |
+| 4 | Select sync profile: | |
+| | - **Sync Only**: Just sync and approve | 5-10 minutes |
+| | - **Quick Sync**: Sync + cleanup + backup | 15-30 minutes |
+| | - **Full Sync**: Complete maintenance cycle | 30-60 minutes |
+| 5 | (Optional) Configure export paths: | |
+| | - **Full Export Path**: Network share for backup | |
+| | - **Differential Path**: USB drive for air-gap | |
+| | - **Export Days**: Age filter (default: 30) | |
+| 6 | Click **Run Sync** | |
+| 7 | Monitor progress in log panel | Some phases may be quiet for several minutes |
+| 8 | Verify completion message | |
 
-### 10.3 Scheduling Automated Maintenance
+### 11.3 Scheduling Automated Maintenance
 
 | Step | Action |
 |------|--------|
@@ -191,21 +244,21 @@ Mode is saved to user settings and persists across restarts.
 
 ---
 
-## 11. Air-Gapped Network Procedure
+## 12. Air-Gapped Network Procedure
 
-### 11.1 Export from Online Server
+### 12.1 Export from Online Server
 
 | Step | Location | Action |
 |------|----------|--------|
-| 1 | Online WSUS | Run Monthly Maintenance to prepare updates |
-| 2 | Online WSUS | Click **Export to Media** |
+| 1 | Online WSUS | Run **Online Sync** to prepare updates |
+| 2 | Online WSUS | Click **Export to Media** (or use export options in Online Sync dialog) |
 | 3 | Online WSUS | Select export type: |
 | | | - **Full**: Complete database and all content |
 | | | - **Differential**: Only updates from last N days |
 | 4 | Online WSUS | Select destination folder (USB drive) |
 | 5 | Online WSUS | Wait for export to complete |
 
-### 11.2 Import to Air-Gapped Server
+### 12.2 Import to Air-Gapped Server
 
 | Step | Location | Action |
 |------|----------|--------|
@@ -219,9 +272,9 @@ Mode is saved to user settings and persists across restarts.
 
 ---
 
-## 12. Database Management
+## 13. Database Management
 
-### 12.1 Database Backup
+### 13.1 Database Backup
 
 Database backups are automatically created during:
 - Monthly Maintenance (Full profile)
@@ -229,7 +282,7 @@ Database backups are automatically created during:
 
 Backup location: `C:\WSUS\SUSDB_backup_YYYYMMDD.bak`
 
-### 12.2 Database Restore Procedure
+### 13.2 Database Restore Procedure
 
 | Step | Action |
 |------|--------|
@@ -241,7 +294,7 @@ Backup location: `C:\WSUS\SUSDB_backup_YYYYMMDD.bak`
 
 **Important:** After restoring the database, the WSUS server will need to re-verify and re-download update content. **This process can take 30+ minutes depending on your content size.** The dashboard may show "Update is downloading" status during this time - this is normal behavior. Do not interrupt the process. Large content stores (50GB+) may take several hours to fully re-verify.
 
-### 12.3 SQL Sysadmin Permission Setup
+### 13.3 SQL Sysadmin Permission Setup
 
 Required for database operations (Restore, Deep Cleanup, Maintenance).
 
@@ -257,11 +310,11 @@ Required for database operations (Restore, Deep Cleanup, Maintenance).
 
 ---
 
-## 13. Domain Controller Configuration
+## 14. Domain Controller Configuration
 
 Run on the Domain Controller, not the WSUS server.
 
-### 13.1 GPO Deployment
+### 14.1 GPO Deployment
 
 | Step | Action |
 |------|--------|
@@ -270,7 +323,7 @@ Run on the Domain Controller, not the WSUS server.
 | 3 | On DC: Open PowerShell as Administrator |
 | 4 | Run: `.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"` |
 
-### 13.2 GPOs Created
+### 14.2 GPOs Created
 
 | GPO Name | Purpose |
 |----------|---------|
@@ -278,7 +331,7 @@ Run on the Domain Controller, not the WSUS server.
 | WSUS Inbound Firewall | Inbound firewall rules |
 | WSUS Outbound Firewall | Outbound firewall rules |
 
-### 13.3 Client Verification
+### 14.3 Client Verification
 
 On client machines, run:
 ```powershell
@@ -288,20 +341,21 @@ wuauclt /detectnow /reportnow
 
 ---
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
-### 14.1 Common Issues
+### 15.1 Common Issues
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Endless downloads | Wrong content path | Set content path to `C:\WSUS\` (not `C:\WSUS\wsuscontent\`) |
+| "Content downloading" after import | DB/content mismatch | Click **Reset Content** to re-verify files |
 | Clients not updating | GPO not applied | Run `gpupdate /force`, check ports 8530/8531 |
 | Database errors | Missing sysadmin | Grant sysadmin role in SSMS |
 | Services not starting | Dependency issues | Use "Start Services" button on dashboard |
 | Script not found | Missing folders | Ensure Scripts/ and Modules/ are with EXE |
 | DB size shows "Offline" | SQL not running | Start SQL Server Express service |
 
-### 14.2 Diagnostics Failures
+### 15.2 Diagnostics Failures
 
 | Check | Resolution |
 |-------|------------|
@@ -315,10 +369,11 @@ wuauclt /detectnow /reportnow
 
 ---
 
-## 15. Version History
+## 16. Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.8.9 | Jan 2026 | Reset Content button for air-gap import fix, renamed Monthly Maintenance to Online Sync, export path options, Definition Updates auto-approved |
 | 3.8.8 | Jan 2026 | Fixed declined update purge error, database shrink retry logic, suppressed noisy spDeleteUpdate errors |
 | 3.8.7 | Jan 2026 | Live Terminal mode, import dialog improvements, Create GPO button, non-blocking network check |
 | 3.8.6 | Jan 2026 | Input fields disabled during operations, code cleanup |
@@ -329,7 +384,7 @@ wuauclt /detectnow /reportnow
 
 ---
 
-## 16. Reference Links
+## 17. Reference Links
 
 ### Microsoft Documentation
 
@@ -348,7 +403,7 @@ wuauclt /detectnow /reportnow
 
 ---
 
-## 17. Support
+## 18. Support
 
 | Contact | Information |
 |---------|-------------|
