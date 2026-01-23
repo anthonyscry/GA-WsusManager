@@ -3,7 +3,7 @@
 | **Document Information** | |
 |--------------------------|-------------------------|
 | **Author** | Tony Tran, ISSO, GA-ASI |
-| **Version** | 3.8.9 |
+| **Version** | 3.8.10 |
 | **Last Updated** | January 2026 |
 | **Classification** | Internal Use Only |
 
@@ -164,8 +164,8 @@ The dashboard displays real-time status with auto-refresh every 30 seconds.
 
 | Button | Function |
 |--------|----------|
-| Health Check | Verify WSUS configuration and connectivity |
-| Deep Cleanup | Remove obsolete updates, optimize database |
+| Diagnostics | Comprehensive health check with automatic repair |
+| Deep Cleanup | Full database cleanup (supersession, indexes, shrink) |
 | Online Sync | Run sync with Microsoft Update and maintenance |
 | Start Services | Auto-recover stopped services |
 
@@ -197,9 +197,32 @@ Mode is saved to user settings and persists across restarts.
 | Import from Media | Import updates from USB drive | Air-Gap |
 | Online Sync | Run sync with Microsoft Update and optimization | Online |
 | Schedule Task | Configure automated Online Sync | Online |
-| Deep Cleanup | Aggressive cleanup for space recovery | Both |
-| Diagnostics | Comprehensive scan with automatic fixes | Both |
+| Deep Cleanup | Full 6-step database maintenance (see below) | Both |
+| Diagnostics | Comprehensive health check with automatic repair | Both |
 | Reset Content | Re-verify content files after DB import | Air-Gap |
+
+### 10.2 Deep Cleanup Details
+
+Deep Cleanup performs comprehensive database maintenance:
+
+| Step | Operation | Description |
+|------|-----------|-------------|
+| 1 | WSUS Built-in | Declines superseded, removes obsolete updates |
+| 2 | Declined Supersession | Removes records from tbRevisionSupersedesUpdate |
+| 3 | Superseded Supersession | Batched removal (10k/batch) for superseded records |
+| 4 | Declined Purge | Deletes declined updates via spDeleteUpdate |
+| 5 | Index Optimization | Rebuilds/reorganizes fragmented indexes |
+| 6 | Database Shrink | Compacts database to reclaim space |
+
+**Duration:** 30-90 minutes | **Note:** WSUS service stopped during operation
+
+### 10.3 Update Classifications
+
+Automatically approved:
+- Critical Updates, Security Updates, Update Rollups, Service Packs, Updates
+- **Definition Updates** (antivirus signatures, security definitions)
+
+Excluded: Upgrades (require manual review)
 
 ---
 
@@ -373,6 +396,7 @@ wuauclt /detectnow /reportnow
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.8.10 | Jan 2026 | **Deep Cleanup fix**: Full 6-step database maintenance (supersession cleanup, indexes, shrink). Unified Diagnostics (combined Health Check + Repair). Documentation updates. |
 | 3.8.9 | Jan 2026 | Reset Content button for air-gap import fix, renamed Monthly Maintenance to Online Sync, export path options, Definition Updates auto-approved |
 | 3.8.8 | Jan 2026 | Fixed declined update purge error, database shrink retry logic, suppressed noisy spDeleteUpdate errors |
 | 3.8.7 | Jan 2026 | Live Terminal mode, import dialog improvements, Create GPO button, non-blocking network check |
