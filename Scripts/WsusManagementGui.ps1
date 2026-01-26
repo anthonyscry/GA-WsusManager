@@ -450,7 +450,10 @@ $script:StdinFlushTimer = $null
                         <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
                         <TextBlock Text="Confirm SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
                         <PasswordBox x:Name="InstallSaPasswordConfirm" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
+                        <ProgressBar x:Name="PasswordStrength" Height="4" Margin="0,4,0,0" Visibility="Collapsed" Maximum="100"/>
+                        <TextBlock x:Name="PasswordError" Foreground="#F85149" FontSize="11" Margin="0,4,0,0" Visibility="Collapsed"/>
                         <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                        <ProgressBar x:Name="InstallProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
                         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                             <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
                             <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
@@ -470,9 +473,13 @@ $script:StdinFlushTimer = $null
                         <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                    <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
-                    <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
+<StackPanel Grid.Row="1" Margin="0,2,0,0">
+                    <ProgressBar x:Name="CleanupProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
+                    <ProgressBar x:Name="DiagnosticsProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
+                        <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
 
@@ -484,7 +491,7 @@ $script:StdinFlushTimer = $null
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                <TextBlock x:Name="AboutVersion" Text="Version 3.6.0" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version 3.8.10" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Windows Server Update Services Management Tool" FontSize="11" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -561,6 +568,18 @@ $script:StdinFlushTimer = $null
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
+                                <ComboBox x:Name="LogFilter" Width="100" Margin="8,0,0,0" SelectedIndex="0">
+                                    <ComboBoxItem Content="All"/>
+                                    <ComboBoxItem Content="Info"/>
+                                    <ComboBoxItem Content="Warning"/>
+                                    <ComboBoxItem Content="Error"/>
+                                </ComboBox>
+                                <TextBox x:Name="LogSearch" Width="150" Margin="8,0,0,0" 
+                                         Text="Search logs..." Foreground="#7D8590"/>
+                                <Button x:Name="BtnFindNext" Content="Find Next" Style="{StaticResource BtnSec}" 
+                                        Width="80" Margin="4,0,0,0"/>
+                                <Button x:Name="BtnClearFilter" Content="Clear" Style="{StaticResource BtnSec}"
+                                        Width="60" Margin="4,0,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -588,6 +607,7 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 
 #region Helper Functions
 $script:LogExpanded = $true
+$script:FullLogContent = ""
 
 function Write-LogOutput {
     param(
@@ -597,7 +617,9 @@ function Write-LogOutput {
     $timestamp = Get-Date -Format "HH:mm:ss"
     $prefix = switch ($Level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
     $controls.LogOutput.Dispatcher.Invoke([Action]{
-        $controls.LogOutput.AppendText("[$timestamp] $prefix $Message`r`n")
+        $line = "[$timestamp] $prefix $Message`r`n"
+        $script:FullLogContent += $line
+        $controls.LogOutput.AppendText($line)
         $controls.LogOutput.ScrollToEnd()
     })
 }
@@ -685,6 +707,14 @@ function Update-ServerMode {
     }
 }
 
+function Test-PasswordStrength($password) {
+    $strength = 0
+    if ($password.Length -ge 15) { $strength += 40 }
+    if ($password -match '\d') { $strength += 30 }
+    if ($password -match '[^a-zA-Z0-9]') { $strength += 30 }
+    return $strength
+}
+
 function Update-Dashboard {
     Update-ServerMode
 
@@ -766,6 +796,8 @@ function Set-ActiveNavButton {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
             $controls[$b].Foreground = if($b -eq $Active){"#E6EDF3"}else{"#8B949E"}
+            $controls[$b].BorderBrush = if($b -eq $Active){"#58A6FF"}else{"Transparent"}
+            $controls[$b].BorderThickness = if($b -eq $Active){"2,0,0,0"}else{"0"}
         }
     }
 }
@@ -2858,6 +2890,7 @@ while ($countdown -gt 0) {
                 $logOutput = $data.Controls.LogOutput
                 # Use BeginInvoke with closure to capture formatted values
                 $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
+                    $script:FullLogContent += $formattedLine
                     $logOutput.AppendText($formattedLine)
                     $logOutput.ScrollToEnd()
                 }.GetNewClosure())
@@ -2874,7 +2907,9 @@ while ($countdown -gt 0) {
                 }
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
-                    $data.Controls.LogOutput.AppendText("[$timestamp] [+] $($data.Title) completed`r`n")
+                    $line = "[$timestamp] [+] $($data.Title) completed`r`n"
+                    $script:FullLogContent += $line
+                    $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
                     $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
                     $data.Controls.BtnCancelOp.Visibility = "Collapsed"
@@ -2983,6 +3018,31 @@ $controls.BtnInstall.Add_Click({
     if ($controls.InstallSaPasswordConfirm) { $controls.InstallSaPasswordConfirm.Password = "" }
     Show-Panel "Install" "Install WSUS" "BtnInstall"
 })
+
+$controls.InstallSaPassword.Add_PasswordChanged({
+    $pwd = $controls.InstallSaPassword.Password
+    $strength = Test-PasswordStrength $pwd
+    $controls.PasswordStrength.Value = $strength
+    $controls.PasswordStrength.Visibility = "Visible"
+    
+    if ($strength -lt 100) {
+        $controls.PasswordError.Text = "Password must be 15+ chars with number and special character"
+        $controls.PasswordError.Visibility = "Visible"
+        $controls.BtnRunInstall.IsEnabled = $false
+    } else {
+        $controls.PasswordError.Visibility = "Collapsed"
+        # Only enable if passwords also match
+        $pwdConfirm = $controls.InstallSaPasswordConfirm.Password
+        $controls.BtnRunInstall.IsEnabled = ($pwd -eq $pwdConfirm -and $pwd.Length -gt 0)
+    }
+}.GetNewClosure())
+
+$controls.InstallSaPasswordConfirm.Add_PasswordChanged({
+    $pwd = $controls.InstallSaPassword.Password
+    $pwdConfirm = $controls.InstallSaPasswordConfirm.Password
+    $strength = Test-PasswordStrength $pwd
+    $controls.BtnRunInstall.IsEnabled = ($pwd -eq $pwdConfirm -and $strength -eq 100)
+}.GetNewClosure())
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
 $controls.BtnCreateGpo.Add_Click({
     # Create GPO files for DC admin
@@ -3086,9 +3146,27 @@ GPO files copied to: $destDir
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
-$controls.BtnCleanup.Add_Click({ Invoke-LogOperation "cleanup" "Deep Cleanup" })
+$controls.BtnCleanup.Add_Click({
+    $confirm = [System.Windows.MessageBox]::Show(
+        "Are you sure you want to run deep cleanup?`n`nThis will remove superseded updates, optimize indexes, and shrink the database. This may take 30+ minutes.",
+        "Confirm Deep Cleanup",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+    if ($confirm -ne [System.Windows.MessageBoxResult]::Yes) { return }
+    Invoke-LogOperation "cleanup" "Deep Cleanup"
+})
 $controls.BtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
-$controls.BtnReset.Add_Click({ Invoke-LogOperation "reset" "Reset Content" })
+$controls.BtnReset.Add_Click({
+    $confirm = [System.Windows.MessageBox]::Show(
+        "Are you sure you want to reset content verification?`n`nThis will re-verify all downloaded updates and may take several hours.",
+        "Confirm Reset Content",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+    if ($confirm -ne [System.Windows.MessageBoxResult]::Yes) { return }
+    Invoke-LogOperation "reset" "Reset Content"
+})
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
@@ -3208,6 +3286,39 @@ $controls.BtnSaveLog.Add_Click({
         Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
     }
 })
+
+# Filter logic
+$controls.LogFilter.Add_SelectionChanged({
+    $filterType = $controls.LogFilter.SelectedItem.Content
+    $allLines = $script:FullLogContent -split "`n"
+    $filtered = switch ($filterType) {
+        "Info" { $allLines | Where-Object { $_ -match "\[\*\]|\[\+\]" } }
+        "Warning" { $allLines | Where-Object { $_ -match "\[\!\]" } }
+        "Error" { $allLines | Where-Object { $_ -match "\[-\]" } }
+        default { $allLines }
+    }
+    $controls.LogOutput.Text = $filtered -join "`n"
+}.GetNewClosure())
+
+# Search logic
+$controls.BtnFindNext.Add_Click({
+    $searchText = $controls.LogSearch.Text
+    if ($searchText -and $searchText -ne "Search logs...") {
+        $text = $controls.LogOutput.Text
+        $startIndex = $controls.LogOutput.SelectionStart + $controls.LogOutput.SelectionLength
+        $foundIndex = $text.IndexOf($searchText, $startIndex, [StringComparison]::OrdinalIgnoreCase)
+        if ($foundIndex -ge 0) {
+            $controls.LogOutput.Select($foundIndex, $searchText.Length)
+            $controls.LogOutput.ScrollToLine($controls.LogOutput.GetLineIndexFromCharacterIndex($foundIndex))
+        }
+    }
+}.GetNewClosure())
+
+# Clear filter
+$controls.BtnClearFilter.Add_Click({
+    $controls.LogFilter.SelectedIndex = 0
+    $controls.LogSearch.Text = "Search logs..."
+}.GetNewClosure())
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
