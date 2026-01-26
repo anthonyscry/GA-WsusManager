@@ -4,6 +4,18 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [3.8.11] - January 2026
+
+### Bug Fixes
+- **Fixed**: TrustServerCertificate compatibility for older SqlServer modules
+  - Fixed "A parameter cannot be found that matches parameter name 'TrustServerCertificate'" error
+  - The `-TrustServerCertificate` parameter was added in SqlServer module v21.1
+  - Older versions don't support this parameter, causing declined update purge to fail
+  - Updated scripts to use `Invoke-WsusSqlcmd` wrapper function
+  - The wrapper automatically detects SqlServer module version and only includes the parameter when supported
+
+---
+
 ## [3.8.10] - January 2026
 
 ### Bug Fixes
