@@ -6,7 +6,15 @@ All notable changes to WSUS Manager are documented here.
 
 ## [3.8.10] - January 2026
 
+### UI/UX Enhancements
+- **Added**: Persistent selected state indicator - Active sidebar buttons show 2px blue left border
+- **Added**: Progress bars for long-running operations (Install, Cleanup, Diagnostics)
+- **Added**: Confirmation dialogs for destructive operations (Reset Content, Deep Cleanup)
+- **Added**: Log panel filtering - Filter by Info/Warning/Error with search functionality
+- **Added**: Password strength validation - Real-time strength meter with complexity requirements (15+ chars, number, special character)
+
 ### Bug Fixes
+- **Fixed**: About panel version display updated from 3.6.0 to 3.8.10
 - **Fixed**: Deep Cleanup now actually performs all database operations
   - Previously only called `Invoke-WsusServerCleanup` (basic WSUS cleanup)
   - Now performs complete database maintenance as advertised
@@ -26,6 +34,9 @@ All notable changes to WSUS Manager are documented here.
   - Single "Diagnostics" button in GUI (was separate Health Check and Repair)
   - Automatically scans and fixes issues in one pass
   - Clear pass/fail reporting for all checks
+
+### Verification
+- **Verified**: Live Terminal mode is fully functional and production-ready
 
 ### Documentation
 - **Updated**: README.md with Deep Cleanup fix details
