@@ -33,9 +33,9 @@ Describe "Script Syntax Validation" {
             $errors.Count | Should -Be 0
         }
 
-        It "WsusManagementGui.ps1 contains version 3.8.11" {
+        It "WsusManagementGui.ps1 contains version 3.8.12" {
             $content = Get-Content $script:GuiScript -Raw
-            $content | Should -Match '\$script:AppVersion\s*=\s*"3\.8\.11"'
+            $content | Should -Match '\$script:AppVersion\s*=\s*"3\.8\.12"'
         }
     }
 
