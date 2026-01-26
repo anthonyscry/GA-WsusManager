@@ -1,6 +1,6 @@
 # WSUS Manager
 
-**Version:** 3.8.10
+**Version:** 3.8.11
 **Author:** Tony Tran, ISSO, Classified Computing, GA-ASI
 
 A comprehensive PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. Provides both a modern WPF GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
@@ -90,7 +90,14 @@ GA-WsusManager/
 .\Scripts\Invoke-WsusManagement.ps1 -Schedule -MaintenanceProfile Full
 ```
 
-## Recent Changes (v3.8.10)
+## Recent Changes (v3.8.11)
+
+### TrustServerCertificate Compatibility Fix
+Fixed "A parameter cannot be found that matches parameter name 'TrustServerCertificate'" error during declined update purge. The `-TrustServerCertificate` parameter was added in SqlServer module v21.1, but older versions don't support it. Scripts now use the `Invoke-WsusSqlcmd` wrapper function which automatically detects the SqlServer module version and only includes the parameter when supported.
+
+---
+
+## Previous Changes (v3.8.10)
 
 ### Deep Cleanup Fix
 The Deep Cleanup operation now performs all advertised database maintenance:
