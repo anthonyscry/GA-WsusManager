@@ -1240,29 +1240,20 @@ IF @LocalUpdateID IS NOT NULL
 
                         # Suppress error stream during deletion - spDeleteUpdate errors are expected
                         # when updates have revision dependencies or deadlocks occur
-                        $ErrorActionPreference = 'SilentlyContinue'
-                        $deleteError = $null
+                        # Use Invoke-WsusSqlcmd wrapper for TrustServerCertificate compatibility
                         try {
                             if ($script:UseSqlCredential -and $SqlCredential) {
-                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                                    -Query $deleteQuery -QueryTimeout 300 `
+                                Invoke-WsusSqlcmd -Query $deleteQuery -QueryTimeout 300 `
                                     -Variable "UpdateIdParam=$updateId" `
-                                    -Credential $SqlCredential -TrustServerCertificate `
-                                    -ErrorVariable deleteError 2>$null | Out-Null
+                                    -Credential $SqlCredential | Out-Null
                             } else {
-                                Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Database SUSDB `
-                                    -Query $deleteQuery -QueryTimeout 300 `
-                                    -Variable "UpdateIdParam=$updateId" `
-                                    -TrustServerCertificate `
-                                    -ErrorVariable deleteError 2>$null | Out-Null
+                                Invoke-WsusSqlcmd -Query $deleteQuery -QueryTimeout 300 `
+                                    -Variable "UpdateIdParam=$updateId" | Out-Null
                             }
-                            if (-not $deleteError) {
-                                $totalDeleted++
-                            }
+                            $totalDeleted++
                         } catch {
                             # Silently skip - expected errors for updates with dependencies
                         }
-                        $ErrorActionPreference = 'Continue'
                     }
 
                     if ($currentBatch % 5 -eq 0) {
