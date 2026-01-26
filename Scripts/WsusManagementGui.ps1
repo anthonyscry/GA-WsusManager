@@ -568,18 +568,6 @@ $script:StdinFlushTimer = $null
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
-                                <ComboBox x:Name="LogFilter" Width="100" Margin="8,0,0,0" SelectedIndex="0">
-                                    <ComboBoxItem Content="All"/>
-                                    <ComboBoxItem Content="Info"/>
-                                    <ComboBoxItem Content="Warning"/>
-                                    <ComboBoxItem Content="Error"/>
-                                </ComboBox>
-                                <TextBox x:Name="LogSearch" Width="150" Margin="8,0,0,0" 
-                                         Text="Search logs..." Foreground="#7D8590"/>
-                                <Button x:Name="BtnFindNext" Content="Find Next" Style="{StaticResource BtnSec}" 
-                                        Width="80" Margin="4,0,0,0"/>
-                                <Button x:Name="BtnClearFilter" Content="Clear" Style="{StaticResource BtnSec}"
-                                        Width="60" Margin="4,0,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -3286,39 +3274,6 @@ $controls.BtnSaveLog.Add_Click({
         Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
     }
 })
-
-# Filter logic
-$controls.LogFilter.Add_SelectionChanged({
-    $filterType = $controls.LogFilter.SelectedItem.Content
-    $allLines = $script:FullLogContent -split "`n"
-    $filtered = switch ($filterType) {
-        "Info" { $allLines | Where-Object { $_ -match "\[\*\]|\[\+\]" } }
-        "Warning" { $allLines | Where-Object { $_ -match "\[\!\]" } }
-        "Error" { $allLines | Where-Object { $_ -match "\[-\]" } }
-        default { $allLines }
-    }
-    $controls.LogOutput.Text = $filtered -join "`n"
-}.GetNewClosure())
-
-# Search logic
-$controls.BtnFindNext.Add_Click({
-    $searchText = $controls.LogSearch.Text
-    if ($searchText -and $searchText -ne "Search logs...") {
-        $text = $controls.LogOutput.Text
-        $startIndex = $controls.LogOutput.SelectionStart + $controls.LogOutput.SelectionLength
-        $foundIndex = $text.IndexOf($searchText, $startIndex, [StringComparison]::OrdinalIgnoreCase)
-        if ($foundIndex -ge 0) {
-            $controls.LogOutput.Select($foundIndex, $searchText.Length)
-            $controls.LogOutput.ScrollToLine($controls.LogOutput.GetLineIndexFromCharacterIndex($foundIndex))
-        }
-    }
-}.GetNewClosure())
-
-# Clear filter
-$controls.BtnClearFilter.Add_Click({
-    $controls.LogFilter.SelectedIndex = 0
-    $controls.LogSearch.Text = "Search logs..."
-}.GetNewClosure())
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
