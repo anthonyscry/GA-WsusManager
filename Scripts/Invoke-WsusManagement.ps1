@@ -1663,17 +1663,15 @@ IF @LocalUpdateID IS NOT NULL
     EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
 '@
                     # Suppress errors - spDeleteUpdate errors are expected for updates with dependencies
-                    $ErrorActionPreference = 'SilentlyContinue'
+                    # Use Invoke-WsusSqlcmd wrapper for TrustServerCertificate compatibility
                     try {
-                        Invoke-Sqlcmd -ServerInstance $SqlInstance -Database SUSDB `
+                        Invoke-WsusSqlcmd -ServerInstance $SqlInstance `
                             -Query $deleteQuery -QueryTimeout 300 `
-                            -Variable "UpdateIdParam=$updateId" `
-                            -TrustServerCertificate -ErrorAction SilentlyContinue 2>$null | Out-Null
+                            -Variable "UpdateIdParam=$updateId" | Out-Null
                         $totalDeleted++
                     } catch {
                         # Silently skip - expected errors for updates with dependencies
                     }
-                    $ErrorActionPreference = 'Continue'
                 }
 
                 if ($currentBatch % 5 -eq 0) {
