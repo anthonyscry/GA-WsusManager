@@ -302,6 +302,7 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSqlAccess" Content="🔐 SQL Access" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
@@ -791,7 +792,7 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnSqlAccess","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
@@ -3129,6 +3130,232 @@ GPO files copied to: $destDir
     } finally {
         # Re-enable buttons (respects WSUS installation status)
         Enable-OperationButtons
+    }
+})
+$controls.BtnSqlAccess.Add_Click({
+    # SQL Access Setup - Grant sysadmin permissions to Windows account
+
+    # Create the dialog
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "SQL Server Access Setup"
+    $dlg.Width = 480
+    $dlg.Height = 340
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.ResizeMode = "NoResize"
+    $dlg.Background = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(22,27,34)))
+    $dlg.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(201,209,217)))
+    $dlg.Add_KeyDown({ param($s, $e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    # Header
+    $header = New-Object System.Windows.Controls.TextBlock
+    $header.Text = "Grant SQL Server sysadmin permissions"
+    $header.FontSize = 14
+    $header.FontWeight = "Bold"
+    $header.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(201,209,217)))
+    $header.Margin = "0,0,0,8"
+    $stack.Children.Add($header) | Out-Null
+
+    $desc = New-Object System.Windows.Controls.TextBlock
+    $desc.Text = "This will use the SA account to grant database access to a Windows user or group. Required for database operations (Restore, Cleanup, Maintenance)."
+    $desc.TextWrapping = "Wrap"
+    $desc.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(139,148,158)))
+    $desc.Margin = "0,0,0,16"
+    $stack.Children.Add($desc) | Out-Null
+
+    # Windows Account field
+    $lblAccount = New-Object System.Windows.Controls.TextBlock
+    $lblAccount.Text = "Windows Account (leave blank for current user):"
+    $lblAccount.FontSize = 11
+    $lblAccount.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(139,148,158)))
+    $lblAccount.Margin = "0,0,0,4"
+    $stack.Children.Add($lblAccount) | Out-Null
+
+    $txtAccount = New-Object System.Windows.Controls.TextBox
+    $txtAccount.Height = 28
+    $txtAccount.Background = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(13,17,23)))
+    $txtAccount.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(201,209,217)))
+    $txtAccount.BorderThickness = 1
+    $txtAccount.BorderBrush = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(48,54,61)))
+    $txtAccount.Padding = "6,4"
+    $txtAccount.Text = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $stack.Children.Add($txtAccount) | Out-Null
+
+    $hintAccount = New-Object System.Windows.Controls.TextBlock
+    $hintAccount.Text = "e.g., DOMAIN\WsusAdmins  or  DOMAIN\username"
+    $hintAccount.FontSize = 10
+    $hintAccount.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(110,118,129)))
+    $hintAccount.Margin = "0,2,0,12"
+    $stack.Children.Add($hintAccount) | Out-Null
+
+    # SA Password field
+    $lblPassword = New-Object System.Windows.Controls.TextBlock
+    $lblPassword.Text = "SA Password (required):"
+    $lblPassword.FontSize = 11
+    $lblPassword.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(139,148,158)))
+    $lblPassword.Margin = "0,0,0,4"
+    $stack.Children.Add($lblPassword) | Out-Null
+
+    $pwdBox = New-Object System.Windows.Controls.PasswordBox
+    $pwdBox.Height = 28
+    $pwdBox.Background = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(13,17,23)))
+    $pwdBox.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(201,209,217)))
+    $pwdBox.BorderThickness = 1
+    $pwdBox.BorderBrush = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(48,54,61)))
+    $pwdBox.Padding = "6,4"
+    $stack.Children.Add($pwdBox) | Out-Null
+
+    $hintPwd = New-Object System.Windows.Controls.TextBlock
+    $hintPwd.Text = "The SA password was set during SQL Server installation"
+    $hintPwd.FontSize = 10
+    $hintPwd.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(110,118,129)))
+    $hintPwd.Margin = "0,2,0,20"
+    $stack.Children.Add($hintPwd) | Out-Null
+
+    # Buttons
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+    $btnPanel.Margin = "0,8,0,0"
+
+    $btnCancel = New-Object System.Windows.Controls.Button
+    $btnCancel.Content = "Cancel"
+    $btnCancel.Width = 80
+    $btnCancel.Height = 32
+    $btnCancel.Margin = "0,0,8,0"
+    $btnCancel.Background = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(48,54,61)))
+    $btnCancel.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(201,209,217)))
+    $btnCancel.BorderThickness = 0
+    $btnCancel.Add_Click({ $dlg.DialogResult = $false; $dlg.Close() })
+    $btnPanel.Children.Add($btnCancel) | Out-Null
+
+    $btnGrant = New-Object System.Windows.Controls.Button
+    $btnGrant.Content = "Grant Access"
+    $btnGrant.Width = 100
+    $btnGrant.Height = 32
+    $btnGrant.Background = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(35,134,54)))
+    $btnGrant.Foreground = (New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(255,255,255)))
+    $btnGrant.BorderThickness = 0
+    $btnGrant.FontWeight = "Bold"
+    $btnGrant.Add_Click({
+        if ([string]::IsNullOrWhiteSpace($pwdBox.Password)) {
+            [System.Windows.MessageBox]::Show("SA password is required.", "Validation Error", "OK", "Warning")
+            return
+        }
+        $dlg.DialogResult = $true
+        $dlg.Close()
+    })
+    $btnPanel.Children.Add($btnGrant) | Out-Null
+
+    $stack.Children.Add($btnPanel) | Out-Null
+    $dlg.Content = $stack
+
+    # Show dialog and process result
+    try { $dlg.Owner = $window } catch { }
+    $result = $dlg.ShowDialog()
+
+    if ($result -eq $true) {
+        $windowsAccount = $txtAccount.Text.Trim()
+        $saPassword = $pwdBox.SecurePassword
+
+        # Build CLI arguments
+        $args = @("-SqlSetup")
+        if (-not [string]::IsNullOrWhiteSpace($windowsAccount)) {
+            # Escape the account name for command line
+            $safeAccount = $windowsAccount -replace '"', '\"'
+            $args += @("-WindowsAccount", "`"$safeAccount`"")
+        }
+
+        # Find management script
+        $mgmt = $null
+        $locations = @(
+            (Join-Path $script:ScriptRoot "Invoke-WsusManagement.ps1"),
+            (Join-Path $script:ScriptRoot "Scripts\Invoke-WsusManagement.ps1")
+        )
+        foreach ($loc in $locations) {
+            if (Test-Path $loc) { $mgmt = $loc; break }
+        }
+
+        if (-not $mgmt) {
+            [System.Windows.MessageBox]::Show("Script not found: Invoke-WsusManagement.ps1", "Error", "OK", "Error")
+            return
+        }
+
+        # Disable buttons during operation
+        Disable-OperationButtons
+
+        # Expand log panel
+        if (-not $script:LogExpanded) {
+            $controls.LogPanel.Height = 250
+            $controls.BtnToggleLog.Content = "Hide"
+            $script:LogExpanded = $true
+        }
+
+        Write-LogOutput "=== SQL Server Access Setup ===" -Level Info
+        Write-LogOutput "Windows Account: $(if($windowsAccount){$windowsAccount}else{'(current user)'})" -Level Info
+
+        try {
+            # Import the database module to use Grant-SqlSysadmin directly
+            $modulePath = $null
+            $moduleLocations = @(
+                (Join-Path $script:ScriptRoot "Modules\WsusDatabase.psm1"),
+                (Join-Path $script:ScriptRoot "..\Modules\WsusDatabase.psm1"),
+                (Join-Path (Split-Path $script:ScriptRoot -Parent) "Modules\WsusDatabase.psm1")
+            )
+            foreach ($loc in $moduleLocations) {
+                if (Test-Path $loc) { $modulePath = $loc; break }
+            }
+
+            if ($modulePath) {
+                # Also need WsusUtilities for Invoke-WsusSqlcmd
+                $utilPath = Join-Path (Split-Path $modulePath -Parent) "WsusUtilities.psm1"
+                if (Test-Path $utilPath) {
+                    Import-Module $utilPath -Force -ErrorAction Stop
+                }
+                Import-Module $modulePath -Force -ErrorAction Stop
+
+                $account = if ([string]::IsNullOrWhiteSpace($windowsAccount)) {
+                    [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                } else {
+                    $windowsAccount
+                }
+
+                Write-LogOutput "Granting sysadmin to: $account" -Level Info
+                $grantResult = Grant-SqlSysadmin -SqlInstance ".\SQLEXPRESS" -WindowsAccount $account -SaPassword $saPassword
+
+                if ($grantResult.Success) {
+                    Write-LogOutput $grantResult.Message -Level Success
+                    Write-LogOutput "" -Level Info
+                    Write-LogOutput "You can now run database operations without needing SSMS!" -Level Success
+                    Set-Status "SQL access granted"
+                    [System.Windows.MessageBox]::Show(
+                        "$($grantResult.Message)`n`nYou can now run:`n- Restore Database`n- Deep Cleanup`n- Online Sync/Maintenance",
+                        "SQL Access Granted",
+                        "OK",
+                        "Information"
+                    )
+                } else {
+                    Write-LogOutput "FAILED: $($grantResult.Message)" -Level Error
+                    Set-Status "SQL access setup failed"
+                    [System.Windows.MessageBox]::Show(
+                        "Failed to grant SQL access:`n`n$($grantResult.Message)`n`nTroubleshooting:`n1. Verify SA password is correct`n2. Ensure SQL Server allows mixed-mode auth`n3. Check if Windows account name is valid",
+                        "SQL Access Setup Failed",
+                        "OK",
+                        "Error"
+                    )
+                }
+            } else {
+                Write-LogOutput "ERROR: WsusDatabase.psm1 module not found" -Level Error
+                [System.Windows.MessageBox]::Show("Module not found: WsusDatabase.psm1", "Error", "OK", "Error")
+            }
+        } catch {
+            Write-LogOutput "Error: $_" -Level Error
+            [System.Windows.MessageBox]::Show("Failed to grant SQL access: $_", "Error", "OK", "Error")
+        } finally {
+            Enable-OperationButtons
+        }
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })

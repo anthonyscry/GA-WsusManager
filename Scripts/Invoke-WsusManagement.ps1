@@ -65,6 +65,14 @@ Date: 2026-01-10
 .EXAMPLE
     .\Invoke-WsusManagement.ps1 -Cleanup -Force
     Run deep cleanup without confirmation.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -SqlSetup -WindowsAccount "DOMAIN\WsusAdmins"
+    Grant SQL sysadmin role to a Windows group (prompts for SA password).
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -SqlSetup
+    Grant SQL sysadmin to current user (prompts for SA password).
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'Menu')]
@@ -92,6 +100,16 @@ param(
 
     [Parameter(ParameterSetName = 'Reset')]
     [switch]$Reset,
+
+    [Parameter(ParameterSetName = 'SqlSetup')]
+    [switch]$SqlSetup,
+
+    # SQL Setup parameters
+    [Parameter(ParameterSetName = 'SqlSetup')]
+    [string]$WindowsAccount,
+
+    [Parameter(ParameterSetName = 'SqlSetup')]
+    [SecureString]$SaPassword,
 
     # Cleanup parameters
     [Parameter(ParameterSetName = 'Cleanup')]
@@ -1768,6 +1786,104 @@ function Invoke-WsusReset {
 }
 
 # ============================================================================
+# SQL SYSADMIN SETUP OPERATION
+# ============================================================================
+
+function Invoke-SqlSysadminSetup {
+    <#
+    .SYNOPSIS
+        Automates SQL Server sysadmin permission setup
+
+    .DESCRIPTION
+        Uses SA credentials to create a SQL login from a Windows account and
+        add it to the sysadmin server role. This automates the manual process
+        of configuring permissions in SQL Server Management Studio.
+
+    .PARAMETER WindowsAccount
+        Windows account to grant sysadmin (e.g., DOMAIN\user or DOMAIN\group).
+        If not specified, uses the current user.
+
+    .PARAMETER SaPassword
+        SA account password as SecureString. If not provided, prompts for input.
+    #>
+    param(
+        [string]$WindowsAccount,
+        [SecureString]$SaPassword
+    )
+
+    Write-Banner "SQL SERVER SYSADMIN SETUP"
+
+    # Check if SQL Server is running
+    $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+    if (-not $sqlService -or $sqlService.Status -ne 'Running') {
+        Write-Log "ERROR: SQL Server is not running" "Red"
+        Write-Host "Please start SQL Server before running this operation." -ForegroundColor Yellow
+        return
+    }
+
+    # Load WsusDatabase module for Grant-SqlSysadmin function
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusDatabase.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Log "ERROR: Failed to import modules: $($_.Exception.Message)" "Red"
+            return
+        }
+    } else {
+        Write-Log "ERROR: WsusDatabase.psm1 module not found. Cannot perform SQL setup." "Red"
+        return
+    }
+
+    # Determine Windows account to grant access
+    if ([string]::IsNullOrWhiteSpace($WindowsAccount)) {
+        $WindowsAccount = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        Write-Host "No Windows account specified. Using current user:" -ForegroundColor Yellow
+    } else {
+        Write-Host "Windows account to grant sysadmin:" -ForegroundColor Yellow
+    }
+    Write-Host "  $WindowsAccount" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Prompt for SA password if not provided
+    if (-not $SaPassword) {
+        Write-Host "Enter the SQL Server SA password to authenticate:" -ForegroundColor Yellow
+        Write-Host "(The SA account is created during SQL Server installation)" -ForegroundColor Gray
+        Write-Host ""
+        $SaPassword = Read-Host -AsSecureString "SA Password"
+        Write-Host ""
+    }
+
+    # Validate SA password was entered
+    if ($SaPassword.Length -eq 0) {
+        Write-Log "ERROR: SA password is required" "Red"
+        return
+    }
+
+    Write-Host "Granting SQL sysadmin permissions..." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Call the module function to grant sysadmin
+    $result = Grant-SqlSysadmin -SqlInstance $SqlInstance -WindowsAccount $WindowsAccount -SaPassword $SaPassword
+
+    Write-Host ""
+    if ($result.Success) {
+        Write-Banner "SQL SETUP COMPLETE"
+        Write-Log "[OK] $($result.Message)" "Green"
+        Write-Host ""
+        Write-Host "You can now run database operations (Restore, Deep Cleanup, Maintenance)" -ForegroundColor Yellow
+        Write-Host "without needing SQL Server Management Studio." -ForegroundColor Yellow
+    } else {
+        Write-Log "FAILED: $($result.Message)" "Red"
+        Write-Host ""
+        Write-Host "Troubleshooting:" -ForegroundColor Yellow
+        Write-Host "  1. Verify the SA password is correct" -ForegroundColor Gray
+        Write-Host "  2. Ensure SQL Server allows mixed-mode authentication" -ForegroundColor Gray
+        Write-Host "  3. Check if the Windows account name is valid" -ForegroundColor Gray
+    }
+}
+
+# ============================================================================
 # INTERACTIVE MENU
 # ============================================================================
 
@@ -1877,6 +1993,8 @@ if ($Restore) {
     Invoke-WsusCleanup -Force:$Force
 } elseif ($Reset) {
     Invoke-WsusReset
+} elseif ($SqlSetup) {
+    Invoke-SqlSysadminSetup -WindowsAccount $WindowsAccount -SaPassword $SaPassword
 } else {
     Start-InteractiveMenu -MenuExportRoot $ExportRoot
 }
