@@ -799,6 +799,281 @@ function Test-WsusDatabaseConsistency {
     return $result
 }
 
+# ===========================
+# SQL SYSADMIN PERMISSION FUNCTIONS
+# ===========================
+
+function Test-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Tests if a user has SQL Server sysadmin role membership
+
+    .DESCRIPTION
+        Checks if the specified Windows user/group or the current user has
+        sysadmin role membership on the SQL Server instance.
+
+    .PARAMETER SqlInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+
+    .PARAMETER WindowsAccount
+        Windows account to check (e.g., DOMAIN\user or DOMAIN\group).
+        If not specified, checks the current user.
+
+    .PARAMETER Credential
+        SQL Server credential (SA account) to use for the check.
+        If not specified, uses Windows authentication.
+
+    .OUTPUTS
+        Boolean - $true if user has sysadmin, $false otherwise
+
+    .EXAMPLE
+        Test-SqlSysadmin
+        # Checks if current user has sysadmin
+
+    .EXAMPLE
+        Test-SqlSysadmin -WindowsAccount "DOMAIN\WsusAdmins"
+        # Checks if a group has sysadmin
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [string]$WindowsAccount,
+        [PSCredential]$Credential
+    )
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($WindowsAccount)) {
+            # Check current user
+            $query = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+        } else {
+            # Check specific account - need to escape single quotes
+            $safeAccount = $WindowsAccount -replace "'", "''"
+            $query = @"
+DECLARE @IsSysAdmin INT = 0
+IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'$safeAccount')
+BEGIN
+    SELECT @IsSysAdmin = CASE WHEN IS_SRVROLEMEMBER('sysadmin', '$safeAccount') = 1 THEN 1 ELSE 0 END
+END
+SELECT @IsSysAdmin AS IsSysAdmin
+"@
+        }
+
+        $params = @{
+            ServerInstance = $SqlInstance
+            Database = 'master'
+            Query = $query
+            QueryTimeout = 30
+        }
+
+        if ($Credential) {
+            $params['Credential'] = $Credential
+        }
+
+        $result = Invoke-WsusSqlcmd @params
+        return ($result.IsSysAdmin -eq 1)
+    } catch {
+        Write-Warning "Failed to check sysadmin status: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Grant-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Grants SQL Server sysadmin role to a Windows account
+
+    .DESCRIPTION
+        Uses SA credentials to create a SQL login from a Windows account
+        and add it to the sysadmin server role. This automates the manual
+        process of configuring permissions in SSMS.
+
+    .PARAMETER SqlInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+
+    .PARAMETER WindowsAccount
+        Windows account to grant sysadmin (e.g., DOMAIN\user or DOMAIN\group).
+        Can also use builtin accounts like "BUILTIN\Administrators".
+
+    .PARAMETER SaPassword
+        SA account password as a SecureString. Required to authenticate
+        with sufficient permissions to modify server roles.
+
+    .OUTPUTS
+        Hashtable with operation results:
+        - Success: Boolean indicating if operation succeeded
+        - Message: Status message
+        - LoginCreated: Boolean if a new login was created
+        - RoleGranted: Boolean if sysadmin was granted
+
+    .EXAMPLE
+        $saPass = Read-Host -AsSecureString "Enter SA password"
+        Grant-SqlSysadmin -WindowsAccount "DOMAIN\WsusAdmins" -SaPassword $saPass
+
+    .EXAMPLE
+        $saPass = ConvertTo-SecureString "MyPassword" -AsPlainText -Force
+        Grant-SqlSysadmin -WindowsAccount $env:USERDOMAIN\$env:USERNAME -SaPassword $saPass
+
+    .NOTES
+        Requires:
+        - SA password must be valid
+        - SQL Server must be running
+        - Windows account must be a valid domain/local account or group
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+
+        [Parameter(Mandatory)]
+        [string]$WindowsAccount,
+
+        [Parameter(Mandatory)]
+        [SecureString]$SaPassword
+    )
+
+    $result = @{
+        Success = $false
+        Message = ""
+        LoginCreated = $false
+        RoleGranted = $false
+    }
+
+    # Validate Windows account format
+    if ($WindowsAccount -notmatch '^[A-Za-z0-9_\.\-]+\\[A-Za-z0-9_\.\- ]+$') {
+        $result.Message = "Invalid Windows account format. Use DOMAIN\username or DOMAIN\groupname"
+        return $result
+    }
+
+    # Create credential for SA
+    $saCredential = New-Object System.Management.Automation.PSCredential("sa", $SaPassword)
+
+    # Escape single quotes in account name for SQL
+    $safeAccount = $WindowsAccount -replace "'", "''"
+
+    try {
+        # First, verify SA credentials work
+        $testQuery = "SELECT 1 AS Test"
+        $testResult = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $testQuery -Credential $saCredential -QueryTimeout 10
+
+        if (-not $testResult) {
+            $result.Message = "SA authentication failed. Check password."
+            return $result
+        }
+
+        # Check if login already exists
+        $checkLoginQuery = "SELECT COUNT(*) AS LoginExists FROM sys.server_principals WHERE name = N'$safeAccount'"
+        $loginCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $checkLoginQuery -Credential $saCredential -QueryTimeout 30
+
+        $loginExists = ($loginCheck.LoginExists -gt 0)
+
+        # Create login if it doesn't exist
+        if (-not $loginExists) {
+            $createLoginQuery = "CREATE LOGIN [$safeAccount] FROM WINDOWS"
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+                -Query $createLoginQuery -Credential $saCredential -QueryTimeout 30
+            $result.LoginCreated = $true
+            Write-Host "  Created SQL login for $WindowsAccount" -ForegroundColor Green
+        } else {
+            Write-Host "  SQL login already exists for $WindowsAccount" -ForegroundColor Gray
+        }
+
+        # Check current sysadmin membership
+        $checkRoleQuery = @"
+SELECT CASE WHEN IS_SRVROLEMEMBER('sysadmin', N'$safeAccount') = 1 THEN 1 ELSE 0 END AS IsSysAdmin
+"@
+        $roleCheck = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+            -Query $checkRoleQuery -Credential $saCredential -QueryTimeout 30
+
+        $hasSysadmin = ($roleCheck.IsSysAdmin -eq 1)
+
+        # Grant sysadmin if not already a member
+        if (-not $hasSysadmin) {
+            $grantRoleQuery = "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$safeAccount]"
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+                -Query $grantRoleQuery -Credential $saCredential -QueryTimeout 30
+            $result.RoleGranted = $true
+            Write-Host "  Granted sysadmin role to $WindowsAccount" -ForegroundColor Green
+        } else {
+            Write-Host "  $WindowsAccount already has sysadmin role" -ForegroundColor Gray
+        }
+
+        $result.Success = $true
+        if ($result.LoginCreated -and $result.RoleGranted) {
+            $result.Message = "Created login and granted sysadmin to $WindowsAccount"
+        } elseif ($result.RoleGranted) {
+            $result.Message = "Granted sysadmin to existing login $WindowsAccount"
+        } else {
+            $result.Message = "$WindowsAccount already has sysadmin permissions"
+        }
+
+    } catch {
+        $result.Message = "Failed to grant sysadmin: $($_.Exception.Message)"
+        Write-Warning $result.Message
+    }
+
+    return $result
+}
+
+function Get-SqlLogins {
+    <#
+    .SYNOPSIS
+        Gets a list of SQL Server logins with their role memberships
+
+    .DESCRIPTION
+        Returns all SQL Server logins and indicates which have sysadmin role.
+        Useful for reviewing current permissions before making changes.
+
+    .PARAMETER SqlInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+
+    .PARAMETER Credential
+        SQL Server credential for authentication.
+        If not specified, uses Windows authentication.
+
+    .OUTPUTS
+        Array of objects with login information
+
+    .EXAMPLE
+        Get-SqlLogins | Where-Object IsSysAdmin -eq $true
+        # Show only sysadmin accounts
+    #>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [PSCredential]$Credential
+    )
+
+    $query = @"
+SELECT
+    sp.name AS LoginName,
+    sp.type_desc AS LoginType,
+    CASE WHEN IS_SRVROLEMEMBER('sysadmin', sp.name) = 1 THEN 1 ELSE 0 END AS IsSysAdmin,
+    sp.is_disabled AS IsDisabled,
+    sp.create_date AS CreateDate
+FROM sys.server_principals sp
+WHERE sp.type IN ('U', 'G', 'S')  -- Windows users, groups, SQL logins
+AND sp.name NOT LIKE '##%'        -- Exclude system accounts
+AND sp.name NOT LIKE 'NT %'       -- Exclude NT AUTHORITY accounts
+ORDER BY sp.name
+"@
+
+    try {
+        $params = @{
+            ServerInstance = $SqlInstance
+            Database = 'master'
+            Query = $query
+            QueryTimeout = 30
+        }
+
+        if ($Credential) {
+            $params['Credential'] = $Credential
+        }
+
+        return Invoke-WsusSqlcmd @params
+    } catch {
+        Write-Warning "Failed to get SQL logins: $($_.Exception.Message)"
+        return @()
+    }
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Get-WsusDatabaseSize',
@@ -812,5 +1087,8 @@ Export-ModuleMember -Function @(
     'Get-WsusDatabaseSpace',
     'Test-WsusBackupIntegrity',
     'Test-WsusDiskSpace',
-    'Test-WsusDatabaseConsistency'
+    'Test-WsusDatabaseConsistency',
+    'Test-SqlSysadmin',
+    'Grant-SqlSysadmin',
+    'Get-SqlLogins'
 )
