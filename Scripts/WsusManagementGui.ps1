@@ -254,31 +254,31 @@ try {
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
-                    <Button x:Name="BtnHelp" Content="? Help" Style="{StaticResource NavBtn}"/>
-                    <Button x:Name="BtnSettings" Content="⚙ Settings" Style="{StaticResource NavBtn}"/>
-                    <Button x:Name="BtnAbout" Content="ℹ About" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnHelp" Content="Help" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnSettings" Content="Settings" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnAbout" Content="About" Style="{StaticResource NavBtn}"/>
                 </StackPanel>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
                     <StackPanel>
-                        <Button x:Name="BtnDashboard" Content="◉ Dashboard" Style="{StaticResource NavBtn}" Background="#21262D" Foreground="{StaticResource Text1}"/>
+                        <Button x:Name="BtnDashboard" Content="Dashboard" Style="{StaticResource NavBtn}" Background="#21262D" Foreground="{StaticResource Text1}"/>
 
                         <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnInstall" Content="Install WSUS" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnRestore" Content="Restore DB" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateGpo" Content="Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnTransfer" Content="Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnMaintenance" Content="Online Sync" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSchedule" Content="Schedule Task" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCleanup" Content="Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
-                        <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnReset" Content="🔄 Reset Content" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnDiagnostics" Content="Run Diagnostics" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnReset" Content="Reset Content" Style="{StaticResource NavBtn}"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -529,14 +529,14 @@ try {
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
-                                <Button x:Name="BtnInteractive" Content="Interactive: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle interactive terminal mode"/>
+                                <Button x:Name="BtnInteractive" Content="Interactive: On" Style="{StaticResource BtnSec}" Background="{StaticResource Green}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle interactive terminal mode"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+                    <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="False" TextWrapping="NoWrap" AcceptsReturn="True"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas" FontSize="11" Background="{StaticResource BgDark}"
                              Foreground="{StaticResource Text2}" BorderThickness="0" Padding="10,8"/>
@@ -599,7 +599,7 @@ function Invoke-TerminalCommand {
             return
         }
         "exit" {
-            $script:InteractiveMode = $false
+$script:InteractiveMode = $true
             $controls.BtnInteractive.Content = "Interactive: Off"
             $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
             $controls.LogOutput.IsReadOnly = $true
