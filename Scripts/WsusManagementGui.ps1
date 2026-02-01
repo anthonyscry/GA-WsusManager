@@ -81,8 +81,8 @@ $script:ExitEventJob = $null
 $script:OpCheckTimer = $null
 # Deduplication tracking - prevents same line appearing multiple times
 $script:RecentLines = @{}
-# Live Terminal Mode - launches operations in visible console window
-$script:LiveTerminalMode = $false
+# Interactive Terminal Mode - enables command input in log panel
+$script:InteractiveMode = $false
 
 function Write-Log { param([string]$Msg)
     try {
@@ -99,7 +99,7 @@ function Import-WsusSettings {
             if ($s.SqlInstance) { $script:SqlInstance = $s.SqlInstance }
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
-            if ($null -ne $s.LiveTerminalMode) { $script:LiveTerminalMode = $s.LiveTerminalMode }
+            if ($null -ne $s.InteractiveMode) { $script:InteractiveMode = $s.InteractiveMode }
         }
     } catch { Write-Log "Failed to load settings: $_" }
 }
@@ -108,7 +108,7 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode } |
+        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; InteractiveMode=$script:InteractiveMode } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
@@ -141,44 +141,9 @@ try {
 #endregion
 
 #region Console Window Helpers for Live Terminal
-# P/Invoke for keystrokes and window positioning
-Add-Type -TypeDefinition @"
-using System;
-using System.Runtime.InteropServices;
+# REMOVED: Legacy Live Terminal code
+#endregion
 
-public class ConsoleWindowHelper {
-    [DllImport("user32.dll")]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
-
-    [DllImport("user32.dll")]
-    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    public const uint WM_KEYDOWN = 0x0100;
-    public const uint WM_KEYUP = 0x0101;
-    public const int VK_RETURN = 0x0D;
-    public const uint SWP_NOZORDER = 0x0004;
-    public const uint SWP_NOACTIVATE = 0x0010;
-
-    public static void SendEnter(IntPtr hWnd) {
-        if (hWnd != IntPtr.Zero) {
-            PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
-            PostMessage(hWnd, WM_KEYUP, VK_RETURN, 0);
-        }
-    }
-
-    public static void PositionWindow(IntPtr hWnd, int x, int y, int width, int height) {
-        if (hWnd != IntPtr.Zero) {
-            MoveWindow(hWnd, x, y, width, height, true);
-        }
-    }
-}
-"@ -ErrorAction SilentlyContinue
-
-$script:KeystrokeTimer = $null
-$script:StdinFlushTimer = $null
 #endregion
 
 #region XAML
@@ -564,14 +529,14 @@ $script:StdinFlushTimer = $null
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
-                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
+                                <Button x:Name="BtnInteractive" Content="Interactive: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle interactive terminal mode"/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap"
+                    <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas" FontSize="11" Background="{StaticResource BgDark}"
                              Foreground="{StaticResource Text2}" BorderThickness="0" Padding="10,8"/>
@@ -597,6 +562,72 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 $script:LogExpanded = $true
 $script:FullLogContent = ""
 
+# Interactive Terminal State
+$script:TerminalPrompt = "PS> "
+$script:TerminalHistory = [System.Collections.Generic.List[string]]::new()
+$script:HistoryIndex = -1
+$script:TerminalBuffer = ""
+
+function Add-TerminalPrompt {
+    $controls.LogOutput.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
+        $controls.LogOutput.AppendText($script:TerminalPrompt)
+        $controls.LogOutput.ScrollToEnd()
+        $controls.LogOutput.IsReadOnly = $false
+    })
+}
+
+function Invoke-TerminalCommand {
+    param([string]$Command)
+    
+    if ([string]::IsNullOrWhiteSpace($Command)) { return }
+    
+    # Add to history
+    $script:TerminalHistory.Add($Command)
+    $script:HistoryIndex = $script:TerminalHistory.Count
+    
+    # Process command
+    $cmdLower = $Command.Trim().ToLower()
+    switch ($cmdLower) {
+        "cls" { 
+            $controls.LogOutput.Clear() 
+            Add-TerminalPrompt
+            return
+        }
+        "clear" { 
+            $controls.LogOutput.Clear() 
+            Add-TerminalPrompt
+            return
+        }
+        "exit" {
+            $script:InteractiveMode = $false
+            $controls.BtnInteractive.Content = "Interactive: Off"
+            $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+            $controls.LogOutput.IsReadOnly = $true
+            Write-LogOutput "Interactive mode disabled."
+            return
+        }
+        "help" {
+            Write-LogOutput "Available commands: help, cls, clear, exit, dir, cd"
+            Write-LogOutput "Most PowerShell commands are supported via Invoke-Expression."
+            Add-TerminalPrompt
+            return
+        }
+        default {
+            # Execute command
+            try {
+                # Simple execution in current scope
+                $output = Invoke-Expression $Command 2>&1 | Out-String
+                if ($output) {
+                    $controls.LogOutput.AppendText($output)
+                }
+            } catch {
+                $controls.LogOutput.AppendText("Error: $($_.Exception.Message)`r`n")
+            }
+            Add-TerminalPrompt
+        }
+    }
+}
+
 function Write-LogOutput {
     param(
         [string]$Message,
@@ -604,19 +635,47 @@ function Write-LogOutput {
     )
     $timestamp = Get-Date -Format "HH:mm:ss"
     $prefix = switch ($Level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
-    $controls.LogOutput.Dispatcher.Invoke([Action]{
+    $controls.LogOutput.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
         $line = "[$timestamp] $prefix $Message`r`n"
         $script:FullLogContent += $line
         $controls.LogOutput.AppendText($line)
         $controls.LogOutput.ScrollToEnd()
-    })
+    }.GetNewClosure())
 }
 
 function Set-Status {
     param([string]$Text)
-    $controls.StatusLabel.Dispatcher.Invoke([Action]{
+    $controls.StatusLabel.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
         $controls.StatusLabel.Text = " - $Text"
-    })
+    }.GetNewClosure())
+}
+
+$script:HeartbeatTimer = $null
+
+function Start-Heartbeat {
+    if ($null -ne $script:HeartbeatTimer) { $script:HeartbeatTimer.Stop() }
+    $script:HeartbeatTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $script:HeartbeatTimer.Interval = [TimeSpan]::FromSeconds(1)
+    $script:HeartbeatTimer.Add_Tick({
+        if ($script:OperationRunning) {
+            $controls.StatusLabel.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{
+                $current = $controls.StatusLabel.Text
+                if ($current -match "\.\.\.$") { 
+                    $controls.StatusLabel.Text = $current.TrimEnd('.') 
+                } else { 
+                    $controls.StatusLabel.Text += "." 
+                }
+            }.GetNewClosure())
+        }
+    }.GetNewClosure())
+    $script:HeartbeatTimer.Start()
+}
+
+function Stop-Heartbeat {
+    if ($null -ne $script:HeartbeatTimer) {
+        $script:HeartbeatTimer.Stop()
+        $script:HeartbeatTimer = $null
+    }
 }
 
 function Get-ServiceStatus {
@@ -877,6 +936,7 @@ function Stop-CurrentOperation {
     param([switch]$SuppressLog)
 
     # 1. Stop all timers first (prevents race conditions)
+    Stop-Heartbeat
     if ($null -ne $script:OpCheckTimer) {
         try {
             $script:OpCheckTimer.Stop()
@@ -2619,9 +2679,10 @@ function Invoke-LogOperation {
     $controls.BtnCancelOp.Visibility = "Visible"
 
     Set-Status "Running: $Title"
+    Start-Heartbeat
 
     # Branch based on Live Terminal mode
-    if ($script:LiveTerminalMode) {
+    if ($false) {
         # LIVE TERMINAL MODE: Launch in visible console window
         $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
 
@@ -2886,6 +2947,7 @@ while ($countdown -gt 0) {
 
             $exitHandler = {
                 $data = $Event.MessageData
+                Stop-Heartbeat
                 # Stop all timers IMMEDIATELY to prevent race conditions
                 if ($null -ne $script:OpCheckTimer) {
                     $script:OpCheckTimer.Stop()
@@ -3237,19 +3299,44 @@ $controls.BtnOpenLog.Add_Click({
 })
 
 # Log panel buttons
-$controls.BtnLiveTerminal.Add_Click({
-    $script:LiveTerminalMode = -not $script:LiveTerminalMode
-    if ($script:LiveTerminalMode) {
-        $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
-        $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+$controls.BtnInteractive.Add_Click({
+    $script:InteractiveMode = -not $script:InteractiveMode
+    if ($script:InteractiveMode) {
+        $controls.BtnInteractive.Content = "Interactive: On"
+        $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+        $controls.LogOutput.IsReadOnly = $false
+        Add-TerminalPrompt
     } else {
-        $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
-        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-        $controls.LogOutput.Clear()
+        $controls.BtnInteractive.Content = "Interactive: Off"
+        $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $controls.LogOutput.IsReadOnly = $true
     }
     Save-Settings
 })
+
+$controls.LogOutput.Add_KeyDown({
+    param($sender, $e)
+    
+    if (-not $script:InteractiveMode) { return }
+    
+    if ($e.Key -eq [System.Windows.Input.Key]::Enter) {
+        # Get line text - simplified for single line commands at end
+        $text = $sender.Text
+        $lastLineIndex = $sender.LineCount - 1
+        if ($lastLineIndex -ge 0) {
+            $line = $sender.GetLineText($lastLineIndex).Trim()
+            if ($line.StartsWith($script:TerminalPrompt)) {
+                $cmd = $line.Substring($script:TerminalPrompt.Length).Trim()
+                if ($cmd) {
+                    # Execute command
+                    Invoke-TerminalCommand $cmd
+                } else {
+                    Add-TerminalPrompt
+                }
+            }
+        }
+    }
+}.GetNewClosure())
 
 $controls.BtnToggleLog.Add_Click({
     if ($script:LogExpanded) {
@@ -3288,11 +3375,12 @@ $controls.BtnCancel.Add_Click({
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
 
-# Initialize Live Terminal button state from saved settings
-if ($script:LiveTerminalMode) {
-    $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
-    $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+# Initialize Interactive button state from saved settings
+if ($script:InteractiveMode) {
+    $controls.BtnInteractive.Content = "Interactive: On"
+    $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+    $controls.LogOutput.IsReadOnly = $false
+    Add-TerminalPrompt
 }
 
 try {
