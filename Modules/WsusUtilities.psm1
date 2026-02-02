@@ -430,6 +430,12 @@ function Invoke-WsusSqlcmd {
     .PARAMETER Credential
         Optional PSCredential for SQL authentication
 
+    .PARAMETER Username
+        Optional SQL login name for SQL authentication
+
+    .PARAMETER Password
+        Optional SQL login password for SQL authentication
+
     .PARAMETER Variable
         Optional SQLCMD variable substitution in format "name=value".
         In the query, use $(name) for substitution (NOT @name which is T-SQL syntax).
@@ -470,6 +476,10 @@ function Invoke-WsusSqlcmd {
 
         [System.Management.Automation.PSCredential]$Credential,
 
+        [string]$Username,
+
+        [string]$Password,
+
         [string]$Variable
     )
 
@@ -483,8 +493,20 @@ function Invoke-WsusSqlcmd {
     }
 
     # Add optional parameters
+    if ($Credential -and $Username) {
+        throw "Specify Credential or Username/Password, not both."
+    }
+
     if ($Credential) {
         $sqlParams.Credential = $Credential
+    }
+
+    if ($Username) {
+        if ([string]::IsNullOrWhiteSpace($Password)) {
+            throw "Password is required when Username is provided."
+        }
+        $sqlParams.Username = $Username
+        $sqlParams.Password = $Password
     }
 
     if ($Variable) {
