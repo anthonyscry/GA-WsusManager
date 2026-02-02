@@ -82,7 +82,7 @@ $script:OpCheckTimer = $null
 # Deduplication tracking - prevents same line appearing multiple times
 $script:RecentLines = @{}
 # Interactive Terminal Mode - enables command input in log panel
-$script:InteractiveMode = $false
+$script:InteractiveMode = $true
 
 function Write-Log { param([string]$Msg)
     try {
@@ -472,14 +472,14 @@ try {
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Monthly maintenance automation&#x0a;• Health diagnostics with auto-repair&#x0a;• Deep cleanup and optimization"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text=" - Automated WSUS + SQL Express installation&#x0a;- Database backup/restore operations&#x0a;- Air-gapped network export/import&#x0a;- Monthly maintenance automation&#x0a;- Health diagnostics with auto-repair&#x0a;- Deep cleanup and optimization"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                         <StackPanel>
                             <TextBlock Text="Requirements" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 50GB+ disk space"/>
-                            <TextBlock Text="© 2026 GA-ASI. Internal use only." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,12,0,0"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="- Windows Server 2019+&#x0a;- PowerShell 5.1+&#x0a;- SQL Server Express 2022&#x0a;- 50GB+ disk space"/>
+                             <TextBlock Text="Copyright 2026 GA-ASI. Internal use only." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,12,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -599,7 +599,7 @@ function Invoke-TerminalCommand {
             return
         }
         "exit" {
-$script:InteractiveMode = $true
+            $script:InteractiveMode = $false
             $controls.BtnInteractive.Content = "Interactive: Off"
             $controls.BtnInteractive.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
             $controls.LogOutput.IsReadOnly = $true
