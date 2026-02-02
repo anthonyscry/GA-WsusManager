@@ -39,6 +39,18 @@ Describe "Script Syntax Validation" {
         }
     }
 
+    Context "Interactive terminal defaults" {
+        It "defaults InteractiveMode to true before Import-WsusSettings" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match '(?s)\$script:InteractiveMode\s*=\s*\$true.*?Import-WsusSettings'
+        }
+
+        It "exit command disables interactive mode" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match '(?s)"exit"\s*\{.*?\$script:InteractiveMode\s*=\s*\$false'
+        }
+    }
+
     Context "CLI Scripts" {
         It "Invoke-WsusManagement.ps1 has no syntax errors" {
             $script = Join-Path $script:ScriptsPath "Invoke-WsusManagement.ps1"
