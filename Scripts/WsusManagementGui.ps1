@@ -162,7 +162,7 @@ try {
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WSUS Manager" Height="736" Width="950" MinHeight="600" MinWidth="800"
+        Title="WSUS Manager" Height="786" Width="950" MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen" Background="#0D1117">
     <Window.Resources>
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
@@ -266,8 +266,8 @@ try {
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
-                    <Button x:Name="BtnHelp" Content="Help" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnSettings" Content="Settings" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnHelp" Content="Help" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnAbout" Content="About" Style="{StaticResource NavBtn}"/>
                 </StackPanel>
 
@@ -277,12 +277,12 @@ try {
 
                         <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnInstall" Content="Install WSUS" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnRestore" Content="Restore DB" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCreateGpo" Content="Create GPO" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnGrantSysadmin" Content="Grant SQL Sysadmin" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="Export/Import" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnRestore" Content="Restore DB" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="Online Sync" Style="{StaticResource NavBtn}"/>
@@ -506,19 +506,16 @@ try {
                 </Grid.RowDefinitions>
                 <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
                     <WrapPanel>
-                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource BtnSec}" Padding="10,5"/>
+                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource BtnSec}" Padding="12,6" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource BtnSec}" Padding="12,6" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource BtnSec}" Padding="12,6" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnWorkflow" Content="Air-Gap Workflow" Style="{StaticResource BtnSec}" Padding="12,6" Margin="0,0,6,0"/>
+                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource BtnSec}" Padding="12,6" Margin="0,0,6,0"/>
                     </WrapPanel>
                 </Border>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="20">
-                        <StackPanel>
-                            <TextBlock x:Name="HelpTitle" Text="Help" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
-                            <TextBlock x:Name="HelpText" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20"/>
-                        </StackPanel>
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="24">
+                        <StackPanel x:Name="HelpContent"/>
                     </Border>
                 </ScrollViewer>
             </Grid>
@@ -861,7 +858,7 @@ function Update-Dashboard {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnGrantSysadmin","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnGrantSysadmin","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnSettings","BtnAbout","BtnHelp")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -1038,145 +1035,310 @@ function Show-Panel {
 #endregion
 
 #region Help Content
-$script:HelpContent = @{
-    Overview = @"
-WSUS MANAGER OVERVIEW
 
-A toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
+function New-HelpHeading {
+    param([string]$Text, [string]$Size = "18", [string]$Color = "#E6EDF3")
+    $tb = New-Object System.Windows.Controls.TextBlock
+    $tb.Text = $Text
+    $tb.FontSize = [double]$Size
+    $tb.FontWeight = [System.Windows.FontWeights]::Bold
+    $tb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString($Color)
+    $tb.Margin = [System.Windows.Thickness]::new(0, 0, 0, 4)
+    return $tb
+}
 
-FEATURES
-- Modern dark-themed GUI with auto-refresh
-- Air-gapped network support (export/import)
-- Automated maintenance and cleanup
-- Health monitoring with auto-repair
-- Database size monitoring (10GB limit)
+function New-HelpSubheading {
+    param([string]$Text)
+    $tb = New-Object System.Windows.Controls.TextBlock
+    $tb.Text = $Text
+    $tb.FontSize = 13
+    $tb.FontWeight = [System.Windows.FontWeights]::SemiBold
+    $tb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#58A6FF")
+    $tb.Margin = [System.Windows.Thickness]::new(0, 14, 0, 6)
+    return $tb
+}
 
-QUICK START
-1. Run WsusManager.exe as Administrator
-2. Use 'Install WSUS' for fresh installation
-3. Dashboard shows real-time status
-4. Server Mode auto-detects Online vs Air-Gap based on internet access
+function New-HelpText {
+    param([string]$Text, [string]$Color = "#8B949E")
+    $tb = New-Object System.Windows.Controls.TextBlock
+    $tb.Text = $Text
+    $tb.FontSize = 12.5
+    $tb.TextWrapping = [System.Windows.TextWrapping]::Wrap
+    $tb.LineHeight = 22
+    $tb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString($Color)
+    $tb.Margin = [System.Windows.Thickness]::new(0, 0, 0, 2)
+    return $tb
+}
 
-REQUIREMENTS
-- Windows Server 2019+
-- PowerShell 5.1+
-- SQL Server Express 2022
-- 50+ GB disk space
+function New-HelpBullet {
+    param([string]$Label, [string]$Description = "")
+    $sp = New-Object System.Windows.Controls.StackPanel
+    $sp.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+    $sp.Margin = [System.Windows.Thickness]::new(12, 2, 0, 2)
 
-PATHS
-- Content: C:\WSUS\
-- SQL Installers: C:\WSUS\SQLDB\
-- Logs: C:\WSUS\Logs\
-"@
+    $dot = New-Object System.Windows.Controls.TextBlock
+    $dot.Text = [char]0x2022 + " "
+    $dot.FontSize = 12.5
+    $dot.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#58A6FF")
+    $dot.VerticalAlignment = [System.Windows.VerticalAlignment]::Top
+    [void]$sp.Children.Add($dot)
 
-    Dashboard = @"
-DASHBOARD GUIDE
+    if ($Description) {
+        $wrap = New-Object System.Windows.Controls.WrapPanel
+        $bold = New-Object System.Windows.Controls.TextBlock
+        $bold.Text = "$Label "
+        $bold.FontSize = 12.5
+        $bold.FontWeight = [System.Windows.FontWeights]::SemiBold
+        $bold.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#C9D1D9")
+        [void]$wrap.Children.Add($bold)
+        $desc = New-Object System.Windows.Controls.TextBlock
+        $desc.Text = $Description
+        $desc.FontSize = 12.5
+        $desc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#8B949E")
+        $desc.TextWrapping = [System.Windows.TextWrapping]::Wrap
+        [void]$wrap.Children.Add($desc)
+        [void]$sp.Children.Add($wrap)
+    } else {
+        $txt = New-Object System.Windows.Controls.TextBlock
+        $txt.Text = $Label
+        $txt.FontSize = 12.5
+        $txt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#C9D1D9")
+        $txt.TextWrapping = [System.Windows.TextWrapping]::Wrap
+        [void]$sp.Children.Add($txt)
+    }
+    return $sp
+}
 
-Four status cards with 30-second auto-refresh.
+function New-HelpNumbered {
+    param([int]$Num, [string]$Text)
+    $sp = New-Object System.Windows.Controls.StackPanel
+    $sp.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+    $sp.Margin = [System.Windows.Thickness]::new(12, 3, 0, 3)
 
-SERVICES CARD
-- Green: All 3 running (SQL, WSUS, IIS)
-- Orange: Partial
-- Red: Critical services stopped
+    $badge = New-Object System.Windows.Controls.Border
+    $badge.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#21262D")
+    $badge.CornerRadius = [System.Windows.CornerRadius]::new(10)
+    $badge.Width = 20
+    $badge.Height = 20
+    $badge.Margin = [System.Windows.Thickness]::new(0, 0, 8, 0)
+    $numTb = New-Object System.Windows.Controls.TextBlock
+    $numTb.Text = "$Num"
+    $numTb.FontSize = 11
+    $numTb.FontWeight = [System.Windows.FontWeights]::Bold
+    $numTb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#58A6FF")
+    $numTb.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
+    $numTb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+    $badge.Child = $numTb
+    [void]$sp.Children.Add($badge)
 
-DATABASE CARD
-- Shows SUSDB vs 10GB SQL Express limit
-- Green: <7GB | Orange: 7-9GB | Red: >9GB
+    $txt = New-Object System.Windows.Controls.TextBlock
+    $txt.Text = $Text
+    $txt.FontSize = 12.5
+    $txt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#C9D1D9")
+    $txt.TextWrapping = [System.Windows.TextWrapping]::Wrap
+    $txt.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+    [void]$sp.Children.Add($txt)
+    return $sp
+}
 
-DISK CARD
-- Green: >50GB | Orange: 10-50GB | Red: <10GB
+function New-HelpDivider {
+    $border = New-Object System.Windows.Controls.Border
+    $border.BorderThickness = [System.Windows.Thickness]::new(0, 1, 0, 0)
+    $border.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#30363D")
+    $border.Margin = [System.Windows.Thickness]::new(0, 12, 0, 6)
+    return $border
+}
 
-TASK CARD
-- Green: Scheduled task ready
-- Orange: Not configured
+function New-HelpInfoBox {
+    param([string]$Text, [string]$Accent = "#58A6FF")
+    $border = New-Object System.Windows.Controls.Border
+    $border.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#161B22")
+    $border.BorderThickness = [System.Windows.Thickness]::new(3, 0, 0, 0)
+    $border.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString($Accent)
+    $border.CornerRadius = [System.Windows.CornerRadius]::new(0, 4, 4, 0)
+    $border.Padding = [System.Windows.Thickness]::new(14, 10, 14, 10)
+    $border.Margin = [System.Windows.Thickness]::new(0, 8, 0, 8)
+    $tb = New-Object System.Windows.Controls.TextBlock
+    $tb.Text = $Text
+    $tb.FontSize = 12
+    $tb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#C9D1D9")
+    $tb.TextWrapping = [System.Windows.TextWrapping]::Wrap
+    $tb.LineHeight = 20
+    $border.Child = $tb
+    return $border
+}
 
-QUICK ACTIONS
-- Health Check - Diagnostics only
-- Deep Cleanup - Aggressive cleanup
-- Online Sync - Sync with Microsoft
-- Start Services - Start all services
-"@
+function Build-HelpOverview {
+    param([System.Windows.Controls.StackPanel]$Panel)
+    [void]$Panel.Children.Add((New-HelpHeading "WSUS Manager"))
+    [void]$Panel.Children.Add((New-HelpText "A complete toolkit for deploying and managing Windows Server Update Services (WSUS) with SQL Server Express 2022. Supports both online and air-gapped (disconnected) networks." "#C9D1D9"))
 
-    Operations = @"
-OPERATIONS GUIDE
+    [void]$Panel.Children.Add((New-HelpSubheading "Features"))
+    [void]$Panel.Children.Add((New-HelpBullet "Real-time Dashboard" "- Auto-refreshing status cards for services, database, disk, and scheduled tasks"))
+    [void]$Panel.Children.Add((New-HelpBullet "Air-Gap Support" "- Full export/import workflow for disconnected networks via USB"))
+    [void]$Panel.Children.Add((New-HelpBullet "Online Sync" "- Synchronize with Microsoft Update, auto-approve, decline superseded"))
+    [void]$Panel.Children.Add((New-HelpBullet "Deep Cleanup" "- Aggressive database maintenance: purge declined, rebuild indexes, shrink DB"))
+    [void]$Panel.Children.Add((New-HelpBullet "Diagnostics" "- Comprehensive health check with auto-repair for services, firewall, and permissions"))
+    [void]$Panel.Children.Add((New-HelpBullet "Interactive Terminal" "- Built-in command output with real-time progress"))
+    [void]$Panel.Children.Add((New-HelpBullet "Server Mode" "- Auto-detects Online vs Air-Gap based on internet connectivity"))
+    [void]$Panel.Children.Add((New-HelpBullet "Scheduled Tasks" "- Automate monthly maintenance with domain credentials"))
 
-SETUP
-- Install WSUS - Fresh installation with SQL Express
-- Restore DB - Restore SUSDB from backup
+    [void]$Panel.Children.Add((New-HelpSubheading "Quick Start"))
+    [void]$Panel.Children.Add((New-HelpNumbered 1 "Run WsusManager.exe as Administrator"))
+    [void]$Panel.Children.Add((New-HelpNumbered 2 "Use Install WSUS for a fresh server setup"))
+    [void]$Panel.Children.Add((New-HelpNumbered 3 "Dashboard shows real-time status automatically"))
+    [void]$Panel.Children.Add((New-HelpNumbered 4 "Server Mode auto-detects Online vs Air-Gap"))
 
-TRANSFER
-- Export (Online) - Full or differential export to USB
-- Import (Air-Gap) - Import from external media
+    [void]$Panel.Children.Add((New-HelpSubheading "Requirements"))
+    [void]$Panel.Children.Add((New-HelpBullet "Windows Server 2019 or later"))
+    [void]$Panel.Children.Add((New-HelpBullet "PowerShell 5.1+"))
+    [void]$Panel.Children.Add((New-HelpBullet "SQL Server Express 2022 (installed automatically)"))
+    [void]$Panel.Children.Add((New-HelpBullet "50+ GB free disk space"))
 
-MAINTENANCE
-- Monthly (Online only) - Sync, decline superseded, cleanup, backup
-- Schedule Task (Online only) - Create/update the maintenance scheduled task
-- Deep Cleanup - Remove obsolete, shrink database
+    [void]$Panel.Children.Add((New-HelpInfoBox "Default Paths:  Content: C:\WSUS\  |  SQL Installers: C:\WSUS\SQLDB\  |  Logs: C:\WSUS\Logs\" "#3FB950"))
+}
 
-DIAGNOSTICS
-- Health Check - Read-only verification
-- Repair - Auto-fix common issues
-"@
+function Build-HelpDashboard {
+    param([System.Windows.Controls.StackPanel]$Panel)
+    [void]$Panel.Children.Add((New-HelpHeading "Dashboard"))
+    [void]$Panel.Children.Add((New-HelpText "Four status cards provide at-a-glance server health with 30-second auto-refresh." "#C9D1D9"))
 
-    AirGap = @"
-AIR-GAP WORKFLOW
+    [void]$Panel.Children.Add((New-HelpSubheading "Services Card"))
+    [void]$Panel.Children.Add((New-HelpBullet "Green:" "All 3 services running (SQL Server, WSUS, IIS)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Orange:" "Some services running"))
+    [void]$Panel.Children.Add((New-HelpBullet "Red:" "Critical services stopped"))
 
-Two-server model for disconnected networks:
-- Online WSUS: Internet-connected
-- Air-Gap WSUS: Disconnected
+    [void]$Panel.Children.Add((New-HelpSubheading "Database Card"))
+    [void]$Panel.Children.Add((New-HelpBullet "Green:" "Under 7 GB (healthy)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Orange:" "7-9 GB (approaching SQL Express 10 GB limit)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Red:" "Over 9 GB (critical - run Deep Cleanup immediately)"))
 
-WORKFLOW
-1. On Online server: Run Maintenance, then Export
-2. Transfer USB to air-gap network
-3. On Air-Gap server: Import, then Restore DB
+    [void]$Panel.Children.Add((New-HelpSubheading "Disk Space Card"))
+    [void]$Panel.Children.Add((New-HelpBullet "Green:" "Over 50 GB free"))
+    [void]$Panel.Children.Add((New-HelpBullet "Orange:" "10-50 GB free"))
+    [void]$Panel.Children.Add((New-HelpBullet "Red:" "Under 10 GB free"))
 
-EXPORT OPTIONS
-- Full: Complete DB + all files (50+ GB)
-- Differential: Recent updates only (smaller)
+    [void]$Panel.Children.Add((New-HelpSubheading "Scheduled Task Card"))
+    [void]$Panel.Children.Add((New-HelpBullet "Green:" "Maintenance task configured and ready"))
+    [void]$Panel.Children.Add((New-HelpBullet "Orange:" "No scheduled task configured"))
 
-TIPS
-- Use USB 3.0 formatted as NTFS
-- Scan USB per security policy
-- Keep servers synchronized
-"@
+    [void]$Panel.Children.Add((New-HelpDivider))
+    [void]$Panel.Children.Add((New-HelpSubheading "Quick Action Buttons"))
+    [void]$Panel.Children.Add((New-HelpBullet "Diagnostics" "- Run health checks and auto-repair"))
+    [void]$Panel.Children.Add((New-HelpBullet "Deep Cleanup" "- Remove obsolete updates, rebuild indexes, shrink database"))
+    [void]$Panel.Children.Add((New-HelpBullet "Online Sync" "- Synchronize updates from Microsoft (online mode only)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Start Services" "- Start SQL Server, IIS, and WSUS services"))
+}
 
-    Troubleshooting = @"
-TROUBLESHOOTING
+function Build-HelpOperations {
+    param([System.Windows.Controls.StackPanel]$Panel)
+    [void]$Panel.Children.Add((New-HelpHeading "Operations"))
+    [void]$Panel.Children.Add((New-HelpText "All operations are accessible from the left sidebar, organized by category." "#C9D1D9"))
 
-SERVICES WON'T START
-1. Start SQL Server first
-2. Use 'Start Services' button
-3. Check Event Viewer
-4. Run Health + Repair
+    [void]$Panel.Children.Add((New-HelpSubheading "Setup"))
+    [void]$Panel.Children.Add((New-HelpBullet "Install WSUS" "- Fresh installation with SQL Server Express 2022, configures IIS, firewall rules, and content directory"))
+    [void]$Panel.Children.Add((New-HelpBullet "Create GPO" "- Copies Group Policy files to C:\WSUS\WSUS GPO with instructions for your domain admin"))
+    [void]$Panel.Children.Add((New-HelpBullet "Grant SQL Sysadmin" "- Grants sysadmin role to a domain account for database maintenance operations"))
 
-DATABASE OFFLINE
-- Start SQL Server Express service
-- Check disk space
-- Run Health Check
+    [void]$Panel.Children.Add((New-HelpSubheading "Transfer"))
+    [void]$Panel.Children.Add((New-HelpBullet "Export" "- Copy updates to USB drive (Full or Differential with configurable days filter)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Import" "- Import updates from USB to air-gapped server with source and destination selection"))
 
-DATABASE >9 GB
-- Run Deep Cleanup
-- Decline unneeded updates
-- Run Online Sync
+    [void]$Panel.Children.Add((New-HelpSubheading "Maintenance"))
+    [void]$Panel.Children.Add((New-HelpBullet "Online Sync" "- Synchronize with Microsoft Update, auto-approve security/critical/definition updates, decline superseded (Online mode only)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Schedule Task" "- Create a Windows Scheduled Task for automated monthly sync with domain credentials"))
+    [void]$Panel.Children.Add((New-HelpBullet "Restore DB" "- Restore SUSDB database from a backup file (for recovery or air-gap import)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Cleanup" "- Deep 6-step database cleanup: decline superseded, purge obsolete, remove declined, rebuild indexes, update statistics, shrink DB"))
 
-CLIENTS NOT UPDATING
-- Verify GPO (gpresult /h)
-- Run gpupdate /force
-- Check ports 8530/8531
-- Verify WSUS URL in registry
+    [void]$Panel.Children.Add((New-HelpSubheading "Diagnostics"))
+    [void]$Panel.Children.Add((New-HelpBullet "Run Diagnostics" "- Comprehensive scan of services, database, firewall, and permissions with automatic fixes"))
+    [void]$Panel.Children.Add((New-HelpBullet "Reset Content" "- Runs wsusutil reset to re-verify content files against database (fixes 'still downloading' status)"))
 
-LOGS
-- App: C:\WSUS\Logs\
-- WSUS: C:\Program Files\Update Services\LogFiles\
-- IIS: C:\inetpub\logs\LogFiles\
-"@
+    [void]$Panel.Children.Add((New-HelpInfoBox "Only one operation can run at a time. All buttons are disabled during execution. Use the Cancel button to stop a running operation." "#D29922"))
+}
+
+function Build-HelpWorkflow {
+    param([System.Windows.Controls.StackPanel]$Panel)
+    [void]$Panel.Children.Add((New-HelpHeading "Air-Gap Workflow"))
+    [void]$Panel.Children.Add((New-HelpText "Two-server model for transferring updates to disconnected (air-gapped) networks via USB drive." "#C9D1D9"))
+
+    [void]$Panel.Children.Add((New-HelpInfoBox "WSUS Manager auto-detects your server mode based on internet connectivity. Online-only features (Sync, Schedule) are automatically disabled on air-gapped servers."))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "On the Online Server"))
+    [void]$Panel.Children.Add((New-HelpNumbered 1 "Run Online Sync to download latest updates from Microsoft"))
+    [void]$Panel.Children.Add((New-HelpNumbered 2 "Use Export to copy updates to USB drive"))
+    [void]$Panel.Children.Add((New-HelpText "    Choose Full export for complete backup, or Differential for recent updates only." "#8B949E"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Transfer"))
+    [void]$Panel.Children.Add((New-HelpNumbered 3 "Physically move the USB drive to the air-gapped network"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "On the Air-Gap Server"))
+    [void]$Panel.Children.Add((New-HelpNumbered 4 "Use Import to copy update files from USB to the WSUS content directory"))
+    [void]$Panel.Children.Add((New-HelpNumbered 5 "Use Restore DB to load the exported database backup"))
+    [void]$Panel.Children.Add((New-HelpNumbered 6 "If files show 'still downloading', use Reset Content to re-verify"))
+
+    [void]$Panel.Children.Add((New-HelpDivider))
+    [void]$Panel.Children.Add((New-HelpSubheading "Export Options"))
+    [void]$Panel.Children.Add((New-HelpBullet "Full Export" "- Complete database backup + all content files (50+ GB typical)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Differential Export" "- Only files modified within a configurable number of days (much smaller)"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Tips"))
+    [void]$Panel.Children.Add((New-HelpBullet "Use USB 3.0 drives formatted as NTFS for best performance"))
+    [void]$Panel.Children.Add((New-HelpBullet "Scan USB media per your organization's security policy"))
+    [void]$Panel.Children.Add((New-HelpBullet "Keep both servers synchronized on the same update cycle"))
+    [void]$Panel.Children.Add((New-HelpBullet "Schedule monthly syncs on the online server for consistency"))
+}
+
+function Build-HelpTroubleshooting {
+    param([System.Windows.Controls.StackPanel]$Panel)
+    [void]$Panel.Children.Add((New-HelpHeading "Troubleshooting"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Services Won't Start"))
+    [void]$Panel.Children.Add((New-HelpNumbered 1 "SQL Server must start first (other services depend on it)"))
+    [void]$Panel.Children.Add((New-HelpNumbered 2 "Use the Start Services quick action button"))
+    [void]$Panel.Children.Add((New-HelpNumbered 3 "Check Windows Event Viewer for specific errors"))
+    [void]$Panel.Children.Add((New-HelpNumbered 4 "Run Diagnostics to auto-detect and fix common issues"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Database Offline"))
+    [void]$Panel.Children.Add((New-HelpBullet "Verify SQL Server Express service is running"))
+    [void]$Panel.Children.Add((New-HelpBullet "Check available disk space (SQL needs room to operate)"))
+    [void]$Panel.Children.Add((New-HelpBullet "Run Diagnostics for detailed status"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Database Approaching 10 GB Limit"))
+    [void]$Panel.Children.Add((New-HelpInfoBox "SQL Server Express has a 10 GB database limit. The dashboard warns at 7 GB (orange) and 9 GB (red)." "#F85149"))
+    [void]$Panel.Children.Add((New-HelpNumbered 1 "Run Deep Cleanup to purge obsolete updates and shrink the database"))
+    [void]$Panel.Children.Add((New-HelpNumbered 2 "Decline unneeded update categories in WSUS console"))
+    [void]$Panel.Children.Add((New-HelpNumbered 3 "Run Online Sync to refresh and decline superseded updates"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Clients Not Updating"))
+    [void]$Panel.Children.Add((New-HelpBullet "Verify GPO is applied:" "gpresult /h report.html"))
+    [void]$Panel.Children.Add((New-HelpBullet "Force policy refresh:" "gpupdate /force"))
+    [void]$Panel.Children.Add((New-HelpBullet "Check firewall ports 8530 (HTTP) and 8531 (HTTPS) are open"))
+    [void]$Panel.Children.Add((New-HelpBullet "Verify WSUS URL in registry:" "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"))
+
+    [void]$Panel.Children.Add((New-HelpSubheading "Content 'Still Downloading' After Import"))
+    [void]$Panel.Children.Add((New-HelpBullet "Use Reset Content to run wsusutil reset"))
+    [void]$Panel.Children.Add((New-HelpBullet "This re-verifies all content files against the database"))
+
+    [void]$Panel.Children.Add((New-HelpDivider))
+    [void]$Panel.Children.Add((New-HelpSubheading "Log Locations"))
+    [void]$Panel.Children.Add((New-HelpBullet "WSUS Manager:" "C:\WSUS\Logs\"))
+    [void]$Panel.Children.Add((New-HelpBullet "WSUS Server:" "C:\Program Files\Update Services\LogFiles\"))
+    [void]$Panel.Children.Add((New-HelpBullet "IIS:" "C:\inetpub\logs\LogFiles\"))
 }
 
 function Show-Help {
     param([string]$Topic = "Overview")
     Show-Panel "Help" "Help" "BtnHelp"
-    $controls.HelpTitle.Text = $Topic
-    $controls.HelpText.Text = $script:HelpContent[$Topic]
+    $controls.HelpContent.Children.Clear()
+    switch ($Topic) {
+        "Overview"          { Build-HelpOverview -Panel $controls.HelpContent }
+        "Dashboard"         { Build-HelpDashboard -Panel $controls.HelpContent }
+        "Operations"        { Build-HelpOperations -Panel $controls.HelpContent }
+        "Workflow"          { Build-HelpWorkflow -Panel $controls.HelpContent }
+        "Troubleshooting"   { Build-HelpTroubleshooting -Panel $controls.HelpContent }
+        default             { Build-HelpOverview -Panel $controls.HelpContent }
+    }
 }
 #endregion
 
@@ -2245,7 +2407,7 @@ $controls.BtnCancelOp.Add_Click({
 $controls.HelpBtnOverview.Add_Click({ Show-Help "Overview" })
 $controls.HelpBtnDashboard.Add_Click({ Show-Help "Dashboard" })
 $controls.HelpBtnOperations.Add_Click({ Show-Help "Operations" })
-$controls.HelpBtnAirGap.Add_Click({ Show-Help "AirGap" })
+$controls.HelpBtnWorkflow.Add_Click({ Show-Help "Workflow" })
 $controls.HelpBtnTroubleshooting.Add_Click({ Show-Help "Troubleshooting" })
 
 $controls.QBtnDiagnostics.Add_Click({ Invoke-LogOperation "diagnostics" "Diagnostics" })
