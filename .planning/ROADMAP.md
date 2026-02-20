@@ -70,7 +70,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Users can start or stop SQL Server, WSUS, and IIS individually from the Service Management panel — and the dashboard reflects the new state without a manual refresh
   4. Database operations are blocked with a clear error message when the current user lacks SQL sysadmin permissions
   5. Running Content Reset (wsusutil reset) completes without hanging and reports success or failure in the log panel
-**Plans**: TBD
+**Plans**:
+  1. Health check models and diagnostic result types (DIAG-03)
+  2. Windows service management service (SVC-01, SVC-02, SVC-03)
+  3. Firewall rule management service (FW-01, FW-02)
+  4. Permissions and SQL sysadmin check services (PERM-01, PERM-02, DIAG-04)
+  5. Health check service with auto-repair pipeline (DIAG-01, DIAG-02, DIAG-03)
+  6. Content reset service — wsusutil reset (DIAG-05)
+  7. Diagnostics UI panel and ViewModel wiring (DIAG-01, DIAG-02, DIAG-03, DIAG-05, SVC-01, SVC-02, SVC-03)
+  8. Tests and integration verification (all Phase 3)
 
 ### Phase 4: Database Operations
 **Goal**: Administrators can run the full 6-step deep cleanup pipeline (decline superseded, remove supersession records in two passes, delete declined updates in batches, rebuild indexes, shrink DB with retry) and can backup or restore the SUSDB database from a file picker.
@@ -125,8 +133,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete | 2026-02-19 |
-| 2. Application Shell and Dashboard | 0/8 | Planning complete | - |
-| 3. Diagnostics and Service Management | 0/TBD | Not started | - |
+| 2. Application Shell and Dashboard | 8/8 | Complete | 2026-02-19 |
+| 3. Diagnostics and Service Management | 0/8 | Planning complete | - |
 | 4. Database Operations | 0/TBD | Not started | - |
 | 5. WSUS Operations | 0/TBD | Not started | - |
 | 6. Installation and Scheduling | 0/TBD | Not started | - |
