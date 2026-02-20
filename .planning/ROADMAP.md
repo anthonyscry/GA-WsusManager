@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Compilable solution with DI wiring, async operation pattern, single-file publish, UAC manifest, and structured logging (completed 2026-02-19)
 - [x] **Phase 2: Application Shell and Dashboard** - Working windowed application with dark theme, live dashboard, server mode toggle, operation log panel, and settings persistence (completed 2026-02-19)
 - [x] **Phase 3: Diagnostics and Service Management** - Health check with auto-repair, service start/stop, firewall rule management, and permissions checking (completed 2026-02-20)
-- [ ] **Phase 4: Database Operations** - 6-step deep cleanup pipeline, database backup and restore, and sysadmin permission enforcement
+- [ ] **Phase 4: Database Operations** - 6-step deep cleanup pipeline, database backup and restore, and sysadmin permission enforcement (7 plans)
 - [ ] **Phase 5: WSUS Operations** - Online sync with profile selection, air-gap export/import workflow, and content reset
 - [ ] **Phase 6: Installation and Scheduling** - WSUS + SQL Express installation wizard, scheduled task creation with domain credentials, and GPO deployment
 - [ ] **Phase 7: Polish and Distribution** - Comprehensive test suite, CI/CD pipeline, EXE validation, and release automation
@@ -89,7 +89,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. DB size is displayed before and after the shrink step, and the shrink retries automatically (up to 3 times with 30-second delays) when blocked by an active backup operation
   3. Deep Cleanup completes on a production SUSDB without SQL timeout errors — all maintenance queries run with unlimited command timeout
   4. User can select a backup destination and successfully back up the SUSDB — and can restore it from a backup file selected via a file picker dialog
-**Plans**: TBD
+**Plans**:
+  1. SQL helper service and connection management (foundation)
+  2. Deep cleanup steps 1–3 — WSUS cleanup, remove supersession records (DB-01, DB-02, DB-03)
+  3. Deep cleanup steps 4–6 — delete declined, rebuild indexes, shrink DB (DB-01, DB-02, DB-03, DB-04)
+  4. Database backup service (DB-05)
+  5. Database restore service (DB-06)
+  6. Database operations UI panel and ViewModel wiring (DB-01–DB-06)
+  7. Tests and integration verification (all Phase 4)
 
 ### Phase 5: WSUS Operations
 **Goal**: Administrators can run Online Sync with profile selection, export WSUS data to media (full and differential), import from USB or network share, and reset content after an air-gap import — covering the full air-gap maintenance workflow end-to-end.
@@ -135,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation | 6/6 | Complete | 2026-02-19 |
 | 2. Application Shell and Dashboard | 8/8 | Complete | 2026-02-19 |
 | 3. Diagnostics and Service Management | 1/1 | Complete   | 2026-02-20 |
-| 4. Database Operations | 0/TBD | Not started | - |
+| 4. Database Operations | 0/7 | Planned | - |
 | 5. WSUS Operations | 0/TBD | Not started | - |
 | 6. Installation and Scheduling | 0/TBD | Not started | - |
 | 7. Polish and Distribution | 0/TBD | Not started | - |
