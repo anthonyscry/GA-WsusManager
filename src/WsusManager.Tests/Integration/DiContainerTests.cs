@@ -8,7 +8,7 @@ namespace WsusManager.Tests.Integration;
 
 /// <summary>
 /// Verifies that all DI service registrations resolve without error.
-/// These tests do NOT require WPF runtime — they only test Core services.
+/// These tests do NOT require WPF runtime -- they only test Core services.
 /// </summary>
 public class DiContainerTests
 {
@@ -20,6 +20,7 @@ public class DiContainerTests
         services.AddSingleton<ILogService>(new LogService(Path.GetTempPath()));
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
+        services.AddSingleton<IDashboardService, DashboardService>();
 
         return services.BuildServiceProvider();
     }
@@ -49,6 +50,14 @@ public class DiContainerTests
     }
 
     [Fact]
+    public void DashboardService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IDashboardService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
     public void All_Core_Services_Resolve_Without_Error()
     {
         var sp = BuildTestContainer();
@@ -57,9 +66,11 @@ public class DiContainerTests
         var log = sp.GetRequiredService<ILogService>();
         var settings = sp.GetRequiredService<ISettingsService>();
         var process = sp.GetRequiredService<IProcessRunner>();
+        var dashboard = sp.GetRequiredService<IDashboardService>();
 
         Assert.NotNull(log);
         Assert.NotNull(settings);
         Assert.NotNull(process);
+        Assert.NotNull(dashboard);
     }
 }
