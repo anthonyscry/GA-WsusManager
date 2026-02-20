@@ -50,7 +50,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Toggling between Online and Air-Gap modes changes the visible menu items and operation buttons accordingly
   4. Attempting to start a second operation while one is running disables all operation buttons and prevents concurrent execution
   5. Application settings (server mode, log panel state, live terminal toggle) survive a full close and reopen cycle
-**Plans**: TBD
+**Plans**:
+  1. Dark theme resource dictionary and base styles (GUI-01)
+  2. Main window layout with sidebar navigation (GUI-02, GUI-03)
+  3. Dashboard service for data collection (DASH-01, DASH-02, DASH-03, DASH-04)
+  4. Dashboard panel with status cards and auto-refresh (DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, GUI-06)
+  5. Server mode detection and context-aware menus (GUI-04)
+  6. Operation log panel with controls (OPS-01, OPS-02, GUI-07)
+  7. WSUS installation detection and button state management (GUI-06, OPS-03, OPS-04)
+  8. Settings persistence integration and final wiring (GUI-07, integration)
 
 ### Phase 3: Diagnostics and Service Management
 **Goal**: Administrators can run a comprehensive health check that detects and auto-repairs service failures, firewall rule problems, content directory permission issues, and SQL connectivity failures — and can start/stop individual services directly from the UI.
@@ -117,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete | 2026-02-19 |
-| 2. Application Shell and Dashboard | 0/TBD | Not started | - |
+| 2. Application Shell and Dashboard | 0/8 | Planning complete | - |
 | 3. Diagnostics and Service Management | 0/TBD | Not started | - |
 | 4. Database Operations | 0/TBD | Not started | - |
 | 5. WSUS Operations | 0/TBD | Not started | - |
