@@ -1,0 +1,128 @@
+<Window x:Class="WsusManager.App.Views.ScheduleTaskDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Schedule Maintenance Task"
+        Width="520" Height="560"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BgDark}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Schedule Task" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource Text1}"/>
+            <TextBlock Text="Create a Windows scheduled task for automated WSUS maintenance."
+                       Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Fields -->
+        <StackPanel Grid.Row="1">
+
+            <!-- Task Name -->
+            <TextBlock Text="Task Name" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtTaskName" Text="WSUS Monthly Maintenance"
+                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Margin="0,0,0,10"/>
+
+            <!-- Schedule Type and Time on same row -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Schedule" Foreground="{StaticResource Text2}"
+                               FontSize="12" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="CmbScheduleType" SelectedIndex="0"
+                              Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                              FontSize="12" Padding="4"
+                              SelectionChanged="ScheduleType_Changed">
+                        <ComboBoxItem Content="Monthly"/>
+                        <ComboBoxItem Content="Weekly"/>
+                        <ComboBoxItem Content="Daily"/>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Time (HH:mm)" Foreground="{StaticResource Text2}"
+                               FontSize="12" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtTime" Text="02:00"
+                             Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                             BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Day of Month (visible when Monthly) -->
+            <StackPanel x:Name="DayOfMonthPanel" Margin="0,0,0,10">
+                <TextBlock Text="Day of Month (1-31)" Foreground="{StaticResource Text2}"
+                           FontSize="12" Margin="0,0,0,4"/>
+                <TextBox x:Name="TxtDayOfMonth" Text="15" Width="80" HorizontalAlignment="Left"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+            </StackPanel>
+
+            <!-- Day of Week (visible when Weekly) -->
+            <StackPanel x:Name="DayOfWeekPanel" Visibility="Collapsed" Margin="0,0,0,10">
+                <TextBlock Text="Day of Week" Foreground="{StaticResource Text2}"
+                           FontSize="12" Margin="0,0,0,4"/>
+                <ComboBox x:Name="CmbDayOfWeek" SelectedIndex="6"
+                          Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                          FontSize="12" Padding="4">
+                    <ComboBoxItem Content="Sunday"/>
+                    <ComboBoxItem Content="Monday"/>
+                    <ComboBoxItem Content="Tuesday"/>
+                    <ComboBoxItem Content="Wednesday"/>
+                    <ComboBoxItem Content="Thursday"/>
+                    <ComboBoxItem Content="Friday"/>
+                    <ComboBoxItem Content="Saturday"/>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- Maintenance Profile -->
+            <TextBlock Text="Maintenance Profile" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <ComboBox x:Name="CmbProfile" SelectedIndex="0"
+                      Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                      FontSize="12" Padding="4" Margin="0,0,0,10">
+                <ComboBoxItem Content="Full"/>
+                <ComboBoxItem Content="Quick"/>
+                <ComboBoxItem Content="SyncOnly"/>
+            </ComboBox>
+
+            <!-- Username -->
+            <TextBlock Text="Username" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtUsername" Text=".\dod_admin"
+                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Margin="0,0,0,10"/>
+
+            <!-- Password -->
+            <TextBlock Text="Password" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <PasswordBox x:Name="PwdPassword"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Cancel" Style="{StaticResource BtnSec}"
+                    Padding="20,8" Margin="0,0,8,0"
+                    Click="Cancel_Click"/>
+            <Button Content="Create Task" Style="{StaticResource BtnGreen}"
+                    Padding="20,8"
+                    Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

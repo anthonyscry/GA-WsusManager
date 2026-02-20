@@ -35,7 +35,10 @@
                 <TextBlock DockPanel.Dock="Top" Text="SETUP" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Install WSUS"
                         Style="{StaticResource NavBtn}" x:Name="BtnInstall"
-                        Command="{Binding NavigateCommand}" CommandParameter="Install"/>
+                        Command="{Binding RunInstallWsusCommand}"/>
+                <Button DockPanel.Dock="Top" Content="Create GPO"
+                        Style="{StaticResource NavBtn}" x:Name="BtnGpo"
+                        Command="{Binding RunCreateGpoCommand}"/>
 
                 <!-- TRANSFER Category -->
                 <TextBlock DockPanel.Dock="Top" Text="TRANSFER" Style="{StaticResource CategoryLabel}"/>
@@ -50,8 +53,7 @@
                         Command="{Binding RunOnlineSyncCommand}"/>
                 <Button DockPanel.Dock="Top" Content="Schedule Task"
                         Style="{StaticResource NavBtn}" x:Name="BtnSchedule"
-                        Command="{Binding NavigateCommand}" CommandParameter="Schedule"
-                        IsEnabled="{Binding IsOnline}"/>
+                        Command="{Binding RunScheduleTaskCommand}"/>
 
                 <!-- DIAGNOSTICS Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DIAGNOSTICS" Style="{StaticResource CategoryLabel}"/>

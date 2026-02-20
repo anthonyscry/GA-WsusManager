@@ -41,6 +41,11 @@ public class DiContainerTests
         services.AddSingleton<IExportService, ExportService>();
         services.AddSingleton<IImportService, ImportService>();
 
+        // Phase 6: Installation and Scheduling
+        services.AddSingleton<IInstallationService, InstallationService>();
+        services.AddSingleton<IScheduledTaskService, ScheduledTaskService>();
+        services.AddSingleton<IGpoDeploymentService, GpoDeploymentService>();
+
         return services.BuildServiceProvider();
     }
 
@@ -251,5 +256,45 @@ public class DiContainerTests
         Assert.NotNull(robocopy);
         Assert.NotNull(export);
         Assert.NotNull(import);
+    }
+
+    // ─── Phase 6 Service Resolution Tests ────────────────────────────────
+
+    [Fact]
+    public void InstallationService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IInstallationService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void ScheduledTaskService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IScheduledTaskService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void GpoDeploymentService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IGpoDeploymentService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void All_Phase6_Services_Resolve_Without_Error()
+    {
+        var sp = BuildTestContainer();
+
+        var installation = sp.GetRequiredService<IInstallationService>();
+        var scheduledTask = sp.GetRequiredService<IScheduledTaskService>();
+        var gpo = sp.GetRequiredService<IGpoDeploymentService>();
+
+        Assert.NotNull(installation);
+        Assert.NotNull(scheduledTask);
+        Assert.NotNull(gpo);
     }
 }

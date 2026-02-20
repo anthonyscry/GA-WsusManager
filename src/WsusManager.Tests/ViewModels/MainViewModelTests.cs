@@ -24,6 +24,9 @@ public class MainViewModelTests
     private readonly Mock<ISyncService> _mockSync = new();
     private readonly Mock<IExportService> _mockExport = new();
     private readonly Mock<IImportService> _mockImport = new();
+    private readonly Mock<IInstallationService> _mockInstall = new();
+    private readonly Mock<IScheduledTaskService> _mockScheduledTask = new();
+    private readonly Mock<IGpoDeploymentService> _mockGpo = new();
     private readonly MainViewModel _vm;
 
     public MainViewModelTests()
@@ -42,7 +45,10 @@ public class MainViewModelTests
             _mockBackup.Object,
             _mockSync.Object,
             _mockExport.Object,
-            _mockImport.Object);
+            _mockImport.Object,
+            _mockInstall.Object,
+            _mockScheduledTask.Object,
+            _mockGpo.Object);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -743,6 +749,59 @@ public class MainViewModelTests
         _vm.IsWsusInstalled = true;
 
         Assert.True(_vm.RunTransferCommand.CanExecute(null));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 6: Installation and Scheduling Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void RunInstallWsusCommand_CanExecute_True_When_WsusNotInstalled()
+    {
+        // Install WSUS should be available even when WSUS is NOT installed
+        _vm.IsWsusInstalled = false;
+
+        Assert.True(_vm.RunInstallWsusCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunInstallWsusCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.RunInstallWsusCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunScheduleTaskCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.RunScheduleTaskCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunScheduleTaskCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.RunScheduleTaskCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunCreateGpoCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.RunCreateGpoCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunCreateGpoCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.RunCreateGpoCommand.CanExecute(null));
     }
 
     // ═══════════════════════════════════════════════════════════════
