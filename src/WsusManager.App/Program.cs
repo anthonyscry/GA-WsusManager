@@ -87,6 +87,7 @@ public static class Program
         builder.Services.AddSingleton<IFirewallService, FirewallService>();
         builder.Services.AddSingleton<IPermissionsService, PermissionsService>();
         builder.Services.AddSingleton<IHealthService, HealthService>();
+        builder.Services.AddSingleton<IContentResetService, ContentResetService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
