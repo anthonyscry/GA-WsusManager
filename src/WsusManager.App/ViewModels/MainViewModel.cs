@@ -31,6 +31,9 @@ public partial class MainViewModel : ObservableObject
     private readonly ISyncService _syncService;
     private readonly IExportService _exportService;
     private readonly IImportService _importService;
+    private readonly IInstallationService _installationService;
+    private readonly IScheduledTaskService _scheduledTaskService;
+    private readonly IGpoDeploymentService _gpoDeploymentService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -52,7 +55,10 @@ public partial class MainViewModel : ObservableObject
         IDatabaseBackupService backupService,
         ISyncService syncService,
         IExportService exportService,
-        IImportService importService)
+        IImportService importService,
+        IInstallationService installationService,
+        IScheduledTaskService scheduledTaskService,
+        IGpoDeploymentService gpoDeploymentService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -65,6 +71,9 @@ public partial class MainViewModel : ObservableObject
         _syncService = syncService;
         _exportService = exportService;
         _importService = importService;
+        _installationService = installationService;
+        _scheduledTaskService = scheduledTaskService;
+        _gpoDeploymentService = gpoDeploymentService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -115,6 +124,7 @@ public partial class MainViewModel : ObservableObject
             "Settings" => "Settings",
             "Help" => "Help",
             "About" => "About",
+            "GPO" => "Create GPO",
             _ => panel
         };
 
@@ -554,6 +564,7 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanExecuteWsusOperation() => IsWsusInstalled && !IsOperationRunning;
     private bool CanExecuteOnlineOperation() => IsWsusInstalled && !IsOperationRunning && IsOnline;
+    private bool CanExecuteInstall() => !IsOperationRunning;
 
     // ═══════════════════════════════════════════════════════════════
     // WSUS OPERATIONS COMMANDS (Phase 5)
@@ -610,6 +621,97 @@ public partial class MainViewModel : ObservableObject
                 return result.Success;
             });
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // INSTALLATION & SCHEDULING COMMANDS (Phase 6)
+    // ═══════════════════════════════════════════════════════════════
+
+    [RelayCommand(CanExecute = nameof(CanExecuteInstall))]
+    private async Task RunInstallWsus()
+    {
+        // Dialog before panel switch (per CLAUDE.md pattern)
+        var dialog = new InstallDialog();
+        if (Application.Current.MainWindow is not null)
+            dialog.Owner = Application.Current.MainWindow;
+
+        if (dialog.ShowDialog() != true || dialog.Options is null) return;
+
+        var options = dialog.Options;
+        Navigate("Install");
+
+        await RunOperationAsync("Install WSUS", async (progress, ct) =>
+        {
+            // Pre-flight validation
+            progress.Report("Validating prerequisites...");
+            var validation = await _installationService.ValidatePrerequisitesAsync(options, ct);
+            if (!validation.Success)
+            {
+                progress.Report($"[FAIL] {validation.Message}");
+                return false;
+            }
+            progress.Report("[OK] All prerequisites met.");
+            progress.Report("");
+
+            // Run installation
+            var result = await _installationService.InstallAsync(options, progress, ct);
+
+            // Refresh dashboard after install to detect WSUS role
+            if (result.Success)
+                await RefreshDashboard();
+
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RunScheduleTask()
+    {
+        // Dialog before panel switch (per CLAUDE.md pattern)
+        var dialog = new ScheduleTaskDialog();
+        if (Application.Current.MainWindow is not null)
+            dialog.Owner = Application.Current.MainWindow;
+
+        if (dialog.ShowDialog() != true || dialog.Options is null) return;
+
+        var options = dialog.Options;
+        Navigate("Schedule");
+
+        await RunOperationAsync("Schedule Task", async (progress, ct) =>
+        {
+            var result = await _scheduledTaskService.CreateTaskAsync(options, progress, ct);
+
+            // Refresh dashboard to update Task card status
+            if (result.Success)
+                await RefreshDashboard();
+
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RunCreateGpo()
+    {
+        Navigate("Install");
+
+        await RunOperationAsync("Create GPO", async (progress, ct) =>
+        {
+            var result = await _gpoDeploymentService.DeployGpoFilesAsync(progress, ct);
+
+            if (result.Success && result.Data is not null)
+            {
+                // Show instructions dialog on UI thread after operation completes
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var instrDialog = new GpoInstructionsDialog(result.Data);
+                    if (Application.Current.MainWindow is not null)
+                        instrDialog.Owner = Application.Current.MainWindow;
+                    instrDialog.ShowDialog();
+                });
+            }
+
+            return result.Success;
+        });
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -736,6 +838,10 @@ public partial class MainViewModel : ObservableObject
         // Phase 5: WSUS Operations
         RunOnlineSyncCommand.NotifyCanExecuteChanged();
         RunTransferCommand.NotifyCanExecuteChanged();
+        // Phase 6: Installation and Scheduling
+        RunInstallWsusCommand.NotifyCanExecuteChanged();
+        RunScheduleTaskCommand.NotifyCanExecuteChanged();
+        RunCreateGpoCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════

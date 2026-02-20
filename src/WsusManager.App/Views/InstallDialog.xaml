@@ -1,0 +1,71 @@
+<Window x:Class="WsusManager.App.Views.InstallDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Install WSUS with SQL Server Express"
+        Width="480" Height="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BgDark}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Install WSUS" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource Text1}"/>
+            <TextBlock Text="Installs SQL Server Express 2022 and the WSUS role. Place SQLEXPRADV_x64_ENU.exe in the installer directory."
+                       Foreground="{StaticResource Text2}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Fields -->
+        <StackPanel Grid.Row="1">
+
+            <!-- Installer Path -->
+            <TextBlock Text="Installer Path" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtInstallerPath" Grid.Column="0" Text="C:\WSUS\SQLDB"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
+                        Padding="10,4" Margin="6,0,0,0" FontSize="11"
+                        Click="BrowseInstallerPath_Click"/>
+            </Grid>
+
+            <!-- SA Username -->
+            <TextBlock Text="SA Username" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtSaUsername" Text="sa"
+                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Margin="0,0,0,12"/>
+
+            <!-- SA Password -->
+            <TextBlock Text="SA Password (15+ chars, 1 digit, 1 special char)" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <PasswordBox x:Name="PwdSaPassword"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Cancel" Style="{StaticResource BtnSec}"
+                    Padding="20,8" Margin="0,0,8,0"
+                    Click="Cancel_Click"/>
+            <Button Content="Install" Style="{StaticResource BtnGreen}"
+                    Padding="20,8"
+                    Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

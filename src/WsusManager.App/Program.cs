@@ -101,6 +101,11 @@ public static class Program
         builder.Services.AddSingleton<IExportService, ExportService>();
         builder.Services.AddSingleton<IImportService, ImportService>();
 
+        // Phase 6: Installation and Scheduling
+        builder.Services.AddSingleton<IInstallationService, InstallationService>();
+        builder.Services.AddSingleton<IScheduledTaskService, ScheduledTaskService>();
+        builder.Services.AddSingleton<IGpoDeploymentService, GpoDeploymentService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 
