@@ -1,68 +1,48 @@
-# GA-WsusManager v4 — Complete Rewrite
+# GA-WsusManager v4 — C# Rewrite
 
 ## What This Is
 
-A ground-up rewrite of GA-WsusManager in a compiled language, replacing the current PowerShell/WPF implementation with a single-EXE application optimized for rock-solid stability and speed. It manages WSUS servers with SQL Server Express on Windows Server 2019+, including full air-gapped network support. Built for GA-ASI IT administrators who need reliable, zero-crash WSUS management tooling.
+A production-ready C#/.NET 9 WPF application for managing WSUS servers with SQL Server Express on Windows Server 2019+. Delivers full feature parity with the PowerShell v3.8.12 in a single-file EXE with zero threading bugs, sub-second startup, and native async operations. Built for GA-ASI IT administrators managing critical WSUS infrastructure, including air-gapped networks.
 
 ## Core Value
 
-The application must be completely stable — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure on production servers.
+Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure on production servers.
 
 ## Requirements
 
 ### Validated
 
-<!-- These capabilities exist in the PowerShell v3.8.x and are proven valuable. -->
-
-- ✓ GUI dashboard with auto-refresh (30s) showing WSUS health, DB size, sync status — existing
-- ✓ Health check diagnostics with auto-repair (services, firewall, permissions, connectivity) — existing
-- ✓ Deep cleanup (decline superseded, purge declined, rebuild indexes, shrink DB) — existing
-- ✓ Export/Import workflow for air-gapped networks (full + differential) — existing
-- ✓ Online Sync with profile selection (Full/Quick/Sync Only) — existing
-- ✓ WSUS + SQL Express installation wizard — existing
-- ✓ Database backup and restore — existing
-- ✓ Scheduled task creation for automated maintenance — existing
-- ✓ Service management (SQL Server, WSUS, IIS start/stop/status) — existing
-- ✓ Firewall rule management (ports 8530, 8531) — existing
-- ✓ Directory permissions checking and repair — existing
-- ✓ Settings persistence (JSON) — existing
-- ✓ Live terminal mode for operation output — existing
-- ✓ Server mode toggle (Online vs Air-Gap) with context-aware menus — existing
-- ✓ DPI-aware rendering — existing
-- ✓ Admin privilege enforcement — existing
-- ✓ GPO deployment scripts for domain controllers — existing
-- ✓ Definition Updates auto-approval with safety threshold — existing
-- ✓ SQL sysadmin permission checking — existing
-- ✓ Content reset (wsusutil reset) for air-gap import fixes — existing
+- ✓ Single-file EXE distribution (no Scripts/Modules folders) — v4.0
+- ✓ Sub-second application startup — v4.0
+- ✓ Native async operations (no threading hacks) — v4.0
+- ✓ Modernized dark theme UI — v4.0
+- ✓ Type-safe compiled code — v4.0
+- ✓ All PowerShell module functionality ported — v4.0
+- ✓ 257 xUnit tests covering all services and ViewModel logic — v4.0
+- ✓ 62 v1 requirements implemented and verified — v4.0
 
 ### Active
 
-<!-- New capabilities for the rewrite. -->
-
-- [ ] Single-file EXE distribution (no Scripts/ or Modules/ folder required)
-- [ ] Sub-second application startup
-- [ ] Native async operations (no threading hacks or dispatcher workarounds)
-- [ ] Modernized dark theme UI (same layout, fresher look)
-- [ ] Compiled language for type safety and compile-time error catching
-- [ ] All existing PowerShell module functionality ported to native code
-- [ ] Comprehensive test suite in the target language's testing framework
+(None — v4.0 shipped. Next milestone requirements TBD via `/gsd:new-milestone`)
 
 ### Out of Scope
 
 - Mobile or web-based interface — desktop-only for server administration
 - Linux/macOS support — Windows Server only (WSUS is Windows-only)
 - Server 2016 support — targeting 2019+ only
-- Real-time multi-server management — single server at a time (same as current)
+- Real-time multi-server management — single server at a time
 - PowerShell script backward compatibility — clean break from PS codebase
-- The existing C# POC in CSharp/ — starting fresh, not building on it
+- Building on C# POC — started fresh per user preference
 
 ## Context
 
 ### Current State
-- PowerShell v3.8.12 is the production version with 3000+ LOC GUI, 11 modules (~180KB), 323 Pester tests
-- 12+ documented WPF anti-patterns in CLAUDE.md (threading, closures, dispatcher, event handlers)
-- C# POC exists at 90% feature parity but user wants a fresh start
-- CI/CD pipeline exists with GitHub Actions (build, test, release)
+- **Version:** v4.0 shipped 2026-02-20
+- **Codebase:** 12,674 LOC C# across 88 .cs + 8 .xaml files
+- **Tech stack:** C#/.NET 9, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
+- **Tests:** 257 xUnit tests (257 on WSL, ~271 on Windows CI with WPF)
+- **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
+- **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 
 ### Technical Environment
 - Windows Server 2019/2022 with WSUS role installed
@@ -72,12 +52,20 @@ The application must be completely stable — zero crashes, no threading bugs, n
 - Ports: 8530 (HTTP), 8531 (HTTPS)
 - Air-gapped networks require USB-based export/import workflow
 
-### Known Pain Points from PowerShell Version
-1. **Threading bugs**: WPF dispatcher issues, closure variable capture, event handler scope problems
-2. **Slow startup**: 1-2 seconds due to PowerShell runtime + module imports
-3. **Maintainability**: 12+ documented anti-patterns, complex async workarounds
-4. **Fragile deployment**: EXE requires Scripts/ and Modules/ folders alongside it
-5. **Memory usage**: 150-200MB due to PowerShell runtime overhead
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Full C# rewrite (not incremental port) | PowerShell had fundamental threading/deployment limitations | ✓ Good — eliminated 12+ anti-patterns |
+| Start fresh (ignore C# POC) | Clean architecture with modern patterns | ✓ Good — cleaner DI and MVVM |
+| Single-file EXE distribution | Simplifies deployment on production servers | ✓ Good — no Scripts/Modules folders |
+| .NET 9 self-contained | No runtime installation required | ✓ Good — works on clean Windows Server |
+| Drop Server 2016 support | Allows targeting modern .NET runtime | ✓ Good — simplified targeting |
+| CommunityToolkit.Mvvm for MVVM | Source generators, less boilerplate | ✓ Good — clean ViewModel pattern |
+| Runtime-load WSUS API assembly | Ships with WSUS role, not NuGet | ✓ Good — no compile-time dependency |
+| schtasks.exe for scheduled tasks | Simpler than COM TaskScheduler API | ✓ Good — no NuGet dep needed |
+| Shell out to PS for WSUS install | Install script too complex to rewrite | ✓ Good — reuses proven logic |
+| Separate CI workflow (build-csharp.yml) | Keeps PowerShell build.yml untouched | ✓ Good — no conflicts |
 
 ## Constraints
 
@@ -87,18 +75,6 @@ The application must be completely stable — zero crashes, no threading bugs, n
 - **Air-Gap**: Export/import must work fully offline — no internet dependency
 - **Single EXE**: Distribution must be a single executable file
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
-- **Language**: To be determined by research — optimized for stability, speed, and Windows native integration
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Full rewrite (not incremental port) | PowerShell architecture has fundamental limitations (threading, deployment) | — Pending |
-| Start fresh (ignore C# POC) | User preference for clean slate | — Pending |
-| Single EXE deployment | Simplifies deployment on production servers | — Pending |
-| Drop Server 2016 support | Allows targeting modern .NET/runtime versions | — Pending |
-| Stability over speed | Zero crashes is more important than raw performance | — Pending |
-| Language TBD | Research phase will determine optimal language | — Pending |
 
 ---
-*Last updated: 2026-02-19 after initialization*
+*Last updated: 2026-02-20 after v4.0 milestone*
