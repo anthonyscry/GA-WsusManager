@@ -59,12 +59,12 @@
                 <Button DockPanel.Dock="Top" Content="Diagnostics"
                         Style="{StaticResource NavBtn}" x:Name="BtnDiagnostics"
                         Command="{Binding NavigateCommand}" CommandParameter="Diagnostics"/>
-                <Button DockPanel.Dock="Top" Content="Deep Cleanup"
-                        Style="{StaticResource NavBtn}" x:Name="BtnCleanup"
-                        Command="{Binding NavigateCommand}" CommandParameter="Cleanup"/>
-                <Button DockPanel.Dock="Top" Content="Restore DB"
-                        Style="{StaticResource NavBtn}" x:Name="BtnRestore"
-                        Command="{Binding NavigateCommand}" CommandParameter="Restore"/>
+
+                <!-- DATABASE Category -->
+                <TextBlock DockPanel.Dock="Top" Text="DATABASE" Style="{StaticResource CategoryLabel}"/>
+                <Button DockPanel.Dock="Top" Content="Database"
+                        Style="{StaticResource NavBtn}" x:Name="BtnDatabase"
+                        Command="{Binding NavigateCommand}" CommandParameter="Database"/>
 
                 <!-- Bottom utility buttons -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,8">
@@ -386,6 +386,82 @@
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
                                     </Grid>
 
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Database Operations Panel -->
+                <Border x:Name="DatabasePanel"
+                        Visibility="{Binding IsDatabasePanelVisible}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- DB Size Info -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Database Size" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,6"/>
+                                    <TextBlock Text="{Binding DatabaseValue}"
+                                               FontSize="22" FontWeight="Bold"
+                                               Foreground="{StaticResource Text1}"/>
+                                    <TextBlock Text="{Binding DatabaseSubtext}"
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Deep Cleanup -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Deep Cleanup" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12"
+                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Text="Runs the full 6-step cleanup pipeline: WSUS built-in cleanup, remove supersession records, delete declined updates, rebuild indexes, and shrink the database."/>
+                                    <Button Content="Run Deep Cleanup" Style="{StaticResource BtnGreen}"
+                                            Padding="16,8" HorizontalAlignment="Left"
+                                            Command="{Binding RunDeepCleanupCommand}"
+                                            IsEnabled="{Binding IsWsusInstalled}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Backup Database -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Backup Database" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12"
+                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Text="Creates a compressed SQL backup of SUSDB. You will be prompted to choose a destination file. Requires SQL sysadmin permissions."/>
+                                    <Button Content="Backup Database" Style="{StaticResource BtnSec}"
+                                            Padding="16,8" HorizontalAlignment="Left"
+                                            Command="{Binding BackupDatabaseCommand}"
+                                            IsEnabled="{Binding IsWsusInstalled}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Restore Database -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Restore Database" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12"
+                                               Foreground="{StaticResource Text2}" Margin="0,0,0,4"
+                                               Text="Restores SUSDB from a backup file. WSUS and IIS services will be stopped during restore."/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Text="WARNING: This replaces all current WSUS data."/>
+                                    <Button Content="Restore Database" Style="{StaticResource BtnSec}"
+                                            Padding="16,8" HorizontalAlignment="Left"
+                                            Command="{Binding RestoreDatabaseCommand}"
+                                            IsEnabled="{Binding IsWsusInstalled}"/>
                                 </StackPanel>
                             </Border>
 
