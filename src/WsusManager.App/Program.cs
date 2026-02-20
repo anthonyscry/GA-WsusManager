@@ -80,6 +80,7 @@ public static class Program
         builder.Services.AddSingleton<ILogService>(logService);
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
         builder.Services.AddSingleton<IProcessRunner, ProcessRunner>();
+        builder.Services.AddSingleton<IDashboardService, DashboardService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();

@@ -1,0 +1,266 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         WSUS Manager Dark Theme
+         Matches the GA-AppLocker dark style from the PowerShell GUI.
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- Background Colors -->
+    <SolidColorBrush x:Key="BgDark"    Color="#0D1117"/>
+    <SolidColorBrush x:Key="BgSidebar" Color="#161B22"/>
+    <SolidColorBrush x:Key="BgCard"    Color="#21262D"/>
+    <SolidColorBrush x:Key="BgInput"   Color="#0D1117"/>
+    <SolidColorBrush x:Key="Border"    Color="#30363D"/>
+
+    <!-- Accent Colors -->
+    <SolidColorBrush x:Key="Blue"   Color="#58A6FF"/>
+    <SolidColorBrush x:Key="Green"  Color="#3FB950"/>
+    <SolidColorBrush x:Key="Orange" Color="#D29922"/>
+    <SolidColorBrush x:Key="Red"    Color="#F85149"/>
+
+    <!-- Text Colors -->
+    <SolidColorBrush x:Key="Text1" Color="#E6EDF3"/>
+    <SolidColorBrush x:Key="Text2" Color="#8B949E"/>
+    <SolidColorBrush x:Key="Text3" Color="#484F58"/>
+
+    <!-- Raw Color Values (for dynamic binding in code-behind/converters) -->
+    <Color x:Key="ColorGreen">#3FB950</Color>
+    <Color x:Key="ColorOrange">#D29922</Color>
+    <Color x:Key="ColorRed">#F85149</Color>
+    <Color x:Key="ColorBlue">#58A6FF</Color>
+    <Color x:Key="ColorText2">#8B949E</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Button Styles
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- NavBtn: Sidebar navigation button -->
+    <Style x:Key="NavBtn" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+        <Setter Property="BorderThickness" Value="3,0,0,0"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#21262D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- NavBtnActive: Active sidebar navigation button -->
+    <Style x:Key="NavBtnActive" TargetType="Button" BasedOn="{StaticResource NavBtn}">
+        <Setter Property="Background" Value="#21262D"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Blue}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+    </Style>
+
+    <!-- Btn: Primary action button (blue) -->
+    <Style x:Key="Btn" TargetType="Button">
+        <Setter Property="Background" Value="#238636"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#2EA043"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- BtnSec: Secondary button (outline style) -->
+    <Style x:Key="BtnSec" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#21262D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- BtnGreen: Success/positive action button -->
+    <Style x:Key="BtnGreen" TargetType="Button">
+        <Setter Property="Background" Value="#238636"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#2EA043"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- BtnRed: Danger/destructive action button -->
+    <Style x:Key="BtnRed" TargetType="Button">
+        <Setter Property="Background" Value="#DA3633"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#F85149"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- QuickActionBtn: Dashboard quick action button -->
+    <Style x:Key="QuickActionBtn" TargetType="Button" BasedOn="{StaticResource BtnSec}">
+        <Setter Property="Padding" Value="20,10"/>
+        <Setter Property="MinWidth" Value="120"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         TextBlock Styles
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <Style x:Key="CategoryLabel" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Text3}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="15,12,0,4"/>
+    </Style>
+
+    <Style x:Key="CardTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="CardValue" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+        <Setter Property="FontSize" Value="24"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <Style x:Key="CardSubtext" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Text2}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         TextBox Styles (Log Panel)
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <Style x:Key="LogTextBox" TargetType="TextBox">
+        <Setter Property="Background" Value="{StaticResource BgDark}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontFamily" Value="Consolas"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="IsReadOnly" Value="True"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="Padding" Value="8"/>
+        <Setter Property="CaretBrush" Value="{StaticResource Text1}"/>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ScrollBar / ScrollViewer Dark Styles
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="10"/>
+    </Style>
+
+</ResourceDictionary>
