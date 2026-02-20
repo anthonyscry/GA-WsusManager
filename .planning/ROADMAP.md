@@ -108,7 +108,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can export WSUS data to a full path and/or a differential path (files from the last N days) — if neither path is specified, the export step is skipped
   4. User can import WSUS data from a source path (e.g., USB drive) to a destination path, with pre-flight validation that both paths are accessible before any data is moved
   5. All export/import operations run without interactive prompts when launched from the GUI
-**Plans**: TBD
+**Plans**:
+  1. WSUS server connection service (SYNC-01–SYNC-05 foundation)
+  2. Online sync service with profile selection (SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05)
+  3. Robocopy service for content transfer (XFER-01–XFER-05 foundation)
+  4. Export service — full and differential content export (XFER-01, XFER-02, XFER-04, XFER-05)
+  5. Import service — content import from external media (XFER-03, XFER-05)
+  6. WSUS operations UI — sync dialog and ViewModel commands (SYNC-01–SYNC-05 UI)
+  7. WSUS operations UI — transfer dialog and ViewModel commands (XFER-01–XFER-05 UI)
+  8. Tests and integration verification (all Phase 5)
 
 ### Phase 6: Installation and Scheduling
 **Goal**: Administrators can install WSUS with SQL Server Express through a guided wizard that requires no interactive console input, create Windows scheduled tasks for automated maintenance using domain credentials, and copy GPO deployment files with step-by-step instructions.
@@ -143,6 +151,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Application Shell and Dashboard | 8/8 | Complete | 2026-02-19 |
 | 3. Diagnostics and Service Management | 1/1 | Complete   | 2026-02-20 |
 | 4. Database Operations | 1/1 | Complete   | 2026-02-20 |
-| 5. WSUS Operations | 0/TBD | Not started | - |
+| 5. WSUS Operations | 0/8 | Planned | - |
 | 6. Installation and Scheduling | 0/TBD | Not started | - |
 | 7. Polish and Distribution | 0/TBD | Not started | - |
