@@ -9,6 +9,7 @@ namespace WsusManager.Tests.ViewModels;
 /// <summary>
 /// Tests for the MainViewModel async operation pattern, dashboard logic,
 /// navigation, log panel, and button state management.
+/// Updated for Phase 4: includes IDeepCleanupService and IDatabaseBackupService mocks.
 /// </summary>
 public class MainViewModelTests
 {
@@ -18,6 +19,8 @@ public class MainViewModelTests
     private readonly Mock<IHealthService> _mockHealth = new();
     private readonly Mock<IWindowsServiceManager> _mockServiceManager = new();
     private readonly Mock<IContentResetService> _mockContentReset = new();
+    private readonly Mock<IDeepCleanupService> _mockDeepCleanup = new();
+    private readonly Mock<IDatabaseBackupService> _mockBackup = new();
     private readonly MainViewModel _vm;
 
     public MainViewModelTests()
@@ -31,7 +34,9 @@ public class MainViewModelTests
             _mockDashboard.Object,
             _mockHealth.Object,
             _mockServiceManager.Object,
-            _mockContentReset.Object);
+            _mockContentReset.Object,
+            _mockDeepCleanup.Object,
+            _mockBackup.Object);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -580,6 +585,120 @@ public class MainViewModelTests
 
         Assert.Equal(System.Windows.Visibility.Visible, _vm.IsOperationPanelVisible);
         Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDiagnosticsPanelVisible);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 4: Database Operations Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void IsDatabasePanelVisible_Visible_When_Panel_Is_Database()
+    {
+        _vm.NavigateCommand.Execute("Database");
+
+        Assert.Equal(System.Windows.Visibility.Visible, _vm.IsDatabasePanelVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsOperationPanelVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDashboardVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDiagnosticsPanelVisible);
+    }
+
+    [Fact]
+    public void IsDatabasePanelVisible_Collapsed_When_Panel_Is_Dashboard()
+    {
+        _vm.NavigateCommand.Execute("Dashboard");
+
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDatabasePanelVisible);
+    }
+
+    [Fact]
+    public void IsOperationPanelVisible_Collapsed_When_Panel_Is_Database()
+    {
+        _vm.NavigateCommand.Execute("Database");
+
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsOperationPanelVisible);
+    }
+
+    [Fact]
+    public void Navigate_Database_Sets_PageTitle()
+    {
+        _vm.NavigateCommand.Execute("Database");
+
+        Assert.Equal("Database", _vm.CurrentPanel);
+        Assert.Equal("Database Operations", _vm.PageTitle);
+    }
+
+    [Fact]
+    public async Task RunDeepCleanupCommand_Navigates_To_Database_Panel()
+    {
+        _vm.IsWsusInstalled = true;
+
+        _mockDeepCleanup
+            .Setup(d => d.RunAsync(
+                It.IsAny<string>(),
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Cleanup complete."));
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.RunDeepCleanupCommand.ExecuteAsync(null);
+
+        Assert.Equal("Database", _vm.CurrentPanel);
+    }
+
+    [Fact]
+    public async Task RunDeepCleanupCommand_Calls_DeepCleanupService()
+    {
+        _vm.IsWsusInstalled = true;
+
+        _mockDeepCleanup
+            .Setup(d => d.RunAsync(
+                It.IsAny<string>(),
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Cleanup complete."));
+
+        await _vm.RunDeepCleanupCommand.ExecuteAsync(null);
+
+        _mockDeepCleanup.Verify(d => d.RunAsync(
+            It.IsAny<string>(),
+            It.IsAny<IProgress<string>>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void RunDeepCleanupCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.RunDeepCleanupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void BackupDatabaseCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.BackupDatabaseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RestoreDatabaseCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.RestoreDatabaseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunDeepCleanupCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.RunDeepCleanupCommand.CanExecute(null));
     }
 
     // ═══════════════════════════════════════════════════════════════

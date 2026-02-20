@@ -29,6 +29,11 @@ public class DiContainerTests
         services.AddSingleton<IHealthService, HealthService>();
         services.AddSingleton<IContentResetService, ContentResetService>();
 
+        // Phase 4: Database Operations
+        services.AddSingleton<ISqlService, SqlService>();
+        services.AddSingleton<IDeepCleanupService, DeepCleanupService>();
+        services.AddSingleton<IDatabaseBackupService, DatabaseBackupService>();
+
         return services.BuildServiceProvider();
     }
 
@@ -139,5 +144,45 @@ public class DiContainerTests
         Assert.NotNull(permissions);
         Assert.NotNull(health);
         Assert.NotNull(contentReset);
+    }
+
+    // ─── Phase 4 Service Resolution Tests ────────────────────────────────
+
+    [Fact]
+    public void SqlService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<ISqlService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void DeepCleanupService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IDeepCleanupService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void DatabaseBackupService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IDatabaseBackupService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void All_Phase4_Services_Resolve_Without_Error()
+    {
+        var sp = BuildTestContainer();
+
+        var sqlService = sp.GetRequiredService<ISqlService>();
+        var deepCleanup = sp.GetRequiredService<IDeepCleanupService>();
+        var backup = sp.GetRequiredService<IDatabaseBackupService>();
+
+        Assert.NotNull(sqlService);
+        Assert.NotNull(deepCleanup);
+        Assert.NotNull(backup);
     }
 }
