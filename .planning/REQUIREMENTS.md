@@ -43,12 +43,12 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Database
 
-- [ ] **DB-01**: User can run deep cleanup (6-step pipeline: decline superseded, purge supersession records, delete declined updates, rebuild indexes, update statistics, shrink DB)
-- [ ] **DB-02**: Deep cleanup shows progress and timing for each step
-- [ ] **DB-03**: Deep cleanup uses batched deletion (10k/batch for supersession, 100/batch for declined updates)
-- [ ] **DB-04**: Database shrink retries when blocked by backup operations (3 attempts, 30s delay)
-- [ ] **DB-05**: User can backup the SUSDB database
-- [ ] **DB-06**: User can restore SUSDB from a backup file with file picker
+- [x] **DB-01**: User can run deep cleanup (6-step pipeline: decline superseded, purge supersession records, delete declined updates, rebuild indexes, update statistics, shrink DB)
+- [x] **DB-02**: Deep cleanup shows progress and timing for each step
+- [x] **DB-03**: Deep cleanup uses batched deletion (10k/batch for supersession, 100/batch for declined updates)
+- [x] **DB-04**: Database shrink retries when blocked by backup operations (3 attempts, 30s delay)
+- [x] **DB-05**: User can backup the SUSDB database
+- [x] **DB-06**: User can restore SUSDB from a backup file with file picker
 
 ### Sync
 
@@ -181,12 +181,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FW-02 | Phase 3 | Complete |
 | PERM-01 | Phase 3 | Complete |
 | PERM-02 | Phase 3 | Complete |
-| DB-01 | Phase 4 | Pending |
-| DB-02 | Phase 4 | Pending |
-| DB-03 | Phase 4 | Pending |
-| DB-04 | Phase 4 | Pending |
-| DB-05 | Phase 4 | Pending |
-| DB-06 | Phase 4 | Pending |
+| DB-01 | Phase 4 | Complete |
+| DB-02 | Phase 4 | Complete |
+| DB-03 | Phase 4 | Complete |
+| DB-04 | Phase 4 | Complete |
+| DB-05 | Phase 4 | Complete |
+| DB-06 | Phase 4 | Complete |
 | SYNC-01 | Phase 5 | Pending |
 | SYNC-02 | Phase 5 | Pending |
 | SYNC-03 | Phase 5 | Pending |
