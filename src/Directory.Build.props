@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable cross-compilation of Windows-targeting projects on non-Windows OS (e.g., Linux CI runners, WSL) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>
