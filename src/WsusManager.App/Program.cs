@@ -89,6 +89,9 @@ public static class Program
         builder.Services.AddSingleton<IHealthService, HealthService>();
         builder.Services.AddSingleton<IContentResetService, ContentResetService>();
 
+        // Phase 4: Database Operations
+        builder.Services.AddSingleton<ISqlService, SqlService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 
