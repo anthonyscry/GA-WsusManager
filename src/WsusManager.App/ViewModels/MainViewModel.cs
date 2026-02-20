@@ -25,6 +25,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IHealthService _healthService;
     private readonly IWindowsServiceManager _serviceManager;
     private readonly IContentResetService _contentResetService;
+    private readonly IDeepCleanupService _deepCleanupService;
+    private readonly IDatabaseBackupService _backupService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -36,7 +38,9 @@ public partial class MainViewModel : ObservableObject
         IDashboardService dashboardService,
         IHealthService healthService,
         IWindowsServiceManager serviceManager,
-        IContentResetService contentResetService)
+        IContentResetService contentResetService,
+        IDeepCleanupService deepCleanupService,
+        IDatabaseBackupService backupService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -44,6 +48,8 @@ public partial class MainViewModel : ObservableObject
         _healthService = healthService;
         _serviceManager = serviceManager;
         _contentResetService = contentResetService;
+        _deepCleanupService = deepCleanupService;
+        _backupService = backupService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -68,8 +74,11 @@ public partial class MainViewModel : ObservableObject
     public Visibility IsDiagnosticsPanelVisible =>
         CurrentPanel == "Diagnostics" ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility IsDatabasePanelVisible =>
+        CurrentPanel == "Database" ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility IsOperationPanelVisible =>
-        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics"
+        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics" && CurrentPanel != "Database"
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -85,6 +94,7 @@ public partial class MainViewModel : ObservableObject
             "Sync" => "Online Sync",
             "Schedule" => "Schedule Task",
             "Diagnostics" => "Diagnostics",
+            "Database" => "Database Operations",
             "Cleanup" => "Deep Cleanup",
             "Restore" => "Restore Database",
             "Settings" => "Settings",
@@ -95,6 +105,7 @@ public partial class MainViewModel : ObservableObject
 
         OnPropertyChanged(nameof(IsDashboardVisible));
         OnPropertyChanged(nameof(IsDiagnosticsPanelVisible));
+        OnPropertyChanged(nameof(IsDatabasePanelVisible));
         OnPropertyChanged(nameof(IsOperationPanelVisible));
     }
 
@@ -392,6 +403,106 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // DATABASE OPERATIONS COMMANDS (Phase 4)
+    // ═══════════════════════════════════════════════════════════════
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RunDeepCleanup()
+    {
+        Navigate("Database");
+
+        await RunOperationAsync("Deep Cleanup", async (progress, ct) =>
+        {
+            var result = await _deepCleanupService.RunAsync(
+                _settings.SqlInstance,
+                progress,
+                ct);
+
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task BackupDatabase()
+    {
+        // Open SaveFileDialog before navigating (per CLAUDE.md pattern: dialog before panel switch)
+        var dialog = new SaveFileDialog
+        {
+            Title = "Select Backup Destination",
+            Filter = "SQL Backup Files (*.bak)|*.bak|All Files (*.*)|*.*",
+            DefaultExt = ".bak",
+            FileName = $"SUSDB_{DateTime.Now:yyyy-MM-dd}.bak",
+            InitialDirectory = @"C:\WSUS"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        var backupPath = dialog.FileName;
+        Navigate("Database");
+
+        await RunOperationAsync("Backup Database", async (progress, ct) =>
+        {
+            var result = await _backupService.BackupAsync(
+                _settings.SqlInstance,
+                backupPath,
+                progress,
+                ct);
+
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RestoreDatabase()
+    {
+        // Confirmation dialog first
+        var confirm = MessageBox.Show(
+            "Restoring the database will:\n\n" +
+            "  1. Verify backup file integrity\n" +
+            "  2. Stop WSUS and IIS services\n" +
+            "  3. Replace the current SUSDB with the backup\n" +
+            "  4. Run wsusutil postinstall\n" +
+            "  5. Restart WSUS and IIS services\n\n" +
+            "WARNING: This will replace ALL current WSUS data!\n\n" +
+            "Continue?",
+            "Confirm Database Restore",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        // Open file picker
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select Backup File to Restore",
+            Filter = "SQL Backup Files (*.bak)|*.bak|All Files (*.*)|*.*",
+            DefaultExt = ".bak",
+            InitialDirectory = @"C:\WSUS"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        var backupPath = dialog.FileName;
+        Navigate("Database");
+
+        await RunOperationAsync("Restore Database", async (progress, ct) =>
+        {
+            var result = await _backupService.RestoreAsync(
+                _settings.SqlInstance,
+                backupPath,
+                _settings.ContentPath,
+                progress,
+                ct);
+
+            // Refresh dashboard after restore to reflect new DB state
+            if (result.Success)
+                await RefreshDashboard();
+
+            return result.Success;
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // QUICK ACTION COMMANDS
     // ═══════════════════════════════════════════════════════════════
 
@@ -404,8 +515,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task QuickCleanup()
     {
-        Navigate("Cleanup");
-        await Task.CompletedTask;
+        await RunDeepCleanup();
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteOnlineOperation))]
@@ -548,6 +658,10 @@ public partial class MainViewModel : ObservableObject
         ResetContentCommand.NotifyCanExecuteChanged();
         StartServiceCommand.NotifyCanExecuteChanged();
         StopServiceCommand.NotifyCanExecuteChanged();
+        // Phase 4: Database Operations
+        RunDeepCleanupCommand.NotifyCanExecuteChanged();
+        BackupDatabaseCommand.NotifyCanExecuteChanged();
+        RestoreDatabaseCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
