@@ -35,11 +35,11 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Diagnostics
 
-- [ ] **DIAG-01**: User can run comprehensive health check (services, firewall, permissions, connectivity, database)
-- [ ] **DIAG-02**: Health check auto-repairs detected issues (restart services, fix firewall rules, fix permissions)
-- [ ] **DIAG-03**: User sees clear pass/fail reporting for each diagnostic check
-- [ ] **DIAG-04**: SQL sysadmin permissions are verified before database operations
-- [ ] **DIAG-05**: User can run content reset (wsusutil reset) to fix air-gap import issues
+- [x] **DIAG-01**: User can run comprehensive health check (services, firewall, permissions, connectivity, database)
+- [x] **DIAG-02**: Health check auto-repairs detected issues (restart services, fix firewall rules, fix permissions)
+- [x] **DIAG-03**: User sees clear pass/fail reporting for each diagnostic check
+- [x] **DIAG-04**: SQL sysadmin permissions are verified before database operations
+- [x] **DIAG-05**: User can run content reset (wsusutil reset) to fix air-gap import issues
 
 ### Database
 
@@ -81,19 +81,19 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Service Management
 
-- [ ] **SVC-01**: User can start/stop SQL Server, WSUS, and IIS services
-- [ ] **SVC-02**: Service status is monitored and displayed in real-time
-- [ ] **SVC-03**: Service management handles dependency ordering (SQL must run before WSUS)
+- [x] **SVC-01**: User can start/stop SQL Server, WSUS, and IIS services
+- [x] **SVC-02**: Service status is monitored and displayed in real-time
+- [x] **SVC-03**: Service management handles dependency ordering (SQL must run before WSUS)
 
 ### Firewall
 
-- [ ] **FW-01**: Application manages WSUS firewall rules for ports 8530 and 8531
-- [ ] **FW-02**: Firewall rules are checked and auto-repaired during diagnostics
+- [x] **FW-01**: Application manages WSUS firewall rules for ports 8530 and 8531
+- [x] **FW-02**: Firewall rules are checked and auto-repaired during diagnostics
 
 ### Permissions
 
-- [ ] **PERM-01**: Application checks and repairs directory permissions for WSUS content paths
-- [ ] **PERM-02**: Application checks SQL login permissions
+- [x] **PERM-01**: Application checks and repairs directory permissions for WSUS content paths
+- [x] **PERM-02**: Application checks SQL login permissions
 
 ### GPO
 
@@ -169,18 +169,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPS-02 | Phase 2 | Pending |
 | OPS-03 | Phase 2 | Pending |
 | OPS-04 | Phase 2 | Pending |
-| DIAG-01 | Phase 3 | Pending |
-| DIAG-02 | Phase 3 | Pending |
-| DIAG-03 | Phase 3 | Pending |
-| DIAG-04 | Phase 3 | Pending |
-| DIAG-05 | Phase 3 | Pending |
-| SVC-01 | Phase 3 | Pending |
-| SVC-02 | Phase 3 | Pending |
-| SVC-03 | Phase 3 | Pending |
-| FW-01 | Phase 3 | Pending |
-| FW-02 | Phase 3 | Pending |
-| PERM-01 | Phase 3 | Pending |
-| PERM-02 | Phase 3 | Pending |
+| DIAG-01 | Phase 3 | Complete |
+| DIAG-02 | Phase 3 | Complete |
+| DIAG-03 | Phase 3 | Complete |
+| DIAG-04 | Phase 3 | Complete |
+| DIAG-05 | Phase 3 | Complete |
+| SVC-01 | Phase 3 | Complete |
+| SVC-02 | Phase 3 | Complete |
+| SVC-03 | Phase 3 | Complete |
+| FW-01 | Phase 3 | Complete |
+| FW-02 | Phase 3 | Complete |
+| PERM-01 | Phase 3 | Complete |
+| PERM-02 | Phase 3 | Complete |
 | DB-01 | Phase 4 | Pending |
 | DB-02 | Phase 4 | Pending |
 | DB-03 | Phase 4 | Pending |
