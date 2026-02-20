@@ -15,13 +15,23 @@ public class MainViewModelTests
     private readonly Mock<ILogService> _mockLog = new();
     private readonly Mock<ISettingsService> _mockSettings = new();
     private readonly Mock<IDashboardService> _mockDashboard = new();
+    private readonly Mock<IHealthService> _mockHealth = new();
+    private readonly Mock<IWindowsServiceManager> _mockServiceManager = new();
+    private readonly Mock<IContentResetService> _mockContentReset = new();
     private readonly MainViewModel _vm;
 
     public MainViewModelTests()
     {
         _mockSettings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
         _mockSettings.Setup(s => s.Current).Returns(new AppSettings());
-        _vm = new MainViewModel(_mockLog.Object, _mockSettings.Object, _mockDashboard.Object);
+
+        _vm = new MainViewModel(
+            _mockLog.Object,
+            _mockSettings.Object,
+            _mockDashboard.Object,
+            _mockHealth.Object,
+            _mockServiceManager.Object,
+            _mockContentReset.Object);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -417,6 +427,159 @@ public class MainViewModelTests
         _vm.IsOnline = true;
 
         Assert.True(_vm.QuickSyncCommand.CanExecute(null));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 3: Diagnostics Command Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task RunDiagnosticsCommand_Navigates_To_Diagnostics_Panel()
+    {
+        _vm.IsWsusInstalled = true;
+
+        var healthyReport = new DiagnosticReport
+        {
+            Checks = [],
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow
+        };
+
+        _mockHealth
+            .Setup(h => h.RunDiagnosticsAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(healthyReport);
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.RunDiagnosticsCommand.ExecuteAsync(null);
+
+        Assert.Equal("Diagnostics", _vm.CurrentPanel);
+    }
+
+    [Fact]
+    public async Task RunDiagnosticsCommand_Calls_HealthService()
+    {
+        _vm.IsWsusInstalled = true;
+
+        var healthyReport = new DiagnosticReport
+        {
+            Checks = [],
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow
+        };
+
+        _mockHealth
+            .Setup(h => h.RunDiagnosticsAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(healthyReport);
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.RunDiagnosticsCommand.ExecuteAsync(null);
+
+        _mockHealth.Verify(h => h.RunDiagnosticsAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<IProgress<string>>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task StartServiceCommand_Calls_ServiceManager()
+    {
+        _vm.IsWsusInstalled = true;
+
+        _mockServiceManager
+            .Setup(s => s.StartServiceAsync("WsusService", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Started."));
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.StartServiceCommand.ExecuteAsync("WsusService");
+
+        _mockServiceManager.Verify(s => s.StartServiceAsync("WsusService", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task StopServiceCommand_Calls_ServiceManager()
+    {
+        _vm.IsWsusInstalled = true;
+
+        _mockServiceManager
+            .Setup(s => s.StopServiceAsync("WsusService", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Stopped."));
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.StopServiceCommand.ExecuteAsync("WsusService");
+
+        _mockServiceManager.Verify(s => s.StopServiceAsync("WsusService", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task QuickStartServices_Calls_StartAllServicesAsync()
+    {
+        _vm.IsWsusInstalled = true;
+
+        _mockServiceManager
+            .Setup(s => s.StartAllServicesAsync(It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("All started."));
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData());
+
+        await _vm.QuickStartServicesCommand.ExecuteAsync(null);
+
+        _mockServiceManager.Verify(s => s.StartAllServicesAsync(
+            It.IsAny<IProgress<string>>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void IsDiagnosticsPanelVisible_Visible_When_Panel_Is_Diagnostics()
+    {
+        _vm.NavigateCommand.Execute("Diagnostics");
+
+        Assert.Equal(System.Windows.Visibility.Visible, _vm.IsDiagnosticsPanelVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsOperationPanelVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDashboardVisible);
+    }
+
+    [Fact]
+    public void IsDiagnosticsPanelVisible_Collapsed_When_Panel_Is_Dashboard()
+    {
+        _vm.NavigateCommand.Execute("Dashboard");
+
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDiagnosticsPanelVisible);
+    }
+
+    [Fact]
+    public void IsOperationPanelVisible_Visible_For_Non_Diagnostics_Non_Dashboard_Panel()
+    {
+        _vm.NavigateCommand.Execute("Cleanup");
+
+        Assert.Equal(System.Windows.Visibility.Visible, _vm.IsOperationPanelVisible);
+        Assert.Equal(System.Windows.Visibility.Collapsed, _vm.IsDiagnosticsPanelVisible);
     }
 
     // ═══════════════════════════════════════════════════════════════
