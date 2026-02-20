@@ -85,6 +85,7 @@ public static class Program
         // Phase 3: Diagnostics and Service Management
         builder.Services.AddSingleton<IWindowsServiceManager, WindowsServiceManager>();
         builder.Services.AddSingleton<IFirewallService, FirewallService>();
+        builder.Services.AddSingleton<IPermissionsService, PermissionsService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
