@@ -91,6 +91,8 @@ public static class Program
 
         // Phase 4: Database Operations
         builder.Services.AddSingleton<ISqlService, SqlService>();
+        builder.Services.AddSingleton<IDeepCleanupService, DeepCleanupService>();
+        builder.Services.AddSingleton<IDatabaseBackupService, DatabaseBackupService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
