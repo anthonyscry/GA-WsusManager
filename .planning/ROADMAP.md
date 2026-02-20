@@ -127,7 +127,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. All WSUS operation buttons are disabled and show visual feedback when WSUS is not yet installed on the server — only the Install WSUS button remains active
   3. User can create a Windows scheduled task that runs maintenance automatically on the configured day using domain credentials, and the task runs successfully whether or not the user is logged on
   4. User can copy GPO deployment files to `C:\WSUS\WSUS GPO` and sees clear instructions for applying the GPO on the domain controller
-**Plans**: TBD
+**Plans**:
+  1. Installation service — PowerShell script orchestration (INST-01, INST-02)
+  2. Scheduled task service — schtasks.exe orchestration (SCHED-01, SCHED-02, SCHED-03, SCHED-04)
+  3. GPO deployment service (GPO-01, GPO-02)
+  4. Installation dialog and ViewModel command (INST-01, INST-02, INST-03)
+  5. Schedule task dialog and ViewModel command (SCHED-01, SCHED-02, SCHED-03, SCHED-04)
+  6. GPO deployment command and sidebar wiring (GPO-01, GPO-02)
+  7. Tests and integration verification (all Phase 6)
 
 ### Phase 7: Polish and Distribution
 **Goal**: The project has a comprehensive xUnit test suite covering all service and ViewModel logic, a GitHub Actions CI/CD pipeline that builds the single-file EXE and creates GitHub releases automatically, and the published EXE is validated on a clean Windows Server 2019 environment with antivirus enabled.
@@ -152,5 +159,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Diagnostics and Service Management | 1/1 | Complete   | 2026-02-20 |
 | 4. Database Operations | 1/1 | Complete   | 2026-02-20 |
 | 5. WSUS Operations | 8/8 | Complete | 2026-02-19 |
-| 6. Installation and Scheduling | 0/TBD | Not started | - |
+| 6. Installation and Scheduling | 0/7 | Planned | - |
 | 7. Polish and Distribution | 0/TBD | Not started | - |
