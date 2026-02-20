@@ -1,0 +1,137 @@
+<Window x:Class="WsusManager.App.Views.TransferDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Export / Import"
+        Width="520" Height="520"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BgDark}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Transfer" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource Text1}"/>
+            <TextBlock Text="Export WSUS content to media or import from external source."
+                       Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Direction Selector -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
+            <RadioButton x:Name="RbExport" Content="Export" IsChecked="True"
+                         Foreground="{StaticResource Text1}" FontSize="13" Margin="0,0,20,0"
+                         Checked="Direction_Changed"/>
+            <RadioButton x:Name="RbImport" Content="Import"
+                         Foreground="{StaticResource Text1}" FontSize="13"
+                         Checked="Direction_Changed"/>
+        </StackPanel>
+
+        <!-- Export Fields -->
+        <StackPanel x:Name="ExportFields" Grid.Row="2" Visibility="Visible">
+
+            <!-- Full Export Path -->
+            <TextBlock Text="Full Export Path (optional)" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtFullExportPath" Grid.Column="0"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
+                        Padding="10,4" Margin="6,0,0,0" FontSize="11"
+                        Click="BrowseFullExport_Click"/>
+            </Grid>
+
+            <!-- Differential Export Path -->
+            <TextBlock Text="Differential Export Path (optional)" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtDiffExportPath" Grid.Column="0"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
+                        Padding="10,4" Margin="6,0,0,0" FontSize="11"
+                        Click="BrowseDiffExport_Click"/>
+            </Grid>
+
+            <!-- Export Days -->
+            <TextBlock Text="Export Days (for differential)" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtExportDays" Text="30" Width="80" HorizontalAlignment="Left"
+                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Margin="0,0,0,12"/>
+
+            <!-- Include DB Backup -->
+            <CheckBox x:Name="ChkIncludeBackup" Content="Include database backup (.bak)"
+                      Foreground="{StaticResource Text2}" FontSize="12"
+                      Margin="0,0,0,8"/>
+        </StackPanel>
+
+        <!-- Import Fields -->
+        <StackPanel x:Name="ImportFields" Grid.Row="2" Visibility="Collapsed">
+
+            <!-- Source Path -->
+            <TextBlock Text="Source Path (USB drive or network share)" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtSourcePath" Grid.Column="0"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
+                        Padding="10,4" Margin="6,0,0,0" FontSize="11"
+                        Click="BrowseSource_Click"/>
+            </Grid>
+
+            <!-- Destination Path -->
+            <TextBlock Text="Destination Path" Foreground="{StaticResource Text2}"
+                       FontSize="12" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtDestPath" Grid.Column="0" Text="C:\WSUS"
+                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
+                        Padding="10,4" Margin="6,0,0,0" FontSize="11"
+                        Click="BrowseDest_Click"/>
+            </Grid>
+
+            <!-- Content Reset -->
+            <CheckBox x:Name="ChkContentReset" Content="Run content reset after import (wsusutil reset)"
+                      Foreground="{StaticResource Text2}" FontSize="12" IsChecked="True"
+                      Margin="0,0,0,8"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Cancel" Style="{StaticResource BtnSec}"
+                    Padding="20,8" Margin="0,0,8,0"
+                    Click="Cancel_Click"/>
+            <Button x:Name="BtnOk" Content="Start Export" Style="{StaticResource BtnGreen}"
+                    Padding="20,8"
+                    Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

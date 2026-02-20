@@ -34,6 +34,13 @@ public class DiContainerTests
         services.AddSingleton<IDeepCleanupService, DeepCleanupService>();
         services.AddSingleton<IDatabaseBackupService, DatabaseBackupService>();
 
+        // Phase 5: WSUS Operations
+        services.AddSingleton<IWsusServerService, WsusServerService>();
+        services.AddSingleton<ISyncService, SyncService>();
+        services.AddSingleton<IRobocopyService, RobocopyService>();
+        services.AddSingleton<IExportService, ExportService>();
+        services.AddSingleton<IImportService, ImportService>();
+
         return services.BuildServiceProvider();
     }
 
@@ -184,5 +191,65 @@ public class DiContainerTests
         Assert.NotNull(sqlService);
         Assert.NotNull(deepCleanup);
         Assert.NotNull(backup);
+    }
+
+    // ─── Phase 5 Service Resolution Tests ────────────────────────────────
+
+    [Fact]
+    public void WsusServerService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IWsusServerService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void SyncService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<ISyncService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void RobocopyService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IRobocopyService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void ExportService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IExportService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void ImportService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IImportService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void All_Phase5_Services_Resolve_Without_Error()
+    {
+        var sp = BuildTestContainer();
+
+        var wsusServer = sp.GetRequiredService<IWsusServerService>();
+        var syncService = sp.GetRequiredService<ISyncService>();
+        var robocopy = sp.GetRequiredService<IRobocopyService>();
+        var export = sp.GetRequiredService<IExportService>();
+        var import = sp.GetRequiredService<IImportService>();
+
+        Assert.NotNull(wsusServer);
+        Assert.NotNull(syncService);
+        Assert.NotNull(robocopy);
+        Assert.NotNull(export);
+        Assert.NotNull(import);
     }
 }

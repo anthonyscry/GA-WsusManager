@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using WsusManager.App.Views;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Models;
 using WsusManager.Core.Services.Interfaces;
@@ -27,10 +28,18 @@ public partial class MainViewModel : ObservableObject
     private readonly IContentResetService _contentResetService;
     private readonly IDeepCleanupService _deepCleanupService;
     private readonly IDatabaseBackupService _backupService;
+    private readonly ISyncService _syncService;
+    private readonly IExportService _exportService;
+    private readonly IImportService _importService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
     private bool _isInitialized;
+
+    /// <summary>
+    /// Maximum number of updates to auto-approve per sync run (safety threshold).
+    /// </summary>
+    private const int MaxAutoApproveCount = 200;
 
     public MainViewModel(
         ILogService logService,
@@ -40,7 +49,10 @@ public partial class MainViewModel : ObservableObject
         IWindowsServiceManager serviceManager,
         IContentResetService contentResetService,
         IDeepCleanupService deepCleanupService,
-        IDatabaseBackupService backupService)
+        IDatabaseBackupService backupService,
+        ISyncService syncService,
+        IExportService exportService,
+        IImportService importService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -50,6 +62,9 @@ public partial class MainViewModel : ObservableObject
         _contentResetService = contentResetService;
         _deepCleanupService = deepCleanupService;
         _backupService = backupService;
+        _syncService = syncService;
+        _exportService = exportService;
+        _importService = importService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -521,8 +536,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExecuteOnlineOperation))]
     private async Task QuickSync()
     {
-        Navigate("Sync");
-        await Task.CompletedTask;
+        await RunOnlineSync();
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -540,6 +554,63 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanExecuteWsusOperation() => IsWsusInstalled && !IsOperationRunning;
     private bool CanExecuteOnlineOperation() => IsWsusInstalled && !IsOperationRunning && IsOnline;
+
+    // ═══════════════════════════════════════════════════════════════
+    // WSUS OPERATIONS COMMANDS (Phase 5)
+    // ═══════════════════════════════════════════════════════════════
+
+    [RelayCommand(CanExecute = nameof(CanExecuteOnlineOperation))]
+    private async Task RunOnlineSync()
+    {
+        // Dialog before panel switch (per CLAUDE.md pattern)
+        var dialog = new SyncProfileDialog();
+        if (Application.Current.MainWindow is not null)
+            dialog.Owner = Application.Current.MainWindow;
+
+        if (dialog.ShowDialog() != true) return;
+
+        var profile = dialog.SelectedProfile;
+        Navigate("Sync");
+
+        await RunOperationAsync("Online Sync", async (progress, ct) =>
+        {
+            var result = await _syncService.RunSyncAsync(
+                profile, MaxAutoApproveCount, progress, ct);
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RunTransfer()
+    {
+        // Dialog before panel switch (per CLAUDE.md pattern)
+        var dialog = new TransferDialog();
+        if (Application.Current.MainWindow is not null)
+            dialog.Owner = Application.Current.MainWindow;
+
+        if (dialog.ShowDialog() != true) return;
+
+        Navigate("Transfer");
+
+        if (dialog.IsExportMode && dialog.ExportResult is not null)
+        {
+            await RunOperationAsync("Export", async (progress, ct) =>
+            {
+                var result = await _exportService.ExportAsync(
+                    dialog.ExportResult, progress, ct);
+                return result.Success;
+            });
+        }
+        else if (!dialog.IsExportMode && dialog.ImportResult is not null)
+        {
+            await RunOperationAsync("Import", async (progress, ct) =>
+            {
+                var result = await _importService.ImportAsync(
+                    dialog.ImportResult, progress, ct);
+                return result.Success;
+            });
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // DASHBOARD REFRESH
@@ -662,6 +733,9 @@ public partial class MainViewModel : ObservableObject
         RunDeepCleanupCommand.NotifyCanExecuteChanged();
         BackupDatabaseCommand.NotifyCanExecuteChanged();
         RestoreDatabaseCommand.NotifyCanExecuteChanged();
+        // Phase 5: WSUS Operations
+        RunOnlineSyncCommand.NotifyCanExecuteChanged();
+        RunTransferCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
