@@ -82,6 +82,9 @@ public static class Program
         builder.Services.AddSingleton<IProcessRunner, ProcessRunner>();
         builder.Services.AddSingleton<IDashboardService, DashboardService>();
 
+        // Phase 3: Diagnostics and Service Management
+        builder.Services.AddSingleton<IWindowsServiceManager, WindowsServiceManager>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 
