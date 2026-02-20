@@ -148,13 +148,74 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Pending |
+| GUI-05 | Phase 1 | Pending |
+| DASH-01 | Phase 2 | Pending |
+| DASH-02 | Phase 2 | Pending |
+| DASH-03 | Phase 2 | Pending |
+| DASH-04 | Phase 2 | Pending |
+| DASH-05 | Phase 2 | Pending |
+| GUI-01 | Phase 2 | Pending |
+| GUI-02 | Phase 2 | Pending |
+| GUI-03 | Phase 2 | Pending |
+| GUI-04 | Phase 2 | Pending |
+| GUI-06 | Phase 2 | Pending |
+| GUI-07 | Phase 2 | Pending |
+| OPS-01 | Phase 2 | Pending |
+| OPS-02 | Phase 2 | Pending |
+| OPS-03 | Phase 2 | Pending |
+| OPS-04 | Phase 2 | Pending |
+| DIAG-01 | Phase 3 | Pending |
+| DIAG-02 | Phase 3 | Pending |
+| DIAG-03 | Phase 3 | Pending |
+| DIAG-04 | Phase 3 | Pending |
+| DIAG-05 | Phase 3 | Pending |
+| SVC-01 | Phase 3 | Pending |
+| SVC-02 | Phase 3 | Pending |
+| SVC-03 | Phase 3 | Pending |
+| FW-01 | Phase 3 | Pending |
+| FW-02 | Phase 3 | Pending |
+| PERM-01 | Phase 3 | Pending |
+| PERM-02 | Phase 3 | Pending |
+| DB-01 | Phase 4 | Pending |
+| DB-02 | Phase 4 | Pending |
+| DB-03 | Phase 4 | Pending |
+| DB-04 | Phase 4 | Pending |
+| DB-05 | Phase 4 | Pending |
+| DB-06 | Phase 4 | Pending |
+| SYNC-01 | Phase 5 | Pending |
+| SYNC-02 | Phase 5 | Pending |
+| SYNC-03 | Phase 5 | Pending |
+| SYNC-04 | Phase 5 | Pending |
+| SYNC-05 | Phase 5 | Pending |
+| XFER-01 | Phase 5 | Pending |
+| XFER-02 | Phase 5 | Pending |
+| XFER-03 | Phase 5 | Pending |
+| XFER-04 | Phase 5 | Pending |
+| XFER-05 | Phase 5 | Pending |
+| INST-01 | Phase 6 | Pending |
+| INST-02 | Phase 6 | Pending |
+| INST-03 | Phase 6 | Pending |
+| SCHED-01 | Phase 6 | Pending |
+| SCHED-02 | Phase 6 | Pending |
+| SCHED-03 | Phase 6 | Pending |
+| SCHED-04 | Phase 6 | Pending |
+| GPO-01 | Phase 6 | Pending |
+| GPO-02 | Phase 6 | Pending |
+| BUILD-01 | Phase 7 | Pending |
+| BUILD-02 | Phase 7 | Pending |
+| BUILD-03 | Phase 7 | Pending |
+| BUILD-04 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 0
-- Unmapped: 47 (pending roadmap)
+- v1 requirements: 62 total
+- Mapped to phases: 62
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 after initial definition*
+*Last updated: 2026-02-19 — traceability populated after roadmap creation*
