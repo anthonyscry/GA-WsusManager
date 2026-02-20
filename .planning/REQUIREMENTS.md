@@ -52,11 +52,11 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Sync
 
-- [ ] **SYNC-01**: User can run Online Sync with profile selection (Full Sync, Quick Sync, Sync Only)
-- [ ] **SYNC-02**: Sync shows progress with phase and percentage updates
-- [ ] **SYNC-03**: Definition Updates are auto-approved with configurable safety threshold (max 200)
-- [ ] **SYNC-04**: Approved classifications include Critical, Security, Update Rollups, Service Packs, Updates, Definition Updates
-- [ ] **SYNC-05**: Upgrades classification is excluded from auto-approval
+- [x] **SYNC-01**: User can run Online Sync with profile selection (Full Sync, Quick Sync, Sync Only)
+- [x] **SYNC-02**: Sync shows progress with phase and percentage updates
+- [x] **SYNC-03**: Definition Updates are auto-approved with configurable safety threshold (max 200)
+- [x] **SYNC-04**: Approved classifications include Critical, Security, Update Rollups, Service Packs, Updates, Definition Updates
+- [x] **SYNC-05**: Upgrades classification is excluded from auto-approval
 
 ### Export/Import
 
@@ -187,16 +187,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-04 | Phase 4 | Complete |
 | DB-05 | Phase 4 | Complete |
 | DB-06 | Phase 4 | Complete |
-| SYNC-01 | Phase 5 | Pending |
-| SYNC-02 | Phase 5 | Pending |
-| SYNC-03 | Phase 5 | Pending |
-| SYNC-04 | Phase 5 | Pending |
-| SYNC-05 | Phase 5 | Pending |
-| XFER-01 | Phase 5 | Pending |
-| XFER-02 | Phase 5 | Pending |
-| XFER-03 | Phase 5 | Pending |
-| XFER-04 | Phase 5 | Pending |
-| XFER-05 | Phase 5 | Pending |
+| SYNC-01 | Phase 5 | Complete |
+| SYNC-02 | Phase 5 | Complete |
+| SYNC-03 | Phase 5 | Complete |
+| SYNC-04 | Phase 5 | Complete |
+| SYNC-05 | Phase 5 | Complete |
+| XFER-01 | Phase 5 | Complete |
+| XFER-02 | Phase 5 | Complete |
+| XFER-03 | Phase 5 | Complete |
+| XFER-04 | Phase 5 | Complete |
+| XFER-05 | Phase 5 | Complete |
 | INST-01 | Phase 6 | Pending |
 | INST-02 | Phase 6 | Pending |
 | INST-03 | Phase 6 | Pending |

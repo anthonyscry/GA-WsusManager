@@ -9,7 +9,7 @@ namespace WsusManager.Tests.ViewModels;
 /// <summary>
 /// Tests for the MainViewModel async operation pattern, dashboard logic,
 /// navigation, log panel, and button state management.
-/// Updated for Phase 4: includes IDeepCleanupService and IDatabaseBackupService mocks.
+/// Updated for Phase 5: includes ISyncService, IExportService, IImportService mocks.
 /// </summary>
 public class MainViewModelTests
 {
@@ -21,6 +21,9 @@ public class MainViewModelTests
     private readonly Mock<IContentResetService> _mockContentReset = new();
     private readonly Mock<IDeepCleanupService> _mockDeepCleanup = new();
     private readonly Mock<IDatabaseBackupService> _mockBackup = new();
+    private readonly Mock<ISyncService> _mockSync = new();
+    private readonly Mock<IExportService> _mockExport = new();
+    private readonly Mock<IImportService> _mockImport = new();
     private readonly MainViewModel _vm;
 
     public MainViewModelTests()
@@ -36,7 +39,10 @@ public class MainViewModelTests
             _mockServiceManager.Object,
             _mockContentReset.Object,
             _mockDeepCleanup.Object,
-            _mockBackup.Object);
+            _mockBackup.Object,
+            _mockSync.Object,
+            _mockExport.Object,
+            _mockImport.Object);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -699,6 +705,44 @@ public class MainViewModelTests
         _vm.IsWsusInstalled = true;
 
         Assert.True(_vm.RunDeepCleanupCommand.CanExecute(null));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 5: WSUS Operations Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void RunOnlineSyncCommand_CanExecute_False_When_Offline()
+    {
+        _vm.IsWsusInstalled = true;
+        _vm.IsOnline = false;
+
+        Assert.False(_vm.RunOnlineSyncCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunOnlineSyncCommand_CanExecute_True_When_Online_And_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+        _vm.IsOnline = true;
+
+        Assert.True(_vm.RunOnlineSyncCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunTransferCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.RunTransferCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void RunTransferCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.RunTransferCommand.CanExecute(null));
     }
 
     // ═══════════════════════════════════════════════════════════════

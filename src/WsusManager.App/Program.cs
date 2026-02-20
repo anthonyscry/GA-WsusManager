@@ -94,6 +94,13 @@ public static class Program
         builder.Services.AddSingleton<IDeepCleanupService, DeepCleanupService>();
         builder.Services.AddSingleton<IDatabaseBackupService, DatabaseBackupService>();
 
+        // Phase 5: WSUS Operations
+        builder.Services.AddSingleton<IWsusServerService, WsusServerService>();
+        builder.Services.AddSingleton<ISyncService, SyncService>();
+        builder.Services.AddSingleton<IRobocopyService, RobocopyService>();
+        builder.Services.AddSingleton<IExportService, ExportService>();
+        builder.Services.AddSingleton<IImportService, ImportService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 

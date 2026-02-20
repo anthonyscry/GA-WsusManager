@@ -41,14 +41,13 @@
                 <TextBlock DockPanel.Dock="Top" Text="TRANSFER" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Export / Import"
                         Style="{StaticResource NavBtn}" x:Name="BtnTransfer"
-                        Command="{Binding NavigateCommand}" CommandParameter="Transfer"/>
+                        Command="{Binding RunTransferCommand}"/>
 
                 <!-- MAINTENANCE Category -->
                 <TextBlock DockPanel.Dock="Top" Text="MAINTENANCE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Online Sync"
                         Style="{StaticResource NavBtn}" x:Name="BtnSync"
-                        Command="{Binding NavigateCommand}" CommandParameter="Sync"
-                        IsEnabled="{Binding IsOnline}"/>
+                        Command="{Binding RunOnlineSyncCommand}"/>
                 <Button DockPanel.Dock="Top" Content="Schedule Task"
                         Style="{StaticResource NavBtn}" x:Name="BtnSchedule"
                         Command="{Binding NavigateCommand}" CommandParameter="Schedule"
