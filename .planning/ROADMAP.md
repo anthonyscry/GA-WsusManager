@@ -145,7 +145,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A push to the main branch triggers GitHub Actions to build the single-file EXE with embedded version info, company name, and product name — and the EXE passes PE header and 64-bit architecture validation tests
   3. Tagging a release creates a GitHub release automatically with the EXE artifact attached — no manual upload step required
   4. The published EXE launches successfully on a clean Windows Server 2019 VM with antivirus enabled, without extracting files to `%TEMP%` or triggering AV heuristics
-**Plans**: TBD
+**Plans**:
+  1. Test coverage audit and gap-filling — Core services (BUILD-04)
+  2. Test coverage audit and gap-filling — ViewModel and integration (BUILD-04)
+  3. EXE validation test class in xUnit (BUILD-02, BUILD-04)
+  4. GitHub Actions CI/CD workflow for C# build (BUILD-01, BUILD-02, BUILD-03)
+  5. Version management and EXE metadata (BUILD-02)
+  6. Distribution package validation and smoke test (BUILD-01, BUILD-02, BUILD-04)
+  7. Final integration verification and documentation update (all Phase 7)
 
 ## Progress
 
@@ -160,4 +167,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Database Operations | 1/1 | Complete   | 2026-02-20 |
 | 5. WSUS Operations | 8/8 | Complete | 2026-02-19 |
 | 6. Installation and Scheduling | 0/7 | Planned | - |
-| 7. Polish and Distribution | 0/TBD | Not started | - |
+| 7. Polish and Distribution | 0/7 | Planned | - |
