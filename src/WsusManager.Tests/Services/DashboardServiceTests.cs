@@ -92,4 +92,32 @@ public class DashboardServiceTests
         Assert.False(data.IsWsusInstalled);
         Assert.False(data.IsOnline);
     }
+
+    [Fact]
+    public async Task CollectAsync_Uses_Settings_ContentPath_For_DiskCheck()
+    {
+        var settings = new AppSettings { ContentPath = @"C:\WSUS" };
+        var data = await _service.CollectAsync(settings, CancellationToken.None);
+
+        // DiskFreeGB should be populated from the drive letter in ContentPath
+        Assert.True(data.DiskFreeGB >= 0);
+    }
+
+    [Fact]
+    public async Task CollectAsync_ServiceNames_Contains_Three_Entries()
+    {
+        var data = await _service.CollectAsync(_settings, CancellationToken.None);
+
+        Assert.Equal(3, data.ServiceNames.Length);
+    }
+
+    [Fact]
+    public async Task CollectAsync_DatabaseSizeGB_Is_Negative_When_SQL_Not_Running()
+    {
+        // On a dev/CI machine without SQL Express, DB size should be -1
+        var settings = new AppSettings { SqlInstance = @"localhost\NONEXISTENT_INSTANCE_12345" };
+        var data = await _service.CollectAsync(settings, CancellationToken.None);
+
+        Assert.Equal(-1, data.DatabaseSizeGB);
+    }
 }

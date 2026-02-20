@@ -144,4 +144,111 @@ public class ExportServiceTests
         Assert.True(result.Success);
         Assert.Contains("skip", result.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task ExportAsync_Full_And_Differential_Both_Call_Robocopy()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var options = new ExportOptions
+            {
+                SourcePath = tempDir,
+                FullExportPath = @"D:\FullExport",
+                DifferentialExportPath = @"D:\DiffExport",
+                ExportDays = 30
+            };
+
+            await _service.ExportAsync(options, _progress, CancellationToken.None);
+
+            // Both full (maxAge=0) and differential (maxAge=30) should call robocopy
+            _mockRobocopy.Verify(r => r.CopyAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                0, It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            _mockRobocopy.Verify(r => r.CopyAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                30, It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExportAsync_Uses_WsusContent_Subdirectory_When_Present()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var wsusContentDir = Path.Combine(tempDir, "WsusContent");
+        Directory.CreateDirectory(wsusContentDir);
+
+        try
+        {
+            var options = new ExportOptions
+            {
+                SourcePath = tempDir,
+                FullExportPath = @"D:\Export"
+            };
+
+            await _service.ExportAsync(options, _progress, CancellationToken.None);
+
+            // Source should be the WsusContent subdirectory
+            _mockRobocopy.Verify(r => r.CopyAsync(
+                wsusContentDir,
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExportAsync_Succeeds_Even_When_Full_Export_Fails()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        // Full export fails but differential succeeds
+        int callCount = 0;
+        _mockRobocopy.Setup(r => r.CopyAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return callCount == 1
+                    ? OperationResult.Fail("Full export failed.")
+                    : OperationResult.Ok("Diff export ok.");
+            });
+
+        try
+        {
+            var options = new ExportOptions
+            {
+                SourcePath = tempDir,
+                FullExportPath = @"D:\Full",
+                DifferentialExportPath = @"D:\Diff"
+            };
+
+            var result = await _service.ExportAsync(options, _progress, CancellationToken.None);
+
+            // Export should still succeed (with warnings)
+            Assert.True(result.Success);
+            Assert.Contains("warning", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
 }

@@ -55,4 +55,54 @@ public class OperationResultTests
         Assert.False(result.Success);
         Assert.Equal(0, result.Data);
     }
+
+    [Fact]
+    public void Generic_Fail_With_Exception()
+    {
+        var ex = new TimeoutException("timed out");
+        var result = OperationResult<string>.Fail("Timed out", ex);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Data);
+        Assert.Same(ex, result.Exception);
+    }
+
+    [Fact]
+    public void Generic_Ok_Default_Message()
+    {
+        var result = OperationResult<bool>.Ok(true);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data);
+        Assert.Equal("Success", result.Message);
+    }
+
+    [Fact]
+    public void Ok_And_Fail_Are_Distinct_By_Success_Flag()
+    {
+        var ok = OperationResult.Ok("done");
+        var fail = OperationResult.Fail("error");
+
+        Assert.True(ok.Success);
+        Assert.False(fail.Success);
+        Assert.NotEqual(ok, fail);
+    }
+
+    [Fact]
+    public void Records_Support_Value_Equality()
+    {
+        var a = OperationResult.Ok("done");
+        var b = OperationResult.Ok("done");
+
+        Assert.Equal(a, b);
+    }
+
+    [Fact]
+    public void Generic_Records_Support_Value_Equality()
+    {
+        var a = OperationResult<int>.Ok(42, "answer");
+        var b = OperationResult<int>.Ok(42, "answer");
+
+        Assert.Equal(a, b);
+    }
 }

@@ -193,4 +193,69 @@ public class ImportServiceTests
             Directory.Delete(tempDir, true);
         }
     }
+
+    [Fact]
+    public async Task ImportAsync_Skips_ContentReset_When_Robocopy_Fails()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        _mockRobocopy.Setup(r => r.CopyAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Fail("Copy error."));
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir,
+                DestinationPath = @"C:\WSUS",
+                RunContentResetAfterImport = true
+            };
+
+            await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+            // Content reset should NOT run after robocopy failure
+            _mockContentReset.Verify(r => r.ResetContentAsync(
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_Uses_Default_DestinationPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir
+                // DestinationPath defaults to C:\WSUS
+            };
+
+            await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+            _mockRobocopy.Verify(r => r.CopyAsync(
+                tempDir,
+                @"C:\WSUS",
+                0,
+                It.IsAny<IProgress<string>>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
 }

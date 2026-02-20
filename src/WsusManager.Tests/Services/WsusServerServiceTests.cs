@@ -87,4 +87,28 @@ public class WsusServerServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => service.ConnectAsync(cts.Token));
     }
+
+    [Fact]
+    public async Task IsConnected_Remains_False_After_Failed_Connect()
+    {
+        var service = new WsusServerService(_mockLog.Object);
+
+        // Connect will fail because WSUS API DLL is not present
+        var result = await service.ConnectAsync();
+
+        Assert.False(result.Success);
+        Assert.False(service.IsConnected);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_Logs_Warning_When_Dll_Missing()
+    {
+        var service = new WsusServerService(_mockLog.Object);
+
+        await service.ConnectAsync();
+
+        _mockLog.Verify(l => l.Warning(
+            It.Is<string>(s => s.Contains("WSUS API not found")),
+            It.IsAny<object[]>()), Times.Once);
+    }
 }

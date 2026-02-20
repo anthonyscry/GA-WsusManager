@@ -17,8 +17,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Diagnostics and Service Management** - Health check with auto-repair, service start/stop, firewall rule management, and permissions checking (completed 2026-02-20)
 - [x] **Phase 4: Database Operations** - 6-step deep cleanup pipeline, database backup and restore, and sysadmin permission enforcement (7 plans) (completed 2026-02-20)
 - [x] **Phase 5: WSUS Operations** - Online sync with profile selection, air-gap export/import workflow, and content reset (completed 2026-02-19)
-- [ ] **Phase 6: Installation and Scheduling** - WSUS + SQL Express installation wizard, scheduled task creation with domain credentials, and GPO deployment
-- [ ] **Phase 7: Polish and Distribution** - Comprehensive test suite, CI/CD pipeline, EXE validation, and release automation
+- [x] **Phase 6: Installation and Scheduling** - WSUS + SQL Express installation wizard, scheduled task creation with domain credentials, and GPO deployment (completed 2026-02-20)
+- [x] **Phase 7: Polish and Distribution** - Comprehensive test suite (257+ tests), CI/CD pipeline, EXE validation, and release automation (completed 2026-02-20)
 
 ## Phase Details
 
@@ -166,5 +166,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Diagnostics and Service Management | 1/1 | Complete   | 2026-02-20 |
 | 4. Database Operations | 1/1 | Complete   | 2026-02-20 |
 | 5. WSUS Operations | 8/8 | Complete | 2026-02-19 |
-| 6. Installation and Scheduling | 0/7 | Planned | - |
-| 7. Polish and Distribution | 0/7 | Planned | - |
+| 6. Installation and Scheduling | 1/1 | Complete | 2026-02-20 |
+| 7. Polish and Distribution | 7/7 | Complete | 2026-02-20 |

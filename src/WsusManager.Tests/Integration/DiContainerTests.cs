@@ -297,4 +297,52 @@ public class DiContainerTests
         Assert.NotNull(scheduledTask);
         Assert.NotNull(gpo);
     }
+
+    // ─── Singleton Identity Tests ────────────────────────────────
+
+    [Fact]
+    public void Singletons_Return_Same_Instance_On_Second_Resolve()
+    {
+        var sp = BuildTestContainer();
+
+        var log1 = sp.GetRequiredService<ILogService>();
+        var log2 = sp.GetRequiredService<ILogService>();
+        Assert.Same(log1, log2);
+
+        var settings1 = sp.GetRequiredService<ISettingsService>();
+        var settings2 = sp.GetRequiredService<ISettingsService>();
+        Assert.Same(settings1, settings2);
+
+        var health1 = sp.GetRequiredService<IHealthService>();
+        var health2 = sp.GetRequiredService<IHealthService>();
+        Assert.Same(health1, health2);
+    }
+
+    [Fact]
+    public void All_17_Service_Interfaces_Resolve()
+    {
+        var sp = BuildTestContainer();
+
+        // All 17 service interfaces + IProcessRunner = 18 total
+        Assert.NotNull(sp.GetRequiredService<ILogService>());
+        Assert.NotNull(sp.GetRequiredService<ISettingsService>());
+        Assert.NotNull(sp.GetRequiredService<IProcessRunner>());
+        Assert.NotNull(sp.GetRequiredService<IDashboardService>());
+        Assert.NotNull(sp.GetRequiredService<IWindowsServiceManager>());
+        Assert.NotNull(sp.GetRequiredService<IFirewallService>());
+        Assert.NotNull(sp.GetRequiredService<IPermissionsService>());
+        Assert.NotNull(sp.GetRequiredService<IHealthService>());
+        Assert.NotNull(sp.GetRequiredService<IContentResetService>());
+        Assert.NotNull(sp.GetRequiredService<ISqlService>());
+        Assert.NotNull(sp.GetRequiredService<IDeepCleanupService>());
+        Assert.NotNull(sp.GetRequiredService<IDatabaseBackupService>());
+        Assert.NotNull(sp.GetRequiredService<IWsusServerService>());
+        Assert.NotNull(sp.GetRequiredService<ISyncService>());
+        Assert.NotNull(sp.GetRequiredService<IRobocopyService>());
+        Assert.NotNull(sp.GetRequiredService<IExportService>());
+        Assert.NotNull(sp.GetRequiredService<IImportService>());
+        Assert.NotNull(sp.GetRequiredService<IInstallationService>());
+        Assert.NotNull(sp.GetRequiredService<IScheduledTaskService>());
+        Assert.NotNull(sp.GetRequiredService<IGpoDeploymentService>());
+    }
 }
