@@ -32,7 +32,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every operation invocation routes through a single `RunOperationAsync` wrapper — no raw async void handlers with uncaught exceptions
   4. Application starts and shows its main window in under 1 second on Windows Server 2019
   5. All log output writes structured entries to `C:\WSUS\Logs\` on startup
-**Plans**: TBD
+**Plans**:
+  1. Solution scaffold and project structure (FOUND-02, FOUND-03, GUI-05)
+  2. Structured logging with Serilog (FOUND-04)
+  3. RunOperationAsync pattern and OperationResult (FOUND-05)
+  4. Main window shell and global error handling (FOUND-01, FOUND-05)
+  5. Settings service and infrastructure helpers (foundation)
+  6. DI wiring, integration, publish validation (FOUND-01, FOUND-02)
 
 ### Phase 2: Application Shell and Dashboard
 **Goal**: The application window is fully functional — dark-themed, DPI-aware, showing live service and database status on the dashboard, with server mode switching, an expandable operation log panel, settings persistence, and all concurrent-operation guards in place.
@@ -110,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/6 | Planned | - |
 | 2. Application Shell and Dashboard | 0/TBD | Not started | - |
 | 3. Diagnostics and Service Management | 0/TBD | Not started | - |
 | 4. Database Operations | 0/TBD | Not started | - |
