@@ -86,6 +86,7 @@ public static class Program
         builder.Services.AddSingleton<IWindowsServiceManager, WindowsServiceManager>();
         builder.Services.AddSingleton<IFirewallService, FirewallService>();
         builder.Services.AddSingleton<IPermissionsService, PermissionsService>();
+        builder.Services.AddSingleton<IHealthService, HealthService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
