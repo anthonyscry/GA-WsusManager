@@ -805,6 +805,131 @@ public class MainViewModelTests
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // Phase 7: Comprehensive CanExecute and State Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ResetContentCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.ResetContentCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ResetContentCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.ResetContentCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void QuickCleanupCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.QuickCleanupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void QuickCleanupCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.QuickCleanupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void QuickStartServicesCommand_CanExecute_False_When_WsusNotInstalled()
+    {
+        _vm.IsWsusInstalled = false;
+
+        Assert.False(_vm.QuickStartServicesCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void QuickStartServicesCommand_CanExecute_True_When_WsusInstalled()
+    {
+        _vm.IsWsusInstalled = true;
+
+        Assert.True(_vm.QuickStartServicesCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void IsOperationRunning_Starts_False()
+    {
+        Assert.False(_vm.IsOperationRunning);
+    }
+
+    [Fact]
+    public void CurrentOperationName_Starts_Empty()
+    {
+        Assert.Equal(string.Empty, _vm.CurrentOperationName);
+    }
+
+    [Fact]
+    public void ServerMode_Toggle_Changes_IsOnline()
+    {
+        _vm.IsOnline = true;
+        Assert.True(_vm.IsOnline);
+
+        _vm.IsOnline = false;
+        Assert.False(_vm.IsOnline);
+    }
+
+    [Fact]
+    public void IsWsusInstalled_Default_Is_False()
+    {
+        Assert.False(_vm.IsWsusInstalled);
+    }
+
+    [Fact]
+    public void AppendLog_Adds_Text_To_LogOutput()
+    {
+        _vm.AppendLog("Hello");
+        _vm.AppendLog("World");
+
+        Assert.Contains("Hello", _vm.LogOutput);
+        Assert.Contains("World", _vm.LogOutput);
+    }
+
+    [Fact]
+    public void StatusMessage_Has_Default_Value()
+    {
+        Assert.NotNull(_vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task RunOperationAsync_Sets_CurrentOperationName_During_Execution()
+    {
+        string nameCapture = "";
+
+        await _vm.RunOperationAsync("TestOp", async (progress, ct) =>
+        {
+            nameCapture = _vm.CurrentOperationName;
+            await Task.CompletedTask;
+            return true;
+        });
+
+        Assert.Equal("TestOp", nameCapture);
+        Assert.Equal(string.Empty, _vm.CurrentOperationName);
+    }
+
+    [Fact]
+    public void Navigate_To_Various_Panels_Updates_PageTitle()
+    {
+        _vm.NavigateCommand.Execute("Diagnostics");
+        Assert.Equal("Diagnostics", _vm.PageTitle);
+
+        _vm.NavigateCommand.Execute("Database");
+        Assert.Equal("Database Operations", _vm.PageTitle);
+
+        _vm.NavigateCommand.Execute("Dashboard");
+        Assert.Equal("Dashboard", _vm.PageTitle);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════
 

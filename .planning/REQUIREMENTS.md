@@ -9,29 +9,29 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Foundation
 
-- [ ] **FOUND-01**: Application starts in under 1 second on Windows Server 2019+
-- [ ] **FOUND-02**: Application runs as single self-contained EXE (no external Scripts/Modules folders)
-- [ ] **FOUND-03**: Application requires and enforces administrator privileges (UAC manifest)
-- [ ] **FOUND-04**: Application logs all operations to C:\WSUS\Logs\ with structured logging
-- [ ] **FOUND-05**: Application handles all errors gracefully with user-friendly error dialogs (no unhandled crashes)
+- [x] **FOUND-01**: Application starts in under 1 second on Windows Server 2019+
+- [x] **FOUND-02**: Application runs as single self-contained EXE (no external Scripts/Modules folders)
+- [x] **FOUND-03**: Application requires and enforces administrator privileges (UAC manifest)
+- [x] **FOUND-04**: Application logs all operations to C:\WSUS\Logs\ with structured logging
+- [x] **FOUND-05**: Application handles all errors gracefully with user-friendly error dialogs (no unhandled crashes)
 
 ### Dashboard
 
-- [ ] **DASH-01**: User sees WSUS health status, database size, sync status, and service states on launch
-- [ ] **DASH-02**: Dashboard auto-refreshes every 30 seconds with visible refresh indicator
-- [ ] **DASH-03**: Dashboard shows "Not Installed" status when WSUS is not present on the server
-- [ ] **DASH-04**: User can toggle between Online and Air-Gap server modes
-- [ ] **DASH-05**: Dashboard displays DB size with warning when approaching 10GB SQL Express limit
+- [x] **DASH-01**: User sees WSUS health status, database size, sync status, and service states on launch
+- [x] **DASH-02**: Dashboard auto-refreshes every 30 seconds with visible refresh indicator
+- [x] **DASH-03**: Dashboard shows "Not Installed" status when WSUS is not present on the server
+- [x] **DASH-04**: User can toggle between Online and Air-Gap server modes
+- [x] **DASH-05**: Dashboard displays DB size with warning when approaching 10GB SQL Express limit
 
 ### GUI
 
-- [ ] **GUI-01**: Application uses modernized dark theme matching GA branding
-- [ ] **GUI-02**: User can view operation output in expandable/collapsible log panel
-- [ ] **GUI-03**: User can toggle live terminal mode to open operations in external PowerShell window
-- [ ] **GUI-04**: All dialogs close with ESC key
-- [ ] **GUI-05**: Application renders crisply on high-DPI displays (per-monitor DPI awareness)
-- [ ] **GUI-06**: User can access Settings dialog to configure application preferences
-- [ ] **GUI-07**: Settings persist to %APPDATA%\WsusManager\settings.json across sessions
+- [x] **GUI-01**: Application uses modernized dark theme matching GA branding
+- [x] **GUI-02**: User can view operation output in expandable/collapsible log panel
+- [x] **GUI-03**: User can toggle live terminal mode to open operations in external PowerShell window
+- [x] **GUI-04**: All dialogs close with ESC key
+- [x] **GUI-05**: Application renders crisply on high-DPI displays (per-monitor DPI awareness)
+- [x] **GUI-06**: User can access Settings dialog to configure application preferences
+- [x] **GUI-07**: Settings persist to %APPDATA%\WsusManager\settings.json across sessions
 
 ### Diagnostics
 
@@ -60,24 +60,24 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### Export/Import
 
-- [ ] **XFER-01**: User can export WSUS data to media with full export path selection
-- [ ] **XFER-02**: User can perform differential export (files from last N days) with separate path
-- [ ] **XFER-03**: User can import WSUS data from external media (source and destination path selection)
-- [ ] **XFER-04**: Export paths are optional — if not specified, export step is skipped
-- [ ] **XFER-05**: Pre-flight checks validate access to export/import paths before starting
+- [x] **XFER-01**: User can export WSUS data to media with full export path selection
+- [x] **XFER-02**: User can perform differential export (files from last N days) with separate path
+- [x] **XFER-03**: User can import WSUS data from external media (source and destination path selection)
+- [x] **XFER-04**: Export paths are optional — if not specified, export step is skipped
+- [x] **XFER-05**: Pre-flight checks validate access to export/import paths before starting
 
 ### Installation
 
-- [ ] **INST-01**: User can install WSUS with SQL Server Express through guided wizard
-- [ ] **INST-02**: Installation wizard runs non-interactively when launched from GUI
-- [ ] **INST-03**: Operations are disabled when WSUS is not installed (only Install button enabled)
+- [x] **INST-01**: User can install WSUS with SQL Server Express through guided wizard
+- [x] **INST-02**: Installation wizard runs non-interactively when launched from GUI
+- [x] **INST-03**: Operations are disabled when WSUS is not installed (only Install button enabled)
 
 ### Scheduling
 
-- [ ] **SCHED-01**: User can create Windows scheduled task for automated maintenance
-- [ ] **SCHED-02**: Scheduled task supports domain credentials (username/password)
-- [ ] **SCHED-03**: Scheduled task runs whether user is logged on or not
-- [ ] **SCHED-04**: User can select maintenance profile and schedule (day 1-31)
+- [x] **SCHED-01**: User can create Windows scheduled task for automated maintenance
+- [x] **SCHED-02**: Scheduled task supports domain credentials (username/password)
+- [x] **SCHED-03**: Scheduled task runs whether user is logged on or not
+- [x] **SCHED-04**: User can select maintenance profile and schedule (day 1-31)
 
 ### Service Management
 
@@ -97,22 +97,22 @@ Requirements for initial release. Feature parity with PowerShell v3.8.12 in a co
 
 ### GPO
 
-- [ ] **GPO-01**: User can copy GPO deployment files to C:\WSUS\WSUS GPO
-- [ ] **GPO-02**: User sees instructions for domain controller admin after GPO copy
+- [x] **GPO-01**: User can copy GPO deployment files to C:\WSUS\WSUS GPO
+- [x] **GPO-02**: User sees instructions for domain controller admin after GPO copy
 
 ### Operations Infrastructure
 
-- [ ] **OPS-01**: All operations can be cancelled by the user
-- [ ] **OPS-02**: Only one operation can run at a time (concurrent execution blocked)
-- [ ] **OPS-03**: All operation buttons are disabled during operation execution
-- [ ] **OPS-04**: Buttons re-enable on operation completion, error, or cancellation
+- [x] **OPS-01**: All operations can be cancelled by the user
+- [x] **OPS-02**: Only one operation can run at a time (concurrent execution blocked)
+- [x] **OPS-03**: All operation buttons are disabled during operation execution
+- [x] **OPS-04**: Buttons re-enable on operation completion, error, or cancellation
 
 ### Build & Distribution
 
-- [ ] **BUILD-01**: CI/CD pipeline builds single-file EXE on push/PR via GitHub Actions
-- [ ] **BUILD-02**: EXE includes version info, company name, and product name metadata
-- [ ] **BUILD-03**: Release automation creates GitHub release with EXE artifact
-- [ ] **BUILD-04**: Comprehensive test suite with xUnit (equivalent coverage to 323 Pester tests)
+- [x] **BUILD-01**: CI/CD pipeline builds single-file EXE on push/PR via GitHub Actions
+- [x] **BUILD-02**: EXE includes version info, company name, and product name metadata
+- [x] **BUILD-03**: Release automation creates GitHub release with EXE artifact
+- [x] **BUILD-04**: Comprehensive test suite with xUnit (equivalent coverage to 323 Pester tests)
 
 ## v2 Requirements
 
@@ -148,27 +148,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
-| FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
-| FOUND-05 | Phase 1 | Pending |
-| GUI-05 | Phase 1 | Pending |
-| DASH-01 | Phase 2 | Pending |
-| DASH-02 | Phase 2 | Pending |
-| DASH-03 | Phase 2 | Pending |
-| DASH-04 | Phase 2 | Pending |
-| DASH-05 | Phase 2 | Pending |
-| GUI-01 | Phase 2 | Pending |
-| GUI-02 | Phase 2 | Pending |
-| GUI-03 | Phase 2 | Pending |
-| GUI-04 | Phase 2 | Pending |
-| GUI-06 | Phase 2 | Pending |
-| GUI-07 | Phase 2 | Pending |
-| OPS-01 | Phase 2 | Pending |
-| OPS-02 | Phase 2 | Pending |
-| OPS-03 | Phase 2 | Pending |
-| OPS-04 | Phase 2 | Pending |
+| FOUND-01 | Phase 1 | Complete |
+| FOUND-02 | Phase 1 | Complete |
+| FOUND-03 | Phase 1 | Complete |
+| FOUND-04 | Phase 1 | Complete |
+| FOUND-05 | Phase 1 | Complete |
+| GUI-05 | Phase 1 | Complete |
+| DASH-01 | Phase 2 | Complete |
+| DASH-02 | Phase 2 | Complete |
+| DASH-03 | Phase 2 | Complete |
+| DASH-04 | Phase 2 | Complete |
+| DASH-05 | Phase 2 | Complete |
+| GUI-01 | Phase 2 | Complete |
+| GUI-02 | Phase 2 | Complete |
+| GUI-03 | Phase 2 | Complete |
+| GUI-04 | Phase 2 | Complete |
+| GUI-06 | Phase 2 | Complete |
+| GUI-07 | Phase 2 | Complete |
+| OPS-01 | Phase 2 | Complete |
+| OPS-02 | Phase 2 | Complete |
+| OPS-03 | Phase 2 | Complete |
+| OPS-04 | Phase 2 | Complete |
 | DIAG-01 | Phase 3 | Complete |
 | DIAG-02 | Phase 3 | Complete |
 | DIAG-03 | Phase 3 | Complete |
@@ -197,19 +197,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | XFER-03 | Phase 5 | Complete |
 | XFER-04 | Phase 5 | Complete |
 | XFER-05 | Phase 5 | Complete |
-| INST-01 | Phase 6 | Pending |
-| INST-02 | Phase 6 | Pending |
-| INST-03 | Phase 6 | Pending |
-| SCHED-01 | Phase 6 | Pending |
-| SCHED-02 | Phase 6 | Pending |
-| SCHED-03 | Phase 6 | Pending |
-| SCHED-04 | Phase 6 | Pending |
-| GPO-01 | Phase 6 | Pending |
-| GPO-02 | Phase 6 | Pending |
-| BUILD-01 | Phase 7 | Pending |
-| BUILD-02 | Phase 7 | Pending |
-| BUILD-03 | Phase 7 | Pending |
-| BUILD-04 | Phase 7 | Pending |
+| INST-01 | Phase 6 | Complete |
+| INST-02 | Phase 6 | Complete |
+| INST-03 | Phase 6 | Complete |
+| SCHED-01 | Phase 6 | Complete |
+| SCHED-02 | Phase 6 | Complete |
+| SCHED-03 | Phase 6 | Complete |
+| SCHED-04 | Phase 6 | Complete |
+| GPO-01 | Phase 6 | Complete |
+| GPO-02 | Phase 6 | Complete |
+| BUILD-01 | Phase 7 | Complete |
+| BUILD-02 | Phase 7 | Complete |
+| BUILD-03 | Phase 7 | Complete |
+| BUILD-04 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 62 total
@@ -218,4 +218,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 — traceability populated after roadmap creation*
+*Last updated: 2026-02-20 — all v1 requirements complete*

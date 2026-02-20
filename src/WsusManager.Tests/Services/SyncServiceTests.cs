@@ -135,4 +135,46 @@ public class SyncServiceTests
         _mockWsus.Verify(w => w.ApproveUpdatesAsync(
             150, It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task FullSync_Continues_When_Decline_Fails()
+    {
+        _mockWsus.Setup(w => w.DeclineUpdatesAsync(
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<int>.Fail("Decline failed."));
+
+        var result = await _service.RunSyncAsync(
+            SyncProfile.FullSync, 200, _progress, CancellationToken.None);
+
+        // Overall sync should still succeed even if decline step fails
+        Assert.True(result.Success);
+
+        // Approval should still be attempted
+        _mockWsus.Verify(w => w.ApproveUpdatesAsync(
+            200, It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task FullSync_Continues_When_Approval_Fails()
+    {
+        _mockWsus.Setup(w => w.ApproveUpdatesAsync(
+                It.IsAny<int>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<int>.Fail("Approval failed."));
+
+        var result = await _service.RunSyncAsync(
+            SyncProfile.FullSync, 200, _progress, CancellationToken.None);
+
+        // Overall sync should still succeed
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task QuickSync_Passes_MaxAutoApproveCount_To_Approval()
+    {
+        await _service.RunSyncAsync(
+            SyncProfile.QuickSync, 100, _progress, CancellationToken.None);
+
+        _mockWsus.Verify(w => w.ApproveUpdatesAsync(
+            100, It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

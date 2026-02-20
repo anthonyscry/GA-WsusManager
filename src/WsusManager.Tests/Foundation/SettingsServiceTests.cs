@@ -115,4 +115,29 @@ public class SettingsServiceTests : IDisposable
         await svc2.LoadAsync();
         Assert.Equal("AirGap", svc2.Current.ServerMode); // Updated after load
     }
+
+    [Fact]
+    public async Task SaveAsync_Overwrites_Existing_Settings()
+    {
+        var svc = new SettingsService(_mockLog.Object, _settingsPath);
+
+        await svc.SaveAsync(new AppSettings { ServerMode = "Online", RefreshIntervalSeconds = 30 });
+        await svc.SaveAsync(new AppSettings { ServerMode = "AirGap", RefreshIntervalSeconds = 60 });
+
+        var svc2 = new SettingsService(_mockLog.Object, _settingsPath);
+        var loaded = await svc2.LoadAsync();
+
+        Assert.Equal("AirGap", loaded.ServerMode);
+        Assert.Equal(60, loaded.RefreshIntervalSeconds);
+    }
+
+    [Fact]
+    public void Current_Returns_Defaults_Before_Load()
+    {
+        var svc = new SettingsService(_mockLog.Object, _settingsPath);
+
+        Assert.NotNull(svc.Current);
+        Assert.Equal("Online", svc.Current.ServerMode);
+        Assert.Equal(@"C:\WSUS", svc.Current.ContentPath);
+    }
 }

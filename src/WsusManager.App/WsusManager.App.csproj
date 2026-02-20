@@ -11,12 +11,8 @@
     <ApplicationIcon Condition="Exists('wsus-icon.ico')">wsus-icon.ico</ApplicationIcon>
     <StartupObject>WsusManager.App.Program</StartupObject>
 
-    <!-- Version info embedded in EXE -->
-    <Version>4.0.0</Version>
+    <!-- Version, Product, Company, Copyright inherited from src/Directory.Build.props -->
     <AssemblyTitle>WSUS Manager</AssemblyTitle>
-    <Product>WSUS Manager</Product>
-    <Company>GA-ASI</Company>
-    <Copyright>Copyright GA-ASI</Copyright>
     <Description>WSUS Server Management Tool for Windows Server</Description>
 
     <!-- Single-file self-contained publish -->

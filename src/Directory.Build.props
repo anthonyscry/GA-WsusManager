@@ -2,5 +2,14 @@
   <PropertyGroup>
     <!-- Enable cross-compilation of Windows-targeting projects on non-Windows OS (e.g., Linux CI runners, WSL) -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- Shared version and metadata across all projects (Core, App, Tests) -->
+    <Version>4.0.0</Version>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
+    <Product>WSUS Manager</Product>
+    <Company>GA-ASI</Company>
+    <Copyright>Tony Tran, ISSO - GA-ASI</Copyright>
+    <Authors>Tony Tran</Authors>
   </PropertyGroup>
 </Project>

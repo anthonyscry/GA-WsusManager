@@ -102,4 +102,46 @@ public class GpoDeploymentServiceTests
     {
         Assert.Equal(@"C:\WSUS\WSUS GPO", GpoDeploymentService.DefaultDestination);
     }
+
+    [Fact]
+    public void GetSearchPaths_Returns_Two_Paths()
+    {
+        var service = CreateService();
+        var paths = service.GetSearchPaths();
+
+        Assert.Equal(2, paths.Length);
+        Assert.All(paths, p => Assert.Contains(GpoDeploymentService.SourceDirectoryName, p));
+    }
+
+    [Fact]
+    public void LocateSourceDirectory_Returns_Null_When_Directory_Missing()
+    {
+        var service = CreateService();
+
+        // In test environment, DomainController/ won't be next to the test assembly
+        var result = service.LocateSourceDirectory();
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void CopyDirectory_Returns_Zero_For_Empty_Source()
+    {
+        var sourceDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var destDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+        try
+        {
+            Directory.CreateDirectory(sourceDir);
+
+            var count = GpoDeploymentService.CopyDirectory(sourceDir, destDir, null);
+
+            Assert.Equal(0, count);
+        }
+        finally
+        {
+            if (Directory.Exists(sourceDir)) Directory.Delete(sourceDir, true);
+            if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+        }
+    }
 }
