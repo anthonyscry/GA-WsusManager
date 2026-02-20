@@ -22,6 +22,13 @@ public class DiContainerTests
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IDashboardService, DashboardService>();
 
+        // Phase 3: Diagnostics and Service Management
+        services.AddSingleton<IWindowsServiceManager, WindowsServiceManager>();
+        services.AddSingleton<IFirewallService, FirewallService>();
+        services.AddSingleton<IPermissionsService, PermissionsService>();
+        services.AddSingleton<IHealthService, HealthService>();
+        services.AddSingleton<IContentResetService, ContentResetService>();
+
         return services.BuildServiceProvider();
     }
 
@@ -72,5 +79,65 @@ public class DiContainerTests
         Assert.NotNull(settings);
         Assert.NotNull(process);
         Assert.NotNull(dashboard);
+    }
+
+    // ─── Phase 3 Service Resolution Tests ────────────────────────────────
+
+    [Fact]
+    public void WindowsServiceManager_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IWindowsServiceManager>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void FirewallService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IFirewallService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void PermissionsService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IPermissionsService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void HealthService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IHealthService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void ContentResetService_Resolves()
+    {
+        var sp = BuildTestContainer();
+        var svc = sp.GetRequiredService<IContentResetService>();
+        Assert.NotNull(svc);
+    }
+
+    [Fact]
+    public void All_Phase3_Services_Resolve_Without_Error()
+    {
+        var sp = BuildTestContainer();
+
+        var serviceManager = sp.GetRequiredService<IWindowsServiceManager>();
+        var firewall = sp.GetRequiredService<IFirewallService>();
+        var permissions = sp.GetRequiredService<IPermissionsService>();
+        var health = sp.GetRequiredService<IHealthService>();
+        var contentReset = sp.GetRequiredService<IContentResetService>();
+
+        Assert.NotNull(serviceManager);
+        Assert.NotNull(firewall);
+        Assert.NotNull(permissions);
+        Assert.NotNull(health);
+        Assert.NotNull(contentReset);
     }
 }
