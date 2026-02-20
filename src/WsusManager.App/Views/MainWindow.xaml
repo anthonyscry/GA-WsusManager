@@ -269,7 +269,131 @@
                     </ScrollViewer>
                 </Border>
 
-                <!-- Operation Panel (placeholder for Phase 3+) -->
+                <!-- Diagnostics Panel -->
+                <Border x:Name="DiagnosticsPanel"
+                        Visibility="{Binding IsDiagnosticsPanelVisible}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Primary Actions -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Diagnostics" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Run a comprehensive health check of all WSUS components. Failed checks are automatically repaired where possible."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                    <WrapPanel>
+                                        <Button Content="Run Diagnostics" Style="{StaticResource BtnGreen}"
+                                                Padding="16,8" Margin="0,0,8,0"
+                                                Command="{Binding RunDiagnosticsCommand}"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                        <Button Content="Reset Content" Style="{StaticResource BtnSec}"
+                                                Padding="16,8" ToolTip="Runs wsusutil reset to re-verify content files (use after air-gap import)"
+                                                Command="{Binding ResetContentCommand}"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Service Control -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Service Control" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Start or stop individual WSUS services. Services are managed in dependency order."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                    <!-- SQL Server Row -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="SQL Server Express" FontSize="13"
+                                                       Foreground="{StaticResource Text1}"/>
+                                            <TextBlock Text="MSSQL$SQLEXPRESS" FontSize="11"
+                                                       Foreground="{StaticResource Text3}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
+                                                Padding="12,4" Margin="0,0,6,0"
+                                                Command="{Binding StartServiceCommand}"
+                                                CommandParameter="MSSQL$SQLEXPRESS"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                        <Button Grid.Column="2" Content="Stop" Style="{StaticResource BtnRed}"
+                                                Padding="12,4"
+                                                Command="{Binding StopServiceCommand}"
+                                                CommandParameter="MSSQL$SQLEXPRESS"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                    </Grid>
+
+                                    <Separator Background="{StaticResource Border}" Margin="0,4"/>
+
+                                    <!-- IIS Row -->
+                                    <Grid Margin="0,8,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="IIS (World Wide Web)" FontSize="13"
+                                                       Foreground="{StaticResource Text1}"/>
+                                            <TextBlock Text="W3SVC" FontSize="11"
+                                                       Foreground="{StaticResource Text3}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
+                                                Padding="12,4" Margin="0,0,6,0"
+                                                Command="{Binding StartServiceCommand}"
+                                                CommandParameter="W3SVC"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                        <Button Grid.Column="2" Content="Stop" Style="{StaticResource BtnRed}"
+                                                Padding="12,4"
+                                                Command="{Binding StopServiceCommand}"
+                                                CommandParameter="W3SVC"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                    </Grid>
+
+                                    <Separator Background="{StaticResource Border}" Margin="0,4"/>
+
+                                    <!-- WSUS Row -->
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="WSUS Service" FontSize="13"
+                                                       Foreground="{StaticResource Text1}"/>
+                                            <TextBlock Text="WsusService" FontSize="11"
+                                                       Foreground="{StaticResource Text3}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
+                                                Padding="12,4" Margin="0,0,6,0"
+                                                Command="{Binding StartServiceCommand}"
+                                                CommandParameter="WsusService"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                        <Button Grid.Column="2" Content="Stop" Style="{StaticResource BtnRed}"
+                                                Padding="12,4"
+                                                Command="{Binding StopServiceCommand}"
+                                                CommandParameter="WsusService"
+                                                IsEnabled="{Binding IsWsusInstalled}"/>
+                                    </Grid>
+
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Generic Operation Panel (placeholder for other panels) -->
                 <Border x:Name="OperationPanel"
                         Visibility="{Binding IsOperationPanelVisible}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

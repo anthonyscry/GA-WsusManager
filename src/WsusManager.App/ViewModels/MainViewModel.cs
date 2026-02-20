@@ -22,6 +22,9 @@ public partial class MainViewModel : ObservableObject
     private readonly ILogService _logService;
     private readonly ISettingsService _settingsService;
     private readonly IDashboardService _dashboardService;
+    private readonly IHealthService _healthService;
+    private readonly IWindowsServiceManager _serviceManager;
+    private readonly IContentResetService _contentResetService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -30,11 +33,17 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(
         ILogService logService,
         ISettingsService settingsService,
-        IDashboardService dashboardService)
+        IDashboardService dashboardService,
+        IHealthService healthService,
+        IWindowsServiceManager serviceManager,
+        IContentResetService contentResetService)
     {
         _logService = logService;
         _settingsService = settingsService;
         _dashboardService = dashboardService;
+        _healthService = healthService;
+        _serviceManager = serviceManager;
+        _contentResetService = contentResetService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -56,8 +65,13 @@ public partial class MainViewModel : ObservableObject
     public Visibility IsDashboardVisible =>
         CurrentPanel == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility IsDiagnosticsPanelVisible =>
+        CurrentPanel == "Diagnostics" ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility IsOperationPanelVisible =>
-        CurrentPanel != "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
+        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     [RelayCommand]
     private void Navigate(string panel)
@@ -80,6 +94,7 @@ public partial class MainViewModel : ObservableObject
         };
 
         OnPropertyChanged(nameof(IsDashboardVisible));
+        OnPropertyChanged(nameof(IsDiagnosticsPanelVisible));
         OnPropertyChanged(nameof(IsOperationPanelVisible));
     }
 
@@ -301,14 +316,89 @@ public partial class MainViewModel : ObservableObject
     private bool _isWsusInstalled;
 
     // ═══════════════════════════════════════════════════════════════
-    // QUICK ACTION COMMANDS (placeholder commands for Phase 3+)
+    // DIAGNOSTICS COMMANDS (Phase 3)
+    // ═══════════════════════════════════════════════════════════════
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task RunDiagnostics()
+    {
+        Navigate("Diagnostics");
+
+        await RunOperationAsync("Diagnostics", async (progress, ct) =>
+        {
+            var report = await _healthService.RunDiagnosticsAsync(
+                _settings.ContentPath,
+                _settings.SqlInstance,
+                progress,
+                ct);
+
+            // Trigger dashboard refresh to reflect any service state changes
+            await RefreshDashboard();
+
+            return report.IsHealthy || report.FailedCount == 0;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task ResetContent()
+    {
+        var confirm = MessageBox.Show(
+            "This will run 'wsusutil reset' to re-verify all WSUS content files against the database.\n\n" +
+            "This operation can take 10+ minutes on large content stores.\n\n" +
+            "Continue?",
+            "Confirm Content Reset",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        Navigate("Diagnostics");
+
+        await RunOperationAsync("Content Reset", async (progress, ct) =>
+        {
+            var result = await _contentResetService.ResetContentAsync(progress, ct);
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task StartService(string serviceName)
+    {
+        await RunOperationAsync($"Start {serviceName}", async (progress, ct) =>
+        {
+            progress.Report($"Starting {serviceName}...");
+            var result = await _serviceManager.StartServiceAsync(serviceName, ct);
+            progress.Report(result.Success ? $"[OK] {result.Message}" : $"[FAIL] {result.Message}");
+
+            // Refresh dashboard to reflect service state change
+            await RefreshDashboard();
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
+    private async Task StopService(string serviceName)
+    {
+        await RunOperationAsync($"Stop {serviceName}", async (progress, ct) =>
+        {
+            progress.Report($"Stopping {serviceName}...");
+            var result = await _serviceManager.StopServiceAsync(serviceName, ct);
+            progress.Report(result.Success ? $"[OK] {result.Message}" : $"[FAIL] {result.Message}");
+
+            // Refresh dashboard to reflect service state change
+            await RefreshDashboard();
+            return result.Success;
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // QUICK ACTION COMMANDS
     // ═══════════════════════════════════════════════════════════════
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task QuickDiagnostics()
     {
-        Navigate("Diagnostics");
-        await Task.CompletedTask;
+        await RunDiagnostics();
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -328,13 +418,13 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task QuickStartServices()
     {
-        await RunOperationAsync("Start Services", async (progress, ct) =>
+        await RunOperationAsync("Start All Services", async (progress, ct) =>
         {
-            progress.Report("Starting services...");
-            // Placeholder - will be implemented in Phase 3
-            progress.Report("Service start logic will be implemented in a future phase.");
-            await Task.Delay(500, ct);
-            return true;
+            var result = await _serviceManager.StartAllServicesAsync(progress, ct);
+
+            // Refresh dashboard to reflect service state changes
+            await RefreshDashboard();
+            return result.Success;
         });
     }
 
@@ -454,6 +544,10 @@ public partial class MainViewModel : ObservableObject
         QuickCleanupCommand.NotifyCanExecuteChanged();
         QuickSyncCommand.NotifyCanExecuteChanged();
         QuickStartServicesCommand.NotifyCanExecuteChanged();
+        RunDiagnosticsCommand.NotifyCanExecuteChanged();
+        ResetContentCommand.NotifyCanExecuteChanged();
+        StartServiceCommand.NotifyCanExecuteChanged();
+        StopServiceCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
