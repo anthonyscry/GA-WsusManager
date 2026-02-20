@@ -12,8 +12,8 @@ A ground-up C# rewrite of GA-WsusManager, delivering a single-file EXE with zero
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Compilable solution with DI wiring, async operation pattern, single-file publish, UAC manifest, and structured logging
-- [ ] **Phase 2: Application Shell and Dashboard** - Working windowed application with dark theme, live dashboard, server mode toggle, operation log panel, and settings persistence
+- [x] **Phase 1: Foundation** - Compilable solution with DI wiring, async operation pattern, single-file publish, UAC manifest, and structured logging (completed 2026-02-19)
+- [x] **Phase 2: Application Shell and Dashboard** - Working windowed application with dark theme, live dashboard, server mode toggle, operation log panel, and settings persistence (completed 2026-02-19)
 - [x] **Phase 3: Diagnostics and Service Management** - Health check with auto-repair, service start/stop, firewall rule management, and permissions checking (completed 2026-02-20)
 - [ ] **Phase 4: Database Operations** - 6-step deep cleanup pipeline, database backup and restore, and sysadmin permission enforcement
 - [ ] **Phase 5: WSUS Operations** - Online sync with profile selection, air-gap export/import workflow, and content reset

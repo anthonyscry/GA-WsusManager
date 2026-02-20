@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** Phase 3 — Diagnostics and Service Management
+**Current focus:** Phase 4 — Database Operations
 
 ## Current Position
 
