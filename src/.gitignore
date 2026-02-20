@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+
+# NuGet
+*.user
+*.suo
+.vs/
+
+# Publish output
+publish/
