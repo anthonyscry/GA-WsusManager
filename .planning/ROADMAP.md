@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Foundation** - Compilable solution with DI wiring, async operation pattern, single-file publish, UAC manifest, and structured logging
 - [ ] **Phase 2: Application Shell and Dashboard** - Working windowed application with dark theme, live dashboard, server mode toggle, operation log panel, and settings persistence
-- [ ] **Phase 3: Diagnostics and Service Management** - Health check with auto-repair, service start/stop, firewall rule management, and permissions checking
+- [x] **Phase 3: Diagnostics and Service Management** - Health check with auto-repair, service start/stop, firewall rule management, and permissions checking (completed 2026-02-20)
 - [ ] **Phase 4: Database Operations** - 6-step deep cleanup pipeline, database backup and restore, and sysadmin permission enforcement
 - [ ] **Phase 5: WSUS Operations** - Online sync with profile selection, air-gap export/import workflow, and content reset
 - [ ] **Phase 6: Installation and Scheduling** - WSUS + SQL Express installation wizard, scheduled task creation with domain credentials, and GPO deployment
@@ -134,7 +134,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete | 2026-02-19 |
 | 2. Application Shell and Dashboard | 8/8 | Complete | 2026-02-19 |
-| 3. Diagnostics and Service Management | 0/8 | Planning complete | - |
+| 3. Diagnostics and Service Management | 1/1 | Complete   | 2026-02-20 |
 | 4. Database Operations | 0/TBD | Not started | - |
 | 5. WSUS Operations | 0/TBD | Not started | - |
 | 6. Installation and Scheduling | 0/TBD | Not started | - |
