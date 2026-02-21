@@ -231,23 +231,15 @@ See [.editorconfig](src/.editorconfig) for the full rule configuration and suppr
 
 WSUS Manager uses GitHub Actions for continuous integration and deployment.
 
-### Workflows
+For detailed workflow documentation, troubleshooting guides, artifact descriptions, and local development commands, see:
+- **[docs/ci-cd.md](docs/ci-cd.md)** - Complete CI/CD pipeline documentation
 
-**Build C# WSUS Manager** (`.github/workflows/build-csharp.yml`)
-- **Triggers:** Push to main, pull request to main, workflow dispatch
-- **Steps:** Restore, build, test, code coverage, publish
-- **Artifacts:** Test results (TRX), coverage report (HTML), published EXE
-- **Status:** Required for merge (PR checks must pass)
-
-**Build PowerShell GUI** (`.github/workflows/build.yml`)
-- **Triggers:** Push to main, pull request to main (legacy PowerShell version)
-- **Steps:** Pester tests, PSScriptAnalyzer, PS2EXE compilation
-- **Status:** Maintained but superseded by C# version
-
-**Repo Hygiene** (`.github/workflows/repo-hygiene.yml`)
-- **Triggers:** Pull requests
-- **Steps:** Validate markdown links, check file sizes, detect secrets
-- **Status:** Non-blocking checks for repository health
+**Quick summary:**
+- **Build C# WSUS Manager** - Runs on push/PR to main (build, test, publish)
+- **Build PowerShell GUI (Legacy)** - Runs on push/PR to main (code review, test, build)
+- **Create Release** - Runs on git tag push or manual trigger
+- **Repository Hygiene** - Scheduled daily cleanup of stale PRs, branches, and workflow runs
+- **Dependabot Auto-Merge** - Auto-approves minor/patch dependency updates
 
 ### Running Workflows Locally
 
@@ -265,6 +257,8 @@ dotnet test --collect:"XPlat Code Coverage"
 dotnet test --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage.html
 ```
+
+See [docs/ci-cd.md](docs/ci-cd.md) for full workflow details, artifact descriptions, and troubleshooting.
 
 ### Coverage Reports
 
