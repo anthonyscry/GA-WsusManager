@@ -33,7 +33,7 @@ public class ExeValidationTests
         {
             // dotnet publish output (standard location)
             Path.Combine(testDir, "..", "..", "..", "..", "WsusManager.App", "bin", "Release",
-                "net9.0-windows", "win-x64", "publish", ExeName),
+                "net8.0-windows", "win-x64", "publish", ExeName),
             // publish/ folder at repo src/ level
             Path.Combine(testDir, "..", "..", "..", "..", "..", "publish", ExeName),
             Path.Combine(testDir, "..", "..", "..", "..", "..", "publish", RenamedExeName),
