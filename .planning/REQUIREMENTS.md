@@ -43,7 +43,7 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 - [ ] **DOC-02**: CONTRIBUTING.md documents build, test, and commit conventions
 - [ ] **DOC-03**: API documentation website generated via DocFX
 - [ ] **DOC-04**: CI/CD pipeline documented (GitHub Actions workflow)
-- [ ] **DOC-05**: Release process documented (versioning, changelog, publish steps)
+- [x] **DOC-05**: Release process documented (versioning, changelog, publish steps)
 - [ ] **DOC-06**: Architecture documentation updated with current design decisions
 
 ## v2 Requirements
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-02 | Phase 24 | Pending |
 | DOC-03 | Phase 24 | Pending |
 | DOC-04 | Phase 24 | Pending |
-| DOC-05 | Phase 24 | Pending |
+| DOC-05 | Phase 24 | Complete |
 | DOC-06 | Phase 24 | Pending |
 
 **Coverage:**
