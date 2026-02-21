@@ -117,5 +117,5 @@ Plans:
 | 11. Stability Hardening | v4.1 | 1/1 | Complete | 2026-02-20 |
 | 12. Settings & Mode Override | 2/2 | Complete   | 2026-02-21 | - |
 | 13. Operation Feedback & Dialog Polish | 2/2 | Complete    | 2026-02-21 | - |
-| 14. Client Management Core | 2/3 | In Progress|  | - |
+| 14. Client Management Core | 3/3 | Complete   | 2026-02-21 | - |
 | 15. Client Management Advanced | v4.2 | 0/TBD | Not started | - |
