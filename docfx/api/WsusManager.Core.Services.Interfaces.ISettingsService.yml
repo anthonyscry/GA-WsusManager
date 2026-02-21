@@ -1,0 +1,327 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISettingsService
+  id: ISettingsService
+  parent: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.ISettingsService.Current
+  - WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync
+  - WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync(WsusManager.Core.Models.AppSettings)
+  langs:
+  - csharp
+  - vb
+  name: ISettingsService
+  nameWithType: ISettingsService
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ISettingsService
+    path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+    startLine: 7
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Persists and loads application settings from %APPDATA%\WsusManager\settings.json.
+  example: []
+  syntax:
+    content: public interface ISettingsService
+    content.vb: Public Interface ISettingsService
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync
+  commentId: M:WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync
+  id: LoadAsync
+  parent: WsusManager.Core.Services.Interfaces.ISettingsService
+  langs:
+  - csharp
+  - vb
+  name: LoadAsync()
+  nameWithType: ISettingsService.LoadAsync()
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LoadAsync
+    path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+    startLine: 12
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Loads settings from disk. Returns default settings if file is missing or corrupt.
+  example: []
+  syntax:
+    content: Task<AppSettings> LoadAsync()
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.AppSettings}
+    content.vb: Function LoadAsync() As Task(Of AppSettings)
+  overload: WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync*
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync(WsusManager.Core.Models.AppSettings)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync(WsusManager.Core.Models.AppSettings)
+  id: SaveAsync(WsusManager.Core.Models.AppSettings)
+  parent: WsusManager.Core.Services.Interfaces.ISettingsService
+  langs:
+  - csharp
+  - vb
+  name: SaveAsync(AppSettings)
+  nameWithType: ISettingsService.SaveAsync(AppSettings)
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync(WsusManager.Core.Models.AppSettings)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: SaveAsync
+    path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+    startLine: 17
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Saves settings to disk. Creates the directory if it doesn't exist.
+  example: []
+  syntax:
+    content: Task SaveAsync(AppSettings settings)
+    parameters:
+    - id: settings
+      type: WsusManager.Core.Models.AppSettings
+    return:
+      type: System.Threading.Tasks.Task
+    content.vb: Function SaveAsync(settings As AppSettings) As Task
+  overload: WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync*
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.Current
+  commentId: P:WsusManager.Core.Services.Interfaces.ISettingsService.Current
+  id: Current
+  parent: WsusManager.Core.Services.Interfaces.ISettingsService
+  langs:
+  - csharp
+  - vb
+  name: Current
+  nameWithType: ISettingsService.Current
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.Current
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Current
+    path: src/WsusManager.Core/Services/Interfaces/ISettingsService.cs
+    startLine: 22
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Gets the current in-memory settings (loaded on startup).
+  example: []
+  syntax:
+    content: AppSettings Current { get; }
+    parameters: []
+    return:
+      type: WsusManager.Core.Models.AppSettings
+    content.vb: ReadOnly Property Current As AppSettings
+  overload: WsusManager.Core.Services.Interfaces.ISettingsService.Current*
+references:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync
+  href: WsusManager.Core.Services.Interfaces.ISettingsService.html#WsusManager_Core_Services_Interfaces_ISettingsService_LoadAsync
+  name: LoadAsync
+  nameWithType: ISettingsService.LoadAsync
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.LoadAsync
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.AppSettings}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.AppSettings}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<AppSettings>
+  nameWithType: Task<AppSettings>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.AppSettings>
+  nameWithType.vb: Task(Of AppSettings)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.AppSettings)
+  name.vb: Task(Of AppSettings)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.AppSettings
+    name: AppSettings
+    href: WsusManager.Core.Models.AppSettings.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.AppSettings
+    name: AppSettings
+    href: WsusManager.Core.Models.AppSettings.html
+  - name: )
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync
+  href: WsusManager.Core.Services.Interfaces.ISettingsService.html#WsusManager_Core_Services_Interfaces_ISettingsService_SaveAsync_WsusManager_Core_Models_AppSettings_
+  name: SaveAsync
+  nameWithType: ISettingsService.SaveAsync
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.SaveAsync
+- uid: WsusManager.Core.Models.AppSettings
+  commentId: T:WsusManager.Core.Models.AppSettings
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.AppSettings.html
+  name: AppSettings
+  nameWithType: AppSettings
+  fullName: WsusManager.Core.Models.AppSettings
+- uid: System.Threading.Tasks.Task
+  commentId: T:System.Threading.Tasks.Task
+  parent: System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task
+  name: Task
+  nameWithType: Task
+  fullName: System.Threading.Tasks.Task
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService.Current*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.ISettingsService.Current
+  href: WsusManager.Core.Services.Interfaces.ISettingsService.html#WsusManager_Core_Services_Interfaces_ISettingsService_Current
+  name: Current
+  nameWithType: ISettingsService.Current
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService.Current

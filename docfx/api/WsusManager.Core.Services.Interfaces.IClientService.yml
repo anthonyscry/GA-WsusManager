@@ -1,0 +1,895 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces.IClientService
+  commentId: T:WsusManager.Core.Services.Interfaces.IClientService
+  id: IClientService
+  parent: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(System.String)
+  - WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList{System.String},System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IClientService
+  nameWithType: IClientService
+  fullName: WsusManager.Core.Services.Interfaces.IClientService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IClientService
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Provides client machine management operations for WSUS-managed endpoints.
+
+    All remote operations use WinRM (Invoke-Command) to execute PowerShell on the target host.
+
+    If WinRM is unavailable, callers should direct users to the Script Generator in Phase 15.
+  example: []
+  syntax:
+    content: public interface IClientService
+    content.vb: Public Interface IClientService
+- uid: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: CancelStuckJobsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: CancelStuckJobsAsync(string, IProgress<string>, CancellationToken)
+  nameWithType: IClientService.CancelStuckJobsAsync(string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CancelStuckJobsAsync
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 19
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Cancels stuck Windows Update background jobs on the remote host by stopping
+
+    wuauserv, clearing the job queue, and restarting the service.
+  example: []
+  syntax:
+    content: Task<OperationResult> CancelStuckJobsAsync(string hostname, IProgress<string> progress, CancellationToken ct = default)
+    parameters:
+    - id: hostname
+      type: System.String
+      description: Target computer name or IP address.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for real-time output lines.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — stops the operation on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+      description: Operation result indicating success or failure with detail.
+    content.vb: Function CancelStuckJobsAsync(hostname As String, progress As IProgress(Of String), ct As CancellationToken = Nothing) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync*
+  nameWithType.vb: IClientService.CancelStuckJobsAsync(String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: CancelStuckJobsAsync(String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: ForceCheckInAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: ForceCheckInAsync(string, IProgress<string>, CancellationToken)
+  nameWithType: IClientService.ForceCheckInAsync(string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ForceCheckInAsync
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 32
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Forces the Windows Update client on the remote host to check in with the
+
+    configured WSUS server immediately (wuauclt /detectnow + usoclient StartScan).
+  example: []
+  syntax:
+    content: Task<OperationResult> ForceCheckInAsync(string hostname, IProgress<string> progress, CancellationToken ct = default)
+    parameters:
+    - id: hostname
+      type: System.String
+      description: Target computer name or IP address.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for real-time output lines.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — stops the operation on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+      description: Operation result indicating success or failure with detail.
+    content.vb: Function ForceCheckInAsync(hostname As String, progress As IProgress(Of String), ct As CancellationToken = Nothing) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync*
+  nameWithType.vb: IClientService.ForceCheckInAsync(String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: ForceCheckInAsync(String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: TestConnectivityAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: TestConnectivityAsync(string, string, IProgress<string>, CancellationToken)
+  nameWithType: IClientService.TestConnectivityAsync(string, string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(string, string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: TestConnectivityAsync
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 46
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Tests whether the remote host can reach the WSUS server on ports 8530 and 8531,
+
+    measuring round-trip latency.
+  example: []
+  syntax:
+    content: Task<OperationResult<ConnectivityTestResult>> TestConnectivityAsync(string hostname, string wsusServerUrl, IProgress<string> progress, CancellationToken ct = default)
+    parameters:
+    - id: hostname
+      type: System.String
+      description: Target computer name or IP address.
+    - id: wsusServerUrl
+      type: System.String
+      description: WSUS server URL (e.g., http://wsus-server:8530).
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for real-time output lines.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — stops the operation on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ConnectivityTestResult}}
+      description: Operation result with connectivity details (port reachability, latency).
+    content.vb: Function TestConnectivityAsync(hostname As String, wsusServerUrl As String, progress As IProgress(Of String), ct As CancellationToken = Nothing) As Task(Of OperationResult(Of ConnectivityTestResult))
+  overload: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync*
+  nameWithType.vb: IClientService.TestConnectivityAsync(String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: TestConnectivityAsync(String, String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: RunDiagnosticsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: RunDiagnosticsAsync(string, IProgress<string>, CancellationToken)
+  nameWithType: IClientService.RunDiagnosticsAsync(string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: RunDiagnosticsAsync
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 61
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Runs a comprehensive diagnostics pass on the remote host: reads WSUS registry
+
+    settings, checks service states, last check-in time, pending reboot flag,
+
+    and Windows Update Agent version.
+  example: []
+  syntax:
+    content: Task<OperationResult<ClientDiagnosticResult>> RunDiagnosticsAsync(string hostname, IProgress<string> progress, CancellationToken ct = default)
+    parameters:
+    - id: hostname
+      type: System.String
+      description: Target computer name or IP address.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for real-time output lines.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — stops the operation on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ClientDiagnosticResult}}
+      description: Operation result with full diagnostic snapshot from the remote host.
+    content.vb: Function RunDiagnosticsAsync(hostname As String, progress As IProgress(Of String), ct As CancellationToken = Nothing) As Task(Of OperationResult(Of ClientDiagnosticResult))
+  overload: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync*
+  nameWithType.vb: IClientService.RunDiagnosticsAsync(String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: RunDiagnosticsAsync(String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(System.String)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(System.String)
+  id: LookupErrorCode(System.String)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: LookupErrorCode(string)
+  nameWithType: IClientService.LookupErrorCode(string)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(string)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LookupErrorCode
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 73
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Looks up a WSUS/Windows Update error code and returns a human-readable
+
+    description with a recommended fix. This is a local dictionary lookup —
+
+    no remote call is made.
+  example: []
+  syntax:
+    content: OperationResult<WsusErrorInfo> LookupErrorCode(string errorCode)
+    parameters:
+    - id: errorCode
+      type: System.String
+      description: Hex code (e.g., "0x80244010") or decimal string.
+    return:
+      type: WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.WsusErrorInfo}
+      description: Operation result with error info, or a failed result if unknown.
+    content.vb: Function LookupErrorCode(errorCode As String) As OperationResult(Of WsusErrorInfo)
+  overload: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode*
+  nameWithType.vb: IClientService.LookupErrorCode(String)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(String)
+  name.vb: LookupErrorCode(String)
+- uid: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList{System.String},System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList{System.String},System.IProgress{System.String},System.Threading.CancellationToken)
+  id: MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList{System.String},System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IClientService
+  langs:
+  - csharp
+  - vb
+  name: MassForceCheckInAsync(IReadOnlyList<string>, IProgress<string>, CancellationToken)
+  nameWithType: IClientService.MassForceCheckInAsync(IReadOnlyList<string>, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList<string>, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: MassForceCheckInAsync
+    path: src/WsusManager.Core/Services/Interfaces/IClientService.cs
+    startLine: 87
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Runs ForceCheckInAsync sequentially across multiple hosts, reporting per-host
+
+    pass/fail results. Processes are run one at a time (not parallel) to avoid
+
+    overloading WinRM connections.
+  example: []
+  syntax:
+    content: Task<OperationResult> MassForceCheckInAsync(IReadOnlyList<string> hostnames, IProgress<string> progress, CancellationToken ct = default)
+    parameters:
+    - id: hostnames
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+      description: List of target hostnames or IP addresses.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for real-time per-host output lines.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — stops processing remaining hosts on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+      description: >-
+        Ok if all hosts succeeded; Fail if any host failed (but all reachable hosts are still processed).
+
+        The message includes a summary: "{passed}/{total} hosts succeeded, {failed} failed.".
+    content.vb: Function MassForceCheckInAsync(hostnames As IReadOnlyList(Of String), progress As IProgress(Of String), ct As CancellationToken = Nothing) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync*
+  nameWithType.vb: IClientService.MassForceCheckInAsync(IReadOnlyList(Of String), IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList(Of String), System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: MassForceCheckInAsync(IReadOnlyList(Of String), IProgress(Of String), CancellationToken)
+references:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_CancelStuckJobsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: CancelStuckJobsAsync
+  nameWithType: IClientService.CancelStuckJobsAsync
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult>
+  nameWithType: Task<OperationResult>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult>
+  nameWithType.vb: Task(Of OperationResult)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult)
+  name.vb: Task(Of OperationResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_ForceCheckInAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: ForceCheckInAsync
+  nameWithType: IClientService.ForceCheckInAsync
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync
+- uid: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_TestConnectivityAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: TestConnectivityAsync
+  nameWithType: IClientService.TestConnectivityAsync
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ConnectivityTestResult}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ConnectivityTestResult}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<ConnectivityTestResult>>
+  nameWithType: Task<OperationResult<ConnectivityTestResult>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<WsusManager.Core.Models.ConnectivityTestResult>>
+  nameWithType.vb: Task(Of OperationResult(Of ConnectivityTestResult))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of WsusManager.Core.Models.ConnectivityTestResult))
+  name.vb: Task(Of OperationResult(Of ConnectivityTestResult))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: WsusManager.Core.Models.ConnectivityTestResult
+    name: ConnectivityTestResult
+    href: WsusManager.Core.Models.ConnectivityTestResult.html
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.ConnectivityTestResult
+    name: ConnectivityTestResult
+    href: WsusManager.Core.Models.ConnectivityTestResult.html
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_RunDiagnosticsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: RunDiagnosticsAsync
+  nameWithType: IClientService.RunDiagnosticsAsync
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ClientDiagnosticResult}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.ClientDiagnosticResult}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<ClientDiagnosticResult>>
+  nameWithType: Task<OperationResult<ClientDiagnosticResult>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<WsusManager.Core.Models.ClientDiagnosticResult>>
+  nameWithType.vb: Task(Of OperationResult(Of ClientDiagnosticResult))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of WsusManager.Core.Models.ClientDiagnosticResult))
+  name.vb: Task(Of OperationResult(Of ClientDiagnosticResult))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: WsusManager.Core.Models.ClientDiagnosticResult
+    name: ClientDiagnosticResult
+    href: WsusManager.Core.Models.ClientDiagnosticResult.html
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.ClientDiagnosticResult
+    name: ClientDiagnosticResult
+    href: WsusManager.Core.Models.ClientDiagnosticResult.html
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_LookupErrorCode_System_String_
+  name: LookupErrorCode
+  nameWithType: IClientService.LookupErrorCode
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode
+- uid: WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.WsusErrorInfo}
+  commentId: T:WsusManager.Core.Models.OperationResult{WsusManager.Core.Models.WsusErrorInfo}
+  parent: WsusManager.Core.Models
+  definition: WsusManager.Core.Models.OperationResult`1
+  href: WsusManager.Core.Models.OperationResult-1.html
+  name: OperationResult<WsusErrorInfo>
+  nameWithType: OperationResult<WsusErrorInfo>
+  fullName: WsusManager.Core.Models.OperationResult<WsusManager.Core.Models.WsusErrorInfo>
+  nameWithType.vb: OperationResult(Of WsusErrorInfo)
+  fullName.vb: WsusManager.Core.Models.OperationResult(Of WsusManager.Core.Models.WsusErrorInfo)
+  name.vb: OperationResult(Of WsusErrorInfo)
+  spec.csharp:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: WsusManager.Core.Models.WsusErrorInfo
+    name: WsusErrorInfo
+    href: WsusManager.Core.Models.WsusErrorInfo.html
+  - name: '>'
+  spec.vb:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.WsusErrorInfo
+    name: WsusErrorInfo
+    href: WsusManager.Core.Models.WsusErrorInfo.html
+  - name: )
+- uid: WsusManager.Core.Models.OperationResult`1
+  commentId: T:WsusManager.Core.Models.OperationResult`1
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.OperationResult-1.html
+  name: OperationResult<T>
+  nameWithType: OperationResult<T>
+  fullName: WsusManager.Core.Models.OperationResult<T>
+  nameWithType.vb: OperationResult(Of T)
+  fullName.vb: WsusManager.Core.Models.OperationResult(Of T)
+  name.vb: OperationResult(Of T)
+  spec.csharp:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync
+  href: WsusManager.Core.Services.Interfaces.IClientService.html#WsusManager_Core_Services_Interfaces_IClientService_MassForceCheckInAsync_System_Collections_Generic_IReadOnlyList_System_String__System_IProgress_System_String__System_Threading_CancellationToken_
+  name: MassForceCheckInAsync
+  nameWithType: IClientService.MassForceCheckInAsync
+  fullName: WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync
+- uid: System.Collections.Generic.IReadOnlyList{System.String}
+  commentId: T:System.Collections.Generic.IReadOnlyList{System.String}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IReadOnlyList`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<string>
+  nameWithType: IReadOnlyList<string>
+  fullName: System.Collections.Generic.IReadOnlyList<string>
+  nameWithType.vb: IReadOnlyList(Of String)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of String)
+  name.vb: IReadOnlyList(Of String)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Collections.Generic.IReadOnlyList`1
+  commentId: T:System.Collections.Generic.IReadOnlyList`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<T>
+  nameWithType: IReadOnlyList<T>
+  fullName: System.Collections.Generic.IReadOnlyList<T>
+  nameWithType.vb: IReadOnlyList(Of T)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of T)
+  name.vb: IReadOnlyList(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic

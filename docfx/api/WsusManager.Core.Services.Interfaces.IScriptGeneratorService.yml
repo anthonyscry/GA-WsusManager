@@ -1,0 +1,333 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  id: IScriptGeneratorService
+  parent: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  langs:
+  - csharp
+  - vb
+  name: IScriptGeneratorService
+  nameWithType: IScriptGeneratorService
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IScriptGeneratorService
+    path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+    startLine: 7
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Generates self-contained PowerShell scripts for WSUS client operations.
+
+    Use this service when WinRM is unavailable on a target host — the generated
+
+    script can be copied to the target and run manually as Administrator.
+  example: []
+  syntax:
+    content: public interface IScriptGeneratorService
+    content.vb: Public Interface IScriptGeneratorService
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  commentId: M:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  id: GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  parent: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  langs:
+  - csharp
+  - vb
+  name: GenerateScript(string, string?, IReadOnlyList<string>?)
+  nameWithType: IScriptGeneratorService.GenerateScript(string, string?, IReadOnlyList<string>?)
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(string, string?, System.Collections.Generic.IReadOnlyList<string>?)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: GenerateScript
+    path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+    startLine: 31
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Generates a self-contained PowerShell script for the given operation type.
+
+    The script is ready to run on the target host without any external dependencies.
+  example: []
+  syntax:
+    content: string GenerateScript(string operationType, string? wsusServerUrl = null, IReadOnlyList<string>? hostnames = null)
+    parameters:
+    - id: operationType
+      type: System.String
+      description: >-
+        The operation to generate. Use one of the display names returned by
+
+        <xref href="WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations" data-throw-if-not-resolved="false"></xref> or the internal type keys:
+
+        CancelStuckJobs, ForceCheckIn, TestConnectivity, RunDiagnostics, MassGpUpdate.
+    - id: wsusServerUrl
+      type: System.String
+      description: >-
+        WSUS server URL (e.g. http://wsus-server:8530).
+
+        Required for TestConnectivity scripts. Ignored for other operation types.
+    - id: hostnames
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+      description: >-
+        List of target hostnames for MassGpUpdate scripts.
+
+        If null or empty a placeholder list is embedded in the script.
+
+        Ignored for all other operation types.
+    return:
+      type: System.String
+      description: The complete PowerShell script content as a UTF-8 string.
+    content.vb: Function GenerateScript(operationType As String, wsusServerUrl As String = Nothing, hostnames As IReadOnlyList(Of String) = Nothing) As String
+  overload: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript*
+  exceptions:
+  - type: System.ArgumentException
+    commentId: T:System.ArgumentException
+    description: Thrown when <code class="paramref">operationType</code> is not a recognised operation.
+  nameWithType.vb: IScriptGeneratorService.GenerateScript(String, String, IReadOnlyList(Of String))
+  fullName.vb: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(String, String, System.Collections.Generic.IReadOnlyList(Of String))
+  name.vb: GenerateScript(String, String, IReadOnlyList(Of String))
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  commentId: M:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  id: GetAvailableOperations
+  parent: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  langs:
+  - csharp
+  - vb
+  name: GetAvailableOperations()
+  nameWithType: IScriptGeneratorService.GetAvailableOperations()
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: GetAvailableOperations
+    path: src/WsusManager.Core/Services/Interfaces/IScriptGeneratorService.cs
+    startLine: 39
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Returns the ordered list of display names shown in the Script Generator UI dropdown.
+  example: []
+  syntax:
+    content: IReadOnlyList<string> GetAvailableOperations()
+    return:
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+    content.vb: Function GetAvailableOperations() As IReadOnlyList(Of String)
+  overload: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations*
+references:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  commentId: M:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  parent: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  name: GetAvailableOperations()
+  nameWithType: IScriptGeneratorService.GetAvailableOperations()
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations()
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+    name: GetAvailableOperations
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+    name: GetAvailableOperations
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  - name: (
+  - name: )
+- uid: System.ArgumentException
+  commentId: T:System.ArgumentException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.argumentexception
+  name: ArgumentException
+  nameWithType: ArgumentException
+  fullName: System.ArgumentException
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GenerateScript_System_String_System_String_System_Collections_Generic_IReadOnlyList_System_String__
+  name: GenerateScript
+  nameWithType: IScriptGeneratorService.GenerateScript
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Collections.Generic.IReadOnlyList{System.String}
+  commentId: T:System.Collections.Generic.IReadOnlyList{System.String}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IReadOnlyList`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<string>
+  nameWithType: IReadOnlyList<string>
+  fullName: System.Collections.Generic.IReadOnlyList<string>
+  nameWithType.vb: IReadOnlyList(Of String)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of String)
+  name.vb: IReadOnlyList(Of String)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html
+  name: IScriptGeneratorService
+  nameWithType: IScriptGeneratorService
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.Collections.Generic.IReadOnlyList`1
+  commentId: T:System.Collections.Generic.IReadOnlyList`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<T>
+  nameWithType: IReadOnlyList<T>
+  fullName: System.Collections.Generic.IReadOnlyList<T>
+  nameWithType.vb: IReadOnlyList(Of T)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of T)
+  name.vb: IReadOnlyList(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  name: GetAvailableOperations
+  nameWithType: IScriptGeneratorService.GetAvailableOperations
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations

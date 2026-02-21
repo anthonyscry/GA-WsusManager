@@ -1,0 +1,61 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  id: WsusManager.Core.Logging
+  children:
+  - WsusManager.Core.Logging.ILogService
+  - WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  type: Namespace
+  assemblies:
+  - WsusManager.Core
+references:
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  parent: WsusManager.Core.Logging
+  href: WsusManager.Core.Logging.ILogService.html
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+- uid: WsusManager.Core.Logging.LogService
+  commentId: T:WsusManager.Core.Logging.LogService
+  href: WsusManager.Core.Logging.LogService.html
+  name: LogService
+  nameWithType: LogService
+  fullName: WsusManager.Core.Logging.LogService
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html

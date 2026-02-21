@@ -1,0 +1,1172 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.DatabaseBackupService
+  commentId: T:WsusManager.Core.Services.DatabaseBackupService
+  id: DatabaseBackupService
+  parent: WsusManager.Core.Services
+  children:
+  - WsusManager.Core.Services.DatabaseBackupService.#ctor(WsusManager.Core.Services.Interfaces.ISqlService,WsusManager.Core.Services.Interfaces.IPermissionsService,WsusManager.Core.Services.Interfaces.IWindowsServiceManager,WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  - WsusManager.Core.Services.DatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.DatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  - WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: DatabaseBackupService
+  nameWithType: DatabaseBackupService
+  fullName: WsusManager.Core.Services.DatabaseBackupService
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: DatabaseBackupService
+    path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+    startLine: 15
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Implements database backup and restore operations for the WSUS SUSDB.
+
+    Backup uses SQL BACKUP DATABASE with compression.
+
+    Restore uses the full workflow: verify, stop services, single-user, restore,
+
+    multi-user, wsusutil postinstall, restart services.
+
+    Both operations require SQL sysadmin permissions.
+  example: []
+  syntax:
+    content: 'public class DatabaseBackupService : IDatabaseBackupService'
+    content.vb: Public Class DatabaseBackupService Implements IDatabaseBackupService
+  inheritance:
+  - System.Object
+  implements:
+  - WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Services.DatabaseBackupService.#ctor(WsusManager.Core.Services.Interfaces.ISqlService,WsusManager.Core.Services.Interfaces.IPermissionsService,WsusManager.Core.Services.Interfaces.IWindowsServiceManager,WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  commentId: M:WsusManager.Core.Services.DatabaseBackupService.#ctor(WsusManager.Core.Services.Interfaces.ISqlService,WsusManager.Core.Services.Interfaces.IPermissionsService,WsusManager.Core.Services.Interfaces.IWindowsServiceManager,WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  id: '#ctor(WsusManager.Core.Services.Interfaces.ISqlService,WsusManager.Core.Services.Interfaces.IPermissionsService,WsusManager.Core.Services.Interfaces.IWindowsServiceManager,WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)'
+  parent: WsusManager.Core.Services.DatabaseBackupService
+  langs:
+  - csharp
+  - vb
+  name: DatabaseBackupService(ISqlService, IPermissionsService, IWindowsServiceManager, IProcessRunner, ILogService)
+  nameWithType: DatabaseBackupService.DatabaseBackupService(ISqlService, IPermissionsService, IWindowsServiceManager, IProcessRunner, ILogService)
+  fullName: WsusManager.Core.Services.DatabaseBackupService.DatabaseBackupService(WsusManager.Core.Services.Interfaces.ISqlService, WsusManager.Core.Services.Interfaces.IPermissionsService, WsusManager.Core.Services.Interfaces.IWindowsServiceManager, WsusManager.Core.Infrastructure.IProcessRunner, WsusManager.Core.Logging.ILogService)
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+    startLine: 26
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  syntax:
+    content: public DatabaseBackupService(ISqlService sqlService, IPermissionsService permissionsService, IWindowsServiceManager serviceManager, IProcessRunner processRunner, ILogService logService)
+    parameters:
+    - id: sqlService
+      type: WsusManager.Core.Services.Interfaces.ISqlService
+    - id: permissionsService
+      type: WsusManager.Core.Services.Interfaces.IPermissionsService
+    - id: serviceManager
+      type: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+    - id: processRunner
+      type: WsusManager.Core.Infrastructure.IProcessRunner
+    - id: logService
+      type: WsusManager.Core.Logging.ILogService
+    content.vb: Public Sub New(sqlService As ISqlService, permissionsService As IPermissionsService, serviceManager As IWindowsServiceManager, processRunner As IProcessRunner, logService As ILogService)
+  overload: WsusManager.Core.Services.DatabaseBackupService.#ctor*
+  nameWithType.vb: DatabaseBackupService.New(ISqlService, IPermissionsService, IWindowsServiceManager, IProcessRunner, ILogService)
+  fullName.vb: WsusManager.Core.Services.DatabaseBackupService.New(WsusManager.Core.Services.Interfaces.ISqlService, WsusManager.Core.Services.Interfaces.IPermissionsService, WsusManager.Core.Services.Interfaces.IWindowsServiceManager, WsusManager.Core.Infrastructure.IProcessRunner, WsusManager.Core.Logging.ILogService)
+  name.vb: New(ISqlService, IPermissionsService, IWindowsServiceManager, IProcessRunner, ILogService)
+- uid: WsusManager.Core.Services.DatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.DatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.DatabaseBackupService
+  langs:
+  - csharp
+  - vb
+  name: BackupAsync(string, string, IProgress<string>, CancellationToken)
+  nameWithType: DatabaseBackupService.BackupAsync(string, string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.DatabaseBackupService.BackupAsync(string, string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: BackupAsync
+    path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+    startLine: 43
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Backs up the SUSDB database to the specified file path.
+
+    Pre-flight checks: sysadmin permission, disk space (80% of DB size estimate).
+
+    Uses BACKUP DATABASE ... WITH COMPRESSION, INIT (unlimited timeout).
+
+    Reports backup duration and file size on completion.
+  example: []
+  syntax:
+    content: public Task<OperationResult> BackupAsync(string sqlInstance, string backupPath, IProgress<string> progress, CancellationToken ct)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance (e.g., "localhost\SQLEXPRESS").
+    - id: backupPath
+      type: System.String
+      description: Destination file path for the .bak file.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for status messages.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+      description: OperationResult indicating success or failure.
+    content.vb: Public Function BackupAsync(sqlInstance As String, backupPath As String, progress As IProgress(Of String), ct As CancellationToken) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.DatabaseBackupService.BackupAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  nameWithType.vb: DatabaseBackupService.BackupAsync(String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.DatabaseBackupService.BackupAsync(String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: BackupAsync(String, String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.DatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.DatabaseBackupService
+  langs:
+  - csharp
+  - vb
+  name: RestoreAsync(string, string, string, IProgress<string>, CancellationToken)
+  nameWithType: DatabaseBackupService.RestoreAsync(string, string, string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync(string, string, string, System.IProgress<string>, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: RestoreAsync
+    path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+    startLine: 133
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Restores the SUSDB database from a backup file.
+
+    Workflow: verify backup integrity, stop WSUS/IIS (SQL stays running),
+
+    set single-user, restore, set multi-user, wsusutil postinstall, restart services.
+  example: []
+  syntax:
+    content: public Task<OperationResult> RestoreAsync(string sqlInstance, string backupPath, string contentPath, IProgress<string> progress, CancellationToken ct)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance.
+    - id: backupPath
+      type: System.String
+      description: Source backup file (.bak).
+    - id: contentPath
+      type: System.String
+      description: WSUS content directory (e.g., "C:\WSUS").
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Progress reporter for status messages.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+      description: OperationResult indicating success or failure.
+    content.vb: Public Function RestoreAsync(sqlInstance As String, backupPath As String, contentPath As String, progress As IProgress(Of String), ct As CancellationToken) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  nameWithType.vb: DatabaseBackupService.RestoreAsync(String, String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync(String, String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: RestoreAsync(String, String, String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  id: VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.DatabaseBackupService
+  langs:
+  - csharp
+  - vb
+  name: VerifyBackupAsync(string, string, CancellationToken)
+  nameWithType: DatabaseBackupService.VerifyBackupAsync(string, string, CancellationToken)
+  fullName: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync(string, string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: VerifyBackupAsync
+    path: src/WsusManager.Core/Services/DatabaseBackupService.cs
+    startLine: 268
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: Verifies a backup file integrity using RESTORE VERIFYONLY.
+  example: []
+  syntax:
+    content: public Task<OperationResult<bool>> VerifyBackupAsync(string sqlInstance, string backupPath, CancellationToken ct)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance.
+    - id: backupPath
+      type: System.String
+      description: Backup file to verify.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+      description: OperationResult with Data=true if backup is valid.
+    content.vb: Public Function VerifyBackupAsync(sqlInstance As String, backupPath As String, ct As CancellationToken) As Task(Of OperationResult(Of Boolean))
+  overload: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  nameWithType.vb: DatabaseBackupService.VerifyBackupAsync(String, String, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync(String, String, System.Threading.CancellationToken)
+  name.vb: VerifyBackupAsync(String, String, CancellationToken)
+references:
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  href: WsusManager.html
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  commentId: T:WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html
+  name: IDatabaseBackupService
+  nameWithType: IDatabaseBackupService
+  fullName: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.DatabaseBackupService.#ctor*
+  commentId: Overload:WsusManager.Core.Services.DatabaseBackupService.#ctor
+  href: WsusManager.Core.Services.DatabaseBackupService.html#WsusManager_Core_Services_DatabaseBackupService__ctor_WsusManager_Core_Services_Interfaces_ISqlService_WsusManager_Core_Services_Interfaces_IPermissionsService_WsusManager_Core_Services_Interfaces_IWindowsServiceManager_WsusManager_Core_Infrastructure_IProcessRunner_WsusManager_Core_Logging_ILogService_
+  name: DatabaseBackupService
+  nameWithType: DatabaseBackupService.DatabaseBackupService
+  fullName: WsusManager.Core.Services.DatabaseBackupService.DatabaseBackupService
+  nameWithType.vb: DatabaseBackupService.New
+  fullName.vb: WsusManager.Core.Services.DatabaseBackupService.New
+  name.vb: New
+- uid: WsusManager.Core.Services.Interfaces.ISqlService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISqlService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html
+  name: ISqlService
+  nameWithType: ISqlService
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService
+  commentId: T:WsusManager.Core.Services.Interfaces.IPermissionsService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html
+  name: IPermissionsService
+  nameWithType: IPermissionsService
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService
+- uid: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+  commentId: T:WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IWindowsServiceManager.html
+  name: IWindowsServiceManager
+  nameWithType: IWindowsServiceManager
+  fullName: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+- uid: WsusManager.Core.Infrastructure.IProcessRunner
+  commentId: T:WsusManager.Core.Infrastructure.IProcessRunner
+  parent: WsusManager.Core.Infrastructure
+  href: WsusManager.Core.Infrastructure.IProcessRunner.html
+  name: IProcessRunner
+  nameWithType: IProcessRunner
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  parent: WsusManager.Core.Logging
+  href: WsusManager.Core.Logging.ILogService.html
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+- uid: WsusManager.Core.Infrastructure
+  commentId: N:WsusManager.Core.Infrastructure
+  href: WsusManager.html
+  name: WsusManager.Core.Infrastructure
+  nameWithType: WsusManager.Core.Infrastructure
+  fullName: WsusManager.Core.Infrastructure
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+- uid: WsusManager.Core.Services.DatabaseBackupService.BackupAsync*
+  commentId: Overload:WsusManager.Core.Services.DatabaseBackupService.BackupAsync
+  href: WsusManager.Core.Services.DatabaseBackupService.html#WsusManager_Core_Services_DatabaseBackupService_BackupAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: BackupAsync
+  nameWithType: DatabaseBackupService.BackupAsync
+  fullName: WsusManager.Core.Services.DatabaseBackupService.BackupAsync
+- uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_BackupAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: BackupAsync(string, string, IProgress<string>, CancellationToken)
+  nameWithType: IDatabaseBackupService.BackupAsync(string, string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(string, string, System.IProgress<string>, System.Threading.CancellationToken)
+  nameWithType.vb: IDatabaseBackupService.BackupAsync(String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: BackupAsync(String, String, IProgress(Of String), CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+    name: BackupAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_BackupAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.BackupAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+    name: BackupAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_BackupAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult>
+  nameWithType: Task<OperationResult>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult>
+  nameWithType.vb: Task(Of OperationResult)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult)
+  name.vb: Task(Of OperationResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: )
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync*
+  commentId: Overload:WsusManager.Core.Services.DatabaseBackupService.RestoreAsync
+  href: WsusManager.Core.Services.DatabaseBackupService.html#WsusManager_Core_Services_DatabaseBackupService_RestoreAsync_System_String_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: RestoreAsync
+  nameWithType: DatabaseBackupService.RestoreAsync
+  fullName: WsusManager.Core.Services.DatabaseBackupService.RestoreAsync
+- uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_RestoreAsync_System_String_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: RestoreAsync(string, string, string, IProgress<string>, CancellationToken)
+  nameWithType: IDatabaseBackupService.RestoreAsync(string, string, string, IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(string, string, string, System.IProgress<string>, System.Threading.CancellationToken)
+  nameWithType.vb: IDatabaseBackupService.RestoreAsync(String, String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(String, String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: RestoreAsync(String, String, String, IProgress(Of String), CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+    name: RestoreAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_RestoreAsync_System_String_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.RestoreAsync(System.String,System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+    name: RestoreAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_RestoreAsync_System_String_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync*
+  commentId: Overload:WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync
+  href: WsusManager.Core.Services.DatabaseBackupService.html#WsusManager_Core_Services_DatabaseBackupService_VerifyBackupAsync_System_String_System_String_System_Threading_CancellationToken_
+  name: VerifyBackupAsync
+  nameWithType: DatabaseBackupService.VerifyBackupAsync
+  fullName: WsusManager.Core.Services.DatabaseBackupService.VerifyBackupAsync
+- uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_VerifyBackupAsync_System_String_System_String_System_Threading_CancellationToken_
+  name: VerifyBackupAsync(string, string, CancellationToken)
+  nameWithType: IDatabaseBackupService.VerifyBackupAsync(string, string, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(string, string, System.Threading.CancellationToken)
+  nameWithType.vb: IDatabaseBackupService.VerifyBackupAsync(String, String, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(String, String, System.Threading.CancellationToken)
+  name.vb: VerifyBackupAsync(String, String, CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+    name: VerifyBackupAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_VerifyBackupAsync_System_String_System_String_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.VerifyBackupAsync(System.String,System.String,System.Threading.CancellationToken)
+    name: VerifyBackupAsync
+    href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html#WsusManager_Core_Services_Interfaces_IDatabaseBackupService_VerifyBackupAsync_System_String_System_String_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<bool>>
+  nameWithType: Task<OperationResult<bool>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<bool>>
+  nameWithType.vb: Task(Of OperationResult(Of Boolean))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of Boolean))
+  name.vb: Task(Of OperationResult(Of Boolean))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+  - name: )

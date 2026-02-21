@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace WsusManager.Core.Models | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace WsusManager.Core.Models | WSUS Manager ">
+    
+    
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Models">
+
+  <h1 id="WsusManager_Core_Models" data-uid="WsusManager.Core.Models" class="text-break">Namespace WsusManager.Core.Models</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="WsusManager.Core.Models.AppSettings.html">AppSettings</a></h4>
+      <section><p>Application settings model. Serialized to/from JSON at
+%APPDATA%\WsusManager\settings.json. Survives close/reopen cycles.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ClientDiagnosticResult.html">ClientDiagnosticResult</a></h4>
+      <section><p>Snapshot of WSUS client configuration and state on a remote host, gathered
+from the Windows Update registry hive, service control manager, and WMI.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ConnectivityTestResult.html">ConnectivityTestResult</a></h4>
+      <section><p>Result of a network connectivity test from the client host to the WSUS server.
+Ports are tested with a TCP connection attempt; latency is measured via ping.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.DashboardData.html">DashboardData</a></h4>
+      <section><p>Holds all data collected during a dashboard refresh cycle.
+Populated by IDashboardService.CollectAsync().</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></h4>
+      <section><p>Result of a single health check. Each check has a name, status, detail message,
+and optional repair outcome if auto-repair was attempted.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.DiagnosticReport.html">DiagnosticReport</a></h4>
+      <section><p>Aggregate result of a full diagnostics run. Contains all individual check results
+and computed summary statistics. Immutable — created once after all checks complete.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ExportOptions.html">ExportOptions</a></h4>
+      <section><p>Options for WSUS content export operations.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ImportOptions.html">ImportOptions</a></h4>
+      <section><p>Options for WSUS content import operations.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.InstallOptions.html">InstallOptions</a></h4>
+      <section><p>Options for the WSUS + SQL Server Express installation wizard.
+All fields are collected via the GUI dialog before installation begins.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.OperationResult.html">OperationResult</a></h4>
+      <section><p>Represents the result of a service operation. Every public service method
+returns this type instead of throwing exceptions for expected failures.
+Exceptions are reserved for programming errors only.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.OperationResult-1.html">OperationResult&lt;T&gt;</a></h4>
+      <section><p>Generic version of OperationResult that includes a data payload.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ProcessResult.html">ProcessResult</a></h4>
+      <section><p>Result of an external process execution.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ScheduledTaskOptions.html">ScheduledTaskOptions</a></h4>
+      <section><p>Options for creating a Windows scheduled task for WSUS maintenance.
+All fields are collected via the ScheduleTaskDialog before task creation.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ServiceStatusInfo.html">ServiceStatusInfo</a></h4>
+      <section><p>Status snapshot of a Windows service at a point in time.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.SyncResult.html">SyncResult</a></h4>
+      <section><p>Result of a WSUS synchronization operation.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.WsusErrorCodes.html">WsusErrorCodes</a></h4>
+      <section><p>Static dictionary of common WSUS and Windows Update error codes with descriptions
+and recommended fixes. Used by the error-code lookup feature (CLI-06).</p>
+<p>Keys are uppercase hex codes without the &quot;0x&quot; prefix (e.g., &quot;80244010&quot;).
+The <a class="xref" href="WsusManager.Core.Models.WsusErrorCodes.html#WsusManager_Core_Models_WsusErrorCodes_Lookup_System_String_">Lookup(string?)</a> method accepts either format.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.WsusErrorInfo.html">WsusErrorInfo</a></h4>
+      <section><p>Decoded information for a WSUS or Windows Update error code.
+Sourced from the WsusErrorCodes static dictionary.</p>
+</section>
+    <h3 id="enums">
+Enums
+</h3>
+      <h4><a class="xref" href="WsusManager.Core.Models.CheckStatus.html">CheckStatus</a></h4>
+      <section><p>Status of a single diagnostic check.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.ScheduleType.html">ScheduleType</a></h4>
+      <section><p>Schedule frequency for a Windows scheduled task.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Models.SyncProfile.html">SyncProfile</a></h4>
+      <section><p>Sync profile selection for Online Sync operations.
+Matches legacy PowerShell MaintenanceProfile parameter.</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

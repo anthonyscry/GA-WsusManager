@@ -1,0 +1,54 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.App.ViewModels
+  commentId: N:WsusManager.App.ViewModels
+  id: WsusManager.App.ViewModels
+  children:
+  - WsusManager.App.ViewModels.MainViewModel
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.App.ViewModels
+  nameWithType: WsusManager.App.ViewModels
+  fullName: WsusManager.App.ViewModels
+  type: Namespace
+  assemblies:
+  - WsusManager.App
+references:
+- uid: WsusManager.App.ViewModels.MainViewModel
+  commentId: T:WsusManager.App.ViewModels.MainViewModel
+  parent: WsusManager.App.ViewModels
+  href: WsusManager.App.ViewModels.MainViewModel.html
+  name: MainViewModel
+  nameWithType: MainViewModel
+  fullName: WsusManager.App.ViewModels.MainViewModel
+- uid: WsusManager.App.ViewModels
+  commentId: N:WsusManager.App.ViewModels
+  href: WsusManager.html
+  name: WsusManager.App.ViewModels
+  nameWithType: WsusManager.App.ViewModels
+  fullName: WsusManager.App.ViewModels
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.ViewModels
+    name: ViewModels
+    href: WsusManager.App.ViewModels.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.ViewModels
+    name: ViewModels
+    href: WsusManager.App.ViewModels.html

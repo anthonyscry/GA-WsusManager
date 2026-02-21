@@ -1,0 +1,498 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  id: ILogService
+  parent: WsusManager.Core.Logging
+  children:
+  - WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.Flush
+  - WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  - WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  - WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  langs:
+  - csharp
+  - vb
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ILogService
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 6
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: >-
+    Logging service interface for structured logging to C:\WSUS\Logs\.
+
+    Wraps the underlying Serilog implementation for DI injection and testability.
+  example: []
+  syntax:
+    content: public interface ILogService
+    content.vb: Public Interface ILogService
+- uid: WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  id: Info(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Info(string, params object[])
+  nameWithType: ILogService.Info(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Info(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Info
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 11
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an informational message.
+  example: []
+  syntax:
+    content: void Info(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub Info(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Info*
+  nameWithType.vb: ILogService.Info(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Info(String, ParamArray Object())
+  name.vb: Info(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  id: Warning(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Warning(string, params object[])
+  nameWithType: ILogService.Warning(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Warning(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Warning
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 16
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a warning message.
+  example: []
+  syntax:
+    content: void Warning(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub Warning(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Warning*
+  nameWithType.vb: ILogService.Warning(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Warning(String, ParamArray Object())
+  name.vb: Warning(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  id: Error(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Error(string, params object[])
+  nameWithType: ILogService.Error(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Error(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Error
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 21
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an error message with optional exception.
+  example: []
+  syntax:
+    content: void Error(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub [Error](messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Error*
+  nameWithType.vb: ILogService.Error(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Error(String, ParamArray Object())
+  name.vb: Error(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  id: Error(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Error(Exception, string, params object[])
+  nameWithType: ILogService.Error(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Error(System.Exception, string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Error
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 26
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an error with an associated exception.
+  example: []
+  syntax:
+    content: void Error(Exception exception, string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: exception
+      type: System.Exception
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub [Error](exception As Exception, messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Error*
+  nameWithType.vb: ILogService.Error(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Error(System.Exception, String, ParamArray Object())
+  name.vb: Error(Exception, String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  id: Debug(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Debug(string, params object[])
+  nameWithType: ILogService.Debug(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Debug(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Debug
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 31
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a debug-level message.
+  example: []
+  syntax:
+    content: void Debug(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub Debug(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Debug*
+  nameWithType.vb: ILogService.Debug(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Debug(String, ParamArray Object())
+  name.vb: Debug(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  id: Fatal(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Fatal(string, params object[])
+  nameWithType: ILogService.Fatal(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Fatal(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Fatal
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 36
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a fatal error (application cannot continue).
+  example: []
+  syntax:
+    content: void Fatal(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub Fatal(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Fatal*
+  nameWithType.vb: ILogService.Fatal(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Fatal(String, ParamArray Object())
+  name.vb: Fatal(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  id: Fatal(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Fatal(Exception, string, params object[])
+  nameWithType: ILogService.Fatal(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Fatal(System.Exception, string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Fatal
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 41
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a fatal error with an associated exception.
+  example: []
+  syntax:
+    content: void Fatal(Exception exception, string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: exception
+      type: System.Exception
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Sub Fatal(exception As Exception, messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.ILogService.Fatal*
+  nameWithType.vb: ILogService.Fatal(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Fatal(System.Exception, String, ParamArray Object())
+  name.vb: Fatal(Exception, String, ParamArray Object())
+- uid: WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  commentId: M:WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  id: LogStartup(System.String,System.Int64)
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: LogStartup(string, long)
+  nameWithType: ILogService.LogStartup(string, long)
+  fullName: WsusManager.Core.Logging.ILogService.LogStartup(string, long)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LogStartup
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 46
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: 'Logs application startup information: version, OS, CLR, startup duration.'
+  example: []
+  syntax:
+    content: void LogStartup(string version, long startupMs)
+    parameters:
+    - id: version
+      type: System.String
+    - id: startupMs
+      type: System.Int64
+    content.vb: Sub LogStartup(version As String, startupMs As Long)
+  overload: WsusManager.Core.Logging.ILogService.LogStartup*
+  nameWithType.vb: ILogService.LogStartup(String, Long)
+  fullName.vb: WsusManager.Core.Logging.ILogService.LogStartup(String, Long)
+  name.vb: LogStartup(String, Long)
+- uid: WsusManager.Core.Logging.ILogService.Flush
+  commentId: M:WsusManager.Core.Logging.ILogService.Flush
+  id: Flush
+  parent: WsusManager.Core.Logging.ILogService
+  langs:
+  - csharp
+  - vb
+  name: Flush()
+  nameWithType: ILogService.Flush()
+  fullName: WsusManager.Core.Logging.ILogService.Flush()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/ILogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Flush
+    path: src/WsusManager.Core/Logging/ILogService.cs
+    startLine: 52
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: >-
+    Ensures all buffered log entries are written to disk.
+
+    Call during application shutdown.
+  example: []
+  syntax:
+    content: void Flush()
+    content.vb: Sub Flush()
+  overload: WsusManager.Core.Logging.ILogService.Flush*
+references:
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+- uid: WsusManager.Core.Logging.ILogService.Info*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Info
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Info_System_String_System_Object___
+  name: Info
+  nameWithType: ILogService.Info
+  fullName: WsusManager.Core.Logging.ILogService.Info
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Object[]
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object[]
+  nameWithType: object[]
+  fullName: object[]
+  nameWithType.vb: Object()
+  fullName.vb: Object()
+  name.vb: Object()
+  spec.csharp:
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  spec.vb:
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Logging.ILogService.Warning*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Warning
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Warning_System_String_System_Object___
+  name: Warning
+  nameWithType: ILogService.Warning
+  fullName: WsusManager.Core.Logging.ILogService.Warning
+- uid: WsusManager.Core.Logging.ILogService.Error*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Error
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_String_System_Object___
+  name: Error
+  nameWithType: ILogService.Error
+  fullName: WsusManager.Core.Logging.ILogService.Error
+- uid: System.Exception
+  commentId: T:System.Exception
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.exception
+  name: Exception
+  nameWithType: Exception
+  fullName: System.Exception
+- uid: WsusManager.Core.Logging.ILogService.Debug*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Debug
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Debug_System_String_System_Object___
+  name: Debug
+  nameWithType: ILogService.Debug
+  fullName: WsusManager.Core.Logging.ILogService.Debug
+- uid: WsusManager.Core.Logging.ILogService.Fatal*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Fatal
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_String_System_Object___
+  name: Fatal
+  nameWithType: ILogService.Fatal
+  fullName: WsusManager.Core.Logging.ILogService.Fatal
+- uid: WsusManager.Core.Logging.ILogService.LogStartup*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.LogStartup
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_LogStartup_System_String_System_Int64_
+  name: LogStartup
+  nameWithType: ILogService.LogStartup
+  fullName: WsusManager.Core.Logging.ILogService.LogStartup
+- uid: System.Int64
+  commentId: T:System.Int64
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int64
+  name: long
+  nameWithType: long
+  fullName: long
+  nameWithType.vb: Long
+  fullName.vb: Long
+  name.vb: Long
+- uid: WsusManager.Core.Logging.ILogService.Flush*
+  commentId: Overload:WsusManager.Core.Logging.ILogService.Flush
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Flush
+  name: Flush
+  nameWithType: ILogService.Flush
+  fullName: WsusManager.Core.Logging.ILogService.Flush

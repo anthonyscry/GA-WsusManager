@@ -1,0 +1,30 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.App
+  commentId: N:WsusManager.App
+  id: WsusManager.App
+  children:
+  - WsusManager.App.App
+  - WsusManager.App.Program
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.App
+  nameWithType: WsusManager.App
+  fullName: WsusManager.App
+  type: Namespace
+  assemblies:
+  - WsusManager.App
+references:
+- uid: WsusManager.App.App
+  commentId: T:WsusManager.App.App
+  href: WsusManager.App.App.html
+  name: App
+  nameWithType: App
+  fullName: WsusManager.App.App
+- uid: WsusManager.App.Program
+  commentId: T:WsusManager.App.Program
+  href: WsusManager.App.Program.html
+  name: Program
+  nameWithType: Program
+  fullName: WsusManager.App.Program

@@ -1,0 +1,901 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.FirewallService
+  commentId: T:WsusManager.Core.Services.FirewallService
+  id: FirewallService
+  parent: WsusManager.Core.Services
+  children:
+  - WsusManager.Core.Services.FirewallService.#ctor(WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  - WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  - WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: FirewallService
+  nameWithType: FirewallService
+  fullName: WsusManager.Core.Services.FirewallService
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/FirewallService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: FirewallService
+    path: src/WsusManager.Core/Services/FirewallService.cs
+    startLine: 11
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Firewall rule management via netsh advfirewall commands.
+
+    Checks for and creates inbound rules on WSUS ports 8530 (HTTP) and 8531 (HTTPS).
+  example: []
+  syntax:
+    content: 'public class FirewallService : IFirewallService'
+    content.vb: Public Class FirewallService Implements IFirewallService
+  inheritance:
+  - System.Object
+  implements:
+  - WsusManager.Core.Services.Interfaces.IFirewallService
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Services.FirewallService.#ctor(WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  commentId: M:WsusManager.Core.Services.FirewallService.#ctor(WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)
+  id: '#ctor(WsusManager.Core.Infrastructure.IProcessRunner,WsusManager.Core.Logging.ILogService)'
+  parent: WsusManager.Core.Services.FirewallService
+  langs:
+  - csharp
+  - vb
+  name: FirewallService(IProcessRunner, ILogService)
+  nameWithType: FirewallService.FirewallService(IProcessRunner, ILogService)
+  fullName: WsusManager.Core.Services.FirewallService.FirewallService(WsusManager.Core.Infrastructure.IProcessRunner, WsusManager.Core.Logging.ILogService)
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/FirewallService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Services/FirewallService.cs
+    startLine: 22
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  syntax:
+    content: public FirewallService(IProcessRunner processRunner, ILogService logService)
+    parameters:
+    - id: processRunner
+      type: WsusManager.Core.Infrastructure.IProcessRunner
+    - id: logService
+      type: WsusManager.Core.Logging.ILogService
+    content.vb: Public Sub New(processRunner As IProcessRunner, logService As ILogService)
+  overload: WsusManager.Core.Services.FirewallService.#ctor*
+  nameWithType.vb: FirewallService.New(IProcessRunner, ILogService)
+  fullName.vb: WsusManager.Core.Services.FirewallService.New(WsusManager.Core.Infrastructure.IProcessRunner, WsusManager.Core.Logging.ILogService)
+  name.vb: New(IProcessRunner, ILogService)
+- uid: WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  id: CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.FirewallService
+  langs:
+  - csharp
+  - vb
+  name: CheckWsusRulesExistAsync(CancellationToken)
+  nameWithType: FirewallService.CheckWsusRulesExistAsync(CancellationToken)
+  fullName: WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/FirewallService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CheckWsusRulesExistAsync
+    path: src/WsusManager.Core/Services/FirewallService.cs
+    startLine: 29
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Checks whether both WSUS firewall rules (HTTP:8530 and HTTPS:8531) exist.
+
+    Returns true only when both inbound rules are present.
+  example: []
+  syntax:
+    content: public Task<OperationResult<bool>> CheckWsusRulesExistAsync(CancellationToken ct = default)
+    parameters:
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+    content.vb: Public Function CheckWsusRulesExistAsync(ct As CancellationToken = Nothing) As Task(Of OperationResult(Of Boolean))
+  overload: WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+- uid: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  id: CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.FirewallService
+  langs:
+  - csharp
+  - vb
+  name: CreateWsusRulesAsync(IProgress<string>?, CancellationToken)
+  nameWithType: FirewallService.CreateWsusRulesAsync(IProgress<string>?, CancellationToken)
+  fullName: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync(System.IProgress<string>?, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/FirewallService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CreateWsusRulesAsync
+    path: src/WsusManager.Core/Services/FirewallService.cs
+    startLine: 61
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Creates the WSUS firewall rules for ports 8530 and 8531.
+
+    Does not fail if rules already exist (idempotent).
+
+    Progress messages are reported for each rule creation.
+  example: []
+  syntax:
+    content: public Task<OperationResult> CreateWsusRulesAsync(IProgress<string>? progress = null, CancellationToken ct = default)
+    parameters:
+    - id: progress
+      type: System.IProgress{System.String}
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+    content.vb: Public Function CreateWsusRulesAsync(progress As IProgress(Of String) = Nothing, ct As CancellationToken = Nothing) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  nameWithType.vb: FirewallService.CreateWsusRulesAsync(IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync(System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: CreateWsusRulesAsync(IProgress(Of String), CancellationToken)
+references:
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  href: WsusManager.html
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: WsusManager.Core.Services.Interfaces.IFirewallService
+  commentId: T:WsusManager.Core.Services.Interfaces.IFirewallService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IFirewallService.html
+  name: IFirewallService
+  nameWithType: IFirewallService
+  fullName: WsusManager.Core.Services.Interfaces.IFirewallService
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.FirewallService.#ctor*
+  commentId: Overload:WsusManager.Core.Services.FirewallService.#ctor
+  href: WsusManager.Core.Services.FirewallService.html#WsusManager_Core_Services_FirewallService__ctor_WsusManager_Core_Infrastructure_IProcessRunner_WsusManager_Core_Logging_ILogService_
+  name: FirewallService
+  nameWithType: FirewallService.FirewallService
+  fullName: WsusManager.Core.Services.FirewallService.FirewallService
+  nameWithType.vb: FirewallService.New
+  fullName.vb: WsusManager.Core.Services.FirewallService.New
+  name.vb: New
+- uid: WsusManager.Core.Infrastructure.IProcessRunner
+  commentId: T:WsusManager.Core.Infrastructure.IProcessRunner
+  parent: WsusManager.Core.Infrastructure
+  href: WsusManager.Core.Infrastructure.IProcessRunner.html
+  name: IProcessRunner
+  nameWithType: IProcessRunner
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  parent: WsusManager.Core.Logging
+  href: WsusManager.Core.Logging.ILogService.html
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+- uid: WsusManager.Core.Infrastructure
+  commentId: N:WsusManager.Core.Infrastructure
+  href: WsusManager.html
+  name: WsusManager.Core.Infrastructure
+  nameWithType: WsusManager.Core.Infrastructure
+  fullName: WsusManager.Core.Infrastructure
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+- uid: WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync*
+  commentId: Overload:WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync
+  href: WsusManager.Core.Services.FirewallService.html#WsusManager_Core_Services_FirewallService_CheckWsusRulesExistAsync_System_Threading_CancellationToken_
+  name: CheckWsusRulesExistAsync
+  nameWithType: FirewallService.CheckWsusRulesExistAsync
+  fullName: WsusManager.Core.Services.FirewallService.CheckWsusRulesExistAsync
+- uid: WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IFirewallService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CheckWsusRulesExistAsync_System_Threading_CancellationToken_
+  name: CheckWsusRulesExistAsync(CancellationToken)
+  nameWithType: IFirewallService.CheckWsusRulesExistAsync(CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+    name: CheckWsusRulesExistAsync
+    href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CheckWsusRulesExistAsync_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IFirewallService.CheckWsusRulesExistAsync(System.Threading.CancellationToken)
+    name: CheckWsusRulesExistAsync
+    href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CheckWsusRulesExistAsync_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<bool>>
+  nameWithType: Task<OperationResult<bool>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<bool>>
+  nameWithType.vb: Task(Of OperationResult(Of Boolean))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of Boolean))
+  name.vb: Task(Of OperationResult(Of Boolean))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+  - name: )
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync*
+  commentId: Overload:WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync
+  href: WsusManager.Core.Services.FirewallService.html#WsusManager_Core_Services_FirewallService_CreateWsusRulesAsync_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: CreateWsusRulesAsync
+  nameWithType: FirewallService.CreateWsusRulesAsync
+  fullName: WsusManager.Core.Services.FirewallService.CreateWsusRulesAsync
+- uid: WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IFirewallService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CreateWsusRulesAsync_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: CreateWsusRulesAsync(IProgress<string>, CancellationToken)
+  nameWithType: IFirewallService.CreateWsusRulesAsync(IProgress<string>, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress<string>, System.Threading.CancellationToken)
+  nameWithType.vb: IFirewallService.CreateWsusRulesAsync(IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: CreateWsusRulesAsync(IProgress(Of String), CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+    name: CreateWsusRulesAsync
+    href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CreateWsusRulesAsync_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IFirewallService.CreateWsusRulesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+    name: CreateWsusRulesAsync
+    href: WsusManager.Core.Services.Interfaces.IFirewallService.html#WsusManager_Core_Services_Interfaces_IFirewallService_CreateWsusRulesAsync_System_IProgress_System_String__System_Threading_CancellationToken_
+  - name: (
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult>
+  nameWithType: Task<OperationResult>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult>
+  nameWithType.vb: Task(Of OperationResult)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult)
+  name.vb: Task(Of OperationResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: )
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )

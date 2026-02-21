@@ -1,0 +1,753 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.ScheduledTaskOptions
+  commentId: T:WsusManager.Core.Models.ScheduledTaskOptions
+  id: ScheduledTaskOptions
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+  - WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+  - WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours
+  - WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+  - WsusManager.Core.Models.ScheduledTaskOptions.Password
+  - WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+  - WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+  - WsusManager.Core.Models.ScheduledTaskOptions.Time
+  - WsusManager.Core.Models.ScheduledTaskOptions.Username
+  langs:
+  - csharp
+  - vb
+  name: ScheduledTaskOptions
+  nameWithType: ScheduledTaskOptions
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ScheduledTaskOptions
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 6
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Options for creating a Windows scheduled task for WSUS maintenance.
+
+    All fields are collected via the ScheduleTaskDialog before task creation.
+  example: []
+  syntax:
+    content: 'public record ScheduledTaskOptions : IEquatable<ScheduledTaskOptions>'
+    content.vb: Public Class ScheduledTaskOptions Implements IEquatable(Of ScheduledTaskOptions)
+  inheritance:
+  - System.Object
+  implements:
+  - System.IEquatable{WsusManager.Core.Models.ScheduledTaskOptions}
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+  id: TaskName
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: TaskName
+  nameWithType: ScheduledTaskOptions.TaskName
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: TaskName
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Name of the scheduled task in Windows Task Scheduler.
+  example: []
+  syntax:
+    content: public string TaskName { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property TaskName As String
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.TaskName*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+  id: Schedule
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: Schedule
+  nameWithType: ScheduledTaskOptions.Schedule
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Schedule
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 12
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: 'Schedule frequency: Monthly, Weekly, or Daily.'
+  example: []
+  syntax:
+    content: public ScheduleType Schedule { get; init; }
+    parameters: []
+    return:
+      type: WsusManager.Core.Models.ScheduleType
+    content.vb: Public Property Schedule As ScheduleType
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.Schedule*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+  id: DayOfMonth
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: DayOfMonth
+  nameWithType: ScheduledTaskOptions.DayOfMonth
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: DayOfMonth
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 15
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Day of month (1-31). Used when Schedule is Monthly.
+  example: []
+  syntax:
+    content: public int DayOfMonth { get; init; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: Public Property DayOfMonth As Integer
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+  id: DayOfWeek
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: DayOfWeek
+  nameWithType: ScheduledTaskOptions.DayOfWeek
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: DayOfWeek
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 18
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Day of week. Used when Schedule is Weekly.
+  example: []
+  syntax:
+    content: public DayOfWeek DayOfWeek { get; init; }
+    parameters: []
+    return:
+      type: System.DayOfWeek
+    content.vb: Public Property DayOfWeek As DayOfWeek
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Time
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.Time
+  id: Time
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: Time
+  nameWithType: ScheduledTaskOptions.Time
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Time
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Time
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 21
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Start time in HH:mm format (24-hour).
+  example: []
+  syntax:
+    content: public string Time { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property Time As String
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.Time*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+  id: MaintenanceProfile
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: MaintenanceProfile
+  nameWithType: ScheduledTaskOptions.MaintenanceProfile
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: MaintenanceProfile
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 24
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: 'Maintenance profile: Full, Quick, or SyncOnly.'
+  example: []
+  syntax:
+    content: public string MaintenanceProfile { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property MaintenanceProfile As String
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Username
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.Username
+  id: Username
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: Username
+  nameWithType: ScheduledTaskOptions.Username
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Username
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Username
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 27
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Windows username to run the task as (domain\user or .\user).
+  example: []
+  syntax:
+    content: public string Username { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property Username As String
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.Username*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Password
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.Password
+  id: Password
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: Password
+  nameWithType: ScheduledTaskOptions.Password
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Password
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Password
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 30
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Password for the Windows user account.
+  example: []
+  syntax:
+    content: public string Password { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property Password As String
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.Password*
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours
+  commentId: P:WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours
+  id: ExecutionTimeLimitHours
+  parent: WsusManager.Core.Models.ScheduledTaskOptions
+  langs:
+  - csharp
+  - vb
+  name: ExecutionTimeLimitHours
+  nameWithType: ScheduledTaskOptions.ExecutionTimeLimitHours
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ExecutionTimeLimitHours
+    path: src/WsusManager.Core/Models/ScheduledTaskOptions.cs
+    startLine: 33
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Maximum execution time in hours before the task is terminated.
+  example: []
+  syntax:
+    content: public int ExecutionTimeLimitHours { get; init; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: Public Property ExecutionTimeLimitHours As Integer
+  overload: WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours*
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: System.IEquatable{WsusManager.Core.Models.ScheduledTaskOptions}
+  commentId: T:System.IEquatable{WsusManager.Core.Models.ScheduledTaskOptions}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<ScheduledTaskOptions>
+  nameWithType: IEquatable<ScheduledTaskOptions>
+  fullName: System.IEquatable<WsusManager.Core.Models.ScheduledTaskOptions>
+  nameWithType.vb: IEquatable(Of ScheduledTaskOptions)
+  fullName.vb: System.IEquatable(Of WsusManager.Core.Models.ScheduledTaskOptions)
+  name.vb: IEquatable(Of ScheduledTaskOptions)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: WsusManager.Core.Models.ScheduledTaskOptions
+    name: ScheduledTaskOptions
+    href: WsusManager.Core.Models.ScheduledTaskOptions.html
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.ScheduledTaskOptions
+    name: ScheduledTaskOptions
+    href: WsusManager.Core.Models.ScheduledTaskOptions.html
+  - name: )
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.TaskName*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_TaskName
+  name: TaskName
+  nameWithType: ScheduledTaskOptions.TaskName
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.TaskName
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Schedule*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_Schedule
+  name: Schedule
+  nameWithType: ScheduledTaskOptions.Schedule
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Schedule
+- uid: WsusManager.Core.Models.ScheduleType
+  commentId: T:WsusManager.Core.Models.ScheduleType
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ScheduleType.html
+  name: ScheduleType
+  nameWithType: ScheduleType
+  fullName: WsusManager.Core.Models.ScheduleType
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_DayOfMonth
+  name: DayOfMonth
+  nameWithType: ScheduledTaskOptions.DayOfMonth
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.DayOfMonth
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_DayOfWeek
+  name: DayOfWeek
+  nameWithType: ScheduledTaskOptions.DayOfWeek
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.DayOfWeek
+- uid: System.DayOfWeek
+  commentId: T:System.DayOfWeek
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.dayofweek
+  name: DayOfWeek
+  nameWithType: DayOfWeek
+  fullName: System.DayOfWeek
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Time*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.Time
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_Time
+  name: Time
+  nameWithType: ScheduledTaskOptions.Time
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Time
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_MaintenanceProfile
+  name: MaintenanceProfile
+  nameWithType: ScheduledTaskOptions.MaintenanceProfile
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.MaintenanceProfile
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Username*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.Username
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_Username
+  name: Username
+  nameWithType: ScheduledTaskOptions.Username
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Username
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.Password*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.Password
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_Password
+  name: Password
+  nameWithType: ScheduledTaskOptions.Password
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.Password
+- uid: WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours*
+  commentId: Overload:WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html#WsusManager_Core_Models_ScheduledTaskOptions_ExecutionTimeLimitHours
+  name: ExecutionTimeLimitHours
+  nameWithType: ScheduledTaskOptions.ExecutionTimeLimitHours
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions.ExecutionTimeLimitHours

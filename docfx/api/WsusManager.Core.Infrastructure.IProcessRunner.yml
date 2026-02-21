@@ -1,0 +1,332 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Infrastructure.IProcessRunner
+  commentId: T:WsusManager.Core.Infrastructure.IProcessRunner
+  id: IProcessRunner
+  parent: WsusManager.Core.Infrastructure
+  children:
+  - WsusManager.Core.Infrastructure.IProcessRunner.RunAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IProcessRunner
+  nameWithType: IProcessRunner
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Infrastructure/IProcessRunner.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IProcessRunner
+    path: src/WsusManager.Core/Infrastructure/IProcessRunner.cs
+    startLine: 8
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Infrastructure
+  summary: >-
+    Interface for external process execution. All shell commands (wsusutil,
+
+    netsh, sc, schtasks, etc.) go through this interface for testability.
+  example: []
+  syntax:
+    content: public interface IProcessRunner
+    content.vb: Public Interface IProcessRunner
+- uid: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Infrastructure.IProcessRunner.RunAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: RunAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Infrastructure.IProcessRunner
+  langs:
+  - csharp
+  - vb
+  name: RunAsync(string, string, IProgress<string>?, CancellationToken)
+  nameWithType: IProcessRunner.RunAsync(string, string, IProgress<string>?, CancellationToken)
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync(string, string, System.IProgress<string>?, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Infrastructure/IProcessRunner.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: RunAsync
+    path: src/WsusManager.Core/Infrastructure/IProcessRunner.cs
+    startLine: 18
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Infrastructure
+  summary: Runs an external process with captured stdout/stderr.
+  example: []
+  syntax:
+    content: Task<ProcessResult> RunAsync(string executable, string arguments, IProgress<string>? progress = null, CancellationToken ct = default)
+    parameters:
+    - id: executable
+      type: System.String
+      description: Path to the executable.
+    - id: arguments
+      type: System.String
+      description: Command-line arguments.
+    - id: progress
+      type: System.IProgress{System.String}
+      description: Optional progress reporter for real-time output.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token — kills the process on cancellation.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.ProcessResult}
+      description: Process result with exit code and captured output.
+    content.vb: Function RunAsync(executable As String, arguments As String, progress As IProgress(Of String) = Nothing, ct As CancellationToken = Nothing) As Task(Of ProcessResult)
+  overload: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync*
+  nameWithType.vb: IProcessRunner.RunAsync(String, String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync(String, String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: RunAsync(String, String, IProgress(Of String), CancellationToken)
+references:
+- uid: WsusManager.Core.Infrastructure
+  commentId: N:WsusManager.Core.Infrastructure
+  href: WsusManager.html
+  name: WsusManager.Core.Infrastructure
+  nameWithType: WsusManager.Core.Infrastructure
+  fullName: WsusManager.Core.Infrastructure
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+- uid: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync*
+  commentId: Overload:WsusManager.Core.Infrastructure.IProcessRunner.RunAsync
+  href: WsusManager.Core.Infrastructure.IProcessRunner.html#WsusManager_Core_Infrastructure_IProcessRunner_RunAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: RunAsync
+  nameWithType: IProcessRunner.RunAsync
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner.RunAsync
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.ProcessResult}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.ProcessResult}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<ProcessResult>
+  nameWithType: Task<ProcessResult>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.ProcessResult>
+  nameWithType.vb: Task(Of ProcessResult)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.ProcessResult)
+  name.vb: Task(Of ProcessResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.ProcessResult
+    name: ProcessResult
+    href: WsusManager.Core.Models.ProcessResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.ProcessResult
+    name: ProcessResult
+    href: WsusManager.Core.Models.ProcessResult.html
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks

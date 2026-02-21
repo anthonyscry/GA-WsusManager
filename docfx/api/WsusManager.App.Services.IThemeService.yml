@@ -1,0 +1,472 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.App.Services.IThemeService
+  commentId: T:WsusManager.App.Services.IThemeService
+  id: IThemeService
+  parent: WsusManager.App.Services
+  children:
+  - WsusManager.App.Services.IThemeService.ApplyTheme(System.String)
+  - WsusManager.App.Services.IThemeService.AvailableThemes
+  - WsusManager.App.Services.IThemeService.CurrentTheme
+  - WsusManager.App.Services.IThemeService.GetThemeInfo(System.String)
+  - WsusManager.App.Services.IThemeService.ThemeInfos
+  langs:
+  - csharp
+  - vb
+  name: IThemeService
+  nameWithType: IThemeService
+  fullName: WsusManager.App.Services.IThemeService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IThemeService
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 11
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: >-
+    Manages runtime theme switching by swapping color ResourceDictionaries
+
+    in Application.Current.Resources.MergedDictionaries.
+  example: []
+  syntax:
+    content: public interface IThemeService
+    content.vb: Public Interface IThemeService
+- uid: WsusManager.App.Services.IThemeService.CurrentTheme
+  commentId: P:WsusManager.App.Services.IThemeService.CurrentTheme
+  id: CurrentTheme
+  parent: WsusManager.App.Services.IThemeService
+  langs:
+  - csharp
+  - vb
+  name: CurrentTheme
+  nameWithType: IThemeService.CurrentTheme
+  fullName: WsusManager.App.Services.IThemeService.CurrentTheme
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CurrentTheme
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 16
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: Gets the name of the currently active theme (e.g., "DefaultDark").
+  example: []
+  syntax:
+    content: string CurrentTheme { get; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: ReadOnly Property CurrentTheme As String
+  overload: WsusManager.App.Services.IThemeService.CurrentTheme*
+- uid: WsusManager.App.Services.IThemeService.ApplyTheme(System.String)
+  commentId: M:WsusManager.App.Services.IThemeService.ApplyTheme(System.String)
+  id: ApplyTheme(System.String)
+  parent: WsusManager.App.Services.IThemeService
+  langs:
+  - csharp
+  - vb
+  name: ApplyTheme(string)
+  nameWithType: IThemeService.ApplyTheme(string)
+  fullName: WsusManager.App.Services.IThemeService.ApplyTheme(string)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ApplyTheme
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 22
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: >-
+    Swaps the active color dictionary to the specified theme.
+
+    The theme name must exist in AvailableThemes.
+  example: []
+  syntax:
+    content: void ApplyTheme(string themeName)
+    parameters:
+    - id: themeName
+      type: System.String
+    content.vb: Sub ApplyTheme(themeName As String)
+  overload: WsusManager.App.Services.IThemeService.ApplyTheme*
+  nameWithType.vb: IThemeService.ApplyTheme(String)
+  fullName.vb: WsusManager.App.Services.IThemeService.ApplyTheme(String)
+  name.vb: ApplyTheme(String)
+- uid: WsusManager.App.Services.IThemeService.AvailableThemes
+  commentId: P:WsusManager.App.Services.IThemeService.AvailableThemes
+  id: AvailableThemes
+  parent: WsusManager.App.Services.IThemeService
+  langs:
+  - csharp
+  - vb
+  name: AvailableThemes
+  nameWithType: IThemeService.AvailableThemes
+  fullName: WsusManager.App.Services.IThemeService.AvailableThemes
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: AvailableThemes
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 27
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: Returns the list of available theme names.
+  example: []
+  syntax:
+    content: IReadOnlyList<string> AvailableThemes { get; }
+    parameters: []
+    return:
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+    content.vb: ReadOnly Property AvailableThemes As IReadOnlyList(Of String)
+  overload: WsusManager.App.Services.IThemeService.AvailableThemes*
+- uid: WsusManager.App.Services.IThemeService.GetThemeInfo(System.String)
+  commentId: M:WsusManager.App.Services.IThemeService.GetThemeInfo(System.String)
+  id: GetThemeInfo(System.String)
+  parent: WsusManager.App.Services.IThemeService
+  langs:
+  - csharp
+  - vb
+  name: GetThemeInfo(string)
+  nameWithType: IThemeService.GetThemeInfo(string)
+  fullName: WsusManager.App.Services.IThemeService.GetThemeInfo(string)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: GetThemeInfo
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 33
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: >-
+    Gets theme metadata (display name, preview colors) for the specified theme name.
+
+    Returns null if the theme does not exist.
+  example: []
+  syntax:
+    content: ThemeInfo? GetThemeInfo(string themeName)
+    parameters:
+    - id: themeName
+      type: System.String
+    return:
+      type: WsusManager.App.Services.ThemeInfo
+    content.vb: Function GetThemeInfo(themeName As String) As ThemeInfo
+  overload: WsusManager.App.Services.IThemeService.GetThemeInfo*
+  nameWithType.vb: IThemeService.GetThemeInfo(String)
+  fullName.vb: WsusManager.App.Services.IThemeService.GetThemeInfo(String)
+  name.vb: GetThemeInfo(String)
+- uid: WsusManager.App.Services.IThemeService.ThemeInfos
+  commentId: P:WsusManager.App.Services.IThemeService.ThemeInfos
+  id: ThemeInfos
+  parent: WsusManager.App.Services.IThemeService
+  langs:
+  - csharp
+  - vb
+  name: ThemeInfos
+  nameWithType: IThemeService.ThemeInfos
+  fullName: WsusManager.App.Services.IThemeService.ThemeInfos
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.App/Services/IThemeService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ThemeInfos
+    path: src/WsusManager.App/Services/IThemeService.cs
+    startLine: 38
+  assemblies:
+  - WsusManager.App
+  namespace: WsusManager.App.Services
+  summary: Returns a read-only dictionary of all theme metadata keyed by theme name.
+  example: []
+  syntax:
+    content: IReadOnlyDictionary<string, ThemeInfo> ThemeInfos { get; }
+    parameters: []
+    return:
+      type: System.Collections.Generic.IReadOnlyDictionary{System.String,WsusManager.App.Services.ThemeInfo}
+    content.vb: ReadOnly Property ThemeInfos As IReadOnlyDictionary(Of String, ThemeInfo)
+  overload: WsusManager.App.Services.IThemeService.ThemeInfos*
+references:
+- uid: WsusManager.App.Services
+  commentId: N:WsusManager.App.Services
+  href: WsusManager.html
+  name: WsusManager.App.Services
+  nameWithType: WsusManager.App.Services
+  fullName: WsusManager.App.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.Services
+    name: Services
+    href: WsusManager.App.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.Services
+    name: Services
+    href: WsusManager.App.Services.html
+- uid: WsusManager.App.Services.IThemeService.CurrentTheme*
+  commentId: Overload:WsusManager.App.Services.IThemeService.CurrentTheme
+  href: WsusManager.App.Services.IThemeService.html#WsusManager_App_Services_IThemeService_CurrentTheme
+  name: CurrentTheme
+  nameWithType: IThemeService.CurrentTheme
+  fullName: WsusManager.App.Services.IThemeService.CurrentTheme
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.App.Services.IThemeService.ApplyTheme*
+  commentId: Overload:WsusManager.App.Services.IThemeService.ApplyTheme
+  href: WsusManager.App.Services.IThemeService.html#WsusManager_App_Services_IThemeService_ApplyTheme_System_String_
+  name: ApplyTheme
+  nameWithType: IThemeService.ApplyTheme
+  fullName: WsusManager.App.Services.IThemeService.ApplyTheme
+- uid: WsusManager.App.Services.IThemeService.AvailableThemes*
+  commentId: Overload:WsusManager.App.Services.IThemeService.AvailableThemes
+  href: WsusManager.App.Services.IThemeService.html#WsusManager_App_Services_IThemeService_AvailableThemes
+  name: AvailableThemes
+  nameWithType: IThemeService.AvailableThemes
+  fullName: WsusManager.App.Services.IThemeService.AvailableThemes
+- uid: System.Collections.Generic.IReadOnlyList{System.String}
+  commentId: T:System.Collections.Generic.IReadOnlyList{System.String}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IReadOnlyList`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<string>
+  nameWithType: IReadOnlyList<string>
+  fullName: System.Collections.Generic.IReadOnlyList<string>
+  nameWithType.vb: IReadOnlyList(Of String)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of String)
+  name.vb: IReadOnlyList(Of String)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Collections.Generic.IReadOnlyList`1
+  commentId: T:System.Collections.Generic.IReadOnlyList`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<T>
+  nameWithType: IReadOnlyList<T>
+  fullName: System.Collections.Generic.IReadOnlyList<T>
+  nameWithType.vb: IReadOnlyList(Of T)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of T)
+  name.vb: IReadOnlyList(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: WsusManager.App.Services.IThemeService.GetThemeInfo*
+  commentId: Overload:WsusManager.App.Services.IThemeService.GetThemeInfo
+  href: WsusManager.App.Services.IThemeService.html#WsusManager_App_Services_IThemeService_GetThemeInfo_System_String_
+  name: GetThemeInfo
+  nameWithType: IThemeService.GetThemeInfo
+  fullName: WsusManager.App.Services.IThemeService.GetThemeInfo
+- uid: WsusManager.App.Services.ThemeInfo
+  commentId: T:WsusManager.App.Services.ThemeInfo
+  parent: WsusManager.App.Services
+  href: WsusManager.App.Services.ThemeInfo.html
+  name: ThemeInfo
+  nameWithType: ThemeInfo
+  fullName: WsusManager.App.Services.ThemeInfo
+- uid: WsusManager.App.Services.IThemeService.ThemeInfos*
+  commentId: Overload:WsusManager.App.Services.IThemeService.ThemeInfos
+  href: WsusManager.App.Services.IThemeService.html#WsusManager_App_Services_IThemeService_ThemeInfos
+  name: ThemeInfos
+  nameWithType: IThemeService.ThemeInfos
+  fullName: WsusManager.App.Services.IThemeService.ThemeInfos
+- uid: System.Collections.Generic.IReadOnlyDictionary{System.String,WsusManager.App.Services.ThemeInfo}
+  commentId: T:System.Collections.Generic.IReadOnlyDictionary{System.String,WsusManager.App.Services.ThemeInfo}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IReadOnlyDictionary`2
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  name: IReadOnlyDictionary<string, ThemeInfo>
+  nameWithType: IReadOnlyDictionary<string, ThemeInfo>
+  fullName: System.Collections.Generic.IReadOnlyDictionary<string, WsusManager.App.Services.ThemeInfo>
+  nameWithType.vb: IReadOnlyDictionary(Of String, ThemeInfo)
+  fullName.vb: System.Collections.Generic.IReadOnlyDictionary(Of String, WsusManager.App.Services.ThemeInfo)
+  name.vb: IReadOnlyDictionary(Of String, ThemeInfo)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyDictionary`2
+    name: IReadOnlyDictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: WsusManager.App.Services.ThemeInfo
+    name: ThemeInfo
+    href: WsusManager.App.Services.ThemeInfo.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyDictionary`2
+    name: IReadOnlyDictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: WsusManager.App.Services.ThemeInfo
+    name: ThemeInfo
+    href: WsusManager.App.Services.ThemeInfo.html
+  - name: )
+- uid: System.Collections.Generic.IReadOnlyDictionary`2
+  commentId: T:System.Collections.Generic.IReadOnlyDictionary`2
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  name: IReadOnlyDictionary<TKey, TValue>
+  nameWithType: IReadOnlyDictionary<TKey, TValue>
+  fullName: System.Collections.Generic.IReadOnlyDictionary<TKey, TValue>
+  nameWithType.vb: IReadOnlyDictionary(Of TKey, TValue)
+  fullName.vb: System.Collections.Generic.IReadOnlyDictionary(Of TKey, TValue)
+  name.vb: IReadOnlyDictionary(Of TKey, TValue)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyDictionary`2
+    name: IReadOnlyDictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  - name: <
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyDictionary`2
+    name: IReadOnlyDictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: )

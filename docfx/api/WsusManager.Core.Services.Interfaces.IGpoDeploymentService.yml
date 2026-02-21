@@ -1,0 +1,334 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  commentId: T:WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  id: IGpoDeploymentService
+  parent: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IGpoDeploymentService
+  nameWithType: IGpoDeploymentService
+  fullName: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IGpoDeploymentService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IGpoDeploymentService
+    path: src/WsusManager.Core/Services/Interfaces/IGpoDeploymentService.cs
+    startLine: 8
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Service for copying GPO deployment files from the application's DomainController/ directory
+
+    to C:\WSUS\WSUS GPO\ and returning step-by-step instructions for the DC admin.
+  example: []
+  syntax:
+    content: public interface IGpoDeploymentService
+    content.vb: Public Interface IGpoDeploymentService
+- uid: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  id: DeployGpoFilesAsync(System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  langs:
+  - csharp
+  - vb
+  name: DeployGpoFilesAsync(IProgress<string>?, CancellationToken)
+  nameWithType: IGpoDeploymentService.DeployGpoFilesAsync(IProgress<string>?, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync(System.IProgress<string>?, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IGpoDeploymentService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: DeployGpoFilesAsync
+    path: src/WsusManager.Core/Services/Interfaces/IGpoDeploymentService.cs
+    startLine: 13
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: Copies GPO files to the destination directory and returns instruction text on success.
+  example: []
+  syntax:
+    content: Task<OperationResult<string>> DeployGpoFilesAsync(IProgress<string>? progress = null, CancellationToken ct = default)
+    parameters:
+    - id: progress
+      type: System.IProgress{System.String}
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.String}}
+    content.vb: Function DeployGpoFilesAsync(progress As IProgress(Of String) = Nothing, ct As CancellationToken = Nothing) As Task(Of OperationResult(Of String))
+  overload: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync*
+  nameWithType.vb: IGpoDeploymentService.DeployGpoFilesAsync(IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync(System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: DeployGpoFilesAsync(IProgress(Of String), CancellationToken)
+references:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync
+  href: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.html#WsusManager_Core_Services_Interfaces_IGpoDeploymentService_DeployGpoFilesAsync_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: DeployGpoFilesAsync
+  nameWithType: IGpoDeploymentService.DeployGpoFilesAsync
+  fullName: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.DeployGpoFilesAsync
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.String}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.String}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<string>>
+  nameWithType: Task<OperationResult<string>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<string>>
+  nameWithType.vb: Task(Of OperationResult(Of String))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of String))
+  name.vb: Task(Of OperationResult(Of String))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+  - name: )
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks

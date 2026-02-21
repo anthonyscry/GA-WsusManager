@@ -1,0 +1,65 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.App.Views
+  commentId: N:WsusManager.App.Views
+  id: WsusManager.App.Views
+  children:
+  - WsusManager.App.Views.GpoInstructionsDialog
+  - WsusManager.App.Views.InstallDialog
+  - WsusManager.App.Views.MainWindow
+  - WsusManager.App.Views.ScheduleTaskDialog
+  - WsusManager.App.Views.SettingsDialog
+  - WsusManager.App.Views.SyncProfileDialog
+  - WsusManager.App.Views.TransferDialog
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.App.Views
+  nameWithType: WsusManager.App.Views
+  fullName: WsusManager.App.Views
+  type: Namespace
+  assemblies:
+  - WsusManager.App
+references:
+- uid: WsusManager.App.Views.GpoInstructionsDialog
+  commentId: T:WsusManager.App.Views.GpoInstructionsDialog
+  href: WsusManager.App.Views.GpoInstructionsDialog.html
+  name: GpoInstructionsDialog
+  nameWithType: GpoInstructionsDialog
+  fullName: WsusManager.App.Views.GpoInstructionsDialog
+- uid: WsusManager.App.Views.InstallDialog
+  commentId: T:WsusManager.App.Views.InstallDialog
+  href: WsusManager.App.Views.InstallDialog.html
+  name: InstallDialog
+  nameWithType: InstallDialog
+  fullName: WsusManager.App.Views.InstallDialog
+- uid: WsusManager.App.Views.MainWindow
+  commentId: T:WsusManager.App.Views.MainWindow
+  href: WsusManager.App.Views.MainWindow.html
+  name: MainWindow
+  nameWithType: MainWindow
+  fullName: WsusManager.App.Views.MainWindow
+- uid: WsusManager.App.Views.ScheduleTaskDialog
+  commentId: T:WsusManager.App.Views.ScheduleTaskDialog
+  href: WsusManager.App.Views.ScheduleTaskDialog.html
+  name: ScheduleTaskDialog
+  nameWithType: ScheduleTaskDialog
+  fullName: WsusManager.App.Views.ScheduleTaskDialog
+- uid: WsusManager.App.Views.SettingsDialog
+  commentId: T:WsusManager.App.Views.SettingsDialog
+  href: WsusManager.App.Views.SettingsDialog.html
+  name: SettingsDialog
+  nameWithType: SettingsDialog
+  fullName: WsusManager.App.Views.SettingsDialog
+- uid: WsusManager.App.Views.SyncProfileDialog
+  commentId: T:WsusManager.App.Views.SyncProfileDialog
+  href: WsusManager.App.Views.SyncProfileDialog.html
+  name: SyncProfileDialog
+  nameWithType: SyncProfileDialog
+  fullName: WsusManager.App.Views.SyncProfileDialog
+- uid: WsusManager.App.Views.TransferDialog
+  commentId: T:WsusManager.App.Views.TransferDialog
+  href: WsusManager.App.Views.TransferDialog.html
+  name: TransferDialog
+  nameWithType: TransferDialog
+  fullName: WsusManager.App.Views.TransferDialog

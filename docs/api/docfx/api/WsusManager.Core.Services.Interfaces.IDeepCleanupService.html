@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Interface IDeepCleanupService | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Interface IDeepCleanupService | WSUS Manager ">
+    
+    <meta name="description" content="Orchestrates the full 6-step WSUS deep cleanup pipeline. Steps match the PowerShell WsusDatabase.psm1 implementation:  WSUS built-in cleanup (Invoke-WsusServerCleanup via PowerShell) Remove supersession records for declined updates Remove supersession records for superseded updates (10k batches) Delete declined updates via spDeleteUpdate (100/batch) Rebuild fragmented indexes + update statistics Shrink database (3 retries on backup-block).">
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Services.Interfaces.IDeepCleanupService">
+
+
+
+  <h1 id="WsusManager_Core_Services_Interfaces_IDeepCleanupService" data-uid="WsusManager.Core.Services.Interfaces.IDeepCleanupService" class="text-break">Interface IDeepCleanupService</h1>
+  <div class="markdown level0 summary"><p>Orchestrates the full 6-step WSUS deep cleanup pipeline.
+Steps match the PowerShell WsusDatabase.psm1 implementation:</p>
+<ol>
+<li>WSUS built-in cleanup (Invoke-WsusServerCleanup via PowerShell)</li>
+<li>Remove supersession records for declined updates</li>
+<li>Remove supersession records for superseded updates (10k batches)</li>
+<li>Delete declined updates via spDeleteUpdate (100/batch)</li>
+<li>Rebuild fragmented indexes + update statistics</li>
+<li>Shrink database (3 retries on backup-block).</li>
+</ol>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="WsusManager.html">WsusManager</a>.<a class="xref" href="WsusManager.Core.html">Core</a>.<a class="xref" href="WsusManager.Core.Services.html">Services</a>.<a class="xref" href="WsusManager.Core.Services.Interfaces.html">Interfaces</a></h6>
+  <h6><strong>Assembly</strong>: WsusManager.Core.dll</h6>
+  <h5 id="WsusManager_Core_Services_Interfaces_IDeepCleanupService_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IDeepCleanupService</code></pre>
+  </div>
+  <h3 id="methods">Methods
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IDeepCleanupService_RunAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IDeepCleanupService.RunAsync(System.String%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IDeepCleanupService.cs/#L26">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IDeepCleanupService_RunAsync_" data-uid="WsusManager.Core.Services.Interfaces.IDeepCleanupService.RunAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IDeepCleanupService_RunAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IDeepCleanupService.RunAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)">RunAsync(string, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Runs the full 6-step deep cleanup pipeline.
+Each step reports progress in format: [Step N/6] Step Name... done (Xs)
+DB size is captured before step 1 and after step 6 for before/after comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&gt; RunAsync(string sqlInstance, IProgress&lt;string&gt; progress, CancellationToken ct)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">sqlInstance</span></td>
+        <td><p>SQL Server instance (e.g., &quot;localhost\SQLEXPRESS&quot;).</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time status lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult.html">OperationResult</a>&gt;</td>
+        <td><p>OperationResult indicating success or failure.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IDeepCleanupService.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IDeepCleanupService%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A" class="contribution-link">Edit this page</a>
+                  </li>
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IDeepCleanupService.cs/#L15" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

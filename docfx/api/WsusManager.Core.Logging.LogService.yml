@@ -1,0 +1,1350 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Logging.LogService
+  commentId: T:WsusManager.Core.Logging.LogService
+  id: LogService
+  parent: WsusManager.Core.Logging
+  children:
+  - WsusManager.Core.Logging.LogService.#ctor
+  - WsusManager.Core.Logging.LogService.#ctor(System.String)
+  - WsusManager.Core.Logging.LogService.Debug(System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.Dispose
+  - WsusManager.Core.Logging.LogService.Error(System.Exception,System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.Error(System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.Fatal(System.Exception,System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.Fatal(System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.Flush
+  - WsusManager.Core.Logging.LogService.Info(System.String,System.Object[])
+  - WsusManager.Core.Logging.LogService.LogStartup(System.String,System.Int64)
+  - WsusManager.Core.Logging.LogService.Warning(System.String,System.Object[])
+  langs:
+  - csharp
+  - vb
+  name: LogService
+  nameWithType: LogService
+  fullName: WsusManager.Core.Logging.LogService
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LogService
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 10
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: >-
+    Serilog-based structured logging service. Writes daily rolling log files
+
+    to C:\WSUS\Logs\WsusManager-{Date}.log with detailed structured entries
+
+    suitable for remote troubleshooting on air-gapped servers.
+  example: []
+  syntax:
+    content: 'public class LogService : ILogService, IDisposable'
+    content.vb: Public Class LogService Implements ILogService, IDisposable
+  inheritance:
+  - System.Object
+  implements:
+  - WsusManager.Core.Logging.ILogService
+  - System.IDisposable
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Logging.LogService.#ctor
+  commentId: M:WsusManager.Core.Logging.LogService.#ctor
+  id: '#ctor'
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: LogService()
+  nameWithType: LogService.LogService()
+  fullName: WsusManager.Core.Logging.LogService.LogService()
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 18
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  syntax:
+    content: public LogService()
+    content.vb: Public Sub New()
+  overload: WsusManager.Core.Logging.LogService.#ctor*
+  nameWithType.vb: LogService.New()
+  fullName.vb: WsusManager.Core.Logging.LogService.New()
+  name.vb: New()
+- uid: WsusManager.Core.Logging.LogService.#ctor(System.String)
+  commentId: M:WsusManager.Core.Logging.LogService.#ctor(System.String)
+  id: '#ctor(System.String)'
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: LogService(string)
+  nameWithType: LogService.LogService(string)
+  fullName: WsusManager.Core.Logging.LogService.LogService(string)
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 23
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  syntax:
+    content: public LogService(string logDirectory)
+    parameters:
+    - id: logDirectory
+      type: System.String
+    content.vb: Public Sub New(logDirectory As String)
+  overload: WsusManager.Core.Logging.LogService.#ctor*
+  nameWithType.vb: LogService.New(String)
+  fullName.vb: WsusManager.Core.Logging.LogService.New(String)
+  name.vb: New(String)
+- uid: WsusManager.Core.Logging.LogService.Info(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Info(System.String,System.Object[])
+  id: Info(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Info(string, params object[])
+  nameWithType: LogService.Info(string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Info(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Info
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 52
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an informational message.
+  example: []
+  syntax:
+    content: public void Info(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub Info(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Info*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  nameWithType.vb: LogService.Info(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Info(String, ParamArray Object())
+  name.vb: Info(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Warning(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Warning(System.String,System.Object[])
+  id: Warning(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Warning(string, params object[])
+  nameWithType: LogService.Warning(string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Warning(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Warning
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 55
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a warning message.
+  example: []
+  syntax:
+    content: public void Warning(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub Warning(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Warning*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  nameWithType.vb: LogService.Warning(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Warning(String, ParamArray Object())
+  name.vb: Warning(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Error(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Error(System.String,System.Object[])
+  id: Error(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Error(string, params object[])
+  nameWithType: LogService.Error(string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Error(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Error
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 58
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an error message with optional exception.
+  example: []
+  syntax:
+    content: public void Error(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub [Error](messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Error*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  nameWithType.vb: LogService.Error(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Error(String, ParamArray Object())
+  name.vb: Error(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Error(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Error(System.Exception,System.String,System.Object[])
+  id: Error(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Error(Exception, string, params object[])
+  nameWithType: LogService.Error(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Error(System.Exception, string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Error
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 61
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs an error with an associated exception.
+  example: []
+  syntax:
+    content: public void Error(Exception exception, string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: exception
+      type: System.Exception
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub [Error](exception As Exception, messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Error*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  nameWithType.vb: LogService.Error(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Error(System.Exception, String, ParamArray Object())
+  name.vb: Error(Exception, String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Debug(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Debug(System.String,System.Object[])
+  id: Debug(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Debug(string, params object[])
+  nameWithType: LogService.Debug(string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Debug(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Debug
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 64
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a debug-level message.
+  example: []
+  syntax:
+    content: public void Debug(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub Debug(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Debug*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  nameWithType.vb: LogService.Debug(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Debug(String, ParamArray Object())
+  name.vb: Debug(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Fatal(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Fatal(System.String,System.Object[])
+  id: Fatal(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Fatal(string, params object[])
+  nameWithType: LogService.Fatal(string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Fatal(string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Fatal
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 67
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a fatal error (application cannot continue).
+  example: []
+  syntax:
+    content: public void Fatal(string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub Fatal(messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Fatal*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  nameWithType.vb: LogService.Fatal(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Fatal(String, ParamArray Object())
+  name.vb: Fatal(String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.Fatal(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.LogService.Fatal(System.Exception,System.String,System.Object[])
+  id: Fatal(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Fatal(Exception, string, params object[])
+  nameWithType: LogService.Fatal(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.LogService.Fatal(System.Exception, string, params object[])
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Fatal
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 70
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Logs a fatal error with an associated exception.
+  example: []
+  syntax:
+    content: public void Fatal(Exception exception, string messageTemplate, params object[] propertyValues)
+    parameters:
+    - id: exception
+      type: System.Exception
+    - id: messageTemplate
+      type: System.String
+    - id: propertyValues
+      type: System.Object[]
+    content.vb: Public Sub Fatal(exception As Exception, messageTemplate As String, ParamArray propertyValues As Object())
+  overload: WsusManager.Core.Logging.LogService.Fatal*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  nameWithType.vb: LogService.Fatal(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.LogService.Fatal(System.Exception, String, ParamArray Object())
+  name.vb: Fatal(Exception, String, ParamArray Object())
+- uid: WsusManager.Core.Logging.LogService.LogStartup(System.String,System.Int64)
+  commentId: M:WsusManager.Core.Logging.LogService.LogStartup(System.String,System.Int64)
+  id: LogStartup(System.String,System.Int64)
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: LogStartup(string, long)
+  nameWithType: LogService.LogStartup(string, long)
+  fullName: WsusManager.Core.Logging.LogService.LogStartup(string, long)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LogStartup
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 73
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: 'Logs application startup information: version, OS, CLR, startup duration.'
+  example: []
+  syntax:
+    content: public void LogStartup(string version, long startupMs)
+    parameters:
+    - id: version
+      type: System.String
+    - id: startupMs
+      type: System.Int64
+    content.vb: Public Sub LogStartup(version As String, startupMs As Long)
+  overload: WsusManager.Core.Logging.LogService.LogStartup*
+  implements:
+  - WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  nameWithType.vb: LogService.LogStartup(String, Long)
+  fullName.vb: WsusManager.Core.Logging.LogService.LogStartup(String, Long)
+  name.vb: LogStartup(String, Long)
+- uid: WsusManager.Core.Logging.LogService.Flush
+  commentId: M:WsusManager.Core.Logging.LogService.Flush
+  id: Flush
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Flush()
+  nameWithType: LogService.Flush()
+  fullName: WsusManager.Core.Logging.LogService.Flush()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Flush
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 87
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: >-
+    Ensures all buffered log entries are written to disk.
+
+    Call during application shutdown.
+  example: []
+  syntax:
+    content: public void Flush()
+    content.vb: Public Sub Flush()
+  overload: WsusManager.Core.Logging.LogService.Flush*
+  implements:
+  - WsusManager.Core.Logging.ILogService.Flush
+- uid: WsusManager.Core.Logging.LogService.Dispose
+  commentId: M:WsusManager.Core.Logging.LogService.Dispose
+  id: Dispose
+  parent: WsusManager.Core.Logging.LogService
+  langs:
+  - csharp
+  - vb
+  name: Dispose()
+  nameWithType: LogService.Dispose()
+  fullName: WsusManager.Core.Logging.LogService.Dispose()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Logging/LogService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Dispose
+    path: src/WsusManager.Core/Logging/LogService.cs
+    startLine: 93
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Logging
+  summary: Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+  example: []
+  syntax:
+    content: public void Dispose()
+    content.vb: Public Sub Dispose()
+  overload: WsusManager.Core.Logging.LogService.Dispose*
+  implements:
+  - System.IDisposable.Dispose
+references:
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  parent: WsusManager.Core.Logging
+  href: WsusManager.Core.Logging.ILogService.html
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+- uid: System.IDisposable
+  commentId: T:System.IDisposable
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.idisposable
+  name: IDisposable
+  nameWithType: IDisposable
+  fullName: System.IDisposable
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Logging.LogService.#ctor*
+  commentId: Overload:WsusManager.Core.Logging.LogService.#ctor
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService__ctor
+  name: LogService
+  nameWithType: LogService.LogService
+  fullName: WsusManager.Core.Logging.LogService.LogService
+  nameWithType.vb: LogService.New
+  fullName.vb: WsusManager.Core.Logging.LogService.New
+  name.vb: New
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: WsusManager.Core.Logging.LogService.Info*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Info
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Info_System_String_System_Object___
+  name: Info
+  nameWithType: LogService.Info
+  fullName: WsusManager.Core.Logging.LogService.Info
+- uid: WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Info_System_String_System_Object___
+  name: Info(string, params object[])
+  nameWithType: ILogService.Info(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Info(string, params object[])
+  nameWithType.vb: ILogService.Info(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Info(String, ParamArray Object())
+  name.vb: Info(String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+    name: Info
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Info_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Info(System.String,System.Object[])
+    name: Info
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Info_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: System.Object[]
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object[]
+  nameWithType: object[]
+  fullName: object[]
+  nameWithType.vb: Object()
+  fullName.vb: Object()
+  name.vb: Object()
+  spec.csharp:
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  spec.vb:
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+- uid: WsusManager.Core.Logging.LogService.Warning*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Warning
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Warning_System_String_System_Object___
+  name: Warning
+  nameWithType: LogService.Warning
+  fullName: WsusManager.Core.Logging.LogService.Warning
+- uid: WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Warning_System_String_System_Object___
+  name: Warning(string, params object[])
+  nameWithType: ILogService.Warning(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Warning(string, params object[])
+  nameWithType.vb: ILogService.Warning(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Warning(String, ParamArray Object())
+  name.vb: Warning(String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+    name: Warning
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Warning_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Warning(System.String,System.Object[])
+    name: Warning
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Warning_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Logging.LogService.Error*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Error
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Error_System_String_System_Object___
+  name: Error
+  nameWithType: LogService.Error
+  fullName: WsusManager.Core.Logging.LogService.Error
+- uid: WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_String_System_Object___
+  name: Error(string, params object[])
+  nameWithType: ILogService.Error(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Error(string, params object[])
+  nameWithType.vb: ILogService.Error(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Error(String, ParamArray Object())
+  name.vb: Error(String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+    name: Error
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Error(System.String,System.Object[])
+    name: Error
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_Exception_System_String_System_Object___
+  name: Error(Exception, string, params object[])
+  nameWithType: ILogService.Error(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Error(System.Exception, string, params object[])
+  nameWithType.vb: ILogService.Error(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Error(System.Exception, String, ParamArray Object())
+  name.vb: Error(Exception, String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+    name: Error
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_Exception_System_String_System_Object___
+  - name: (
+  - uid: System.Exception
+    name: Exception
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.exception
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Error(System.Exception,System.String,System.Object[])
+    name: Error
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Error_System_Exception_System_String_System_Object___
+  - name: (
+  - uid: System.Exception
+    name: Exception
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.exception
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: System.Exception
+  commentId: T:System.Exception
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.exception
+  name: Exception
+  nameWithType: Exception
+  fullName: System.Exception
+- uid: WsusManager.Core.Logging.LogService.Debug*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Debug
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Debug_System_String_System_Object___
+  name: Debug
+  nameWithType: LogService.Debug
+  fullName: WsusManager.Core.Logging.LogService.Debug
+- uid: WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Debug_System_String_System_Object___
+  name: Debug(string, params object[])
+  nameWithType: ILogService.Debug(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Debug(string, params object[])
+  nameWithType.vb: ILogService.Debug(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Debug(String, ParamArray Object())
+  name.vb: Debug(String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+    name: Debug
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Debug_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Debug(System.String,System.Object[])
+    name: Debug
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Debug_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Logging.LogService.Fatal*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Fatal
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Fatal_System_String_System_Object___
+  name: Fatal
+  nameWithType: LogService.Fatal
+  fullName: WsusManager.Core.Logging.LogService.Fatal
+- uid: WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_String_System_Object___
+  name: Fatal(string, params object[])
+  nameWithType: ILogService.Fatal(string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Fatal(string, params object[])
+  nameWithType.vb: ILogService.Fatal(String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Fatal(String, ParamArray Object())
+  name.vb: Fatal(String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+    name: Fatal
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Fatal(System.String,System.Object[])
+    name: Fatal
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_String_System_Object___
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  commentId: M:WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_Exception_System_String_System_Object___
+  name: Fatal(Exception, string, params object[])
+  nameWithType: ILogService.Fatal(Exception, string, params object[])
+  fullName: WsusManager.Core.Logging.ILogService.Fatal(System.Exception, string, params object[])
+  nameWithType.vb: ILogService.Fatal(Exception, String, ParamArray Object())
+  fullName.vb: WsusManager.Core.Logging.ILogService.Fatal(System.Exception, String, ParamArray Object())
+  name.vb: Fatal(Exception, String, ParamArray Object())
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+    name: Fatal
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_Exception_System_String_System_Object___
+  - name: (
+  - uid: System.Exception
+    name: Exception
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.exception
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: params
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '['
+  - name: ']'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Fatal(System.Exception,System.String,System.Object[])
+    name: Fatal
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Fatal_System_Exception_System_String_System_Object___
+  - name: (
+  - uid: System.Exception
+    name: Exception
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.exception
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - name: ParamArray
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: (
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Logging.LogService.LogStartup*
+  commentId: Overload:WsusManager.Core.Logging.LogService.LogStartup
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_LogStartup_System_String_System_Int64_
+  name: LogStartup
+  nameWithType: LogService.LogStartup
+  fullName: WsusManager.Core.Logging.LogService.LogStartup
+- uid: WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  commentId: M:WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+  parent: WsusManager.Core.Logging.ILogService
+  isExternal: true
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_LogStartup_System_String_System_Int64_
+  name: LogStartup(string, long)
+  nameWithType: ILogService.LogStartup(string, long)
+  fullName: WsusManager.Core.Logging.ILogService.LogStartup(string, long)
+  nameWithType.vb: ILogService.LogStartup(String, Long)
+  fullName.vb: WsusManager.Core.Logging.ILogService.LogStartup(String, Long)
+  name.vb: LogStartup(String, Long)
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+    name: LogStartup
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_LogStartup_System_String_System_Int64_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int64
+    name: long
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int64
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.LogStartup(System.String,System.Int64)
+    name: LogStartup
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_LogStartup_System_String_System_Int64_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int64
+    name: Long
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int64
+  - name: )
+- uid: System.Int64
+  commentId: T:System.Int64
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int64
+  name: long
+  nameWithType: long
+  fullName: long
+  nameWithType.vb: Long
+  fullName.vb: Long
+  name.vb: Long
+- uid: WsusManager.Core.Logging.LogService.Flush*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Flush
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Flush
+  name: Flush
+  nameWithType: LogService.Flush
+  fullName: WsusManager.Core.Logging.LogService.Flush
+- uid: WsusManager.Core.Logging.ILogService.Flush
+  commentId: M:WsusManager.Core.Logging.ILogService.Flush
+  parent: WsusManager.Core.Logging.ILogService
+  href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Flush
+  name: Flush()
+  nameWithType: ILogService.Flush()
+  fullName: WsusManager.Core.Logging.ILogService.Flush()
+  spec.csharp:
+  - uid: WsusManager.Core.Logging.ILogService.Flush
+    name: Flush
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Flush
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Logging.ILogService.Flush
+    name: Flush
+    href: WsusManager.Core.Logging.ILogService.html#WsusManager_Core_Logging_ILogService_Flush
+  - name: (
+  - name: )
+- uid: WsusManager.Core.Logging.LogService.Dispose*
+  commentId: Overload:WsusManager.Core.Logging.LogService.Dispose
+  href: WsusManager.Core.Logging.LogService.html#WsusManager_Core_Logging_LogService_Dispose
+  name: Dispose
+  nameWithType: LogService.Dispose
+  fullName: WsusManager.Core.Logging.LogService.Dispose
+- uid: System.IDisposable.Dispose
+  commentId: M:System.IDisposable.Dispose
+  parent: System.IDisposable
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.idisposable.dispose
+  name: Dispose()
+  nameWithType: IDisposable.Dispose()
+  fullName: System.IDisposable.Dispose()
+  spec.csharp:
+  - uid: System.IDisposable.Dispose
+    name: Dispose
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.idisposable.dispose
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.IDisposable.Dispose
+    name: Dispose
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.idisposable.dispose
+  - name: (
+  - name: )

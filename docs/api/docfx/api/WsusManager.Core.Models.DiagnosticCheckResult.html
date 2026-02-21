@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class DiagnosticCheckResult | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class DiagnosticCheckResult | WSUS Manager ">
+    
+    <meta name="description" content="Result of a single health check. Each check has a name, status, detail message, and optional repair outcome if auto-repair was attempted.">
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Models.DiagnosticCheckResult">
+
+
+
+  <h1 id="WsusManager_Core_Models_DiagnosticCheckResult" data-uid="WsusManager.Core.Models.DiagnosticCheckResult" class="text-break">Class DiagnosticCheckResult</h1>
+  <div class="markdown level0 summary"><p>Result of a single health check. Each check has a name, status, detail message,
+and optional repair outcome if auto-repair was attempted.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">DiagnosticCheckResult</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a>&gt;</div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="WsusManager.html">WsusManager</a>.<a class="xref" href="WsusManager.Core.html">Core</a>.<a class="xref" href="WsusManager.Core.Models.html">Models</a></h6>
+  <h6><strong>Assembly</strong>: WsusManager.Core.dll</h6>
+  <h5 id="WsusManager_Core_Models_DiagnosticCheckResult_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public record DiagnosticCheckResult : IEquatable&lt;DiagnosticCheckResult&gt;</code></pre>
+  </div>
+  <h3 id="properties">Properties
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_CheckName.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.CheckName%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L21">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_CheckName_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.CheckName*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_CheckName" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.CheckName">CheckName</h4>
+  <div class="markdown level1 summary"><p>Human-readable name for this check (e.g., &quot;SQL Server Express&quot;).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public required string CheckName { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Message.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Message%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L27">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Message_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Message*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Message" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Message">Message</h4>
+  <div class="markdown level1 summary"><p>Detail message describing the check result (e.g., &quot;Running&quot;, &quot;Stopped&quot;).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public required string Message { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_RepairAttempted.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.RepairAttempted%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L30">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_RepairAttempted_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairAttempted*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_RepairAttempted" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairAttempted">RepairAttempted</h4>
+  <div class="markdown level1 summary"><p>True if an auto-repair was attempted for this check.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool RepairAttempted { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_RepairMessage.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.RepairMessage%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L36">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_RepairMessage_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairMessage*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_RepairMessage" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairMessage">RepairMessage</h4>
+  <div class="markdown level1 summary"><p>Detail message from the repair attempt (reason for success or failure).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string? RepairMessage { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_RepairSucceeded.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.RepairSucceeded%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L33">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_RepairSucceeded_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairSucceeded*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_RepairSucceeded" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.RepairSucceeded">RepairSucceeded</h4>
+  <div class="markdown level1 summary"><p>True if repair succeeded, false if it failed, null if no repair was attempted.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool? RepairSucceeded { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>?</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Status.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Status%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L24">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Status_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Status*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Status" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Status">Status</h4>
+  <div class="markdown level1 summary"><p>Pass, Fail, Warning, or Skipped.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public required CheckStatus Status { get; init; }</code></pre>
+  </div>
+  <h5 class="propertyValue">Property Value</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.CheckStatus.html">CheckStatus</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Fail_System_String_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Fail(System.String%2CSystem.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L47">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Fail_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Fail*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Fail_System_String_System_String_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Fail(System.String,System.String)">Fail(string, string)</h4>
+  <div class="markdown level1 summary"><p>Creates a failing result with no repair attempted.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static DiagnosticCheckResult Fail(string checkName, string message)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">checkName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_FailWithRepair_System_String_System_String_System_Boolean_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.FailWithRepair(System.String%2CSystem.String%2CSystem.Boolean%2CSystem.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L53">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_FailWithRepair_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.FailWithRepair*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_FailWithRepair_System_String_System_String_System_Boolean_System_String_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.FailWithRepair(System.String,System.String,System.Boolean,System.String)">FailWithRepair(string, string, bool, string)</h4>
+  <div class="markdown level1 summary"><p>Creates a failing result where repair was attempted.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static DiagnosticCheckResult FailWithRepair(string checkName, string message, bool repairSucceeded, string repairMessage)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">checkName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></td>
+        <td><span class="parametername">repairSucceeded</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">repairMessage</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Pass_System_String_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Pass(System.String%2CSystem.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L41">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Pass_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Pass*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Pass_System_String_System_String_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Pass(System.String,System.String)">Pass(string, string)</h4>
+  <div class="markdown level1 summary"><p>Creates a passing result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static DiagnosticCheckResult Pass(string checkName, string message)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">checkName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Skip_System_String_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Skip(System.String%2CSystem.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L77">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Skip_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Skip*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Skip_System_String_System_String_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Skip(System.String,System.String)">Skip(string, string)</h4>
+  <div class="markdown level1 summary"><p>Creates a skipped result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static DiagnosticCheckResult Skip(string checkName, string message)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">checkName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult_Warn_System_String_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult.Warn(System.String%2CSystem.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L71">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Models_DiagnosticCheckResult_Warn_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Warn*"></a>
+  <h4 id="WsusManager_Core_Models_DiagnosticCheckResult_Warn_System_String_System_String_" data-uid="WsusManager.Core.Models.DiagnosticCheckResult.Warn(System.String,System.String)">Warn(string, string)</h4>
+  <div class="markdown level1 summary"><p>Creates a warning result (informational, non-critical).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static DiagnosticCheckResult Warn(string checkName, string message)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">checkName</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">message</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.DiagnosticCheckResult.html">DiagnosticCheckResult</a></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable&lt;T&gt;</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Models_DiagnosticCheckResult.md&amp;value=---%0Auid%3A%20WsusManager.Core.Models.DiagnosticCheckResult%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A" class="contribution-link">Edit this page</a>
+                  </li>
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Models/DiagnosticCheckResult.cs/#L18" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

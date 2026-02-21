@@ -1,0 +1,684 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.ScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.ScriptGeneratorService
+  id: ScriptGeneratorService
+  parent: WsusManager.Core.Services
+  children:
+  - WsusManager.Core.Services.ScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  - WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations
+  langs:
+  - csharp
+  - vb
+  name: ScriptGeneratorService
+  nameWithType: ScriptGeneratorService
+  fullName: WsusManager.Core.Services.ScriptGeneratorService
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ScriptGeneratorService
+    path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+    startLine: 13
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Generates self-contained PowerShell scripts for WSUS client operations.
+
+    Each generated script:
+
+    - Requires administrator privileges (#Requires -RunAsAdministrator)
+
+    - Is fully self-contained with no module imports or external dependencies
+
+    - Uses Write-Host with colours for readable output
+
+    - Ends with a "Press Enter" pause so the admin can read results.
+  example: []
+  syntax:
+    content: 'public class ScriptGeneratorService : IScriptGeneratorService'
+    content.vb: Public Class ScriptGeneratorService Implements IScriptGeneratorService
+  inheritance:
+  - System.Object
+  implements:
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations
+  commentId: M:WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations
+  id: GetAvailableOperations
+  parent: WsusManager.Core.Services.ScriptGeneratorService
+  langs:
+  - csharp
+  - vb
+  name: GetAvailableOperations()
+  nameWithType: ScriptGeneratorService.GetAvailableOperations()
+  fullName: WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations()
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: GetAvailableOperations
+    path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+    startLine: 54
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: Returns the ordered list of display names shown in the Script Generator UI dropdown.
+  example: []
+  syntax:
+    content: public IReadOnlyList<string> GetAvailableOperations()
+    return:
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+    content.vb: Public Function GetAvailableOperations() As IReadOnlyList(Of String)
+  overload: WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations*
+  implements:
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+- uid: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  commentId: M:WsusManager.Core.Services.ScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  id: GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  parent: WsusManager.Core.Services.ScriptGeneratorService
+  langs:
+  - csharp
+  - vb
+  name: GenerateScript(string, string?, IReadOnlyList<string>?)
+  nameWithType: ScriptGeneratorService.GenerateScript(string, string?, IReadOnlyList<string>?)
+  fullName: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript(string, string?, System.Collections.Generic.IReadOnlyList<string>?)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: GenerateScript
+    path: src/WsusManager.Core/Services/ScriptGeneratorService.cs
+    startLine: 57
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Generates a self-contained PowerShell script for the given operation type.
+
+    The script is ready to run on the target host without any external dependencies.
+  example: []
+  syntax:
+    content: public string GenerateScript(string operationType, string? wsusServerUrl = null, IReadOnlyList<string>? hostnames = null)
+    parameters:
+    - id: operationType
+      type: System.String
+      description: >-
+        The operation to generate. Use one of the display names returned by
+
+        <xref href="WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations" data-throw-if-not-resolved="false"></xref> or the internal type keys:
+
+        CancelStuckJobs, ForceCheckIn, TestConnectivity, RunDiagnostics, MassGpUpdate.
+    - id: wsusServerUrl
+      type: System.String
+      description: >-
+        WSUS server URL (e.g. http://wsus-server:8530).
+
+        Required for TestConnectivity scripts. Ignored for other operation types.
+    - id: hostnames
+      type: System.Collections.Generic.IReadOnlyList{System.String}
+      description: >-
+        List of target hostnames for MassGpUpdate scripts.
+
+        If null or empty a placeholder list is embedded in the script.
+
+        Ignored for all other operation types.
+    return:
+      type: System.String
+      description: The complete PowerShell script content as a UTF-8 string.
+    content.vb: Public Function GenerateScript(operationType As String, wsusServerUrl As String = Nothing, hostnames As IReadOnlyList(Of String) = Nothing) As String
+  overload: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript*
+  exceptions:
+  - type: System.ArgumentException
+    commentId: T:System.ArgumentException
+    description: Thrown when <code class="paramref">operationType</code> is not a recognised operation.
+  implements:
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  nameWithType.vb: ScriptGeneratorService.GenerateScript(String, String, IReadOnlyList(Of String))
+  fullName.vb: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript(String, String, System.Collections.Generic.IReadOnlyList(Of String))
+  name.vb: GenerateScript(String, String, IReadOnlyList(Of String))
+references:
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  href: WsusManager.html
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html
+  name: IScriptGeneratorService
+  nameWithType: IScriptGeneratorService
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations*
+  commentId: Overload:WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations
+  href: WsusManager.Core.Services.ScriptGeneratorService.html#WsusManager_Core_Services_ScriptGeneratorService_GetAvailableOperations
+  name: GetAvailableOperations
+  nameWithType: ScriptGeneratorService.GetAvailableOperations
+  fullName: WsusManager.Core.Services.ScriptGeneratorService.GetAvailableOperations
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  commentId: M:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+  parent: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  name: GetAvailableOperations()
+  nameWithType: IScriptGeneratorService.GetAvailableOperations()
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations()
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+    name: GetAvailableOperations
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GetAvailableOperations
+    name: GetAvailableOperations
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GetAvailableOperations
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IReadOnlyList{System.String}
+  commentId: T:System.Collections.Generic.IReadOnlyList{System.String}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IReadOnlyList`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<string>
+  nameWithType: IReadOnlyList<string>
+  fullName: System.Collections.Generic.IReadOnlyList<string>
+  nameWithType.vb: IReadOnlyList(Of String)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of String)
+  name.vb: IReadOnlyList(Of String)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Collections.Generic.IReadOnlyList`1
+  commentId: T:System.Collections.Generic.IReadOnlyList`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  name: IReadOnlyList<T>
+  nameWithType: IReadOnlyList<T>
+  fullName: System.Collections.Generic.IReadOnlyList<T>
+  nameWithType.vb: IReadOnlyList(Of T)
+  fullName.vb: System.Collections.Generic.IReadOnlyList(Of T)
+  name.vb: IReadOnlyList(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: System.ArgumentException
+  commentId: T:System.ArgumentException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.argumentexception
+  name: ArgumentException
+  nameWithType: ArgumentException
+  fullName: System.ArgumentException
+- uid: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript*
+  commentId: Overload:WsusManager.Core.Services.ScriptGeneratorService.GenerateScript
+  href: WsusManager.Core.Services.ScriptGeneratorService.html#WsusManager_Core_Services_ScriptGeneratorService_GenerateScript_System_String_System_String_System_Collections_Generic_IReadOnlyList_System_String__
+  name: GenerateScript
+  nameWithType: ScriptGeneratorService.GenerateScript
+  fullName: WsusManager.Core.Services.ScriptGeneratorService.GenerateScript
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  commentId: M:WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+  parent: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GenerateScript_System_String_System_String_System_Collections_Generic_IReadOnlyList_System_String__
+  name: GenerateScript(string, string, IReadOnlyList<string>)
+  nameWithType: IScriptGeneratorService.GenerateScript(string, string, IReadOnlyList<string>)
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(string, string, System.Collections.Generic.IReadOnlyList<string>)
+  nameWithType.vb: IScriptGeneratorService.GenerateScript(String, String, IReadOnlyList(Of String))
+  fullName.vb: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(String, String, System.Collections.Generic.IReadOnlyList(Of String))
+  name.vb: GenerateScript(String, String, IReadOnlyList(Of String))
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+    name: GenerateScript
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GenerateScript_System_String_System_String_System_Collections_Generic_IReadOnlyList_System_String__
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.GenerateScript(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String})
+    name: GenerateScript
+    href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html#WsusManager_Core_Services_Interfaces_IScriptGeneratorService_GenerateScript_System_String_System_String_System_Collections_Generic_IReadOnlyList_System_String__
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Collections.Generic.IReadOnlyList`1
+    name: IReadOnlyList
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+  - name: )
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String

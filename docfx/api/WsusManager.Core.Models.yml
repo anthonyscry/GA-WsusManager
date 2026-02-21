@@ -1,0 +1,218 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  id: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.AppSettings
+  - WsusManager.Core.Models.CheckStatus
+  - WsusManager.Core.Models.ClientDiagnosticResult
+  - WsusManager.Core.Models.ConnectivityTestResult
+  - WsusManager.Core.Models.DashboardData
+  - WsusManager.Core.Models.DiagnosticCheckResult
+  - WsusManager.Core.Models.DiagnosticReport
+  - WsusManager.Core.Models.ExportOptions
+  - WsusManager.Core.Models.ImportOptions
+  - WsusManager.Core.Models.InstallOptions
+  - WsusManager.Core.Models.OperationResult
+  - WsusManager.Core.Models.OperationResult`1
+  - WsusManager.Core.Models.ProcessResult
+  - WsusManager.Core.Models.ScheduleType
+  - WsusManager.Core.Models.ScheduledTaskOptions
+  - WsusManager.Core.Models.ServiceStatusInfo
+  - WsusManager.Core.Models.SyncProfile
+  - WsusManager.Core.Models.SyncResult
+  - WsusManager.Core.Models.WsusErrorCodes
+  - WsusManager.Core.Models.WsusErrorInfo
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  type: Namespace
+  assemblies:
+  - WsusManager.Core
+references:
+- uid: WsusManager.Core.Models.AppSettings
+  commentId: T:WsusManager.Core.Models.AppSettings
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.AppSettings.html
+  name: AppSettings
+  nameWithType: AppSettings
+  fullName: WsusManager.Core.Models.AppSettings
+- uid: WsusManager.Core.Models.ClientDiagnosticResult
+  commentId: T:WsusManager.Core.Models.ClientDiagnosticResult
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html
+  name: ClientDiagnosticResult
+  nameWithType: ClientDiagnosticResult
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult
+- uid: WsusManager.Core.Models.ConnectivityTestResult
+  commentId: T:WsusManager.Core.Models.ConnectivityTestResult
+  href: WsusManager.Core.Models.ConnectivityTestResult.html
+  name: ConnectivityTestResult
+  nameWithType: ConnectivityTestResult
+  fullName: WsusManager.Core.Models.ConnectivityTestResult
+- uid: WsusManager.Core.Models.WsusErrorInfo
+  commentId: T:WsusManager.Core.Models.WsusErrorInfo
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.WsusErrorInfo.html
+  name: WsusErrorInfo
+  nameWithType: WsusErrorInfo
+  fullName: WsusManager.Core.Models.WsusErrorInfo
+- uid: WsusManager.Core.Models.DashboardData
+  commentId: T:WsusManager.Core.Models.DashboardData
+  href: WsusManager.Core.Models.DashboardData.html
+  name: DashboardData
+  nameWithType: DashboardData
+  fullName: WsusManager.Core.Models.DashboardData
+- uid: WsusManager.Core.Models.CheckStatus
+  commentId: T:WsusManager.Core.Models.CheckStatus
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.CheckStatus.html
+  name: CheckStatus
+  nameWithType: CheckStatus
+  fullName: WsusManager.Core.Models.CheckStatus
+- uid: WsusManager.Core.Models.DiagnosticCheckResult
+  commentId: T:WsusManager.Core.Models.DiagnosticCheckResult
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.DiagnosticCheckResult.html
+  name: DiagnosticCheckResult
+  nameWithType: DiagnosticCheckResult
+  fullName: WsusManager.Core.Models.DiagnosticCheckResult
+- uid: WsusManager.Core.Models.DiagnosticReport
+  commentId: T:WsusManager.Core.Models.DiagnosticReport
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.DiagnosticReport.html
+  name: DiagnosticReport
+  nameWithType: DiagnosticReport
+  fullName: WsusManager.Core.Models.DiagnosticReport
+- uid: WsusManager.Core.Models.ExportOptions
+  commentId: T:WsusManager.Core.Models.ExportOptions
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ExportOptions.html
+  name: ExportOptions
+  nameWithType: ExportOptions
+  fullName: WsusManager.Core.Models.ExportOptions
+- uid: WsusManager.Core.Models.ImportOptions
+  commentId: T:WsusManager.Core.Models.ImportOptions
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ImportOptions.html
+  name: ImportOptions
+  nameWithType: ImportOptions
+  fullName: WsusManager.Core.Models.ImportOptions
+- uid: WsusManager.Core.Models.InstallOptions
+  commentId: T:WsusManager.Core.Models.InstallOptions
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.InstallOptions.html
+  name: InstallOptions
+  nameWithType: InstallOptions
+  fullName: WsusManager.Core.Models.InstallOptions
+- uid: WsusManager.Core.Models.OperationResult
+  commentId: T:WsusManager.Core.Models.OperationResult
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.OperationResult.html
+  name: OperationResult
+  nameWithType: OperationResult
+  fullName: WsusManager.Core.Models.OperationResult
+- uid: WsusManager.Core.Models.OperationResult`1
+  commentId: T:WsusManager.Core.Models.OperationResult`1
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.OperationResult-1.html
+  name: OperationResult<T>
+  nameWithType: OperationResult<T>
+  fullName: WsusManager.Core.Models.OperationResult<T>
+  nameWithType.vb: OperationResult(Of T)
+  fullName.vb: WsusManager.Core.Models.OperationResult(Of T)
+  name.vb: OperationResult(Of T)
+  spec.csharp:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.ProcessResult
+  commentId: T:WsusManager.Core.Models.ProcessResult
+  href: WsusManager.Core.Models.ProcessResult.html
+  name: ProcessResult
+  nameWithType: ProcessResult
+  fullName: WsusManager.Core.Models.ProcessResult
+- uid: WsusManager.Core.Models.ScheduledTaskOptions
+  commentId: T:WsusManager.Core.Models.ScheduledTaskOptions
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ScheduledTaskOptions.html
+  name: ScheduledTaskOptions
+  nameWithType: ScheduledTaskOptions
+  fullName: WsusManager.Core.Models.ScheduledTaskOptions
+- uid: WsusManager.Core.Models.ScheduleType
+  commentId: T:WsusManager.Core.Models.ScheduleType
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ScheduleType.html
+  name: ScheduleType
+  nameWithType: ScheduleType
+  fullName: WsusManager.Core.Models.ScheduleType
+- uid: WsusManager.Core.Models.ServiceStatusInfo
+  commentId: T:WsusManager.Core.Models.ServiceStatusInfo
+  href: WsusManager.Core.Models.ServiceStatusInfo.html
+  name: ServiceStatusInfo
+  nameWithType: ServiceStatusInfo
+  fullName: WsusManager.Core.Models.ServiceStatusInfo
+- uid: WsusManager.Core.Models.SyncProfile
+  commentId: T:WsusManager.Core.Models.SyncProfile
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.SyncProfile.html
+  name: SyncProfile
+  nameWithType: SyncProfile
+  fullName: WsusManager.Core.Models.SyncProfile
+- uid: WsusManager.Core.Models.SyncResult
+  commentId: T:WsusManager.Core.Models.SyncResult
+  href: WsusManager.Core.Models.SyncResult.html
+  name: SyncResult
+  nameWithType: SyncResult
+  fullName: WsusManager.Core.Models.SyncResult
+- uid: WsusManager.Core.Models.WsusErrorCodes
+  commentId: T:WsusManager.Core.Models.WsusErrorCodes
+  href: WsusManager.Core.Models.WsusErrorCodes.html
+  name: WsusErrorCodes
+  nameWithType: WsusErrorCodes
+  fullName: WsusManager.Core.Models.WsusErrorCodes
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html

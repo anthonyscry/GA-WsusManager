@@ -1,0 +1,61 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Infrastructure
+  commentId: N:WsusManager.Core.Infrastructure
+  id: WsusManager.Core.Infrastructure
+  children:
+  - WsusManager.Core.Infrastructure.IProcessRunner
+  - WsusManager.Core.Infrastructure.ProcessRunner
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.Core.Infrastructure
+  nameWithType: WsusManager.Core.Infrastructure
+  fullName: WsusManager.Core.Infrastructure
+  type: Namespace
+  assemblies:
+  - WsusManager.Core
+references:
+- uid: WsusManager.Core.Infrastructure.IProcessRunner
+  commentId: T:WsusManager.Core.Infrastructure.IProcessRunner
+  parent: WsusManager.Core.Infrastructure
+  href: WsusManager.Core.Infrastructure.IProcessRunner.html
+  name: IProcessRunner
+  nameWithType: IProcessRunner
+  fullName: WsusManager.Core.Infrastructure.IProcessRunner
+- uid: WsusManager.Core.Infrastructure.ProcessRunner
+  commentId: T:WsusManager.Core.Infrastructure.ProcessRunner
+  href: WsusManager.Core.Infrastructure.ProcessRunner.html
+  name: ProcessRunner
+  nameWithType: ProcessRunner
+  fullName: WsusManager.Core.Infrastructure.ProcessRunner
+- uid: WsusManager.Core.Infrastructure
+  commentId: N:WsusManager.Core.Infrastructure
+  href: WsusManager.html
+  name: WsusManager.Core.Infrastructure
+  nameWithType: WsusManager.Core.Infrastructure
+  fullName: WsusManager.Core.Infrastructure
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Infrastructure
+    name: Infrastructure
+    href: WsusManager.Core.Infrastructure.html
