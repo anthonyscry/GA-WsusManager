@@ -135,5 +135,6 @@ Phase 24: [██░░░░░░░░░░░] In Progress — Documentatio
 - CHANGELOG.md follows Keep a Changelog format with ISO dates
 - Automated releases via GitHub Actions on git tag push
 - Hotfix process documented for urgent patches
+- Architecture documentation format: docs/architecture.md with ASCII diagrams, real code examples, design rationale
 
 ## v4.3 Milestone Summary
