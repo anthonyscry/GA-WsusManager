@@ -288,7 +288,7 @@ public class ImportServiceTests
     {
         var options = new ImportOptions
         {
-            SourcePath = null
+            SourcePath = null!
         };
 
         var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
@@ -337,7 +337,7 @@ public class ImportServiceTests
             var options = new ImportOptions
             {
                 SourcePath = tempDir,
-                DestinationPath = null
+                DestinationPath = null!
             };
 
             // null destinationPath causes exception in Directory.CreateDirectory
