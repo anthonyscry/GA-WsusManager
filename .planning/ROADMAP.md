@@ -11,7 +11,7 @@
 
 ## Phases
 
-- [x] **Phase 25: Performance Optimization** — Reduce startup time, optimize data loading, batch UI updates (completed 2026-02-21)
+- [x] **Phase 25: Performance Optimization** — Reduce startup time, optimize data loading, batch UI updates (completed 2026-02-21)
 - [ ] **Phase 26: Keyboard & Accessibility** — Keyboard shortcuts, AutomationId, WCAG compliance
 - [ ] **Phase 27: Visual Feedback Polish** — Progress estimation, loading indicators, actionable errors
 - [ ] **Phase 28: Settings Expansion** — Operations config, logging config, advanced options
@@ -86,7 +86,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 <details>
 <summary>🔄 v4.5 Enhancement Suite (Phases 25-31) — IN PROGRESS</summary>
 
-- [x] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (5/5 plans complete) (completed 2026-02-21)
+- [x] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (5/5 plans complete) (completed 2026-02-21)
 - [ ] Phase 26: Keyboard & Accessibility — Keyboard shortcuts, AutomationId, WCAG compliance
 - [ ] Phase 27: Visual Feedback Polish — Progress estimation, loading indicators, actionable errors
 - [ ] Phase 28: Settings Expansion — Operations config, logging config, advanced options
@@ -97,11 +97,11 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 **Requirements:** 38 total (5 Performance, 10 UX Polish, 8 Settings, 8 Data Views, 7 Testing/Docs)
 
 **Phase 25 Plans:**
-- [x] 25-01: Parallelized Application Initialization (2026-02-21) — PERF-08: 30% startup time reduction
-- [ ] 25-02: List Virtualization for 2000+ Computers — PERF-09
-- [ ] 25-03: Lazy Loading for Update Metadata — PERF-10
-- [ ] 25-04: Batched Log Panel Updates — PERF-11
-- [ ] 25-05: Sub-100ms Theme Switching — PERF-12
+- [x] 25-01-PLAN.md — Parallelized Application Initialization (2026-02-21) — PERF-08: 30% startup time reduction
+- [x] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
+- [x] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
+- [x] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12)
+- [x] 25-05-PLAN.md — Enable list virtualization for large datasets (PERF-09)
 
 </details>
 
@@ -133,8 +133,8 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 22. Performance Benchmarking | v4.4 | 3/3 | Complete | 2026-02-21 |
 | 23. Memory Leak Detection | v4.4 | 1/1 | Complete | 2026-02-21 |
 | 24. Documentation Generation | v4.4 | 6/6 | Complete | 2026-02-21 |
-| 25. Performance Optimization | 5/5 | Complete    | 2026-02-21 | 2026-02-21 |
-| 26. Keyboard & Accessibility | v4.5 | 0/4 | Not started | - |
+| 25. Performance Optimization | v4.5 | 5/5 | Complete | 2026-02-21 |
+| 26. Keyboard & Accessibility | v4.5 | 5/5 | Not started | - |
 | 27. Visual Feedback Polish | v4.5 | 0/4 | Not started | - |
 | 28. Settings Expansion | v4.5 | 0/4 | Not started | - |
 | 29. Data Filtering | v4.5 | 0/3 | Not started | - |
@@ -143,7 +143,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 
 ---
 
-**Total:** 31 phases, 93 plans — 63 complete, 30 pending
+**Total:** 31 phases, 98 plans — 68 complete, 30 pending
 
 ## v4.5 Phase Details
 
@@ -162,12 +162,12 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 4. Log panel updates batch 100ms chunks to reduce UI thread overhead
 5. Theme switching applies changes within 100ms for instant visual feedback
 
-**Plans:**
-5/5 plans complete
-- [ ] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
-- [ ] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
-- [x] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12) ✅
-- [ ] 25-05-PLAN.md — Enable list virtualization for large datasets (PERF-09)
+**Plans:** 5/5 complete
+- [x] 25-01-PLAN.md — Parallelized Application Initialization (2026-02-21) — PERF-08: 30% startup time reduction
+- [x] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
+- [x] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
+- [x] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12)
+- [x] 25-05-PLAN.md — Enable list virtualization for large datasets (PERF-09)
 
 ---
 
@@ -186,7 +186,12 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 4. All themes pass WCAG 2.1 AA contrast verification (4.5:1 for normal text, 3:1 for large text)
 5. Dialog windows center on owner window or primary monitor if no owner
 
-**Plans:** TBD
+**Plans:** 5 plans
+- [ ] 26-01-PLAN.md — Global keyboard shortcuts (F1, F5, Ctrl+S, Ctrl+Q, Escape) — UX-01
+- [ ] 26-02-PLAN.md — AutomationId attributes for UI automation — UX-03
+- [ ] 26-03-PLAN.md — Dialog centering behavior — UX-05
+- [ ] 26-04-PLAN.md — WCAG 2.1 AA contrast compliance verification — UX-04
+- [ ] 26-05-PLAN.md — Keyboard navigation (Tab, arrows, Enter/Space) — UX-02
 
 ---
 
