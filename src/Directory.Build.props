@@ -12,4 +12,12 @@
     <Copyright>Tony Tran, ISSO - GA-ASI</Copyright>
     <Authors>Tony Tran</Authors>
   </PropertyGroup>
+
+  <!-- Code Coverage Quality Gates -->
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <Threshold>70</Threshold>
+    <ThresholdType>branch</ThresholdType>
+    <ThresholdStat>minimum</ThresholdStat>
+  </PropertyGroup>
 </Project>
