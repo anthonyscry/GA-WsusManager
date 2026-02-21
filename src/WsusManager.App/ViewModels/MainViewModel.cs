@@ -174,6 +174,82 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUT COMMANDS (Phase 26)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// F1 - Opens Help dialog (same as Help button in sidebar).
+    /// </summary>
+    [RelayCommand]
+    private void ShowHelp()
+    {
+        Navigate("Help");
+    }
+
+    /// <summary>
+    /// F5 - Refreshes dashboard data immediately. Wrapper for RefreshDashboard command.
+    /// Note: The existing RefreshDashboard method is already a RelayCommand (line 1239).
+    /// This method provides the keyboard shortcut entry point with status message feedback.
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshDashboardFromShortcut()
+    {
+        await RefreshDashboard().ConfigureAwait(false);
+        StatusMessage = "Dashboard refreshed";
+    }
+
+    /// <summary>
+    /// Ctrl+S - Opens Settings dialog.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenSettingsFromShortcut()
+    {
+        await OpenSettings().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Ctrl+Q - Prompts to quit application.
+    /// Shows confirmation if no operation is running, otherwise blocks with message.
+    /// </summary>
+    [RelayCommand]
+    private void Quit()
+    {
+        if (IsOperationRunning)
+        {
+            MessageBox.Show(
+                "Cannot quit while an operation is running.",
+                "Cannot Quit",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            "Are you sure you want to quit?",
+            "Confirm Quit",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            Application.Current.Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Escape - Cancels current operation or does nothing if no operation running.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanCancelOperation))]
+    private void CancelOperationFromShortcut()
+    {
+        if (IsOperationRunning && _operationCts is { IsCancellationRequested: false })
+        {
+            _logService.Info("User cancelled operation via Escape key: {Operation}", CurrentOperationName);
+            _operationCts.Cancel();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // STATUS & OPERATIONS
     // ═══════════════════════════════════════════════════════════════
 
