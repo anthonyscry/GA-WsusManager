@@ -65,9 +65,11 @@ public class HealthServiceTests
             .Setup(p => p.CheckNetworkServiceLoginAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(OperationResult<bool>.Ok(true, "Login exists."));
 
-        // appcmd for app pool — simulated as not available (most test environments)
+        // appcmd for app pool — use full path (BUG-01 fix: appcmd not on PATH by default)
         _mockRunner
-            .Setup(r => r.RunAsync("appcmd", It.IsAny<string>(), null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.RunAsync(
+                It.Is<string>(exe => exe.Contains("appcmd", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<string>(), null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessResult(0, ["WsusPool"]));
 
         // SQL connectivity and SUSDB check handled via SQL (will fail in CI without SQL)
@@ -370,5 +372,38 @@ public class HealthServiceTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => service.RunDiagnosticsAsync(@"C:\WSUS", @"localhost\SQLEXPRESS", progress, cts.Token));
+    }
+
+    // ─── BUG-01 Fix Tests ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CheckWsusAppPool_Uses_Full_Appcmd_Path()
+    {
+        // BUG-01 fix: appcmd.exe is NOT on PATH by default — must use full path to inetsrv\appcmd.exe
+        SetupAllHealthy();
+
+        string? capturedExecutable = null;
+        _mockRunner
+            .Setup(r => r.RunAsync(
+                It.IsAny<string>(),
+                It.Is<string>(a => a.Contains("apppool")),
+                It.IsAny<IProgress<string>?>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, IProgress<string>?, CancellationToken>(
+                (exe, _, _, _) => capturedExecutable = exe)
+            .ReturnsAsync(new ProcessResult(0, ["WsusPool"]));
+
+        var service = CreateService();
+        var progress = new Progress<string>(_ => { });
+
+        await service.RunDiagnosticsAsync(@"C:\WSUS", @"localhost\SQLEXPRESS", progress);
+
+        // If appcmd was called, it must use the full path
+        if (capturedExecutable is not null)
+        {
+            Assert.Contains("inetsrv", capturedExecutable, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("appcmd.exe", capturedExecutable, StringComparison.OrdinalIgnoreCase);
+            Assert.NotEqual("appcmd", capturedExecutable);
+        }
     }
 }

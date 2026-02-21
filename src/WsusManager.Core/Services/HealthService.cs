@@ -179,8 +179,11 @@ public class HealthService : IHealthService
 
         try
         {
+            // BUG-01 fix: appcmd.exe is NOT on PATH by default — use full path
+            const string appcmdPath = @"C:\Windows\System32\inetsrv\appcmd.exe";
+
             var result = await _processRunner.RunAsync(
-                "appcmd",
+                appcmdPath,
                 "list apppool \"WsusPool\" /state:Started",
                 ct: ct);
 
@@ -191,7 +194,7 @@ public class HealthService : IHealthService
 
             // App pool not started — attempt to start it
             var repairResult = await _processRunner.RunAsync(
-                "appcmd",
+                appcmdPath,
                 "start apppool /apppool.name:\"WsusPool\"",
                 ct: ct);
 

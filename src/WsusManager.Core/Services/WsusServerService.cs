@@ -146,8 +146,11 @@ public class WsusServerService : IWsusServerService
                             var totalProperty = syncProgress.GetType().GetProperty("TotalItems");
 
                             var phase = phaseProperty?.GetValue(syncProgress)?.ToString() ?? "Unknown";
-                            var processed = (int)(processedProperty?.GetValue(syncProgress) ?? 0);
-                            var total = (int)(totalProperty?.GetValue(syncProgress) ?? 0);
+                            // BUG-05 fix: WSUS API may return ProcessedItems/TotalItems as boxed long or uint.
+                            // Direct (int) cast on a boxed non-int throws InvalidCastException.
+                            // Convert.ToInt32 handles all numeric types without throwing.
+                            var processed = Convert.ToInt32(processedProperty?.GetValue(syncProgress) ?? 0);
+                            var total = Convert.ToInt32(totalProperty?.GetValue(syncProgress) ?? 0);
 
                             var pct = total > 0 ? (processed * 100.0 / total) : 0;
 
@@ -259,7 +262,6 @@ public class WsusServerService : IWsusServerService
                     return OperationResult<int>.Ok(0, "No updates to process.");
 
                 int declined = 0;
-                var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
 
                 foreach (var update in updateList)
                 {
@@ -282,6 +284,8 @@ public class WsusServerService : IWsusServerService
                     }
 
                     // Check if superseded
+                    // BUG-03 fix: do NOT decline by age (>6 months) — that removes valid patches.
+                    // Decline only expired or superseded updates (matching PowerShell implementation).
                     if (!shouldDecline)
                     {
                         var isSupersededProp = update.GetType().GetProperty("IsSuperseded");
@@ -289,18 +293,6 @@ public class WsusServerService : IWsusServerService
                         {
                             shouldDecline = true;
                             reason = "superseded";
-                        }
-                    }
-
-                    // Check if old (>6 months)
-                    if (!shouldDecline)
-                    {
-                        var creationDateProp = update.GetType().GetProperty("CreationDate");
-                        var creationDate = creationDateProp?.GetValue(update) as DateTime?;
-                        if (creationDate.HasValue && creationDate.Value < sixMonthsAgo)
-                        {
-                            shouldDecline = true;
-                            reason = "older than 6 months";
                         }
                     }
 
@@ -395,8 +387,15 @@ public class WsusServerService : IWsusServerService
                         continue;
 
                     // Check classification
-                    var classificationProp = update.GetType().GetProperty("UpdateClassificationTitle");
-                    var classification = classificationProp?.GetValue(update)?.ToString() ?? "";
+                    // BUG-04 fix: IUpdate has no flat UpdateClassificationTitle property.
+                    // Must use two-level reflection: UpdateClassification -> Title
+                    var classificationObj = update.GetType()
+                        .GetProperty("UpdateClassification")
+                        ?.GetValue(update);
+                    var classification = classificationObj?.GetType()
+                        .GetProperty("Title")
+                        ?.GetValue(classificationObj)
+                        ?.ToString() ?? "";
 
                     // Exclude Upgrades
                     if (string.Equals(classification, ExcludedClassification, StringComparison.OrdinalIgnoreCase))

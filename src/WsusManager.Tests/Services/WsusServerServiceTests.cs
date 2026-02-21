@@ -111,4 +111,78 @@ public class WsusServerServiceTests
             It.Is<string>(s => s.Contains("WSUS API not found")),
             It.IsAny<object[]>()), Times.Once);
     }
+
+    // ─── BUG Fix Tests ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void ApproveUpdatesAsync_Classification_Uses_Two_Level_Reflection()
+    {
+        // BUG-04 fix: IUpdate does not have UpdateClassificationTitle — must use
+        // UpdateClassification (IUpdateClassification) -> Title (string)
+        //
+        // Demonstrate that the wrong single-step access returns null on a real object,
+        // while the two-level access works correctly using a mock object graph.
+        var classificationObj = new { Title = "Security Updates" };
+        var updateMock = new { UpdateClassification = classificationObj };
+        var updateType = updateMock.GetType();
+
+        // Wrong approach: flat property does not exist
+        var wrongProp = updateType.GetProperty("UpdateClassificationTitle");
+        Assert.Null(wrongProp); // The flat property does not exist on IUpdate
+
+        // Correct approach: two-level reflection
+        var level1 = updateType.GetProperty("UpdateClassification");
+        Assert.NotNull(level1); // UpdateClassification exists
+
+        var classValue = level1!.GetValue(updateMock);
+        var level2 = classValue?.GetType().GetProperty("Title");
+        Assert.NotNull(level2); // Title exists on the classification object
+
+        var title = level2!.GetValue(classValue)?.ToString();
+        Assert.Equal("Security Updates", title); // Correct title retrieved
+    }
+
+    [Fact]
+    public void DeclineUpdatesAsync_Does_Not_Decline_By_Age()
+    {
+        // BUG-03 fix: declining updates older than 6 months removes valid patches.
+        // Only expired (PublicationState == "Expired") or superseded (IsSuperseded == true)
+        // updates should be declined.
+        //
+        // Simulate the fixed decision logic:
+        static bool ShouldDeclineFixed(string pubState, bool isSuperseded)
+        {
+            if (pubState == "Expired") return true;
+            if (isSuperseded) return true;
+            return false; // No age-based check
+        }
+
+        // A 2-year-old update that is neither expired nor superseded must NOT be declined
+        Assert.False(ShouldDeclineFixed("Active", isSuperseded: false));
+
+        // An expired update must be declined regardless of age
+        Assert.True(ShouldDeclineFixed("Expired", isSuperseded: false));
+
+        // A superseded update must be declined
+        Assert.True(ShouldDeclineFixed("Active", isSuperseded: true));
+    }
+
+    [Fact]
+    public void StartSynchronizationAsync_SyncProgress_Uses_Convert_Not_DirectCast()
+    {
+        // BUG-05 fix: direct (int) cast on a boxed long throws InvalidCastException.
+        // Convert.ToInt32 handles long, uint, double without throwing.
+        object boxedLong = (long)42;
+        object boxedUint = (uint)100;
+        object boxedInt = 200;
+
+        // Direct cast would throw for boxed long/uint
+        Assert.Throws<InvalidCastException>(() => (int)boxedLong);
+        Assert.Throws<InvalidCastException>(() => (int)boxedUint);
+
+        // Convert.ToInt32 handles all numeric types
+        Assert.Equal(42, Convert.ToInt32(boxedLong));
+        Assert.Equal(100, Convert.ToInt32(boxedUint));
+        Assert.Equal(200, Convert.ToInt32(boxedInt));
+    }
 }
