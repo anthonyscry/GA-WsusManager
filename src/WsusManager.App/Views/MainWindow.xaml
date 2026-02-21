@@ -861,6 +861,13 @@
                                         Command="{Binding ClearComputerFiltersCommand}"
                                         Visibility="{Binding ShowClearComputerFilters, Converter={StaticResource BoolToVisibilityConverter}}"
                                         automation:AutomationProperties.AutomationId="ClearComputerFiltersButton"/>
+
+                                <!-- Export Button (Phase 30) -->
+                                <Button Content="Export"
+                                        Style="{StaticResource ClearFiltersButton}"
+                                        Command="{Binding ExportComputersCommand}"
+                                        Margin="12,0,0,0"
+                                        automation:AutomationProperties.AutomationId="ExportComputersButton"/>
                             </StackPanel>
 
                             <!-- Filter Count Text -->
@@ -1012,6 +1019,13 @@
                                         Command="{Binding ClearUpdateFiltersCommand}"
                                         Visibility="{Binding ShowClearUpdateFilters, Converter={StaticResource BoolToVisibilityConverter}}"
                                         automation:AutomationProperties.AutomationId="ClearUpdateFiltersButton"/>
+
+                                <!-- Export Button (Phase 30) -->
+                                <Button Content="Export"
+                                        Style="{StaticResource ClearFiltersButton}"
+                                        Command="{Binding ExportUpdatesCommand}"
+                                        Margin="12,0,0,0"
+                                        automation:AutomationProperties.AutomationId="ExportUpdatesButton"/>
                             </StackPanel>
 
                             <!-- Filter Count Text -->
