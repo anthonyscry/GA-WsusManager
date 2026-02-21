@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 8 — Build Compatibility
-Plan: —
-Status: Not started
-Last activity: 2026-02-20 — Roadmap created for v4.1
+Plan: 01
+Status: Ready to execute
+Last activity: 2026-02-20 — Phase 8 plan created (08-01-PLAN.md)
 
 Progress: [░░░░░░░░░░] 0% (0/4 phases complete)
 
@@ -36,17 +36,18 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Update CI/CD `build-csharp.yml` to use .NET 8 SDK (currently targets .NET 9)
-- Verify all .csproj files have `<TargetFramework>net8.0-windows</TargetFramework>`
-- Test published EXE on Windows Server 2019+ (not just WSL dev environment)
+- Execute Phase 8 plan: `/gsd:execute-phase 08-build-compatibility`
+  - Fix ExeValidationTests.cs line 36: `net9.0-windows` → `net8.0-windows`
+  - Fix build-csharp.yml: step name and dotnet-version `9.0.x` → `8.0.x`
+  - Run `dotnet build` and `dotnet test` to confirm clean pass
 
 ### Blockers/Concerns
 
-- .NET 8 retargeting done in csproj files but CI/CD workflow `build-csharp.yml` may still specify .NET 9 SDK — needs verification before Phase 8 plan executes
+None — plan is concrete, changes are surgical, no unknowns.
 
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: v4.1 roadmap creation complete — ready to plan Phase 8
+Stopped at: Phase 8 plan created — ready to execute
 Resume file: N/A
-Next action: `/gsd:plan-phase 8`
+Next action: `/gsd:execute-phase 08-build-compatibility`
