@@ -121,9 +121,7 @@ public class DatabaseBackupServiceTests
 
         // DB size = 5 GB, so estimated backup = 4 GB
         _mockSql
-            .Setup(s => s.ExecuteScalarAsync<double>(
-                It.IsAny<string>(), "master", It.Is<string>(q => q.Contains("sys.master_files")),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetDatabaseSizeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(5.0);
 
         // BACKUP DATABASE SQL succeeds

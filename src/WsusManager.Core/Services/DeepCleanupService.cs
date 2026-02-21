@@ -47,7 +47,7 @@ public class DeepCleanupService : IDeepCleanupService
         _logService.Info("Starting deep cleanup pipeline on {SqlInstance}", sqlInstance);
 
         // Capture DB size before step 1
-        var dbSizeBefore = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
+        var dbSizeBefore = await _sqlService.GetDatabaseSizeAsync(sqlInstance, SusDb, ct).ConfigureAwait(false);
         if (dbSizeBefore >= 0)
             progress.Report($"Current database size: {dbSizeBefore:F2} GB");
 
@@ -400,7 +400,7 @@ public class DeepCleanupService : IDeepCleanupService
             }
         }
 
-        var dbSizeAfter = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
+        var dbSizeAfter = await _sqlService.GetDatabaseSizeAsync(sqlInstance, SusDb, ct).ConfigureAwait(false);
 
         sw.Stop();
         progress.Report($"[Step 6/6] Shrink database... done ({sw.Elapsed.TotalSeconds:F0}s)");
@@ -413,26 +413,4 @@ public class DeepCleanupService : IDeepCleanupService
         message.Contains("serialized", StringComparison.OrdinalIgnoreCase) ||
         (message.Contains("backup", StringComparison.OrdinalIgnoreCase) && message.Contains("operation", StringComparison.OrdinalIgnoreCase)) ||
         message.Contains("file manipulation", StringComparison.OrdinalIgnoreCase);
-
-    // ─── Helpers ─────────────────────────────────────────────────────────
-
-    private async Task<double> GetDatabaseSizeGbAsync(string sqlInstance, CancellationToken ct)
-    {
-        try
-        {
-            const string sql = @"
-                SELECT SUM(size * 8.0 / 1024 / 1024) AS SizeGB
-                FROM sys.master_files
-                WHERE database_id = DB_ID('SUSDB')
-                    AND type = 0"; // type=0 = data files only
-
-            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, "master", sql, 10, ct).ConfigureAwait(false);
-            return sizeGb;
-        }
-        catch (Exception ex)
-        {
-            _logService.Warning("Could not get database size: {Error}", ex.Message);
-            return -1;
-        }
-    }
 }

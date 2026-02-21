@@ -139,4 +139,42 @@ public class SqlService : ISqlService
 
     private static string TruncateForLog(string query, int maxLength = 120) =>
         query.Length > maxLength ? query[..maxLength] + "..." : query;
+
+    /// <inheritdoc/>
+    public async Task<double> GetDatabaseSizeAsync(string sqlInstance, string databaseName, CancellationToken ct = default)
+    {
+        try
+        {
+            const string sql = @"
+                SELECT SUM(size * 8.0 / 1024 / 1024) AS SizeGB
+                FROM sys.master_files
+                WHERE database_id = DB_ID(@DatabaseName)
+                    AND type = 0"; // type=0 = data files only
+
+            var connStr = BuildConnectionString(sqlInstance, "master");
+            using var conn = new SqlConnection(connStr);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.CommandTimeout = 10;
+            cmd.Parameters.AddWithValue("@DatabaseName", databaseName);
+
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+
+            if (result == null || result == DBNull.Value)
+                return -1;
+
+            return Convert.ToDouble(result);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logService.Warning("Could not get database size for {Database}: {Error}", databaseName, ex.Message);
+            return -1;
+        }
+    }
 }
