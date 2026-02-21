@@ -200,13 +200,15 @@ public class DeepCleanupService : IDeepCleanupService
 
         // Query all declined update IDs
         // RevisionState = 2 (Declined) — join tbUpdate with tbRevision
+        // BUG-08 fix: SELECT r.LocalUpdateID (INT) not u.UpdateID (GUID)
+        // spDeleteUpdate expects @localUpdateID INT
         const string selectSql = @"
-            SELECT DISTINCT u.UpdateID
+            SELECT DISTINCT r.LocalUpdateID
             FROM tbUpdate u
             INNER JOIN tbRevision r ON u.LocalUpdateID = r.LocalUpdateID
             WHERE r.RevisionState = 2";
 
-        var updateIds = new List<Guid>();
+        var updateIds = new List<int>();
 
         var connStr = _sqlService.BuildConnectionString(sqlInstance, SusDb);
         using (var conn = new SqlConnection(connStr))
@@ -219,7 +221,7 @@ public class DeepCleanupService : IDeepCleanupService
             while (await reader.ReadAsync(ct))
             {
                 if (!reader.IsDBNull(0))
-                    updateIds.Add(reader.GetGuid(0));
+                    updateIds.Add(reader.GetInt32(0));
             }
         }
 
@@ -246,7 +248,7 @@ public class DeepCleanupService : IDeepCleanupService
 
                 var batch = updateIds.Skip(i).Take(DeclinedDeleteBatchSize).ToList();
 
-                foreach (var updateId in batch)
+                foreach (int updateId in batch)
                 {
                     try
                     {

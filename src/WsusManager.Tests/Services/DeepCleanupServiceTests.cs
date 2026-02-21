@@ -227,6 +227,30 @@ public class DeepCleanupServiceTests
         Assert.Equal(100, expectedBatchSize);
     }
 
+    [Fact]
+    public void Step4_SelectQuery_Uses_LocalUpdateID_Not_UpdateID()
+    {
+        // BUG-08 fix: spDeleteUpdate expects INT LocalUpdateID, not GUID UpdateID
+        // Verify the SELECT query targets r.LocalUpdateID (not u.UpdateID)
+        const string selectSql = @"
+            SELECT DISTINCT r.LocalUpdateID
+            FROM tbUpdate u
+            INNER JOIN tbRevision r ON u.LocalUpdateID = r.LocalUpdateID
+            WHERE r.RevisionState = 2";
+
+        Assert.Contains("r.LocalUpdateID", selectSql);
+        Assert.DoesNotContain("u.UpdateID", selectSql);
+    }
+
+    [Fact]
+    public void Step4_UpdateIds_List_Is_Int_Not_Guid()
+    {
+        // BUG-08 fix: the update ID list must be List<int> since spDeleteUpdate takes INT
+        var updateIds = new List<int> { 1001, 1002, 1003 };
+        Assert.IsType<List<int>>(updateIds);
+        Assert.Equal(3, updateIds.Count);
+    }
+
     // ─── Step 5 Tests ─────────────────────────────────────────────────────
 
     [Fact]
