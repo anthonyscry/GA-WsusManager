@@ -57,26 +57,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| THEME-01 | — | Pending |
-| THEME-02 | — | Pending |
-| THEME-03 | — | Pending |
-| PICK-01 | — | Pending |
-| PICK-02 | — | Pending |
-| PICK-03 | — | Pending |
-| PICK-04 | — | Pending |
-| PICK-05 | — | Pending |
-| PICK-06 | — | Pending |
+| INFRA-01 | Phase 16 | Pending |
+| INFRA-02 | Phase 16 | Pending |
+| INFRA-03 | Phase 16 | Pending |
+| INFRA-04 | Phase 16 | Pending |
+| INFRA-05 | Phase 16 | Pending |
+| THEME-01 | Phase 17 | Pending |
+| THEME-02 | Phase 17 | Pending |
+| THEME-03 | Phase 17 | Pending |
+| PICK-01 | Phase 17 | Pending |
+| PICK-02 | Phase 17 | Pending |
+| PICK-03 | Phase 17 | Pending |
+| PICK-04 | Phase 17 | Pending |
+| PICK-05 | Phase 17 | Pending |
+| PICK-06 | Phase 17 | Pending |
 
 **Coverage:**
 - v4.3 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14
+- Mapped to phases: 14
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation*
