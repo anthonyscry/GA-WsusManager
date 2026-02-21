@@ -1,0 +1,14 @@
+## api filter for excluding unwanted members
+# Exclude by member name
+apiRules:
+- exclude:
+    uidRegex: ^.*Internal$
+    type: Namespace
+- exclude:
+    uidRegex: ^.*\.Internal$
+    type: Class
+    typeKind: Class
+- exclude:
+    hasAttribute:
+      uid: System.ComponentModel.EditorBrowsableAttribute
+    type: Member
