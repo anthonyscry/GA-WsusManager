@@ -73,6 +73,7 @@ Completed 2026-02-21:
 | v4.2 (12-15) | 4 | 9 | ~4 min |
 | v4.3 (16-17) | 2 | 2 | ~20 min |
 | v4.4 (18-24) | 0 | 0 | — |
+| Phase 18-test-coverage-reporting P01 | 209 | 4 tasks | 4 files |
 
 ## Accumulated Context
 
