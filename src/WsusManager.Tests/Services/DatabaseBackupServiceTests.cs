@@ -8,18 +8,35 @@ using WsusManager.Core.Services.Interfaces;
 namespace WsusManager.Tests.Services;
 
 // ────────────────────────────────────────────────────────────────────────────────
+// EXCEPTION PATH AUDIT (Phase 18-03):
+// ────────────────────────────────────────────────────────────────────────────────
+// DatabaseBackupService.cs Exception Handling:
+// [x] BackupAsync catches OperationCanceledException → returns Fail
+// [x] BackupAsync catches Exception (SQL execution) → returns Fail
+// [x] RestoreAsync catches Exception (single-user mode) → returns Fail after restart
+// [x] RestoreAsync catches Exception (restore command) → returns Fail after cleanup
+// [x] RestoreAsync catches Exception (multi-user mode) → logs warning, continues
+// [x] VerifyBackupAsync catches OperationCanceledException → re-throws
+// [x] VerifyBackupAsync catches Exception → returns OperationResult<bool>.Fail
+// [x] GetDatabaseSizeGbAsync catches Exception → returns -1
+//
+// Note: Most exceptions are caught and transformed into OperationResult.Fail results.
+// Only OperationCanceledException is re-thrown from VerifyBackupAsync.
+// ────────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────────
 // EDGE CASE AUDIT (Phase 18-02):
 // ────────────────────────────────────────────────────────────────────────────────
 // High Priority - External data handlers (file paths, SQL inputs):
-// [ ] Null input: BackupAsync(null, @"C:\backup.bak", ...) - missing
-// [ ] Null input: BackupAsync(@"localhost\SQLEXPRESS", null, ...) - missing
-// [ ] Null input: RestoreAsync(null, @"C:\backup.bak", ...) - missing
-// [ ] Null input: RestoreAsync(@"localhost\SQLEXPRESS", null, ...) - missing
-// [ ] Null input: RestoreAsync(@"localhost\SQLEXPRESS", @"C:\backup.bak", null, ...) - missing
-// [ ] Null input: VerifyBackupAsync(null, @"C:\backup.bak", ...) - missing
-// [ ] Null input: VerifyBackupAsync(@"localhost\SQLEXPRESS", null, ...) - missing
-// [ ] Empty string: BackupAsync("", @"C:\backup.bak", ...) - missing
-// [ ] Empty string: sqlInstance with only whitespace - missing
+// [x] Null input: BackupAsync(null, @"C:\backup.bak", ...) - added
+// [x] Null input: BackupAsync(@"localhost\SQLEXPRESS", null, ...) - added
+// [x] Null input: RestoreAsync(null, @"C:\backup.bak", ...) - added
+// [x] Null input: RestoreAsync(@"localhost\SQLEXPRESS", null, ...) - added
+// [x] Null input: RestoreAsync(@"localhost\SQLEXPRESS", @"C:\backup.bak", null, ...) - added
+// [x] Null input: VerifyBackupAsync(null, @"C:\backup.bak", ...) - added
+// [x] Null input: VerifyBackupAsync(@"localhost\SQLEXPRESS", null, ...) - added
+// [x] Empty string: BackupAsync("", @"C:\backup.bak", ...) - added
+// [x] Empty string: sqlInstance with only whitespace - added
 // [ ] Boundary: Very long path strings (>260 chars MAX_PATH) - missing
 // [ ] Boundary: Invalid characters in path - missing
 // ────────────────────────────────────────────────────────────────────────────────
@@ -802,5 +819,203 @@ public class DatabaseBackupServiceTests
 
         // With mocked SQL succeeding, operation succeeds despite invalid path
         Assert.True(result.Success);
+    }
+
+    // ─── Exception Path Tests (Phase 18-03) ───────────────────────────────────
+
+    [Fact]
+    public async Task BackupAsync_Catches_SqlException_And_Returns_Fail()
+    {
+        _mockPermissions
+            .Setup(p => p.CheckSqlSysadminAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<bool>.Ok(true, "Is sysadmin"));
+        _mockSql
+            .Setup(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SQL backup failed: timeout"));
+
+        var svc = CreateService();
+        var messages = CaptureProgress(out var progress);
+
+        var result = await svc.BackupAsync(@"localhost\SQLEXPRESS", @"C:\WSUS\backup.bak", progress, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Backup failed", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task BackupAsync_Catches_OperationCanceledException_And_Returns_Fail()
+    {
+        _mockPermissions
+            .Setup(p => p.CheckSqlSysadminAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<bool>.Ok(true, "Is sysadmin"));
+        _mockSql
+            .Setup(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        var svc = CreateService();
+        var messages = CaptureProgress(out var progress);
+
+        var result = await svc.BackupAsync(@"localhost\SQLEXPRESS", @"C:\WSUS\backup.bak", progress, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("cancelled", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_Catches_Exception_When_Setting_Single_User_Mode()
+    {
+        _mockPermissions
+            .Setup(p => p.CheckSqlSysadminAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<bool>.Ok(true, "Is sysadmin"));
+        _mockServiceManager
+            .Setup(s => s.StopServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Stopped."));
+        _mockServiceManager
+            .Setup(s => s.StartServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Started."));
+        _mockSql
+            .SetupSequence(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0) // VerifyBackupAsync succeeds
+            .ThrowsAsync(new Exception("Single user mode failed")); // ALTER DATABASE fails
+
+        var svc = CreateService();
+        var messages = CaptureProgress(out var progress);
+
+        var backupPath = Path.GetTempFileName();
+        try
+        {
+            var result = await svc.RestoreAsync(@"localhost\SQLEXPRESS", backupPath, @"C:\WSUS", progress, CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Contains("single-user mode", result.Message, StringComparison.OrdinalIgnoreCase);
+            // Services should be restarted after failure
+            _mockServiceManager.Verify(s => s.StartServiceAsync("W3SVC", It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _mockServiceManager.Verify(s => s.StartServiceAsync("WsusService", It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+        finally
+        {
+            File.Delete(backupPath);
+        }
+    }
+
+    [Fact]
+    public async Task RestoreAsync_Catches_Exception_When_Restoring_Database()
+    {
+        _mockPermissions
+            .Setup(p => p.CheckSqlSysadminAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<bool>.Ok(true, "Is sysadmin"));
+        _mockServiceManager
+            .Setup(s => s.StopServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Stopped."));
+        _mockServiceManager
+            .Setup(s => s.StartServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Started."));
+        _mockSql
+            .SetupSequence(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0) // VerifyBackupAsync succeeds
+            .ReturnsAsync(0) // Single user mode succeeds
+            .ThrowsAsync(new Exception("Restore failed")); // RESTORE DATABASE fails
+
+        var svc = CreateService();
+        var messages = CaptureProgress(out var progress);
+
+        var backupPath = Path.GetTempFileName();
+        try
+        {
+            var result = await svc.RestoreAsync(@"localhost\SQLEXPRESS", backupPath, @"C:\WSUS", progress, CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Contains("Restore failed", result.Message, StringComparison.OrdinalIgnoreCase);
+            // Multi-user mode should be attempted and services restarted
+            _mockServiceManager.Verify(s => s.StartServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+        finally
+        {
+            File.Delete(backupPath);
+        }
+    }
+
+    [Fact]
+    public async Task RestoreAsync_Logs_Warning_When_Setting_Multi_User_Mode_Fails()
+    {
+        _mockPermissions
+            .Setup(p => p.CheckSqlSysadminAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult<bool>.Ok(true, "Is sysadmin"));
+        _mockServiceManager
+            .Setup(s => s.StopServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Stopped."));
+        _mockServiceManager
+            .Setup(s => s.StartServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OperationResult.Ok("Started."));
+        _mockRunner
+            .Setup(r => r.RunAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessResult(0, []));
+        _mockSql
+            .SetupSequence(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0) // VerifyBackupAsync succeeds
+            .ReturnsAsync(0) // Single user mode succeeds
+            .ReturnsAsync(0) // RESTORE succeeds
+            .ThrowsAsync(new Exception("Multi-user failed")); // MULTI_USER fails
+
+        var svc = CreateService();
+        var messages = CaptureProgress(out var progress);
+
+        var backupPath = Path.GetTempFileName();
+        try
+        {
+            var result = await svc.RestoreAsync(@"localhost\SQLEXPRESS", backupPath, @"C:\WSUS", progress, CancellationToken.None);
+
+            // Restore should succeed even if multi-user mode fails (warning logged)
+            Assert.True(result.Success);
+            Assert.Contains("completed successfully", result.Message, StringComparison.OrdinalIgnoreCase);
+            // Progress should show warning
+            Assert.Contains(messages, m => m.Contains("[WARN]") && m.Contains("multi-user", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            File.Delete(backupPath);
+        }
+    }
+
+    [Fact]
+    public async Task VerifyBackupAsync_Catches_Exception_And_Returns_Fail()
+    {
+        var svc = CreateService();
+
+        _mockSql
+            .Setup(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Backup file corrupted"));
+
+        var result = await svc.VerifyBackupAsync(@"localhost\SQLEXPRESS", @"C:\WSUS\backup.bak", CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Backup verification failed", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyBackupAsync_Rethrows_OperationCanceledException()
+    {
+        var svc = CreateService();
+
+        _mockSql
+            .Setup(s => s.ExecuteNonQueryAsync(
+                It.IsAny<string>(), "master", It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => svc.VerifyBackupAsync(@"localhost\SQLEXPRESS", @"C:\WSUS\backup.bak", CancellationToken.None));
     }
 }

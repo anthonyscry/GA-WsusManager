@@ -6,6 +6,19 @@ using WsusManager.Core.Services;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EXCEPTION PATH AUDIT (Phase 18-03):
+// ────────────────────────────────────────────────────────────────────────────────
+// WindowsServiceManager.cs Exception Handling:
+// [x] GetStatusAsync catches InvalidOperationException → returns ServiceStatusInfo with IsRunning=false
+// [x] StartServiceAsync catches Exception (retry logic) → returns Fail after MaxRetryAttempts
+// [x] StartServiceAsync catches Exception when attempt < MaxRetryAttempts → retries
+// [x] StopServiceAsync catches Exception → returns OperationResult.Fail
+//
+// Note: WindowsServiceManager uses ServiceController which throws InvalidOperationException
+// when a service doesn't exist. This is caught and transformed into a ServiceStatusInfo.
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Tests for WindowsServiceManager. Since ServiceController requires a real Windows
 /// environment, we test the public interface behavior via reflection on the service
@@ -170,5 +183,54 @@ public class WindowsServiceManagerTests
             false);
 
         Assert.False(info.IsRunning);
+    }
+
+    // ─── Exception Path Tests (Phase 18-03) ───────────────────────────────────
+
+    [Fact]
+    public async Task GetStatusAsync_Handles_InvalidOperationException_For_Nonexistent_Service()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var manager = new WindowsServiceManager(_mockLog.Object);
+
+        // ServiceController throws InvalidOperationException for non-existent services
+        // GetStatusAsync catches this and returns IsRunning=false
+        var result = await manager.GetStatusAsync("NonExistentService_abc123");
+
+        Assert.NotNull(result);
+        Assert.Equal("NonExistentService_abc123", result.ServiceName);
+        Assert.False(result.IsRunning);
+        // Status should be Stopped when service doesn't exist
+        Assert.Equal(ServiceControllerStatus.Stopped, result.Status);
+    }
+
+    [Fact]
+    public async Task StartServiceAsync_Retries_On_Exception_Before_Failing()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var manager = new WindowsServiceManager(_mockLog.Object);
+
+        // Starting a non-existent service should fail after MaxRetryAttempts (3)
+        var result = await manager.StartServiceAsync("NonExistentService_xyz");
+
+        Assert.False(result.Success);
+        Assert.Contains("Failed to start", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("after 3 attempts", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task StopServiceAsync_Handles_Exception_For_Nonexistent_Service()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var manager = new WindowsServiceManager(_mockLog.Object);
+
+        // Stopping a non-existent service should catch exception and return Fail
+        var result = await manager.StopServiceAsync("NonExistentService_xyz");
+
+        Assert.False(result.Success);
+        Assert.Contains("Failed to stop", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
