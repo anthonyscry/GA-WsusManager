@@ -431,11 +431,13 @@
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
                                                 Padding="12,4" Margin="0,0,6,0"
+
                                                 Command="{Binding StartServiceCommand}"
                                                 CommandParameter="W3SVC"
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
                                         <Button Grid.Column="2" Content="Stop" Style="{StaticResource BtnRed}"
                                                 Padding="12,4"
+
                                                 Command="{Binding StopServiceCommand}"
                                                 CommandParameter="W3SVC"
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
@@ -458,11 +460,13 @@
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
                                                 Padding="12,4" Margin="0,0,6,0"
+
                                                 Command="{Binding StartServiceCommand}"
                                                 CommandParameter="WsusService"
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
                                         <Button Grid.Column="2" Content="Stop" Style="{StaticResource BtnRed}"
                                                 Padding="12,4"
+
                                                 Command="{Binding StopServiceCommand}"
                                                 CommandParameter="WsusService"
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
@@ -507,6 +511,7 @@
                                                Text="Runs the full 6-step cleanup pipeline: WSUS built-in cleanup, remove supersession records, delete declined updates, rebuild indexes, and shrink the database."/>
                                     <Button Content="Run Deep Cleanup" Style="{StaticResource BtnGreen}"
                                             Padding="16,8" HorizontalAlignment="Left"
+
                                             Command="{Binding RunDeepCleanupCommand}"
                                             IsEnabled="{Binding IsWsusInstalled}"/>
                                 </StackPanel>
@@ -523,6 +528,7 @@
                                                Text="Creates a compressed SQL backup of SUSDB. You will be prompted to choose a destination file. Requires SQL sysadmin permissions."/>
                                     <Button Content="Backup Database" Style="{StaticResource BtnSec}"
                                             Padding="16,8" HorizontalAlignment="Left"
+
                                             Command="{Binding BackupDatabaseCommand}"
                                             IsEnabled="{Binding IsWsusInstalled}"/>
                                 </StackPanel>
@@ -542,6 +548,7 @@
                                                Text="WARNING: This replaces all current WSUS data."/>
                                     <Button Content="Restore Database" Style="{StaticResource BtnSec}"
                                             Padding="16,8" HorizontalAlignment="Left"
+
                                             Command="{Binding RestoreDatabaseCommand}"
                                             IsEnabled="{Binding IsWsusInstalled}"/>
                                 </StackPanel>
@@ -575,6 +582,7 @@
                                                    Foreground="{DynamicResource TextSecondary}" FontSize="13"
                                                    VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1"
+
                                                  Text="{Binding ClientHostname, UpdateSourceTrigger=PropertyChanged}"
                                                  Background="{DynamicResource InputBackground}"
                                                  Foreground="{DynamicResource TextPrimary}"
@@ -593,18 +601,22 @@
                                     <WrapPanel>
                                         <Button Content="Cancel Stuck Jobs" Style="{StaticResource BtnSec}"
                                                 Padding="16,8" Margin="0,0,8,8"
+
                                                 Command="{Binding RunClientCancelStuckJobsCommand}"
                                                 ToolTip="Stop WU services, clear cache, restart — fixes stuck update jobs"/>
                                         <Button Content="Force Check-In" Style="{StaticResource BtnSec}"
                                                 Padding="16,8" Margin="0,0,8,8"
+
                                                 Command="{Binding RunClientForceCheckInCommand}"
                                                 ToolTip="Run gpupdate, resetauthorization, detectnow, reportnow"/>
                                         <Button Content="Test Connectivity" Style="{StaticResource BtnSec}"
                                                 Padding="16,8" Margin="0,0,8,8"
+
                                                 Command="{Binding RunClientTestConnectivityCommand}"
                                                 ToolTip="Test TCP connection from client to WSUS server on ports 8530/8531"/>
                                         <Button Content="Run Diagnostics" Style="{StaticResource BtnGreen}"
                                                 Padding="16,8" Margin="0,0,8,8"
+
                                                 Command="{Binding RunClientDiagnosticsCommand}"
                                                 ToolTip="Gather WSUS settings, service status, last check-in, reboot state"/>
                                     </WrapPanel>
@@ -620,7 +632,8 @@
                                     <TextBlock Text="Enter hostnames (one per line, or comma-separated) or load from a text file. Mass GPUpdate runs gpupdate + WSUS check-in on every host."
                                                Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
-                                    <TextBox Text="{Binding MassHostnames, UpdateSourceTrigger=PropertyChanged}"
+                                    <TextBox
+                                             Text="{Binding MassHostnames, UpdateSourceTrigger=PropertyChanged}"
                                              Background="{DynamicResource InputBackground}"
                                              Foreground="{DynamicResource TextPrimary}"
                                              BorderBrush="{DynamicResource BorderPrimary}"
@@ -631,10 +644,12 @@
                                     <WrapPanel Margin="0,8,0,0">
                                         <Button Content="Load from File" Style="{StaticResource BtnSec}"
                                                 Padding="16,8" Margin="0,0,8,0"
+
                                                 Command="{Binding LoadHostFileCommand}"
                                                 ToolTip="Load hostnames from a text file (one per line)"/>
                                         <Button Content="Mass GPUpdate" Style="{StaticResource BtnGreen}"
                                                 Padding="16,8" Margin="0,0,8,0"
+
                                                 Command="{Binding RunMassGpUpdateCommand}"
                                                 ToolTip="Run gpupdate + WSUS check-in on all listed hosts"/>
                                     </WrapPanel>
@@ -659,6 +674,7 @@
                                                    Foreground="{DynamicResource TextSecondary}" FontSize="13"
                                                    VerticalAlignment="Center"/>
                                         <ComboBox Grid.Column="1"
+
                                                   ItemsSource="{Binding ScriptOperations}"
                                                   SelectedItem="{Binding SelectedScriptOperation}"
                                                   Background="{DynamicResource InputBackground}"
@@ -668,6 +684,7 @@
                                     </Grid>
                                     <Button Content="Generate Script" Style="{StaticResource BtnSec}"
                                             Padding="16,8" HorizontalAlignment="Left"
+
                                             Command="{Binding GenerateScriptCommand}"
                                             ToolTip="Generate a PowerShell script file for the selected operation"/>
                                 </StackPanel>
@@ -693,15 +710,18 @@
                                                    VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding ErrorCodeInput, UpdateSourceTrigger=PropertyChanged}"
+
                                                  Background="{DynamicResource InputBackground}"
                                                  Foreground="{DynamicResource TextPrimary}"
                                                  BorderBrush="{DynamicResource BorderPrimary}"
                                                  Padding="8,6" FontSize="13"/>
                                         <Button Grid.Column="2" Content="Lookup" Style="{StaticResource BtnSec}"
                                                 Padding="16,6" Margin="8,0,0,0"
+
                                                 Command="{Binding LookupErrorCodeCommand}"/>
                                     </Grid>
-                                    <TextBox Text="{Binding ErrorCodeResult, Mode=OneWay}"
+                                    <TextBox
+                                             Text="{Binding ErrorCodeResult, Mode=OneWay}"
                                              Background="{DynamicResource PrimaryBackground}"
                                              Foreground="{DynamicResource TextPrimary}"
                                              BorderThickness="0"
@@ -785,16 +805,20 @@
                             <StackPanel Grid.Column="2" Orientation="Horizontal">
                                 <Button Content="Cancel" Style="{StaticResource BtnRed}"
                                         Padding="10,4" FontSize="11" Margin="0,0,8,0"
+
                                         Command="{Binding CancelOperationCommand}"
                                         Visibility="{Binding CancelButtonVisibility}"/>
                                 <Button Content="{Binding LogToggleText}" Style="{StaticResource BtnSec}"
                                         Padding="10,4" FontSize="11" Margin="0,0,4,0"
+
                                         Command="{Binding ToggleLogPanelCommand}"/>
                                 <Button Content="Clear" Style="{StaticResource BtnSec}"
                                         Padding="10,4" FontSize="11" Margin="0,0,4,0"
+
                                         Command="{Binding ClearLogCommand}"/>
                                 <Button Content="Save" Style="{StaticResource BtnSec}"
                                         Padding="10,4" FontSize="11"
+
                                         Command="{Binding SaveLogCommand}"/>
                             </StackPanel>
                         </Grid>
@@ -816,6 +840,7 @@
                              Text="{Binding LogOutput, Mode=OneWay}"
                              Height="{Binding LogPanelHeight}"
                              Visibility="{Binding LogTextVisibility}"
+
                              x:Name="LogTextBox"
                              TextChanged="LogTextBox_TextChanged"/>
                 </DockPanel>
