@@ -132,11 +132,11 @@ None.
 - Filter state persistence
 - Mock data for UI testing
 
-**Phase 30 - Data Export (DAT-05 to DAT-08):** NEXT
-- Computer list CSV export
-- Update list CSV export
-- UTF-8 BOM for Excel
-- Export progress and destination
+**Phase 30 - Data Export (DAT-05 to DAT-08):** PLANNED
+- 30-01-PLAN.md — CSV Export Service (DAT-05, DAT-06, DAT-07)
+- 30-02-PLAN.md — Export Button UI (DAT-05, DAT-06)
+- 30-03-PLAN.md — Export Progress Dialog (DAT-08)
+- Status: 3/3 plans created, ready for implementation
 
 **Phase 31 - Testing & Documentation:**
 - Performance benchmarks
