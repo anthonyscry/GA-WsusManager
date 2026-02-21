@@ -218,7 +218,7 @@ public class OperationResultTests
     [Fact]
     public void Generic_Ok_Handles_Null_Data_For_Reference_Types()
     {
-        var result = OperationResult<string>.Ok(null, "Test");
+        var result = OperationResult<string>.Ok(null!, "Test");
 
         Assert.True(result.Success);
         Assert.Null(result.Data);
@@ -252,7 +252,7 @@ public class OperationResultTests
     public void OperationResult_Handles_Exception_With_Null_Message()
     {
         var ex = new InvalidOperationException("test");
-        var result = OperationResult.Fail(null, ex);
+        var result = OperationResult.Fail(null!, ex);
 
         Assert.False(result.Success);
         Assert.Null(result.Message);

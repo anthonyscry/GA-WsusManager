@@ -629,7 +629,7 @@ public class DatabaseBackupServiceTests
 
         // Service should handle null gracefully (checkSqlSysadminAsync will receive null)
         _mockPermissions
-            .Setup(p => p.CheckSqlSysadminAsync(null, It.IsAny<CancellationToken>()))
+            .Setup(p => p.CheckSqlSysadminAsync(null!, It.IsAny<CancellationToken>()))
             .ReturnsAsync(OperationResult<bool>.Fail("SQL instance cannot be null"));
 
         var result = await svc.BackupAsync(null!, @"C:\WSUS\backup.bak", progress, CancellationToken.None);
@@ -660,7 +660,7 @@ public class DatabaseBackupServiceTests
         var messages = CaptureProgress(out var progress);
 
         _mockPermissions
-            .Setup(p => p.CheckSqlSysadminAsync(null, It.IsAny<CancellationToken>()))
+            .Setup(p => p.CheckSqlSysadminAsync(null!, It.IsAny<CancellationToken>()))
             .ReturnsAsync(OperationResult<bool>.Fail("SQL instance cannot be null"));
 
         var backupPath = Path.GetTempFileName();

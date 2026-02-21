@@ -277,7 +277,7 @@ public class ClientServiceTests
     }
 
     [Fact]
-    public async Task TestConnectivity_Extracts_Server_From_Url()
+    public void TestConnectivity_Extracts_Server_From_Url()
     {
         // Verify the URL parsing extracts "wsus01" from "http://wsus01:8530"
         var extracted = ClientService.ExtractHostname("http://wsus01:8530");

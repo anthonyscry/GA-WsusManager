@@ -288,7 +288,7 @@ public class ExportServiceTests
         {
             var options = new ExportOptions
             {
-                SourcePath = null,
+                SourcePath = null!,
                 FullExportPath = tempDir
             };
 
