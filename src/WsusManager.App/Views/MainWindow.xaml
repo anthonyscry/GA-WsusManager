@@ -552,6 +552,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
@@ -562,7 +563,21 @@
                                            FontSize="11" Foreground="{StaticResource Text2}"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <!-- Progress bar and step text (shown during operations) -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                        VerticalAlignment="Center" Margin="8,0"
+                                        Visibility="{Binding ProgressBarVisibility}">
+                                <ProgressBar IsIndeterminate="True"
+                                             Width="120" Height="3"
+                                             Margin="0,0,8,0"
+                                             VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding OperationStepText}"
+                                           FontSize="11" Foreground="{StaticResource Text2}"
+                                           VerticalAlignment="Center" MaxWidth="200"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
                                 <Button Content="Cancel" Style="{StaticResource BtnRed}"
                                         Padding="10,4" FontSize="11" Margin="0,0,8,0"
                                         Command="{Binding CancelOperationCommand}"
@@ -578,6 +593,16 @@
                                         Command="{Binding SaveLogCommand}"/>
                             </StackPanel>
                         </Grid>
+                    </Border>
+
+                    <!-- Status Banner (shown after operation completes) -->
+                    <Border DockPanel.Dock="Top"
+                            Background="{Binding StatusBannerColor}"
+                            Padding="12,5"
+                            Visibility="{Binding StatusBannerVisibility}">
+                        <TextBlock Text="{Binding StatusBannerText}"
+                                   Foreground="White" FontSize="12"
+                                   FontWeight="SemiBold"/>
                     </Border>
 
                     <!-- Log Text Area -->

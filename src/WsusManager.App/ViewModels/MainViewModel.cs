@@ -152,6 +152,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CancelOperationCommand))]
     [NotifyPropertyChangedFor(nameof(CancelButtonVisibility))]
+    [NotifyPropertyChangedFor(nameof(ProgressBarVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsProgressBarVisible))]
     private bool _isOperationRunning;
 
     [ObservableProperty]
@@ -159,6 +161,44 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _currentOperationName = string.Empty;
+
+    /// <summary>
+    /// Tracks the current step of a multi-step operation (e.g. "[Step 3/6]: Rebuilding indexes").
+    /// Updated automatically when progress lines matching "[Step N/M]" are reported.
+    /// Cleared when an operation starts and when it completes.
+    /// </summary>
+    [ObservableProperty]
+    private string _operationStepText = string.Empty;
+
+    /// <summary>
+    /// Text shown in the colored result banner after an operation completes.
+    /// Set to "{operationName} completed successfully.", "{operationName} failed.", or "{operationName} cancelled."
+    /// Cleared when the next operation starts.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBannerVisibility))]
+    private string _statusBannerText = string.Empty;
+
+    /// <summary>
+    /// Background color for the status banner. Green (#3FB950) for success,
+    /// Red (#F85149) for failure, Orange (#D29922) for cancel.
+    /// </summary>
+    [ObservableProperty]
+    private SolidColorBrush _statusBannerColor = new(Colors.Transparent);
+
+    /// <summary>
+    /// True while an operation is running — drives the ProgressBar visibility binding.
+    /// Computed from IsOperationRunning for clear semantic naming in XAML.
+    /// </summary>
+    public bool IsProgressBarVisible => IsOperationRunning;
+
+    /// <summary>Controls whether the indeterminate ProgressBar is shown (during operations).</summary>
+    public Visibility ProgressBarVisibility =>
+        IsOperationRunning ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Controls whether the status banner is shown (after operation completes).</summary>
+    public Visibility StatusBannerVisibility =>
+        string.IsNullOrEmpty(StatusBannerText) ? Visibility.Collapsed : Visibility.Visible;
 
     public Visibility CancelButtonVisibility =>
         IsOperationRunning ? Visibility.Visible : Visibility.Collapsed;
@@ -195,6 +235,10 @@ public partial class MainViewModel : ObservableObject
         CurrentOperationName = operationName;
         StatusMessage = $"Running: {operationName}...";
 
+        // Clear previous banner and step text when new operation starts
+        StatusBannerText = string.Empty;
+        OperationStepText = string.Empty;
+
         // Notify all operation commands to re-evaluate CanExecute (disables buttons during operation)
         NotifyCommandCanExecuteChanged();
 
@@ -204,7 +248,14 @@ public partial class MainViewModel : ObservableObject
         _logService.Info("Starting operation: {Operation}", operationName);
         AppendLog($"=== {operationName} ===");
 
-        var progress = new Progress<string>(line => AppendLog(line));
+        var progress = new Progress<string>(line =>
+        {
+            AppendLog(line);
+
+            // Parse "[Step N/M]" prefix to update step text in the log header
+            if (line.StartsWith("[Step ", StringComparison.OrdinalIgnoreCase))
+                OperationStepText = line;
+        });
 
         try
         {
@@ -213,12 +264,16 @@ public partial class MainViewModel : ObservableObject
             if (success)
             {
                 StatusMessage = $"{operationName} completed successfully.";
+                StatusBannerText = $"{operationName} completed successfully.";
+                StatusBannerColor = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50)); // Green
                 AppendLog($"=== {operationName} completed ===");
                 _logService.Info("Operation completed: {Operation}", operationName);
             }
             else
             {
                 StatusMessage = $"{operationName} failed.";
+                StatusBannerText = $"{operationName} failed.";
+                StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // Red
                 AppendLog($"=== {operationName} FAILED ===");
                 _logService.Warning("Operation failed: {Operation}", operationName);
             }
@@ -228,6 +283,8 @@ public partial class MainViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             StatusMessage = $"{operationName} cancelled.";
+            StatusBannerText = $"{operationName} cancelled.";
+            StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22)); // Orange
             AppendLog($"=== {operationName} CANCELLED ===");
             _logService.Info("Operation cancelled: {Operation}", operationName);
             return false;
@@ -235,6 +292,8 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"{operationName} failed with error.";
+            StatusBannerText = $"{operationName} failed.";
+            StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // Red
             AppendLog($"[ERROR] {ex.Message}");
             AppendLog($"=== {operationName} FAILED ===");
             _logService.Error(ex, "Operation error: {Operation}", operationName);
@@ -244,6 +303,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsOperationRunning = false;
             CurrentOperationName = string.Empty;
+            OperationStepText = string.Empty;
             _operationCts?.Dispose();
             _operationCts = null;
 
