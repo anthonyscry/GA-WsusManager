@@ -369,7 +369,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _operationCts = new CancellationTokenSource();
         IsOperationRunning = true;
         CurrentOperationName = operationName;
-        StatusMessage = $"Running: {operationName}...";
+        StatusMessage = $"Loading: {operationName}...";
 
         // Clear previous banner and step text when new operation starts
         StatusBannerText = string.Empty;
