@@ -82,22 +82,22 @@ dotnet publish src/WsusManager.App/WsusManager.App.csproj \
 ## Screenshots
 
 ### Dashboard
-![Dashboard](docs/screenshots/dashboard.png)
+*Screenshot to be added - See [docs/screenshots/README.md](docs/screenshots/README.md) for details*
 
 Real-time status monitoring with auto-refresh every 30 seconds.
 
 ### Diagnostics
-![Diagnostics](docs/screenshots/diagnostics.png)
+*Screenshot to be added - See [docs/screenshots/README.md](docs/screenshots/README.md) for details*
 
 Comprehensive health scanning with automatic repair for services, firewall, permissions, and SQL.
 
 ### Settings
-![Settings](docs/screenshots/settings.png)
+*Screenshot to be added - See [docs/screenshots/README.md](docs/screenshots/README.md) for details*
 
 Configurable settings with theme picker and immediate effect.
 
 ### Air-Gap Transfer
-![Transfer](docs/screenshots/transfer.png)
+*Screenshot to be added - See [docs/screenshots/README.md](docs/screenshots/README.md) for details*
 
 Export/import operations for air-gapped networks with differential copy support.
 
@@ -190,6 +190,8 @@ GA-WsusManager/
 
 - **[CLAUDE.md](CLAUDE.md)** - Development documentation (legacy PowerShell info retained for reference)
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines, build instructions, code style
+- **[docs/releases.md](docs/releases.md)** - Release process and versioning
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature notes
 - **[docs/architecture.md](docs/architecture.md)** - C# architecture and design decisions (to be added)
 - **[docs/api/](docs/api/)** - API reference documentation (to be generated via DocFX)
 
