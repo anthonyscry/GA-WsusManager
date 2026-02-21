@@ -1148,6 +1148,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Updates dashboard from pre-collected data. Used during initialization
+    /// to avoid redundant data fetching when data is already available.
+    /// </summary>
+    private void UpdateDashboardFromData(DashboardData data)
+    {
+        UpdateDashboardCards(data);
+    }
+
+    /// <summary>
     /// Updates all dashboard card properties from collected data.
     /// Includes threshold-based color logic for each card.
     /// </summary>
@@ -1281,18 +1290,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Called from MainWindow.Loaded. Loads settings, applies state,
     /// triggers the first dashboard refresh, and starts the auto-refresh timer.
+    /// Uses parallel initialization for faster startup.
     /// </summary>
     public async Task InitializeAsync()
     {
         if (_isInitialized) return;
         _isInitialized = true;
 
-        // Load settings
-        _settings = await _settingsService.LoadAsync().ConfigureAwait(false);
-        ApplySettings(_settings);
+        // Parallel initialization: load settings and fetch dashboard data concurrently
+        var settingsTask = _settingsService.LoadAsync();
+        var dashboardTask = _dashboardService.CollectAsync(_settingsService.Current, CancellationToken.None);
 
-        // First dashboard refresh (sets IsWsusInstalled correctly before any checks)
-        await RefreshDashboard().ConfigureAwait(false);
+        // Await both operations in parallel
+        await Task.WhenAll(settingsTask, dashboardTask).ConfigureAwait(false);
+
+        // Apply settings and dashboard data from completed tasks
+        _settings = settingsTask.Result;
+        var dashboardData = dashboardTask.Result;
+
+        ApplySettings(_settings);
+        UpdateDashboardFromData(dashboardData);
 
         // Check WSUS installation and show message if needed
         if (!IsWsusInstalled)
