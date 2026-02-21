@@ -5,14 +5,20 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** v4.3 Themes
+**Current focus:** v4.3 Themes — Phase 16: Theme Infrastructure
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 16 — Theme Infrastructure
 Plan: —
-Status: Defining requirements
-Last activity: 2026-02-20 — Milestone v4.3 started
+Status: Roadmap created, ready to plan Phase 16
+Last activity: 2026-02-20 — v4.3 roadmap created (2 phases, 14 requirements mapped)
+
+```
+v4.3 Progress: [░░░░░░░░░░] 0/2 phases
+Phase 16:      [░░░░░░░░░░] Not started
+Phase 17:      [░░░░░░░░░░] Not started
+```
 
 ## Performance Metrics
 
@@ -33,7 +39,11 @@ Last activity: 2026-02-20 — Milestone v4.3 started
 
 ### Decisions
 
-(Cleared at milestone boundary — see PROJECT.md Key Decisions for persistent decisions)
+- **2 phases only:** Research confirms infrastructure must be complete and verified before any theme files are authored. Writing themes against StaticResource bindings produces themes that appear to do nothing — the wrong failure mode.
+- **Phase 16 gates Phase 17:** The StaticResource-to-DynamicResource migration is a hard prerequisite. Token/style split is the first task in Phase 16 for this reason.
+- **ViewModel brush migration in Phase 16:** If deferred to Phase 17, dashboard card colors would be wrong on all non-default themes when Phase 17 ships. No user should ever see partially-themed dashboard bars.
+- **No new NuGet packages:** Zero additional dependencies. Native WPF ResourceDictionary merging handles everything.
+- **ThemeChanged event design:** Resolve during Phase 16 implementation — either `event Action<string>` on the service or CommunityToolkit.Mvvm.Messaging (already in project). Both valid.
 
 ### Pending Todos
 
@@ -46,5 +56,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Defining v4.3 milestone requirements
-Resume file: None
+Stopped at: v4.3 roadmap created
+Resume at: `/gsd:plan-phase 16`
