@@ -21,17 +21,15 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ 257 xUnit tests covering all services and ViewModel logic — v4.0
 - ✓ 62 v1 requirements implemented and verified — v4.0
 
+- ✓ .NET 8 SDK compatibility (retarget from .NET 9) — v4.1
+- ✓ App launches and UI renders correctly with active nav highlighting — v4.1
+- ✓ 5 critical operation bugs fixed (sync, cleanup, health check) — v4.1
+- ✓ Button CanExecute refresh for proper visual disabling — v4.1
+- ✓ 263 xUnit tests passing — v4.1
+
 ### Active
 
-## Current Milestone: v4.1 Bug Fixes & Polish
-
-**Goal:** Get the v4.0 C# rewrite launching, looking right, and with core operations working reliably on a real WSUS server.
-
-**Target features:**
-- .NET 8 SDK compatibility (retarget from .NET 9)
-- App launches and UI renders correctly (dark theme, dashboard, all panels)
-- Core operations execute successfully on real WSUS server (health check, diagnostics, sync, cleanup, backup/restore)
-- Bug fixes for any crashes, UI glitches, or operation failures discovered during testing
+(None — v4.1 shipped. Next milestone requirements TBD via `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -45,10 +43,10 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.0 shipped 2026-02-20
-- **Codebase:** 12,674 LOC C# across 88 .cs + 8 .xaml files
+- **Version:** v4.1 shipped 2026-02-20
+- **Codebase:** ~13,000 LOC C# across 88 .cs + 8 .xaml files
 - **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
-- **Tests:** 257 xUnit tests (257 on WSL, ~271 on Windows CI with WPF)
+- **Tests:** 263 xUnit tests (263 on WSL, ~277 on Windows CI with WPF)
 - **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 
@@ -85,4 +83,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-20 after v4.1 milestone start*
+*Last updated: 2026-02-20 after v4.1 milestone*
