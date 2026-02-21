@@ -1,234 +1,307 @@
-# Stack Research
+# Technology Stack
 
-**Domain:** WPF Runtime Theme Switching — v4.3 Theming Milestone
-**Researched:** 2026-02-20
-**Confidence:** HIGH (WPF theming patterns are stable, well-documented, and verified against official Microsoft docs)
+**Project:** GA-WsusManager v4.4 Quality & Polish
+**Researched:** 2026-02-21
 
----
+## Summary
 
-## Milestone Scope
-
-This research covers ONLY what is new or changed for v4.3. The base stack (C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq) is validated and unchanged.
-
-**The single question this answers:** How do we add runtime color scheme switching to an existing WPF app where all XAML currently uses `StaticResource`?
-
----
-
-## Decision Summary
-
-**Use native WPF ResourceDictionary merging with DynamicResource bindings.**
-
-No external theming library is needed. The existing `Themes/DarkTheme.xaml` file already establishes the correct architectural pattern — separate color brushes in a dedicated dictionary, referenced from all XAML. The v4.3 work is: (1) convert `StaticResource` to `DynamicResource` throughout, (2) create 5 additional theme XAML files using the same key names, (3) write a `ThemeService` that swaps the merged dictionary at runtime. That is the entire stack addition.
-
----
+The v4.4 milestone adds quality and polish capabilities to the existing .NET 8 WPF codebase without requiring major architectural changes. Focus on lightweight tools that integrate cleanly with existing GitHub Actions CI/CD and xUnit/Moq test infrastructure.
 
 ## Recommended Stack
 
-### Core Technologies (unchanged)
+### Testing & Quality
 
-No new core technologies. Runtime theme switching is a native WPF capability.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **FlaUI.UIA3** | 4.0.0 | WPF UI automation testing | Modern WPF automation, better than WinAppDriver, active development, lambda-based API |
+| **BenchmarkDotNet** | 0.14.x | Performance benchmarking | Industry standard for .NET, integrates with VS, generates diagsession files |
+| **coverlet.collector** | 6.0.2 (existing) | Code coverage collection | Already in test project, generates Cobertura/OpenCover reports |
+| **ReportGenerator** | 5.x (global tool) | Coverage report generation | HTML reports with risk hotspot analysis, badge generation, CI/CD integration |
+| **SonarAnalyzer.CSharp** | 10.x | Enhanced static analysis | Security, reliability, and performance rules beyond built-in analyzers |
 
-### New: Theme Infrastructure (zero new NuGet packages)
+### Static Analysis (SDK-Built-In)
 
-| Component | Type | Purpose | Why This Way |
-|-----------|------|---------|--------------|
-| `DynamicResource` bindings | WPF built-in | Allow resource values to update at runtime without re-rendering the visual tree | `StaticResource` is resolved once at XAML load time and never updates. `DynamicResource` observes resource changes and re-applies. Required for live theme switching. |
-| Additional `*Theme.xaml` files | XAML files (Resource build action) | One file per color scheme (6 total including existing DarkTheme.xaml) | Each file defines the same set of brush/color keys with different values. Swapping which dictionary is merged changes all colors simultaneously. |
-| `IThemeService` + `ThemeService` | C# class in WsusManager.Core or WsusManager.App | Encapsulates the dictionary swap logic, maps theme name to XAML URI | Keeps theme switching testable and callable from SettingsDialog ViewModel. |
-| `ThemeName` property in `AppSettings` | String field in existing model | Persists selected theme across sessions | Slot into existing JSON persistence — no new infrastructure needed. |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **.NET 8 SDK Analyzers** | Built-in | Core code quality | Already enabled (EnableNETAnalyzers), no NuGet needed, auto-updates with SDK |
+| **EditorConfig** | .editorconfig | Rule configuration | Granular rule control, team synchronization, standard in .NET 5+ |
 
-### Supporting Libraries (unchanged)
+### Documentation
 
-No new NuGet packages required. WPF's `ResourceDictionary.MergedDictionaries` API handles everything natively.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **DocFX** | 2.x (global tool) | API documentation generation | .NET-focused, generates static HTML from XML comments, GitHub Pages integration |
+| **XML Documentation** | `<GenerateDocumentationFile>true</GenerateDocumentationFile>` | Compiler-validated comments | Built-in compiler validation, integrates with DocFX |
 
----
+### Performance & Memory
 
-## The Exact Implementation Pattern
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **dotnet-trace** | CLI tool | Performance tracing | Cross-platform, production-safe, generates .nettrace files |
+| **dotnet-counters** | CLI tool | Real-time monitoring | GC/memory/CPU metrics, minimal overhead |
+| **PerfView** | 6.x (portable) | ETW analysis | Microsoft tool, GC pressure analysis, no installation required |
 
-### Pattern: Dictionary Swap at Runtime
+## Installation
 
-This is the authoritative pattern for WPF runtime theme switching. It is documented in Microsoft's official WPF merged dictionaries docs (updated 2024-10-24) and corroborated by multiple community references.
+### Testing & Quality
 
-**Step 1 — Theme XAML files all use identical resource keys.**
+```bash
+# UI automation (test project only)
+cd src/WsusManager.Tests
+dotnet add package FlaUI.UIA3 --version 4.0.0
+dotnet add package FlaUI.Core --version 4.0.0
 
-`Themes/DarkTheme.xaml` (existing — already correct structure):
+# Performance benchmarking (separate console project or test project)
+dotnet add package BenchmarkDotNet --version 0.14.*
+
+# Static analysis (existing test project - already has coverlet.collector)
+dotnet add package SonarAnalyzer.CSharp --version 10.10.* --private-assets all
+
+# Code coverage reporting (global tool)
+dotnet tool install -g dotnet-reportgenerator-globaltool --version 5.*
+```
+
+### Documentation
+
+```bash
+# DocFX CLI (global tool)
+dotnet tool install -g docfx --version 2.*
+
+# Enable XML documentation in each csproj:
+# <GenerateDocumentationFile>true</GenerateDocumentationFile>
+# <NoWarn>$(NoWarn);1591</NoWarn>  # Optional: suppress missing XML comment warnings
+```
+
+### Performance & Memory
+
+```bash
+# dotnet-trace and dotnet-counters (included with .NET SDK)
+# No installation required - use via: dotnet-trace, dotnet-counters
+
+# PerfView (download portable executable)
+# https://github.com/Microsoft/perfview/releases
+```
+
+## Project Configuration
+
+### Enable .NET 8 SDK Analyzers
+
 ```xml
-<SolidColorBrush x:Key="BgDark"    Color="#0D1117"/>
-<SolidColorBrush x:Key="BgSidebar" Color="#161B22"/>
-<SolidColorBrush x:Key="BgCard"    Color="#21262D"/>
-<!-- ... same keys in every theme file, different color values -->
+<!-- Already in src/Directory.Build.props or individual csproj -->
+<PropertyGroup>
+  <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  <AnalysisLevel>latest</AnalysisLevel>
+  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+</PropertyGroup>
 ```
 
-`Themes/JustBlackTheme.xaml` (new — same keys, different values):
+### EditorConfig for Rule Customization
+
+```ini
+# .editorconfig (place in solution root)
+[*.cs]
+
+# Security rules as errors
+dotnet_analyzer_diagnostic.category-Security.severity = error
+
+# Performance rules as warnings
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+
+# Reliability rules as errors
+dotnet_analyzer_diagnostic.category-Reliability.severity = error
+
+# Specific rule overrides
+dotnet_diagnostic.CA1062.severity = none  # Null validation - may be too noisy for legacy code
+```
+
+### Enable XML Documentation
+
 ```xml
-<SolidColorBrush x:Key="BgDark"    Color="#000000"/>
-<SolidColorBrush x:Key="BgSidebar" Color="#0A0A0A"/>
-<SolidColorBrush x:Key="BgCard"    Color="#141414"/>
-<!-- ... -->
+<!-- Add to each .csproj that needs API docs -->
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <NoWarn>$(NoWarn);1591</NoWarn>  # Suppress missing XML comments initially
+</PropertyGroup>
 ```
 
-**Step 2 — All XAML uses `DynamicResource` (not `StaticResource`).**
+### Code Coverage Configuration
 
 ```xml
-<!-- Before (current state — does NOT update at runtime) -->
-<Window Background="{StaticResource BgDark}">
+<!-- Add to WsusManager.Tests.csproj -->
+<ItemGroup>
+  <PackageReference Include="coverlet.msbuild" Version="6.*" />
+  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.*" />
+</ItemGroup>
 
-<!-- After (required for live switching) -->
-<Window Background="{DynamicResource BgDark}">
+# Or use existing coverlet.collector with dotnet test --collect:"XPlat Code Coverage"
 ```
-
-This change must be applied to all 283 `StaticResource` references across 8 XAML files.
-
-**Step 3 — `ThemeService` swaps the merged dictionary.**
-
-```csharp
-public class ThemeService : IThemeService
-{
-    private static readonly Dictionary<string, Uri> ThemeUris = new()
-    {
-        ["DefaultDark"]  = new Uri("pack://application:,,,/WsusManager.App;component/Themes/DarkTheme.xaml"),
-        ["JustBlack"]    = new Uri("pack://application:,,,/WsusManager.App;component/Themes/JustBlackTheme.xaml"),
-        ["Slate"]        = new Uri("pack://application:,,,/WsusManager.App;component/Themes/SlateTheme.xaml"),
-        ["Serenity"]     = new Uri("pack://application:,,,/WsusManager.App;component/Themes/SerenityTheme.xaml"),
-        ["Rose"]         = new Uri("pack://application:,,,/WsusManager.App;component/Themes/RoseTheme.xaml"),
-        ["ClassicBlue"]  = new Uri("pack://application:,,,/WsusManager.App;component/Themes/ClassicBlueTheme.xaml"),
-    };
-
-    public void ApplyTheme(string themeName)
-    {
-        if (!ThemeUris.TryGetValue(themeName, out var uri)) return;
-
-        var mergedDicts = Application.Current.Resources.MergedDictionaries;
-
-        // Remove existing theme dictionary (leave other merged dicts untouched)
-        var existing = mergedDicts.FirstOrDefault(d =>
-            d.Source != null && d.Source.ToString().Contains("/Themes/"));
-        if (existing != null)
-            mergedDicts.Remove(existing);
-
-        // Add new theme dictionary — DynamicResource bindings update automatically
-        mergedDicts.Add(new ResourceDictionary { Source = uri });
-    }
-}
-```
-
-**Step 4 — XAML files are embedded as `Resource` build action** (already the case for all XAML in the project — WPF default). Pack URI format: `pack://application:,,,/AssemblyName;component/Path/File.xaml`.
-
-**Step 5 — `AppSettings` gains a `ThemeName` property** (string, default `"DefaultDark"`). Saved/loaded via existing JSON persistence in `ISettingsService`. No schema migration needed — JSON deserialization uses the default value when the key is absent.
-
----
-
-## Critical Integration Constraint: StaticResource Migration
-
-**All 283 `StaticResource` references in 8 XAML files must become `DynamicResource`.**
-
-This is not optional. `StaticResource` is resolved once at XAML parse time and is permanently fixed. Only `DynamicResource` subscribes to the WPF resource system for updates.
-
-**Current breakdown (verified by code analysis):**
-
-| File | StaticResource count |
-|------|---------------------|
-| `MainWindow.xaml` | 157 |
-| `SettingsDialog.xaml` | 18 |
-| `ScheduleTaskDialog.xaml` | 26 |
-| `TransferDialog.xaml` | 28 |
-| `SyncProfileDialog.xaml` | 14 |
-| `InstallDialog.xaml` | 15 |
-| `GpoInstructionsDialog.xaml` | 7 |
-| `DarkTheme.xaml` | 18 (internal — `BasedOn` refs, not color refs) |
-
-**XAML styles in DarkTheme.xaml that use `StaticResource` internally** (e.g., `{StaticResource Text2}` inside a `Style`) also need to become `DynamicResource` for proper propagation. The `BasedOn="{StaticResource NavBtn}"` style inheritance references are fine as `StaticResource` — those reference style objects, not color resources, and don't change when the theme swaps.
-
-**Performance note:** `DynamicResource` has a small overhead vs `StaticResource` — WPF maintains a lookup table and notifies dependents on change. For ~283 bindings on a single-screen admin tool, this is completely imperceptible. Microsoft's own guidance confirms the performance difference is negligible for typical UI sizes.
-
----
-
-## What NOT to Add
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| MaterialDesignInXamlToolkit | Imposes Material Design visual language on top of the existing custom dark theme. Would require rewriting all styles and controls to match MDIX conventions. Massive scope expansion. | Native ResourceDictionary swap — already exactly what's needed |
-| MahApps.Metro | Same problem as MDIX — opinionated control library that would conflict with existing custom styles | Native ResourceDictionary swap |
-| HandyControl | Different control library ecosystem; integration requires adapting all existing controls | Native ResourceDictionary swap |
-| FluentWPF / Wpf.Ui | Fluent design library — conflicts with the existing custom GA-AppLocker-style dark theme | Native ResourceDictionary swap |
-| `StaticResource` for color bindings | Cannot update at runtime — theme switch has no visible effect | `DynamicResource` for all color/brush references |
-| External JSON theme files (loose files) | Requires deployment of additional files alongside EXE, breaking the single-EXE constraint. Also slower to load, no design-time support. | Embedded XAML `Resource` files (compiled into EXE assembly) |
-| `Application.Current.Resources.MergedDictionaries.Clear()` | Clears ALL merged dictionaries, including any non-theme dictionaries added in future. | Remove only the theme dictionary by matching source URI pattern |
-
----
-
-## Installation / Changes Required
-
-### No new NuGet packages.
-
-### New files to create:
-
-```
-src/WsusManager.App/Themes/
-├── DarkTheme.xaml          (existing — unchanged)
-├── JustBlackTheme.xaml     (new)
-├── SlateTheme.xaml         (new)
-├── SerenityTheme.xaml      (new)
-├── RoseTheme.xaml          (new)
-└── ClassicBlueTheme.xaml   (new)
-
-src/WsusManager.Core/Services/
-├── Interfaces/IThemeService.cs   (new)
-└── ThemeService.cs               (new)
-```
-
-### Existing files to modify:
-
-```
-src/WsusManager.Core/Models/AppSettings.cs
-  — Add: public string ThemeName { get; set; } = "DefaultDark";
-
-src/WsusManager.App/App.xaml.cs  (or Program.cs)
-  — Apply saved theme on startup before window shows
-
-src/WsusManager.App/Views/SettingsDialog.xaml + .xaml.cs
-  — Add theme picker UI section
-
-src/WsusManager.App/ViewModels/MainViewModel.cs (or SettingsViewModel)
-  — Wire ThemeService.ApplyTheme() to theme selection
-
-All 8 XAML files:
-  — Replace StaticResource → DynamicResource for color/brush keys
-  — Keep StaticResource for Style references (BasedOn, TargetType)
-```
-
----
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| Native ResourceDictionary swap | MaterialDesignInXamlToolkit theming | MDIX theming controls the entire visual language. Our existing custom styles (NavBtn, BtnGreen, BtnRed, LogTextBox, etc.) would need full rewrites. Out-of-scope, high risk. |
-| Native ResourceDictionary swap | Code-only theme (set brush colors in C#) | No XAML designer support. More complex code. No benefit over ResourceDictionary approach. |
-| Embedded XAML theme files | Loose file themes (file:// URIs) | Breaks single-EXE distribution constraint. External files can be deleted/corrupted. |
-| Single merged dict swap | Per-control style injection | Requires touching every control individually. Does not scale to 6 themes and 8 XAML files. |
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| **UI Automation** | FlaUI.UIA3 | WinAppDriver | Deprecated, less reliable, Windows-only binary requirements |
+| **UI Automation** | FlaUI.UIA3 | Playwright | Web-focused, overkill for desktop, requires browser context |
+| **Performance** | BenchmarkDotNet | dotTrace/dotMemory | Commercial (JetBrains), adds cost, overkill for simple benchmarks |
+| **Static Analysis** | SDK Analyzers | Microsoft.CodeAnalysis.NetAnalyzers | Redundant for .NET 5+, SDK version is preferred |
+| **Documentation** | DocFX | Sandcastle | No longer maintained, limited output formats |
+| **Documentation** | DocFX | Wyam | Steep learning curve, less .NET-focused |
+| **Code Coverage** | Coverlet | OpenCover | Legacy, .NET Core support is secondary |
 
----
+## Integration with Existing CI/CD
 
-## Version Compatibility
+### GitHub Actions Updates
 
-| Component | Compatible With | Notes |
-|-----------|-----------------|-------|
-| `DynamicResource` bindings | All WPF versions including .NET 8 WPF | Fundamental WPF feature, no version concerns |
-| Pack URI `pack://application:,,,/AssemblyName;component/...` | .NET 8 WPF | Standard format for embedded resources in single-file apps; verified to work with `PublishSingleFile=true` since WPF resources are compiled into the assembly before single-file bundling |
-| `ResourceDictionary.MergedDictionaries` manipulation | .NET 8 WPF | Thread-safety: must be called on UI thread (use `Application.Current.Dispatcher.Invoke` if calling from a background thread) |
+```yaml
+# Add to .github/workflows/build-csharp.yml
 
----
+- name: Run tests with coverage
+  run: |
+    dotnet test src/WsusManager.Tests/WsusManager.Tests.csproj `
+      --configuration Release `
+      --no-build `
+      --verbosity normal `
+      --logger "trx;LogFileName=test-results.trx" `
+      --collect:"XPlat Code Coverage" `
+      -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+- name: Generate coverage report
+  run: |
+    dotnet tool run reportgenerator `
+      -reports:**/coverage.cobertura.xml `
+      -targetdir:coverage-report `
+      -reporttypes:Html;Badges
+
+- name: Upload coverage report
+  uses: actions/upload-artifact@v4
+  with:
+    name: coverage-report
+    path: coverage-report/
+
+- name: Run benchmarks
+  run: |
+    dotnet run -c Release --project src/Benchmarks/Benchmarks.csproj
+
+- name: Static analysis
+  run: |
+    dotnet build src/WsusManager.App/WsusManager.App.csproj `
+      --configuration Release `
+      /p:RunAnalyzersDuringBuild=true
+
+- name: Generate documentation
+  run: |
+    docfx docs/docfx.json
+
+- name: Upload documentation
+  uses: actions/upload-artifact@v4
+  if: success()
+  with:
+    name: api-documentation
+    path: docs/_site/
+```
+
+## What NOT to Add
+
+| Tool | Why Avoid |
+|------|-----------|
+| **SpecFlow** | Overkill for this project, BDD adds complexity without clear benefit |
+| **NUnit/MSTest** | Already using xUnit, no reason to add multiple test frameworks |
+| **AutoFixture** | May complicate existing Moq tests, use sparingly if needed |
+| **StyleCop** | Redundant with SDK analyzers, focused on formatting over quality |
+| **resharper** | Commercial license, IDE-specific, not CI-friendly |
+| **Polly** | Not needed - no HTTP retry requirements beyond existing WinRM error handling |
+| **Flurl** | Not needed - no HTTP client requirements beyond existing WinRM/PowerShell |
+| **Dapper** | Not needed - already using Microsoft.Data.SqlClient directly |
+| **Entity Framework** | Overkill - already using direct SQL with SqlClient |
+| **MediatR** | Overkill - MVVM pattern already handles command/query separation |
+
+## Dependencies on Existing Stack
+
+### Must Keep
+
+- **xUnit** - Existing test framework (336 tests)
+- **Moq** - Existing mocking framework
+- **CommunityToolkit.Mvvm** - Core MVVM infrastructure
+- **Serilog** - Existing logging infrastructure
+- **Microsoft.Data.SqlClient** - Database operations
+- **System.ServiceProcess.ServiceController** - Service management
+- **Microsoft.Extensions.DependencyInjection** - DI container
+- **Microsoft.Extensions.Hosting** - Application host
+
+### Version Compatibility
+
+| Package | Existing Version | v4.4 Target | Notes |
+|---------|------------------|-------------|-------|
+| xUnit | 2.9.2 | 2.9.2 | No change needed |
+| Moq | 4.20.* | 4.20.* | No change needed |
+| CommunityToolkit.Mvvm | 8.4.0 | 8.4.0 | No change needed |
+| Serilog | 4.* | 4.* | No change needed |
+| Microsoft.Data.SqlClient | 6.1.4 | 6.1.4 | No change needed |
+| .NET SDK | 8.0.x | 8.0.x | Lock to LTS |
+
+## Migration Path
+
+### Phase 1: Static Analysis
+1. Add `.editorconfig` to solution root
+2. Configure analysis level in `Directory.Build.props`
+3. Add `SonarAnalyzer.CSharp` to test project
+4. Fix high-confidence warnings
+
+### Phase 2: Code Coverage
+1. Ensure `coverlet.collector` is enabled (already in project)
+2. Add coverage collection to CI/CD
+3. Install `reportgenerator` global tool
+4. Generate HTML reports and badges
+
+### Phase 3: Documentation
+1. Enable `<GenerateDocumentationFile>` in all csproj
+2. Add XML comments to public APIs
+3. Configure DocFX (docfx.json)
+4. Generate static HTML documentation
+
+### Phase 4: Performance
+1. Create separate `WsusManager.Benchmarks` console project
+2. Add BenchmarkDotNet
+3. Benchmark critical paths (startup, DB operations)
+4. Add performance regression tests to CI
+
+### Phase 5: UI Automation
+1. Create `WsusManager.UITests` project (xUnit)
+2. Add FlaUI.UIA3 package
+3. Write tests for critical user workflows
+4. Add to CI/CD (requires Windows runner with UI)
 
 ## Sources
 
-- [Merged resource dictionaries — WPF .NET (Microsoft Learn, updated 2024-10-24)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-merged-dictionaries?view=netdesktop-8.0) — Dictionary swap pattern, pack URI formats, Resource build action requirement (HIGH confidence)
-- [Pack URIs in WPF — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/app-development/pack-uris-in-wpf) — Embedded resource URI format for single-file apps (HIGH confidence)
-- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — DynamicResource requirement, dictionary clear-and-add runtime pattern (MEDIUM confidence — corroborates official docs)
-- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — StaticResource vs DynamicResource runtime behavior, SkinResourceDictionary pattern tradeoffs (MEDIUM confidence)
-- Code analysis of existing codebase: 283 `StaticResource` refs, 0 `DynamicResource` refs across 8 XAML files (HIGH confidence — direct verification)
+### Integration Testing
+- [FlaUI GitHub Repository](https://github.com/FlaUI/FlaUI) - Official FlaUI documentation
+- [FlaUI.UIA3 NuGet Package](https://www.nuget.org/packages/FlaUI.UIA3/) - Package information and version history
 
----
+### Static Analysis
+- [.NET Analyzers Overview](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) - Microsoft official documentation on .NET 8 analyzers
+- [Roslyn Analyzers](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/roslyn-analyzers-overview) - Built-in analyzer configuration
+- [SonarAnalyzer.CSharp](https://www.nuget.org/packages/SonarAnalyzer.CSharp/) - Enhanced static analysis package
 
-*Stack research for: v4.3 WPF theming system — runtime color scheme switching*
-*Researched: 2026-02-20*
+### Performance Profiling
+- [BenchmarkDotNet](https://benchmarkdotnet.org/) - Official BenchmarkDotNet documentation
+- [dotnet-trace Documentation](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-trace) - Microsoft CLI profiling tool
+- [dotnet-counters Documentation](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-counters) - Real-time monitoring tool
+- [PerfView](https://github.com/Microsoft/perfview) - Microsoft ETW analysis tool
+
+### Code Coverage
+- [Coverlet Documentation](https://github.com/coverlet-coverage/coverlet) - Official coverage collection documentation
+- [ReportGenerator](https://github.com/danielpalme/ReportGenerator) - HTML report generation
+
+### Documentation Generation
+- [DocFX Documentation](https://dotnet.github.io/docfx/) - Official DocFX documentation
+- [XML Documentation Comments](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/xmldoc/) - C# XML comment reference
+
+### Confidence Levels
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Integration Testing | HIGH | FlaUI is well-established for WPF, active development |
+| Static Analysis | HIGH | SDK analyzers are official .NET 8 approach |
+| Performance Profiling | HIGH | BenchmarkDotNet is industry standard |
+| Code Coverage | HIGH | Coverlet already in use, ReportGenerator mature |
+| Documentation | MEDIUM | DocFX is .NET-standard but configuration can be complex |

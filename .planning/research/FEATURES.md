@@ -1,199 +1,217 @@
 # Feature Research
 
-**Domain:** WPF theming system — built-in color schemes with live-preview theme picker
-**Researched:** 2026-02-20
-**Confidence:** HIGH (WPF theming is a mature, well-documented domain; patterns are stable and verified against official docs and multiple implementation guides)
-
----
-
-## Context: What This Milestone Adds
-
-This research covers only the v4.3 theming milestone. The broader WSUS feature set is documented in the prior iteration of this file (the v4.0–4.2 feature landscape). The question here is: what does a good WPF theming system look like, and which features are table stakes vs differentiators for a theme picker in a desktop admin tool?
-
-**Existing structure to build on:**
-- `src/WsusManager.App/Themes/DarkTheme.xaml` — single ResourceDictionary with all brushes and styles
-- `App.xaml` — merges `DarkTheme.xaml` via `MergedDictionaries`
-- `AppSettings.cs` — JSON-persisted settings model, no `Theme` property yet
-- `SettingsDialog.xaml` — modal dialog with server mode, refresh interval, content path, SQL instance
-- All XAML currently uses `StaticResource` — must be converted to `DynamicResource` for live switching
-
-**Critical discovery:** The existing codebase uses `StaticResource` throughout the XAML views. Live theme switching requires `DynamicResource` bindings. Migrating `StaticResource` to `DynamicResource` in styles and control templates is the foundational prerequisite — not just writing new theme files.
-
----
+**Domain:** C#/.NET 8 WPF Application Quality & Polish
+**Researched:** 2026-02-21
+**Confidence:** MEDIUM
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features that any theme picker must have. Missing these makes the feature feel broken or unfinished.
+Features users assume exist in a production-quality desktop application. Missing these = product feels incomplete or amateurish.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Multiple built-in themes (no custom builder) | Users expect shipped themes to pick from, not a color editor | LOW | 6 themes already planned: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue |
-| Theme applies to the entire UI immediately | Partial theming (some panels change, others don't) looks broken | MEDIUM | Requires all resource keys covered in every theme file + DynamicResource bindings throughout |
-| Selected theme persists across restarts | Preference lost on close = frustrating regression | LOW | Add `Theme` string field to `AppSettings.cs`, persist via existing `SettingsService` |
-| Theme accessible from Settings dialog | Settings is already where configuration lives; theme must be there too | LOW | Add a "Appearance" section to the existing `SettingsDialog.xaml` |
-| Visual swatch or preview in the picker | Text-only list of theme names doesn't help users choose | LOW | Color swatch (small rectangle showing accent + background color) beside each name |
-| Default theme selected on first run | App must have a working theme out of the box | LOW | `AppSettings.Theme` defaults to `"DefaultDark"` |
-| Theme names are human-readable | "theme_01" or "DarkTheme.xaml" are not acceptable labels | LOW | "Default Dark", "Just Black", "Slate", "Serenity", "Rose", "Classic Blue" |
+| **Unit Test Coverage >80%** | Industry standard for production codebase; Microsoft recommends 80% as primary target | LOW | Already have 336 tests — verify coverage meets threshold |
+| **XML Documentation Comments** | IntelliSense shows blank for undocumented APIs; professional expectation | MEDIUM | Currently ~240 triple-slash comments vs 345 public members (70% coverage) |
+| **Compiler Warning-Free Build** |Warnings signal code quality issues; builds with warnings feel incomplete | LOW | Standard .NET practice — zero warnings in Release builds |
+| **Exception Handling Documentation** | Users need to know what exceptions to catch | LOW | Require `<exception>` tags on all public APIs |
+| **Release Notes / Changelog** | Users expect to know what changed between versions | LOW | Already have GitHub releases — can be enhanced |
+| **Basic README** | Users need installation and quick-start instructions | LOW | Already exists — can be expanded |
+| **Application Versioning** | Users need to know which version they're running | LOW | Already implemented via Directory.Build.props |
+| **Error Messages** | Users need clear, actionable error messages | LOW | Already have global error handler — verify coverage |
+| **Logging** | Troubleshooting production issues requires logs | LOW | Already have Serilog — verify comprehensive coverage |
+| **Admin Rights Detection** | App requires admin — should check and warn | LOW | Already implemented — verify UX is clear |
+| **Settings Persistence** | Users expect settings to save between sessions | LOW | Already implemented with JSON — verify reliability |
 
 ### Differentiators (Competitive Advantage)
 
-Features that go beyond the minimum. Worth building because they polish the experience for an admin tool that people use daily.
+Features that set WSUS Manager apart from other WSUS tools and internal IT tools. Not required, but valuable for a "polished" feel.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Live preview — theme applies before Save is clicked | Chrome-style instant feedback; users see the result before committing | MEDIUM | Apply theme when swatch is selected; revert if Cancel is clicked; confirm on Save |
-| Active theme visually indicated in picker | Makes it obvious which theme is currently active without reading the name | LOW | Checkmark or highlight border on the currently active swatch |
-| Theme designed with semantic intent (not just color) | Themes with coherent intent (e.g., "Serenity" = blue-green calming) feel curated, not random | LOW | Design choice, not implementation work — name and pick colors purposefully |
-| Smooth transition on theme switch | Hard cut on theme change is jarring for a live-preview flow | MEDIUM | Optional: 150ms opacity fade on the main window; low risk, visible polish; skip if it adds complexity |
-| Theme swap does not require restart | Modern expectation — restart to apply theme is a 2010-era pattern | MEDIUM | Requires DynamicResource migration; worth doing right |
+| **Startup Time Benchmarking** | Prove "sub-second startup" claim with data; users trust verified claims | LOW | Already measuring startup — add CI verification and reporting |
+| **Memory Leak Detection** | Long-running server admin tools must not leak memory; differentiate from buggy alternatives | MEDIUM | Requires profiling tools and test scenarios |
+| **UI Automation Tests** | Catch UI regressions before users; most IT tools lack this | HIGH | Requires WinAppDriver or FlaUI UI automation framework |
+| **Static Analysis with Roslyn Analyzers** | Catch bugs at compile-time; demonstrates engineering rigor | MEDIUM | Built-in .NET analyzers + StyleCop/Roslynator packages |
+| **Code Coverage Reporting** | Transparent quality metrics; visible coverage builds trust | LOW | Use coverlet.collector already in project — add CI reporting |
+| **Performance Baselines** | Detect performance regressions automatically; rare in internal tools | MEDIUM | BenchmarkDotNet for critical paths (DB operations, WinRM calls) |
+| **Integration Tests** | Test real SQL/WSUS interactions; unit tests can't catch integration bugs | HIGH | Requires test WSUS environment or containerization |
+| **API Documentation Website** | Professional developer experience; enables future extensibility | MEDIUM | DocFX to generate documentation site from XML comments |
+| **Developer Documentation** | Onboarding contributors; understanding architecture decisions | LOW | ARCHITECTURE.md exists — add CONTRIBUTING.md, design docs |
+| **CI/CD Pipeline Documentation** | Reproducible builds; transparency into release process | LOW | Document GitHub Actions workflow and release process |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
+Features that seem good but create problems or aren't worth the cost.
+
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Custom color editor / theme builder | Power users want to set any hex color | Huge scope: color picker UI, per-key overrides, export/import, validation, preventing illegible combinations | Provide 6 well-designed themes; cover the range of preferences (dark, black, neutral, warm, cool) |
-| Per-section theming (different theme for sidebar vs main content) | "More control" | Visual incoherence; themes are only coherent when applied globally | Apply theme globally; design themes with appropriate contrast ratios throughout |
-| Light themes | Some users prefer light mode | This is a server admin tool used in data centers and dimly lit server rooms; light themes conflict with the product's identity and the existing "dark is table stakes" finding from the v4.0 research | All 6 planned themes are dark-family; do not introduce light themes |
-| Theme preview window (separate floating preview) | "See what it looks like before applying" | The live-preview-on-click approach covers this without added UI surface; a separate preview window is more work and worse UX | Live apply + Cancel revert is the right pattern |
-| Importing external .xaml theme files | Extensibility for advanced users | External XAML execution is a code injection vector; single-file EXE deployment means no external files are expected; adds a file browser and validation UI | Ship 6 themes; cover the range; do not open the door to arbitrary XAML loading |
-| Font size / font family picker | Accessibility or preference customization | Significantly complicates layout (fixed-height panels assume specific font sizes); DPI awareness already handles scale | DPI awareness covers the scale need; fixed fonts maintain layout integrity |
-
----
+| **100% Code Coverage** | Feels like "complete" quality | Diminishing returns; tests become brittle; Microsoft research shows 85% finds most defects | Target 80% line + 70% branch for core logic; lower for UI code |
+| **Static Analysis Errors as Warnings** | Team wants to "see issues" without blocking | Incentivizes ignoring warnings; quality gate bypassed | Treat analyzer warnings as errors in CI; local dev can be lenient |
+| **XML Comments for Private Members** | "Complete documentation" | Increases maintenance burden without public API benefit; exposes internal implementation | Document public APIs only; use clear naming for private members |
+| **UI Automation for Every Dialog** | "Comprehensive UI testing" | Fragile tests; high maintenance; slow CI | Focus on critical paths (login, main operations); manual test for edge cases |
+| **Pre-commit Hooks for Formatting** | Enforce code style automatically | Slows down commits; developers bypass when inconvenient | CI gate + editorConfig for Visual Studio auto-format |
+| **Integration Tests in Every CI Run** | "Test everything always" | Slow CI (requires WSUS setup); flaky tests increase noise | Run integration tests nightly or on-demand; unit tests in PR CI |
+| **Benchmark Every Commit** | Detect performance regressions early | Extremely slow CI; noise from virtualization | Benchmarks on schedule (daily) or manual trigger; critical path only |
+| **Generate PDF from XML Docs** | "Professional documentation deliverable" | Outdated format; hard to maintain; developers prefer web | HTML documentation site (DocFX) + IntelliSense is sufficient |
+| **Memory Profiling in CI** | Catch memory leaks automatically | Requires full profiling runs; expensive; noisy | Manual profiling before releases + automated leak detection tests |
+| **Code Coverage Enforcement on Generated Code** | "True 100% coverage" | Impossible; generated code (XAML.g.cs) can't be tested | Exclude generated files from coverage calculation |
 
 ## Feature Dependencies
 
 ```
-[DynamicResource Migration — PREREQUISITE]
-    └──required by──> [Live Theme Switching]
-    └──required by──> [Live Preview]
-    (without DynamicResource, theme change requires restart at minimum
-     and may not propagate to styles/templates at all)
+[Integration Tests]
+    └──requires──> [Test WSUS Environment]
+                       └──requires──> [WSUS Role Setup]
+                                          └──requires──> [SQL Express Instance]
 
-[Theme ResourceDictionary Files (6 files)]
-    └──required by──> [Theme Service]
-    └──required by──> [Theme Picker UI]
+[XML Documentation Comments]
+    └──enhances──> [API Documentation Website]
+                    └──requires──> [DocFX Configuration]
 
-[Theme Service]
-    └──required by──> [Theme Picker UI — Apply action]
-    └──required by──> [App startup — restore persisted theme]
+[Static Analysis Setup]
+    └──enables──> [Warning-Free Build]
+                   └──blocks──> [CI/CD Pipeline Completion]
 
-[AppSettings.Theme field]
-    └──required by──> [Theme persistence]
-    └──required by──> [Theme Service — startup restore]
-    └──depends on──> [existing SettingsService (already built)]
+[Code Coverage Reporting]
+    └──requires──> [coverlet.collector] (already installed)
+                   └──enhances──> [Quality Dashboard]
 
-[Theme Picker UI (swatch grid in SettingsDialog)]
-    └──uses──> [Theme Service]
-    └──uses──> [AppSettings.Theme for active indicator]
-    └──depends on──> [existing SettingsDialog (already built)]
+[UI Automation Tests]
+    └──requires──> [WinAppDriver/FlaUI Setup]
+                   └──requires──> [Test Environment Configuration]
 
-[Live Preview]
-    └──requires──> [Theme Service (apply without save)]
-    └──requires──> [Cancel revert logic in SettingsDialog]
-    └──enhances──> [Theme Picker UI]
+[Performance Baselines]
+    └──requires──> [BenchmarkDotNet Integration]
+                   └──enhances──> [Regression Detection]
+
+[Memory Leak Detection]
+    └──requires──> [dotMemory or Similar Tool]
+                   └──requires──> [Long-Running Test Scenarios]
 ```
 
 ### Dependency Notes
 
-- **DynamicResource migration is the load-bearing prerequisite.** The existing codebase uses `StaticResource` everywhere. A swap of the MergedDictionary source at runtime will not propagate to controls that use `StaticResource` — they are baked at load time. Every `{StaticResource BgDark}`, `{StaticResource Text1}`, etc. in `.xaml` view files must become `{DynamicResource ...}`. This is the highest-risk work item. The `DarkTheme.xaml` style definitions that use `StaticResource` internally (e.g., hover triggers with hardcoded `#21262D`) also need to be converted to use named resources.
-
-- **Theme Service is the pivot point.** It owns the swap logic (`Application.Current.Resources.MergedDictionaries`), knows all valid theme names, and is called by both the Settings dialog (live preview) and the app startup (restore). Keep it as a simple static class or singleton — it does not need async.
-
-- **Live preview requires a revert path.** When the user hovers or clicks a swatch, the theme applies live. If they hit Cancel, the previous theme must be restored. The SettingsDialog must capture the "entry state" theme name on open and revert to it on Cancel.
-
-- **AppSettings.Theme field does not exist yet.** It must be added to `AppSettings.cs` with a default of `"DefaultDark"` before the settings persistence path works.
-
----
+- **Integration Tests require Test WSUS Environment**: CI runners don't have WSUS installed. Options: (1) Self-hosted runner with WSUS role, (2) Containerized WSUS (complex), (3) Integration tests run manually/on-demand only. Recommendation: Manual/on-demand for v4.4.
+- **XML Documentation enhances API Documentation**: DocFX generates HTML from XML comments. Can't generate docs without first adding comments. Order: Add XML comments → Generate DocFX site.
+- **Static Analysis enables Warning-Free Build**: Can't enforce zero warnings without analyzers enabled. Build breaks on warnings ensures quality gate.
+- **Code Coverage requires coverlet.collector**: Already installed in project. Need to add `--collect:"XPlat Code Coverage"` flag and coverage reporting step in CI.
+- **UI Automation requires WinAppDriver/FlaUI**: External dependency not currently installed. Adds significant setup complexity. Recommendation: Defer to v4.5+ or only for critical paths.
+- **Performance Baselines require BenchmarkDotNet**: NuGet package and test project setup. Need to define "critical paths" (DatabaseOperations, WinRM operations, HealthChecker).
+- **Memory Leak Detection requires profiling tool**: dotMemory (JetBrains) or Visual Studio profilers. Not automatable in CI without expensive tooling. Recommendation: Manual profiling before releases.
 
 ## MVP Definition
 
-This is a bounded milestone, not a product launch. MVP means: the feature ships and is usable, with the live-preview Chrome-style picker.
+### Launch With (v4.4 Quality & Polish)
 
-### Launch With (v4.3 — Themes milestone)
+Minimum viable quality improvements for v4.4 release — what demonstrates "production quality" without over-engineering.
 
-- [ ] DynamicResource migration in all `.xaml` view files — prerequisite; nothing else works without this
-- [ ] 6 theme ResourceDictionary files with consistent key coverage — the deliverable
-- [ ] Theme Service to swap themes at runtime — the mechanism
-- [ ] `AppSettings.Theme` field + startup restore — persistence
-- [ ] Theme picker section in Settings dialog with swatches and active indicator — the UX
-- [ ] Live preview (apply on click, revert on Cancel) — the differentiator
-- [ ] Hardcoded colors in `MainWindow.xaml` nav button trigger styles converted to named resources — blocks theming
+- [ ] **Unit Test Coverage Report** — Verify existing 336 tests achieve >80% line coverage; add coverage reporting to CI
+- [ ] **Static Analysis with Roslyn Analyzers** — Enable built-in .NET analyzers; treat warnings as errors in Release builds
+- [ ] **XML Documentation for Public APIs** — Add triple-slash comments to all public classes/methods in WsusManager.Core
+- [ ] **Zero Compiler Warnings** — Fix all existing compiler warnings; enforce warning-as-error in CI
+- [ ] **Startup Time Benchmark** — Measure and document cold/warm startup; add to CI output
+- [ ] **Updated README** — Expand with screenshots, installation, requirements, troubleshooting
+- [ ] **Developer Documentation** — Add CONTRIBUTING.md (build, test, commit conventions)
+- [ ] **Exception Documentation** — Add `<exception>` tags to all public APIs that throw
 
-### Add After Validation (v4.x)
+### Add After Validation (v4.5)
 
-- [ ] Smooth fade transition on theme switch — only if live preview lands smoothly; skip if it adds risk
-- [ ] High-contrast accessibility theme — defer; requires accessibility audit
+Features to add once core quality improvements are validated and stable.
 
-### Future Consideration (v5+)
+- [ ] **Code Coverage Enforcement** — Add coverage threshold to CI (fail if below 75%)
+- [ ] **Branch Coverage Analysis** — Track branch coverage separately from line coverage
+- [ ] **DocFX Documentation Site** — Generate API documentation website from XML comments
+- [ ] **Performance Baselines** — Benchmark critical paths; detect regressions
+- [ ] **Architecture Decision Records (ADRs)** — Document key design decisions for future maintainers
+- [ ] **Release Notes Automation** — Generate changelog from git commits
 
-- [ ] Theme import from external file — explicitly an anti-feature for now; revisit only if user demand is demonstrated
+### Future Consideration (v4.6+)
 
----
+Features to defer until product quality is established at v4.4-v4.5 level.
+
+- [ ] **UI Automation Tests** — FlaUI for critical user paths (too complex for v4.4)
+- [ ] **Integration Tests** — End-to-end WSUS interaction tests (requires test environment)
+- [ ] **Memory Leak Detection** — Automated leak detection tests (requires specialized tooling)
+- [ ] **Code Coverage for UI Code** — Expand coverage targets to ViewModels and Views (currently difficult due to WPF dependencies)
+- [ ] **Mutation Testing** — Use Stryker to detect gaps in test quality (experimental, high cost)
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| DynamicResource migration | HIGH (blocks all theming) | MEDIUM | P1 — prerequisite |
-| 6 theme files | HIGH | LOW | P1 — the actual deliverable |
-| Theme Service | HIGH | LOW | P1 — mechanism |
-| AppSettings.Theme + persistence | HIGH | LOW | P1 — survival across restart |
-| Settings dialog swatch picker | HIGH | LOW | P1 — the UX surface |
-| Active theme indicator | MEDIUM | LOW | P1 — expected in any picker |
-| Live preview with Cancel revert | HIGH | MEDIUM | P1 — the differentiator |
-| Smooth fade transition | LOW | MEDIUM | P2 — polish only |
-| Custom color editor | LOW | HIGH | P3 / anti-feature |
-| External theme import | LOW | HIGH | Anti-feature — skip |
+| Unit Test Coverage Report | HIGH | LOW | P1 |
+| Zero Compiler Warnings | HIGH | LOW | P1 |
+| Static Analysis (Roslyn) | HIGH | MEDIUM | P1 |
+| XML Documentation (Public APIs) | MEDIUM | MEDIUM | P1 |
+| Updated README | HIGH | LOW | P1 |
+| Developer Documentation (CONTRIBUTING.md) | MEDIUM | LOW | P1 |
+| Startup Time Benchmark | MEDIUM | LOW | P1 |
+| Exception Documentation | MEDIUM | LOW | P1 |
+| Code Coverage Enforcement | MEDIUM | LOW | P2 |
+| DocFX Documentation Site | MEDIUM | MEDIUM | P2 |
+| Performance Baselines | MEDIUM | MEDIUM | P2 |
+| Architecture Decision Records | LOW | LOW | P2 |
+| Release Notes Automation | LOW | LOW | P2 |
+| UI Automation Tests | HIGH | HIGH | P3 |
+| Integration Tests | HIGH | HIGH | P3 |
+| Memory Leak Detection | MEDIUM | HIGH | P3 |
+| Code Coverage for UI Code | LOW | HIGH | P3 |
+| Mutation Testing | LOW | HIGH | P3 |
 
----
+**Priority key:**
+- P1: Must have for v4.4 Quality & Polish milestone
+- P2: Should have for v4.5 (post-validation)
+- P3: Nice to have for v4.6+ (future consideration)
 
-## How Chrome's Theme Picker Maps to WPF
+## Competitor Feature Analysis
 
-Chrome's theme picker (in Settings > Appearance) is the reference model for this milestone. Here is how each Chrome concept maps to what we are building:
+| Feature | WSUS Manager (Current) | PowerShell Tools | Commercial WSUS Tools | Our v4.4 Plan |
+|---------|----------------------|------------------|----------------------|---------------|
+| **Test Coverage** | 336 xUnit tests | Typically none | Varies (rarely public) | Add coverage reporting |
+| **Static Analysis** | None enabled | None | Typically enforced | Enable Roslyn analyzers |
+| **Documentation** | README + code comments | Sparse help | Comprehensive (paid) | XML docs + DocFX site |
+| **Startup Performance** | Sub-second (claimed) | Variable | Often slow | Benchmark + verify |
+| **Memory Management** | Unknown | Often leaks | Professional | Manual profiling |
+| **Error Messages** | Global handler | Variable | Polished | Verify + enhance |
+| **Developer Onboarding** | Minimal docs | Source only | Varied | CONTRIBUTING.md |
+| **Release Process** | GitHub Actions | Manual | Professional | Document + automate |
 
-| Chrome Concept | Chrome Implementation | Our WPF Equivalent |
-|----------------|-----------------------|--------------------|
-| Theme color swatches grid | Row of colored circles; click to apply instantly | Row of rectangular swatches in SettingsDialog showing each theme's accent + background colors |
-| Live preview on click | Entire browser chrome re-colors immediately | `ThemeService.Apply(themeName)` called on swatch click; no Save required for the visual change |
-| Active theme checkmark | Filled checkmark on selected swatch | Border highlight or checkmark overlay on the active swatch |
-| Cancel / no explicit revert | Chrome has no cancel; change is immediate and permanent | Our app has a Cancel button on SettingsDialog; it must revert to the entry-state theme |
-| Theme name label | Small label below swatch | TextBlock below each swatch with the theme's display name |
-| "Reset to default" | Separate button | Not needed for v4.3; Default Dark is always in the list |
-| Custom color picker | Full-color wheel in Chrome 100+ | Anti-feature for us — not building |
-
-The Chrome model works for a browser because any change is instantly reversible by picking another theme. In our app, Settings has a Save/Cancel contract. The right adaptation is: live-apply on swatch click, but respect Cancel by reverting. This is strictly better UX than "apply only after Save" with no preview.
-
----
-
-## Implementation Notes for Roadmap
-
-These findings directly inform phase ordering and task granularity:
-
-1. **Start with DynamicResource migration, not theme files.** Writing beautiful themes before the plumbing works wastes effort. The migration task should be Phase 1 of this milestone.
-
-2. **Hardcoded hex values in MainWindow.xaml are a blocker.** The `#21262D`, `#58A6FF`, and `#E6EDF3` values in the nav button trigger styles (not using named resources) will resist theme switching. These 15 occurrences across 4 view files must be extracted to named resource keys in each theme file.
-
-3. **Theme file structure must be exact.** Every theme file must define all the same resource keys that `DarkTheme.xaml` defines. A missing key in one theme causes `{DynamicResource ...}` to silently fall back or throw at runtime. A checklist of required keys should gate each theme file.
-
-4. **SettingsDialog needs a new section, not a new dialog.** The theme picker lives in the existing Settings dialog. Increase the dialog height and add an "Appearance" section above the buttons. This avoids the navigation cost of a second modal.
-
-5. **Cancel revert is the trickiest part of live preview.** The SettingsDialog must capture `currentTheme` on open (before any swatch clicks) and restore it in the Cancel handler. This requires the SettingsDialog to know the active theme at construction time — pass it as a constructor parameter alongside `AppSettings`.
-
----
+**Competitive Edge for v4.4:** Most PowerShell-based WSUS tools have zero tests, no static analysis, and minimal documentation. Commercial tools are polished but expensive and over-featured. v4.4 Quality & Polish positions GA-WsusManager as "professional-grade" open-source — rigorous quality practices without enterprise complexity.
 
 ## Sources
 
-- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — MEDIUM confidence (blog, verified against official docs)
-- [Changing WPF Themes Dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — MEDIUM confidence (community, multiple sources agree)
-- [WPF How To Switching Themes at Runtime — Telerik Docs](https://docs.telerik.com/devtools/wpf/styling-and-appearance/how-to/styling-apperance-themes-runtime) — HIGH confidence (vendor documentation)
-- [ResourceDictionary and XAML Resource References — Microsoft Learn](https://learn.microsoft.com/en-us/windows/apps/design/style/xaml-resource-dictionary) — HIGH confidence (official Microsoft documentation)
-- [StaticResource vs DynamicResource — CodeProject](https://www.codeproject.com/Articles/393086/WPF-StaticResource-vs-DynamicResource) — MEDIUM confidence (community, well-cited)
-- [Mastering Dynamic Resources in WPF — Moldstud](https://moldstud.com/articles/p-mastering-dynamic-resources-in-wpf-a-comprehensive-guide-for-developers) — LOW confidence (single source, useful for general guidance)
-- Existing codebase inspection: `DarkTheme.xaml`, `App.xaml`, `SettingsDialog.xaml`, `SettingsDialog.xaml.cs`, `AppSettings.cs`, `MainWindow.xaml` — HIGH confidence (direct code analysis)
+### Official Microsoft Documentation
+- [Microsoft .NET Code Quality Analyzers](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) — Built-in Roslyn analyzers for .NET 8+
+- [XML Documentation Comments (C# Programming Guide)](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/structured-code-documentation) — Official guidance on triple-slash comments
+- [.NET 8 Performance Improvements](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8#performance-improvements) — Performance benchmarks and optimization techniques
+- [Unit Testing with xUnit](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test) — Official xUnit documentation for .NET
+
+### Industry Standards (2024-2026)
+- [Code Coverage Guidelines (Microsoft Research)](https://www.microsoft.com/en-us/research/publication/code-coverage-guidelines/) — 80% line coverage recommendation
+- [WPF Performance Best Practices (2025)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/performance/optimizing-wpf-applications) — Memory management, virtualization, rendering
+- [.NET 8 Startup Performance](https://devblogs.microsoft.com/dotnet/performance-improvements-in-net-8/) — Benchmark data showing 34% startup improvement over .NET 6
+
+### Tools and Frameworks
+- [coverlet.collector Documentation](https://github.com/coverlet-coverage/coverlet) — Code coverage collection for xUnit
+- [DocFX Documentation Generator](https://dotnet.github.io/docfx/) — Generate API docs from XML comments
+- [BenchmarkDotNet](https://benchmarkdotnet.org/) — Performance benchmarking for .NET
+- [FlaUI UI Automation](https://github.com/FlaUI/FlaUI) — WPF UI automation testing framework
+
+### Code Quality Standards
+- [C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions) — Official Microsoft style guide
+- [Roslyn Analyzer Rules](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-quality-rule-index) — CAxxxx rule reference
+- [xUnit Best Practices](https://xunit.net/docs/getting-started/netcore/technical-notes) — Testing framework guidance
+
+### Additional Research Context
+- 336 existing xUnit tests in codebase (verified via `dotnet test --list-tests`)
+- ~240 XML documentation comments vs ~345 public members (70% documentation coverage)
+- Coverlet collector v6.0.2 already installed in test project
+- No static analysis analyzers currently enabled in .csproj files
+- No .editorconfig in source root (only generated editorconfig files)
+- No existing integration tests or UI automation tests
 
 ---
-
-*Feature research for: WPF theming system (v4.3 — GA-WsusManager)*
-*Researched: 2026-02-20*
+*Feature research for: GA-WsusManager v4.4 Quality & Polish*
+*Researched: 2026-02-21*
