@@ -16,8 +16,11 @@ public class DashboardService : IDashboardService
 {
     private static readonly string[] MonitoredServices = { "MSSQL$SQLEXPRESS", "WsusService", "W3SVC" };
     private const int ConnectivityTimeoutMs = 500;
+    private const int CacheTtlSeconds = 5;
 
     private readonly ILogService _logService;
+    private DashboardData? _cachedStatus;
+    private DateTime _cacheTimestamp;
 
     public DashboardService(ILogService logService)
     {
@@ -26,6 +29,12 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardData> CollectAsync(AppSettings settings, CancellationToken ct)
     {
+        // Return cached data if still valid
+        if (_cachedStatus != null && (DateTime.Now - _cacheTimestamp).TotalSeconds < CacheTtlSeconds)
+        {
+            return _cachedStatus;
+        }
+
         var data = new DashboardData();
 
         // Run all checks in parallel for responsiveness
@@ -44,7 +53,19 @@ public class DashboardService : IDashboardService
             _logService.Warning("One or more dashboard checks failed: {Error}", ex.Message);
         }
 
+        // Update cache with fresh data
+        _cachedStatus = data;
+        _cacheTimestamp = DateTime.Now;
+
         return data;
+    }
+
+    /// <summary>
+    /// Invalidates the status cache, forcing the next CollectAsync call to fetch fresh data.
+    /// </summary>
+    public void InvalidateCache()
+    {
+        _cachedStatus = null;
     }
 
     /// <summary>
