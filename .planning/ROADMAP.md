@@ -155,7 +155,12 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 4. Log panel updates batch 100ms chunks to reduce UI thread overhead
 5. Theme switching applies changes within 100ms for instant visual feedback
 
-**Plans:** TBD
+**Plans:**
+- [ ] 25-01-PLAN.md — Parallelize initialization for faster startup (PERF-08)
+- [ ] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
+- [ ] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
+- [ ] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12)
+- [ ] 25-05-PLAN.md — Enable list virtualization for large datasets (PERF-09)
 
 ---
 
