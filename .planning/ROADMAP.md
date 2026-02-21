@@ -51,7 +51,7 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
 ### v4.3 Themes (Phases 16-17)
 
 - [x] **Phase 16: Theme Infrastructure** — Split styles/tokens, migrate StaticResource to DynamicResource, implement ThemeService (2026-02-21)
-- [ ] **Phase 17: Theme Content and Picker** — 5 additional theme files, Settings Appearance section with live-preview swatch picker
+- [ ] **Phase 17: Theme Content and Picker** — 5 additional theme files, Settings Appearance section with live-preview swatch picker (1 plan)
 
 ## Phase Details
 
@@ -80,7 +80,7 @@ Plans:
   3. Clicking Cancel in Settings reverts the app to the theme that was active when Settings was opened
   4. Clicking Save persists the chosen theme to settings.json and restores it correctly after app restart
   5. The currently active theme swatch is visually distinguished from the others (highlighted border or checkmark indicator)
-**Plans**: TBD
+**Plans**: 1 plan
 
 ## Progress
 
@@ -102,4 +102,4 @@ Plans:
 | 14. Client Management Core | v4.2 | 3/3 | Complete | 2026-02-21 |
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
-| 17. Theme Content and Picker | v4.3 | 0/? | Not started | - |
+| 17. Theme Content and Picker | v4.3 | 0/1 | Planned | - |
