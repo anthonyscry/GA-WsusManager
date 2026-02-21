@@ -102,4 +102,4 @@ Plans:
 | 14. Client Management Core | v4.2 | 3/3 | Complete | 2026-02-21 |
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
-| 17. Theme Content and Picker | 1/1 | Complete   | 2026-02-21 | - |
+| 17. Theme Content and Picker | 1/1 | Complete    | 2026-02-21 | - |
