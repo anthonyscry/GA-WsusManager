@@ -23,12 +23,12 @@ Requirements for bug fix and polish release. Each maps to roadmap phases.
 
 ### Core Operations
 
-- [ ] **OPS-01**: Health check executes and reports results on real WSUS server
-- [ ] **OPS-02**: Auto-repair fixes detected issues (services, firewall, permissions)
-- [ ] **OPS-03**: Online sync executes with profile selection (Full/Quick/SyncOnly)
-- [ ] **OPS-04**: Deep cleanup pipeline completes all 6 steps
-- [ ] **OPS-05**: Database backup creates .bak file successfully
-- [ ] **OPS-06**: Database restore from .bak file works
+- [x] **OPS-01**: Health check executes and reports results on real WSUS server
+- [x] **OPS-02**: Auto-repair fixes detected issues (services, firewall, permissions)
+- [x] **OPS-03**: Online sync executes with profile selection (Full/Quick/SyncOnly)
+- [x] **OPS-04**: Deep cleanup pipeline completes all 6 steps
+- [x] **OPS-05**: Database backup creates .bak file successfully
+- [x] **OPS-06**: Database restore from .bak file works
 
 ### Stability
 
@@ -61,12 +61,12 @@ None — v4.1 is focused on making v4.0 work correctly.
 | UI-03 | Phase 9 | Complete |
 | UI-04 | Phase 9 | Complete |
 | UI-05 | Phase 9 | Complete |
-| OPS-01 | Phase 10 | Pending |
-| OPS-02 | Phase 10 | Pending |
-| OPS-03 | Phase 10 | Pending |
-| OPS-04 | Phase 10 | Pending |
-| OPS-05 | Phase 10 | Pending |
-| OPS-06 | Phase 10 | Pending |
+| OPS-01 | Phase 10 | Complete |
+| OPS-02 | Phase 10 | Complete |
+| OPS-03 | Phase 10 | Complete |
+| OPS-04 | Phase 10 | Complete |
+| OPS-05 | Phase 10 | Complete |
+| OPS-06 | Phase 10 | Complete |
 | STAB-01 | Phase 11 | Pending |
 | STAB-02 | Phase 11 | Pending |
 | STAB-03 | Phase 11 | Pending |
@@ -78,4 +78,4 @@ None — v4.1 is focused on making v4.0 work correctly.
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 — UI-01 through UI-05 marked complete after Phase 9 execution*
+*Last updated: 2026-02-20 — OPS-01 through OPS-06 marked complete after Phase 10 execution (5 bugs fixed, 263 tests passing)*
