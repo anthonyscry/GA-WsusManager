@@ -11,7 +11,7 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Phase:** Phase 24 - Documentation Generation (IN PROGRESS)
 **Plan:** 24-03 (API Documentation) - COMPLETE
-**Status:** Plan complete — Continuing Phase 24
+**Status:** v4.4 milestone complete
 **Last activity:** 2026-02-21 — Phase 24 Plan 03 executed (DocFX API documentation generation, 7 min)
 
 ```

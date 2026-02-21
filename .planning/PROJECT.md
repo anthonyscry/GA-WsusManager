@@ -51,28 +51,20 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ 31+ exception path tests for SQL, Windows services, WinRM — v4.4
 - ✓ 455 xUnit tests passing (+119 from v4.3) — v4.4
 
+- ✓ Zero compiler warnings with Roslyn analyzers — v4.4
+- ✓ .editorconfig for consistent code style across IDEs — v4.4
+- ✓ Coverlet coverage infrastructure (84% line / 62% branch) — v4.4
+- ✓ ReportGenerator HTML coverage artifacts in CI/CD — v4.4
+- ✓ XML documentation for public APIs with DocFX — v4.4
+- ✓ Code refactoring: consolidated database size query to ISqlService — v4.4
+- ✓ Async/await patterns audited (already optimal) — v4.4
+- ✓ BenchmarkDotNet infrastructure with operation baselines — v4.4
+- ✓ Memory leak detection (StringBuilder, timer cleanup, IDisposable) — v4.4
+- ✓ Comprehensive documentation: README, CONTRIBUTING, CI/CD, releases, architecture — v4.4
+
 ### Active
 
-**Current Milestone: v4.4 Quality & Polish**
-
-**Goal:** Comprehensive quality improvements across testing, code quality, performance, and documentation
-
-**Target features:**
-- Static analysis with Roslyn analyzers and warning fixes
-- Increased unit test coverage with edge case handling
-- UI automation tests for critical user paths
-- Static analysis with Roslyn analyzers and warning fixes
-- Code refactoring to reduce complexity and duplication
-- Complete XML documentation comments
-- Async/disposal pattern audit and fixes
-- Startup time optimization and benchmarking
-- Memory leak detection and resolution
-- Database and WinRM operation speed improvements
-- UI responsiveness enhancements
-- Updated user documentation (README, getting started)
-- Developer documentation (architecture, design decisions)
-- API documentation (XML docs)
-- CI/CD pipeline documentation
+No active milestone. Use `/gsd:new-milestone` to start next milestone work.
 
 ### Out of Scope
 
@@ -89,12 +81,15 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.4 (in progress — Phase 18/24 complete)
-- **Codebase:** ~21,000 LOC C#/XAML across 97 .cs files + 8 .xaml files
-- **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq + Coverlet
-- **Tests:** 455 xUnit tests (+119 from Phase 18 edge/exception tests)
-- **Coverage:** 84.27% line / 62.19% branch (baseline established, 70% threshold enforced)
-- **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, coverage reports, publish, release
+- **Version:** v4.4 Quality & Polish (shipped 2026-02-21)
+- **Phases:** 24 phases complete, 62 plans delivered
+- **Codebase:** ~21,000 LOC C#/XAML across 100+ files
+- **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq + Coverlet + BenchmarkDotNet
+- **Tests:** 455 xUnit tests (70% branch coverage threshold enforced)
+- **Coverage:** 84.27% line / 62.19% branch with HTML artifacts in CI/CD
+- **Quality:** Zero compiler warnings, .editorconfig enforced, Roslyn analyzers enabled
+- **Docs:** README, CONTRIBUTING, CHANGELOG, docs/api/, docs/ci-cd.md, docs/releases.md, docs/architecture.md
+- **CI/CD:** GitHub Actions — build, test, coverage, benchmarks, publish, release automation
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 - **Themes:** 6 built-in dark-family themes with runtime switching
 
@@ -136,4 +131,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-21 after Phase 18 (Test Coverage & Reporting)*
+*Last updated: 2026-02-21 after v4.4 Quality & Polish milestone*
