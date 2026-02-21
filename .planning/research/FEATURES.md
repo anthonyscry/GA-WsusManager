@@ -1,16 +1,23 @@
 # Feature Research
 
-**Domain:** Windows Server WSUS administration tool (desktop GUI + CLI)
-**Researched:** 2026-02-19
-**Confidence:** HIGH (existing feature set validated over 3.8.x production lifecycle; competitor landscape MEDIUM — WSUS ecosystem is thin/deprecated, limited comparable tools)
+**Domain:** WPF theming system — built-in color schemes with live-preview theme picker
+**Researched:** 2026-02-20
+**Confidence:** HIGH (WPF theming is a mature, well-documented domain; patterns are stable and verified against official docs and multiple implementation guides)
 
 ---
 
-## Context: What We're Replacing
+## Context: What This Milestone Adds
 
-GA-WsusManager v3.8.12 is a production tool used by GA-ASI IT administrators. Its feature set has been battle-tested across hundreds of versions and is well-documented. This research validates which existing features are table stakes, identifies gaps and differentiators, and flags what to deliberately not build.
+This research covers only the v4.3 theming milestone. The broader WSUS feature set is documented in the prior iteration of this file (the v4.0–4.2 feature landscape). The question here is: what does a good WPF theming system look like, and which features are table stakes vs differentiators for a theme picker in a desktop admin tool?
 
-**Key constraint:** WSUS itself was deprecated by Microsoft in September 2024. No new features are being added to the WSUS platform. This means the tool ecosystem is frozen — existing tools do what they do, and there is no "next generation" WSUS tooling to copy from. The differentiation space is wide open.
+**Existing structure to build on:**
+- `src/WsusManager.App/Themes/DarkTheme.xaml` — single ResourceDictionary with all brushes and styles
+- `App.xaml` — merges `DarkTheme.xaml` via `MergedDictionaries`
+- `AppSettings.cs` — JSON-persisted settings model, no `Theme` property yet
+- `SettingsDialog.xaml` — modal dialog with server mode, refresh interval, content path, SQL instance
+- All XAML currently uses `StaticResource` — must be converted to `DynamicResource` for live switching
+
+**Critical discovery:** The existing codebase uses `StaticResource` throughout the XAML views. Live theme switching requires `DynamicResource` bindings. Migrating `StaticResource` to `DynamicResource` in styles and control templates is the foundational prerequisite — not just writing new theme files.
 
 ---
 
@@ -18,163 +25,110 @@ GA-WsusManager v3.8.12 is a production tool used by GA-ASI IT administrators. It
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist in any WSUS management tool. Missing these = product feels broken.
+Features that any theme picker must have. Missing these makes the feature feel broken or unfinished.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Dashboard with service status | Admins need immediate health visibility at launch | LOW | SQL Server, WSUS, IIS status; exists in v3.8.x |
-| Auto-refresh dashboard | Stale data misleads operators on active servers | LOW | 30s interval is established baseline |
-| DB size monitoring with limit warning | SQL Express 10GB cap is a hard operational constraint | LOW | Must alert before hitting limit, not after |
-| Last sync time / sync status | WSUS's core job is syncing — admins check this constantly | LOW | Surface clearly on dashboard |
-| Health check (service + config validation) | WSUS breaks in predictable ways; admins need a scan button | MEDIUM | Services, firewall, IIS app pool, permissions |
-| Auto-repair for common failures | Health check without repair = diagnostic only, not useful | MEDIUM | Start stopped services, fix firewall rules, reset permissions |
-| Deep cleanup (decline superseded, purge obsolete, reindex, shrink) | Database grows unboundedly without this; 10GB limit enforces it | HIGH | 6-step maintenance pipeline; core WSUS hygiene |
-| Service management (start/stop SQL, WSUS, IIS) | Required when repairing or maintenance modes | LOW | Quick actions; must not freeze UI |
-| Firewall rule management (8530/8531) | WSUS clients can't reach server if firewall rules are wrong | LOW | Create/verify rules; exists in v3.8.x |
-| Database backup and restore | Standard sysadmin expectation for any DB-backed tool | MEDIUM | SUSDB backup/restore via SQL; exists in v3.8.x |
-| Online sync with profile selection | Primary purpose of WSUS is syncing; multiple sync modes expected | MEDIUM | Full / Quick / Sync-only profiles |
-| Scheduled task creation for maintenance | Unattended operation is expected on servers; no manual babysitting | MEDIUM | Windows Task Scheduler integration |
-| Settings persistence | Application preferences must survive restarts | LOW | JSON in %APPDATA%\WsusManager\ |
-| Operation log output panel | Every operation must produce visible output; black-box ops = distrust | LOW | Scrollable, timestamped log within the window |
-| Cancel button for running operations | Admins need an escape hatch if something runs long or wrong | LOW | Kill process, reset state cleanly |
-| Admin privilege enforcement | All WSUS ops require elevation; fail fast with clear message | LOW | Check at startup, not at first operation failure |
-| Error dialogs with actionable messages | Silent failures or stack traces are unacceptable | LOW | User-readable message + log path |
-| DPI-aware rendering | Server 2022 on high-DPI displays is standard; blurry text = unprofessional | LOW | Per-monitor DPI awareness |
-| Dark theme | Server admins work in data centers; dark theme reduces eye strain | LOW | Dark is now table stakes for admin tools (Admin Center, VS Code, Terminal all dark) |
+| Multiple built-in themes (no custom builder) | Users expect shipped themes to pick from, not a color editor | LOW | 6 themes already planned: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue |
+| Theme applies to the entire UI immediately | Partial theming (some panels change, others don't) looks broken | MEDIUM | Requires all resource keys covered in every theme file + DynamicResource bindings throughout |
+| Selected theme persists across restarts | Preference lost on close = frustrating regression | LOW | Add `Theme` string field to `AppSettings.cs`, persist via existing `SettingsService` |
+| Theme accessible from Settings dialog | Settings is already where configuration lives; theme must be there too | LOW | Add a "Appearance" section to the existing `SettingsDialog.xaml` |
+| Visual swatch or preview in the picker | Text-only list of theme names doesn't help users choose | LOW | Color swatch (small rectangle showing accent + background color) beside each name |
+| Default theme selected on first run | App must have a working theme out of the box | LOW | `AppSettings.Theme` defaults to `"DefaultDark"` |
+| Theme names are human-readable | "theme_01" or "DarkTheme.xaml" are not acceptable labels | LOW | "Default Dark", "Just Black", "Slate", "Serenity", "Rose", "Classic Blue" |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set this tool apart from raw WSUS console + standalone cleanup scripts.
+Features that go beyond the minimum. Worth building because they polish the experience for an admin tool that people use daily.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Air-gap export/import workflow | No other compact tool handles USB-based WSUS transfer natively | HIGH | Full + differential export; content mirroring; exists in v3.8.x — must preserve |
-| Server mode toggle (Online vs Air-Gap) | Context-aware UI hides irrelevant operations; reduces operator error | LOW | Greys out internet-dependent ops in air-gap mode; exists in v3.8.x |
-| Single-file EXE deployment | No installer, no dependency folders required on production servers | HIGH | PS2EXE approach was fragile; compiled single-binary is the goal of v4 |
-| WSUS + SQL Express installation wizard | Initial setup is a multi-step landmine; guided wizard removes friction | HIGH | Download SQL, configure WSUS, set paths, firewall, GPO |
-| Content reset for air-gap import | `wsusutil reset` after USB import is non-obvious; surfacing it is valuable | LOW | Fixes "content still downloading" state post-import |
-| GPO deployment helper | Connecting clients to WSUS via GPO is a separate DC task; having the scripts + instructions in-tool is useful | LOW | Copy scripts, show DC admin instructions |
-| SQL sysadmin permission checking | DB operations fail with cryptic errors without sysadmin; proactive check is differentiating | LOW | Check before running DB-heavy operations |
-| IIS app pool optimization | WSUS IIS pool requires non-default settings (queue length 2000, no ping, no memory limit); auto-apply is valued | LOW | Optimize-WsusServer covers this; we should too |
-| Live terminal mode | Power users want raw output in a real terminal, not a GUI log pane | MEDIUM | Toggle to run operations in external PowerShell window; exists in v3.8.x |
-| Sub-second startup | PowerShell tools are slow; instant-on is a quality-of-life differentiator | HIGH | Primary goal of compiled rewrite |
-| Differential export (days-based filter) | Full content export can be 50GB+; differential limits transfer to recent changes | MEDIUM | Filter by modification date; exists in v3.8.x |
-| Definition Updates auto-approval with safety threshold | Security definitions need frequent approval; auto-approval with count cap prevents runaway approvals | MEDIUM | Threshold at 200 updates; exists in v3.8.x |
-| Decline superseded tracking and batch purge | The built-in cleanup wizard is slow and single-threaded; batched SQL-level purge (100/batch) is significantly faster | HIGH | spDeleteUpdate batching; exists in v3.8.x |
-| Database shrink after maintenance | Admins see the 10GB limit shrink in real-time after cleanup; visible progress is motivating | LOW | Show before/after size; exists in v3.8.x |
-| Startup benchmark / timing logs | Performance visibility builds confidence in the tool; admins can see if something is slow | LOW | Log startup duration; exists in v3.8.x |
+| Live preview — theme applies before Save is clicked | Chrome-style instant feedback; users see the result before committing | MEDIUM | Apply theme when swatch is selected; revert if Cancel is clicked; confirm on Save |
+| Active theme visually indicated in picker | Makes it obvious which theme is currently active without reading the name | LOW | Checkmark or highlight border on the currently active swatch |
+| Theme designed with semantic intent (not just color) | Themes with coherent intent (e.g., "Serenity" = blue-green calming) feel curated, not random | LOW | Design choice, not implementation work — name and pick colors purposefully |
+| Smooth transition on theme switch | Hard cut on theme change is jarring for a live-preview flow | MEDIUM | Optional: 150ms opacity fade on the main window; low risk, visible polish; skip if it adds complexity |
+| Theme swap does not require restart | Modern expectation — restart to apply theme is a 2010-era pattern | MEDIUM | Requires DynamicResource migration; worth doing right |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem useful but create complexity that outweighs the value in this specific context.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Multi-server management | Admins manage multiple WSUS servers | Transforms simple tool into complex dashboard; connection state, multi-thread ops, auth per server — scope explosion | Out of scope per PROJECT.md; run one instance per server |
-| Web-based / remote UI | Modern tooling trend; administer from anywhere | WSUS is Windows-only, requires admin elevation, runs on server — web UI adds a service, auth layer, TLS config with zero benefit for GA-ASI use case | Desktop app on the server is the right model |
-| Third-party application patching | WSUS admins ask "can it patch Chrome too?" | Completely different API surface (no Microsoft.UpdateServices.Administration equivalent); integrating it means implementing a separate patch pipeline | Explicit out of scope; use Chocolatey or PDQ separately |
-| Real-time WSUS client monitoring | Admins want to see client status live | WSUS client reporting is pull-based and delayed (22h default); "real-time" is misleading and requires polling or WinRM agent deployment | Show client status from WSUS database as-is with last-seen timestamp |
-| Undo/rollback for cleanup operations | Admins are nervous about irreversible cleanup | Declined updates and deleted obsolete records cannot be meaningfully restored; "undo" creates false confidence | Require explicit confirmation dialogs for destructive ops; surface backup-first prompt |
-| Automatic cleanup on a timer | Fire-and-forget maintenance | Deep cleanup takes 15-60 minutes and can block other WSUS operations; running it automatically without operator awareness creates operational surprises | Scheduled task is the right mechanism — it runs in its own window with operator visibility |
-| Cloud sync / Azure integration | "Modernize" requests as WSUS is deprecated | The entire value proposition is on-prem and air-gapped; cloud integration contradicts the core use case | Explicitly out of scope per PROJECT.md |
-| Update approval UI within the tool | WSUS console has a full approval interface | Re-implementing WSUS's own update browsing/approval UI is enormous scope that doesn't improve on what the native console provides | Surface auto-approval rule management; delegate manual approvals to native WSUS console |
-| Linux/macOS client patching | "Unified endpoint management" pitch | WSUS is Windows-only. Period. | Explicit out of scope per PROJECT.md |
-| PowerShell remoting / WinRM integration | Power users want remote execution | Adds auth complexity, certificate management, and attack surface; not needed for single-server tool | Tool runs locally on the server; no remoting needed |
+| Custom color editor / theme builder | Power users want to set any hex color | Huge scope: color picker UI, per-key overrides, export/import, validation, preventing illegible combinations | Provide 6 well-designed themes; cover the range of preferences (dark, black, neutral, warm, cool) |
+| Per-section theming (different theme for sidebar vs main content) | "More control" | Visual incoherence; themes are only coherent when applied globally | Apply theme globally; design themes with appropriate contrast ratios throughout |
+| Light themes | Some users prefer light mode | This is a server admin tool used in data centers and dimly lit server rooms; light themes conflict with the product's identity and the existing "dark is table stakes" finding from the v4.0 research | All 6 planned themes are dark-family; do not introduce light themes |
+| Theme preview window (separate floating preview) | "See what it looks like before applying" | The live-preview-on-click approach covers this without added UI surface; a separate preview window is more work and worse UX | Live apply + Cancel revert is the right pattern |
+| Importing external .xaml theme files | Extensibility for advanced users | External XAML execution is a code injection vector; single-file EXE deployment means no external files are expected; adds a file browser and validation UI | Ship 6 themes; cover the range; do not open the door to arbitrary XAML loading |
+| Font size / font family picker | Accessibility or preference customization | Significantly complicates layout (fixed-height panels assume specific font sizes); DPI awareness already handles scale | DPI awareness covers the scale need; fixed fonts maintain layout integrity |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[WSUS + SQL Express Installation Wizard]
-    └──enables──> [All Other Operations]
-                  (nothing works without WSUS installed)
+[DynamicResource Migration — PREREQUISITE]
+    └──required by──> [Live Theme Switching]
+    └──required by──> [Live Preview]
+    (without DynamicResource, theme change requires restart at minimum
+     and may not propagate to styles/templates at all)
 
-[Service Management]
-    └──required by──> [Health Check / Auto-Repair]
-    └──required by──> [Deep Cleanup]
-    └──required by──> [Online Sync]
+[Theme ResourceDictionary Files (6 files)]
+    └──required by──> [Theme Service]
+    └──required by──> [Theme Picker UI]
 
-[Health Check]
-    └──enables──> [Auto-Repair]
-    └──informs──> [Dashboard Status Cards]
+[Theme Service]
+    └──required by──> [Theme Picker UI — Apply action]
+    └──required by──> [App startup — restore persisted theme]
 
-[Database Backup]
-    └──recommended before──> [Database Restore]
-    └──recommended before──> [Deep Cleanup]
+[AppSettings.Theme field]
+    └──required by──> [Theme persistence]
+    └──required by──> [Theme Service — startup restore]
+    └──depends on──> [existing SettingsService (already built)]
 
-[Export (Full)]
-    └──required before──> [Import on air-gap server]
+[Theme Picker UI (swatch grid in SettingsDialog)]
+    └──uses──> [Theme Service]
+    └──uses──> [AppSettings.Theme for active indicator]
+    └──depends on──> [existing SettingsDialog (already built)]
 
-[Export (Differential)]
-    └──requires──> [Previous Full Export as baseline]
-
-[IIS App Pool Optimization]
-    └──required by──> [WSUS Service Stability]
-    └──part of──> [Health Check / Auto-Repair]
-
-[Scheduled Task]
-    └──uses──> [Deep Cleanup workflow]
-    └──uses──> [Online Sync workflow]
-
-[Air-Gap Mode Toggle]
-    └──hides──> [Online Sync]
-    └──shows──> [Export / Import]
-    └──shows──> [Content Reset]
+[Live Preview]
+    └──requires──> [Theme Service (apply without save)]
+    └──requires──> [Cancel revert logic in SettingsDialog]
+    └──enhances──> [Theme Picker UI]
 ```
 
 ### Dependency Notes
 
-- **Installation Wizard must be Phase 1:** Every other feature assumes WSUS is installed. The wizard is the entry point for new deployments.
-- **Service management underlies everything:** You cannot run cleanup, sync, or diagnostics if SQL Server or WSUS services are down. Service start/stop must be implemented before operation features.
-- **Health Check before Auto-Repair:** Repair is a function of the health check findings — they're one unified "Diagnostics" operation in v3.8.x and should stay that way.
-- **Full Export before Differential:** Differential requires a prior full copy to serve as a baseline reference point. If no full export exists, differential silently becomes a full export. Make this explicit in the UI.
-- **DB Backup before Deep Cleanup / Restore:** Surface a "back up first?" prompt if no recent backup is detected before destructive operations.
+- **DynamicResource migration is the load-bearing prerequisite.** The existing codebase uses `StaticResource` everywhere. A swap of the MergedDictionary source at runtime will not propagate to controls that use `StaticResource` — they are baked at load time. Every `{StaticResource BgDark}`, `{StaticResource Text1}`, etc. in `.xaml` view files must become `{DynamicResource ...}`. This is the highest-risk work item. The `DarkTheme.xaml` style definitions that use `StaticResource` internally (e.g., hover triggers with hardcoded `#21262D`) also need to be converted to use named resources.
+
+- **Theme Service is the pivot point.** It owns the swap logic (`Application.Current.Resources.MergedDictionaries`), knows all valid theme names, and is called by both the Settings dialog (live preview) and the app startup (restore). Keep it as a simple static class or singleton — it does not need async.
+
+- **Live preview requires a revert path.** When the user hovers or clicks a swatch, the theme applies live. If they hit Cancel, the previous theme must be restored. The SettingsDialog must capture the "entry state" theme name on open and revert to it on Cancel.
+
+- **AppSettings.Theme field does not exist yet.** It must be added to `AppSettings.cs` with a default of `"DefaultDark"` before the settings persistence path works.
 
 ---
 
 ## MVP Definition
 
-This is a rewrite of an existing production tool, not a greenfield product. "MVP" means: reaches feature parity with v3.8.12 production so that users can switch over. The rewrite's value is in stability and deployment simplicity, not in adding net-new features.
+This is a bounded milestone, not a product launch. MVP means: the feature ships and is usable, with the live-preview Chrome-style picker.
 
-### Launch With (v4.0 — Feature Parity)
+### Launch With (v4.3 — Themes milestone)
 
-These are required to replace v3.8.12 in production:
+- [ ] DynamicResource migration in all `.xaml` view files — prerequisite; nothing else works without this
+- [ ] 6 theme ResourceDictionary files with consistent key coverage — the deliverable
+- [ ] Theme Service to swap themes at runtime — the mechanism
+- [ ] `AppSettings.Theme` field + startup restore — persistence
+- [ ] Theme picker section in Settings dialog with swatches and active indicator — the UX
+- [ ] Live preview (apply on click, revert on Cancel) — the differentiator
+- [ ] Hardcoded colors in `MainWindow.xaml` nav button trigger styles converted to named resources — blocks theming
 
-- [ ] Dashboard (service status, DB size, sync status, auto-refresh) — daily-use surface
-- [ ] Health check + auto-repair diagnostics — most commonly used operation
-- [ ] Deep cleanup (decline superseded, purge declined, reindex, shrink) — monthly maintenance
-- [ ] Service management quick actions (start SQL/WSUS/IIS) — recovery path
-- [ ] Online sync with profile selection (Full/Quick/Sync Only) — core WSUS function
-- [ ] Export/Import workflow for air-gap transfer (full + differential) — air-gap requirement
-- [ ] Database backup and restore — safety net
-- [ ] Scheduled task creation — unattended operation
-- [ ] WSUS + SQL Express installation wizard — new server setup
-- [ ] Settings persistence — usability baseline
-- [ ] Operation log panel + cancel button — operator visibility
-- [ ] Server mode toggle (Online vs Air-Gap) — context-aware UX
-- [ ] Admin privilege enforcement — security requirement
-- [ ] Single-file EXE distribution — deployment improvement over v3.8.x
-- [ ] Sub-second startup — quality-of-life improvement over v3.8.x
-- [ ] Dark theme, DPI-aware — UI quality parity
+### Add After Validation (v4.x)
 
-### Add After Validation (v4.1)
+- [ ] Smooth fade transition on theme switch — only if live preview lands smoothly; skip if it adds risk
+- [ ] High-contrast accessibility theme — defer; requires accessibility audit
 
-Features that improve the tool but aren't required for parity:
+### Future Consideration (v5+)
 
-- [ ] IIS app pool optimization (queue length, ping, memory limits) — surfaces existing best practice as automated action
-- [ ] Compliance summary (client count, % patched, last seen) — light reporting from SUSDB
-- [ ] Export path validation and pre-flight checks — prevents silent failures during air-gap operations
-- [ ] Live terminal mode — power-user toggle for raw output
-
-### Future Consideration (v4.x+)
-
-Defer until v4.0 is validated in production:
-
-- [ ] Update approval workflow UI — very large scope; native WSUS console is adequate
-- [ ] Client force check-in trigger — requires WinRM/GPO refresh; complex
-- [ ] HTTPS/SSL configuration helper (Set-WsusHttps) — infrequently needed; run from CLI
-- [ ] GPO deployment helper — useful but low frequency; CLI is adequate
+- [ ] Theme import from external file — explicitly an anti-feature for now; revisit only if user demand is demonstrated
 
 ---
 
@@ -182,67 +136,64 @@ Defer until v4.0 is validated in production:
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Dashboard + auto-refresh | HIGH | LOW | P1 |
-| Health check + auto-repair | HIGH | MEDIUM | P1 |
-| Deep cleanup | HIGH | HIGH | P1 |
-| Service management | HIGH | LOW | P1 |
-| Online sync | HIGH | MEDIUM | P1 |
-| Export/Import (air-gap) | HIGH | HIGH | P1 |
-| DB backup/restore | HIGH | MEDIUM | P1 |
-| Scheduled tasks | MEDIUM | MEDIUM | P1 |
-| Installation wizard | HIGH | HIGH | P1 |
-| Settings persistence | MEDIUM | LOW | P1 |
-| Operation log panel + cancel | HIGH | LOW | P1 |
-| Server mode toggle | MEDIUM | LOW | P1 |
-| Single-file EXE | HIGH | HIGH | P1 |
-| Sub-second startup | MEDIUM | HIGH | P1 — baked into compiled language choice |
-| Dark theme + DPI | MEDIUM | LOW | P1 |
-| IIS app pool optimization | MEDIUM | LOW | P2 |
-| Compliance summary (reporting) | MEDIUM | MEDIUM | P2 |
-| Live terminal mode | LOW | MEDIUM | P2 |
-| DB size trend / history | LOW | MEDIUM | P3 |
-| HTTPS/SSL configuration helper | LOW | MEDIUM | P3 |
-| Update approval workflow | LOW | HIGH | P3 — native console is better |
+| DynamicResource migration | HIGH (blocks all theming) | MEDIUM | P1 — prerequisite |
+| 6 theme files | HIGH | LOW | P1 — the actual deliverable |
+| Theme Service | HIGH | LOW | P1 — mechanism |
+| AppSettings.Theme + persistence | HIGH | LOW | P1 — survival across restart |
+| Settings dialog swatch picker | HIGH | LOW | P1 — the UX surface |
+| Active theme indicator | MEDIUM | LOW | P1 — expected in any picker |
+| Live preview with Cancel revert | HIGH | MEDIUM | P1 — the differentiator |
+| Smooth fade transition | LOW | MEDIUM | P2 — polish only |
+| Custom color editor | LOW | HIGH | P3 / anti-feature |
+| External theme import | LOW | HIGH | Anti-feature — skip |
 
 ---
 
-## Competitor Feature Analysis
+## How Chrome's Theme Picker Maps to WPF
 
-The WSUS tooling ecosystem is sparse. Microsoft's native console is the baseline; most third-party tools are enterprise patch management suites (SolarWinds, ManageEngine) that use WSUS as a backend, not WSUS-specific management tools.
+Chrome's theme picker (in Settings > Appearance) is the reference model for this milestone. Here is how each Chrome concept maps to what we are building:
 
-| Feature | WSUS Native Console | Optimize-WsusServer (open-source PS) | SolarWinds Patch Manager | GA-WsusManager v3.8.x | Our v4.0 Approach |
-|---------|---------------------|--------------------------------------|--------------------------|----------------------|-------------------|
-| Health diagnostics | Manual checks | CheckConfig mode | Agent-based | Automated with repair | Automated unified diagnostics |
-| DB cleanup / reindex | Wizard (manual, slow) | Yes (scheduled) | Via WSUS API | Deep 6-step pipeline | Same pipeline, native speed |
-| Air-gap export/import | None | None | None | Full + differential | Preserve; first-class feature |
-| Server mode toggle | None | None | None | Yes | Yes |
-| Installation wizard | None (Server Manager) | None | Requires WSUS pre-installed | Yes | Yes |
-| Single EXE | N/A | Script bundle | Installed service | No (requires Scripts/) | Yes |
-| Dark theme | No | N/A | Yes | Yes | Yes |
-| Scheduled maintenance | Via Task Scheduler manually | Yes (creates tasks) | Yes (UI-based) | GUI-based task creation | Yes |
-| DB size monitoring | Not surfaced | Not surfaced | Yes (enterprise) | Dashboard card | Dashboard card + alert threshold |
-| IIS app pool optimization | Manual | Yes | Automated | Not explicit | P2: explicit action |
-| Compliance/client reporting | Full update status report | None | Full reporting suite | Not implemented | P2: light summary from SUSDB |
-| GPO deployment | Manual | None | Full GPO management | Helper scripts | P3: CLI only |
+| Chrome Concept | Chrome Implementation | Our WPF Equivalent |
+|----------------|-----------------------|--------------------|
+| Theme color swatches grid | Row of colored circles; click to apply instantly | Row of rectangular swatches in SettingsDialog showing each theme's accent + background colors |
+| Live preview on click | Entire browser chrome re-colors immediately | `ThemeService.Apply(themeName)` called on swatch click; no Save required for the visual change |
+| Active theme checkmark | Filled checkmark on selected swatch | Border highlight or checkmark overlay on the active swatch |
+| Cancel / no explicit revert | Chrome has no cancel; change is immediate and permanent | Our app has a Cancel button on SettingsDialog; it must revert to the entry-state theme |
+| Theme name label | Small label below swatch | TextBlock below each swatch with the theme's display name |
+| "Reset to default" | Separate button | Not needed for v4.3; Default Dark is always in the list |
+| Custom color picker | Full-color wheel in Chrome 100+ | Anti-feature for us — not building |
 
-**Key insight:** No existing tool covers the air-gap + single-server + lightweight-GUI niche that GA-WsusManager occupies. The rewrite should double down on this — it is the uncontested space.
+The Chrome model works for a browser because any change is instantly reversible by picking another theme. In our app, Settings has a Save/Cancel contract. The right adaptation is: live-apply on swatch click, but respect Cancel by reverting. This is strictly better UX than "apply only after Save" with no preview.
+
+---
+
+## Implementation Notes for Roadmap
+
+These findings directly inform phase ordering and task granularity:
+
+1. **Start with DynamicResource migration, not theme files.** Writing beautiful themes before the plumbing works wastes effort. The migration task should be Phase 1 of this milestone.
+
+2. **Hardcoded hex values in MainWindow.xaml are a blocker.** The `#21262D`, `#58A6FF`, and `#E6EDF3` values in the nav button trigger styles (not using named resources) will resist theme switching. These 15 occurrences across 4 view files must be extracted to named resource keys in each theme file.
+
+3. **Theme file structure must be exact.** Every theme file must define all the same resource keys that `DarkTheme.xaml` defines. A missing key in one theme causes `{DynamicResource ...}` to silently fall back or throw at runtime. A checklist of required keys should gate each theme file.
+
+4. **SettingsDialog needs a new section, not a new dialog.** The theme picker lives in the existing Settings dialog. Increase the dialog height and add an "Appearance" section above the buttons. This avoids the navigation cost of a second modal.
+
+5. **Cancel revert is the trickiest part of live preview.** The SettingsDialog must capture `currentTheme` on open (before any swatch clicks) and restore it in the Cancel handler. This requires the SettingsDialog to know the active theme at construction time — pass it as a constructor parameter alongside `AppSettings`.
 
 ---
 
 ## Sources
 
-- [WSUS Update Approval and Operations — Microsoft Learn](https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/updates-operations)
-- [WSUS Maintenance Guide — Microsoft Learn](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide)
-- [Optimize-WsusServer — GitHub (awarre)](https://github.com/awarre/Optimize-WsusServer)
-- [WSUS Cleanup Best Practices — Patch My PC](https://patchmypc.com/blog/wsus-configuration-clean-up-your-complete-guide/)
-- [Top WSUS Tools and Software — ITTSystems](https://www.ittsystems.com/wsus-tools-and-software/)
-- [Offline Windows Patching for Air-Gapped Networks — BatchPatch](https://batchpatch.com/offline-windows-patching-for-isolated-or-air-gapped-networks)
-- [WSUS Deprecation Announcement — Microsoft TechCommunity](https://techcommunity.microsoft.com/blog/windows-itpro-blog/windows-server-update-services-wsus-deprecation/4250436)
-- [Admin Dashboard UX Best Practices 2025 — DesignRush](https://www.designrush.com/agency/ui-ux-design/dashboard/trends/dashboard-ux)
-- [Windows Admin Center Features 2025 — StarWind](https://www.starwindsoftware.com/blog/windows-admin-center-2410-new-features-2025-2/)
-- GA-WsusManager CLAUDE.md — v3.8.x production feature set (HIGH confidence — lived experience)
+- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — MEDIUM confidence (blog, verified against official docs)
+- [Changing WPF Themes Dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — MEDIUM confidence (community, multiple sources agree)
+- [WPF How To Switching Themes at Runtime — Telerik Docs](https://docs.telerik.com/devtools/wpf/styling-and-appearance/how-to/styling-apperance-themes-runtime) — HIGH confidence (vendor documentation)
+- [ResourceDictionary and XAML Resource References — Microsoft Learn](https://learn.microsoft.com/en-us/windows/apps/design/style/xaml-resource-dictionary) — HIGH confidence (official Microsoft documentation)
+- [StaticResource vs DynamicResource — CodeProject](https://www.codeproject.com/Articles/393086/WPF-StaticResource-vs-DynamicResource) — MEDIUM confidence (community, well-cited)
+- [Mastering Dynamic Resources in WPF — Moldstud](https://moldstud.com/articles/p-mastering-dynamic-resources-in-wpf-a-comprehensive-guide-for-developers) — LOW confidence (single source, useful for general guidance)
+- Existing codebase inspection: `DarkTheme.xaml`, `App.xaml`, `SettingsDialog.xaml`, `SettingsDialog.xaml.cs`, `AppSettings.cs`, `MainWindow.xaml` — HIGH confidence (direct code analysis)
 
 ---
 
-*Feature research for: WSUS management GUI + CLI rewrite (GA-WsusManager v4)*
-*Researched: 2026-02-19*
+*Feature research for: WPF theming system (v4.3 — GA-WsusManager)*
+*Researched: 2026-02-20*
