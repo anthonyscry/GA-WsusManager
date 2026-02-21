@@ -23,7 +23,7 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        await _viewModel.InitializeAsync();
+        await _viewModel.InitializeAsync().ConfigureAwait(false);
     }
 
     /// <summary>

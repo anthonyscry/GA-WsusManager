@@ -114,28 +114,23 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _pageTitle = "Dashboard";
 
-    public Visibility IsDashboardVisible =>
-        CurrentPanel == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsDashboardVisible => string.Equals(CurrentPanel, "Dashboard", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility IsDiagnosticsPanelVisible =>
-        CurrentPanel == "Diagnostics" ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsDiagnosticsPanelVisible => string.Equals(CurrentPanel, "Diagnostics", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility IsDatabasePanelVisible =>
-        CurrentPanel == "Database" ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsDatabasePanelVisible => string.Equals(CurrentPanel, "Database", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility IsClientToolsPanelVisible =>
-        CurrentPanel == "ClientTools" ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility IsClientToolsPanelVisible => string.Equals(CurrentPanel, "ClientTools", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility IsOperationPanelVisible =>
-        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics" && CurrentPanel != "Database" && CurrentPanel != "ClientTools"
-            ? Visibility.Visible
+    public Visibility IsOperationPanelVisible => !string.Equals(CurrentPanel, "Dashboard", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Diagnostics", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Database", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "ClientTools"
+, StringComparison.Ordinal) ? Visibility.Visible
             : Visibility.Collapsed;
 
     [RelayCommand]
     private void Navigate(string panel)
     {
         // Settings opens a modal dialog, not a panel
-        if (panel == "Settings")
+        if (string.Equals(panel, "Settings", StringComparison.Ordinal))
         {
             _ = OpenSettings();
             return;
@@ -286,7 +281,7 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var success = await operation(progress, _operationCts.Token);
+            var success = await operation(progress, _operationCts.Token).ConfigureAwait(false);
 
             if (success)
             {
@@ -364,7 +359,9 @@ public partial class MainViewModel : ObservableObject
     private bool _isLogPanelExpanded = true;
 
     public double LogPanelHeight => IsLogPanelExpanded ? 250 : 0;
+
     public Visibility LogTextVisibility => IsLogPanelExpanded ? Visibility.Visible : Visibility.Collapsed;
+
     public string LogToggleText => IsLogPanelExpanded ? "Hide" : "Show";
 
     [RelayCommand]
@@ -372,7 +369,7 @@ public partial class MainViewModel : ObservableObject
     {
         IsLogPanelExpanded = !IsLogPanelExpanded;
         _settings.LogPanelExpanded = IsLogPanelExpanded;
-        await SaveSettingsAsync();
+        await SaveSettingsAsync().ConfigureAwait(false);
     }
 
     [RelayCommand]
@@ -450,6 +447,7 @@ public partial class MainViewModel : ObservableObject
         : GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
 
     public string ConnectionStatusText => IsOnline ? "Online" : "Offline";
+
     public string ServerModeText => IsOnline ? "Online" : "Air-Gap";
 
     /// <summary>Dynamic button label for the mode toggle button.</summary>
@@ -467,7 +465,7 @@ public partial class MainViewModel : ObservableObject
 
         // Persist the new mode to settings
         _settings.ServerMode = IsOnline ? "Online" : "AirGap";
-        await SaveSettingsAsync();
+        await SaveSettingsAsync().ConfigureAwait(false);
 
         // Notify CanExecute for online-dependent operations
         NotifyCommandCanExecuteChanged();
@@ -498,13 +496,13 @@ public partial class MainViewModel : ObservableObject
                 _settings.ContentPath,
                 _settings.SqlInstance,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             // Trigger dashboard refresh to reflect any service state changes
-            await RefreshDashboard();
+            await RefreshDashboard().ConfigureAwait(false);
 
             return report.IsHealthy || report.FailedCount == 0;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -524,9 +522,9 @@ public partial class MainViewModel : ObservableObject
 
         await RunOperationAsync("Content Reset", async (progress, ct) =>
         {
-            var result = await _contentResetService.ResetContentAsync(progress, ct);
+            var result = await _contentResetService.ResetContentAsync(progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -535,13 +533,13 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync($"Start {serviceName}", async (progress, ct) =>
         {
             progress.Report($"Starting {serviceName}...");
-            var result = await _serviceManager.StartServiceAsync(serviceName, ct);
+            var result = await _serviceManager.StartServiceAsync(serviceName, ct).ConfigureAwait(false);
             progress.Report(result.Success ? $"[OK] {result.Message}" : $"[FAIL] {result.Message}");
 
             // Refresh dashboard to reflect service state change
-            await RefreshDashboard();
+            await RefreshDashboard().ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -550,13 +548,13 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync($"Stop {serviceName}", async (progress, ct) =>
         {
             progress.Report($"Stopping {serviceName}...");
-            var result = await _serviceManager.StopServiceAsync(serviceName, ct);
+            var result = await _serviceManager.StopServiceAsync(serviceName, ct).ConfigureAwait(false);
             progress.Report(result.Success ? $"[OK] {result.Message}" : $"[FAIL] {result.Message}");
 
             // Refresh dashboard to reflect service state change
-            await RefreshDashboard();
+            await RefreshDashboard().ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -573,10 +571,10 @@ public partial class MainViewModel : ObservableObject
             var result = await _deepCleanupService.RunAsync(
                 _settings.SqlInstance,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -603,10 +601,10 @@ public partial class MainViewModel : ObservableObject
                 _settings.SqlInstance,
                 backupPath,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -649,14 +647,14 @@ public partial class MainViewModel : ObservableObject
                 backupPath,
                 _settings.ContentPath,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             // Refresh dashboard after restore to reflect new DB state
             if (result.Success)
-                await RefreshDashboard();
+                await RefreshDashboard().ConfigureAwait(false);
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -666,19 +664,19 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task QuickDiagnostics()
     {
-        await RunDiagnostics();
+        await RunDiagnostics().ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task QuickCleanup()
     {
-        await RunDeepCleanup();
+        await RunDeepCleanup().ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteOnlineOperation))]
     private async Task QuickSync()
     {
-        await RunOnlineSync();
+        await RunOnlineSync().ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -686,16 +684,18 @@ public partial class MainViewModel : ObservableObject
     {
         await RunOperationAsync("Start All Services", async (progress, ct) =>
         {
-            var result = await _serviceManager.StartAllServicesAsync(progress, ct);
+            var result = await _serviceManager.StartAllServicesAsync(progress, ct).ConfigureAwait(false);
 
             // Refresh dashboard to reflect service state changes
-            await RefreshDashboard();
+            await RefreshDashboard().ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     private bool CanExecuteWsusOperation() => IsWsusInstalled && !IsOperationRunning;
+
     private bool CanExecuteOnlineOperation() => IsWsusInstalled && !IsOperationRunning && IsOnline;
+
     private bool CanExecuteInstall() => !IsOperationRunning;
 
     // ═══════════════════════════════════════════════════════════════
@@ -718,9 +718,9 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync("Online Sync", async (progress, ct) =>
         {
             var result = await _syncService.RunSyncAsync(
-                profile, MaxAutoApproveCount, progress, ct);
+                profile, MaxAutoApproveCount, progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -740,18 +740,18 @@ public partial class MainViewModel : ObservableObject
             await RunOperationAsync("Export", async (progress, ct) =>
             {
                 var result = await _exportService.ExportAsync(
-                    dialog.ExportResult, progress, ct);
+                    dialog.ExportResult, progress, ct).ConfigureAwait(false);
                 return result.Success;
-            });
+            }).ConfigureAwait(false);
         }
         else if (!dialog.IsExportMode && dialog.ImportResult is not null)
         {
             await RunOperationAsync("Import", async (progress, ct) =>
             {
                 var result = await _importService.ImportAsync(
-                    dialog.ImportResult, progress, ct);
+                    dialog.ImportResult, progress, ct).ConfigureAwait(false);
                 return result.Success;
-            });
+            }).ConfigureAwait(false);
         }
     }
 
@@ -776,7 +776,7 @@ public partial class MainViewModel : ObservableObject
         {
             // Pre-flight validation
             progress.Report("Validating prerequisites...");
-            var validation = await _installationService.ValidatePrerequisitesAsync(options, ct);
+            var validation = await _installationService.ValidatePrerequisitesAsync(options, ct).ConfigureAwait(false);
             if (!validation.Success)
             {
                 progress.Report($"[FAIL] {validation.Message}");
@@ -786,14 +786,14 @@ public partial class MainViewModel : ObservableObject
             progress.Report("");
 
             // Run installation
-            var result = await _installationService.InstallAsync(options, progress, ct);
+            var result = await _installationService.InstallAsync(options, progress, ct).ConfigureAwait(false);
 
             // Refresh dashboard after install to detect WSUS role
             if (result.Success)
-                await RefreshDashboard();
+                await RefreshDashboard().ConfigureAwait(false);
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -811,14 +811,14 @@ public partial class MainViewModel : ObservableObject
 
         await RunOperationAsync("Schedule Task", async (progress, ct) =>
         {
-            var result = await _scheduledTaskService.CreateTaskAsync(options, progress, ct);
+            var result = await _scheduledTaskService.CreateTaskAsync(options, progress, ct).ConfigureAwait(false);
 
             // Refresh dashboard to update Task card status
             if (result.Success)
-                await RefreshDashboard();
+                await RefreshDashboard().ConfigureAwait(false);
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
@@ -828,7 +828,7 @@ public partial class MainViewModel : ObservableObject
 
         await RunOperationAsync("Create GPO", async (progress, ct) =>
         {
-            var result = await _gpoDeploymentService.DeployGpoFilesAsync(progress, ct);
+            var result = await _gpoDeploymentService.DeployGpoFilesAsync(progress, ct).ConfigureAwait(false);
 
             if (result.Success && result.Data is not null)
             {
@@ -843,7 +843,7 @@ public partial class MainViewModel : ObservableObject
             }
 
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -907,9 +907,9 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync("Cancel Stuck Jobs", async (progress, ct) =>
         {
             var result = await _clientService.CancelStuckJobsAsync(
-                ClientHostname.Trim(), progress, ct);
+                ClientHostname.Trim(), progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
@@ -920,9 +920,9 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync("Force Check-In", async (progress, ct) =>
         {
             var result = await _clientService.ForceCheckInAsync(
-                ClientHostname.Trim(), progress, ct);
+                ClientHostname.Trim(), progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
@@ -934,9 +934,9 @@ public partial class MainViewModel : ObservableObject
         {
             var wsusUrl = $"http://{_settings.SqlInstance.Split('\\')[0]}:8530";
             var result = await _clientService.TestConnectivityAsync(
-                ClientHostname.Trim(), wsusUrl, progress, ct);
+                ClientHostname.Trim(), wsusUrl, progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
@@ -947,9 +947,9 @@ public partial class MainViewModel : ObservableObject
         await RunOperationAsync("Client Diagnostics", async (progress, ct) =>
         {
             var result = await _clientService.RunDiagnosticsAsync(
-                ClientHostname.Trim(), progress, ct);
+                ClientHostname.Trim(), progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1001,9 +1001,9 @@ public partial class MainViewModel : ObservableObject
 
         await RunOperationAsync("Mass GPUpdate", async (progress, ct) =>
         {
-            var result = await _clientService.MassForceCheckInAsync(hostnames, progress, ct);
+            var result = await _clientService.MassForceCheckInAsync(hostnames, progress, ct).ConfigureAwait(false);
             return result.Success;
-        });
+        }).ConfigureAwait(false);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1044,7 +1044,7 @@ public partial class MainViewModel : ObservableObject
 
             // For MassGpUpdate, pass the current MassHostnames list if populated
             IReadOnlyList<string>? hostnames = null;
-            if (SelectedScriptOperation == "Mass GPUpdate" && !string.IsNullOrWhiteSpace(MassHostnames))
+            if (string.Equals(SelectedScriptOperation, "Mass GPUpdate", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(MassHostnames))
             {
                 hostnames = MassHostnames
                     .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
@@ -1059,7 +1059,7 @@ public partial class MainViewModel : ObservableObject
                 hostnames: hostnames);
 
             // Default filename: WsusManager-{operation-slug}-{date}.ps1
-            var slug = SelectedScriptOperation.Replace(" ", "-").Replace("/", "-");
+            var slug = SelectedScriptOperation.Replace(" ", "-", StringComparison.Ordinal).Replace("/", "-", StringComparison.Ordinal);
             var defaultName = $"WsusManager-{slug}-{DateTime.Now:yyyy-MM-dd}.ps1";
 
             var dialog = new SaveFileDialog
@@ -1114,7 +1114,7 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            var data = await _dashboardService.CollectAsync(_settings, CancellationToken.None);
+            var data = await _dashboardService.CollectAsync(_settings, CancellationToken.None).ConfigureAwait(false);
             UpdateDashboardCards(data);
         }
         catch (Exception ex)
@@ -1204,11 +1204,11 @@ public partial class MainViewModel : ObservableObject
 
         // Task Card
         TaskValue = data.TaskStatus;
-        TaskSubtext = data.TaskStatus == "Ready" ? "Scheduled" : "";
-        TaskBarColor = data.TaskStatus == "Ready"
-            ? GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50))
-            : data.TaskStatus == "Not Found"
-                ? GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E))
+        TaskSubtext = string.Equals(data.TaskStatus, "Ready", StringComparison.Ordinal) ? "Scheduled" : "";
+        TaskBarColor = string.Equals(data.TaskStatus, "Ready"
+, StringComparison.Ordinal) ? GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50))
+            : string.Equals(data.TaskStatus, "Not Found"
+, StringComparison.Ordinal) ? GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E))
                 : GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22));
     }
 
@@ -1264,11 +1264,11 @@ public partial class MainViewModel : ObservableObject
         _isInitialized = true;
 
         // Load settings
-        _settings = await _settingsService.LoadAsync();
+        _settings = await _settingsService.LoadAsync().ConfigureAwait(false);
         ApplySettings(_settings);
 
         // First dashboard refresh (sets IsWsusInstalled correctly before any checks)
-        await RefreshDashboard();
+        await RefreshDashboard().ConfigureAwait(false);
 
         // Check WSUS installation and show message if needed
         if (!IsWsusInstalled)
@@ -1323,10 +1323,10 @@ public partial class MainViewModel : ObservableObject
         }
 
         // Persist to disk (includes theme selection)
-        await SaveSettingsAsync();
+        await SaveSettingsAsync().ConfigureAwait(false);
 
         // Refresh dashboard so new paths/mode take effect immediately
-        await RefreshDashboard();
+        await RefreshDashboard().ConfigureAwait(false);
 
         var themeLog = themeChanged ? $", Theme: {updated.SelectedTheme}" : "";
         AppendLog($"Settings saved. Server mode: {_settings.ServerMode}, Refresh: {_settings.RefreshIntervalSeconds}s{themeLog}");
@@ -1335,10 +1335,10 @@ public partial class MainViewModel : ObservableObject
     private void ApplySettings(AppSettings settings)
     {
         IsLogPanelExpanded = settings.LogPanelExpanded;
-        IsOnline = settings.ServerMode == "Online";
+        IsOnline = string.Equals(settings.ServerMode, "Online", StringComparison.Ordinal);
         // Activate override on startup when saved mode is AirGap so auto-detection
         // doesn't flip it back to Online on the first ping check.
-        _modeOverrideActive = settings.ServerMode == "AirGap";
+        _modeOverrideActive = string.Equals(settings.ServerMode, "AirGap", StringComparison.Ordinal);
         ConfigContentPath = settings.ContentPath;
         ConfigSqlInstance = settings.SqlInstance;
         ConfigLogPath = @"C:\WSUS\Logs";
@@ -1348,7 +1348,7 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            await _settingsService.SaveAsync(_settings);
+            await _settingsService.SaveAsync(_settings).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1362,7 +1362,7 @@ public partial class MainViewModel : ObservableObject
             _settings.RefreshIntervalSeconds > 0 ? _settings.RefreshIntervalSeconds : 30);
 
         _refreshTimer = new DispatcherTimer { Interval = interval };
-        _refreshTimer.Tick += async (_, _) => await RefreshDashboard();
+        _refreshTimer.Tick += async (_, _) => await RefreshDashboard().ConfigureAwait(false);
         _refreshTimer.Start();
 
         _logService.Debug("Dashboard auto-refresh started ({Interval}s interval)", interval.TotalSeconds);

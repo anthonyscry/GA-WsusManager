@@ -7,7 +7,7 @@ namespace WsusManager.Core.Services.Interfaces;
 /// Three profiles match legacy PowerShell behavior:
 /// - Full Sync: synchronize -> decline -> approve -> monitor downloads
 /// - Quick Sync: synchronize -> approve (skip decline)
-/// - Sync Only: synchronize metadata only
+/// - Sync Only: synchronize metadata only.
 /// </summary>
 public interface ISyncService
 {

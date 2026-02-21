@@ -40,13 +40,13 @@ public class SqlService : ISqlService
 
             var connStr = BuildConnectionString(sqlInstance, database);
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = query;
             cmd.CommandTimeout = commandTimeoutSeconds; // 0 = unlimited
 
-            var result = await cmd.ExecuteScalarAsync(ct);
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
 
             if (result == null || result == DBNull.Value)
                 return default;
@@ -78,13 +78,13 @@ public class SqlService : ISqlService
 
             var connStr = BuildConnectionString(sqlInstance, database);
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = query;
             cmd.CommandTimeout = commandTimeoutSeconds; // 0 = unlimited
 
-            return await cmd.ExecuteNonQueryAsync(ct);
+            return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -112,15 +112,15 @@ public class SqlService : ISqlService
 
             var connStr = BuildConnectionString(sqlInstance, database);
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = query;
             cmd.CommandTimeout = commandTimeoutSeconds;
 
-            using var reader = await cmd.ExecuteReaderAsync(ct);
+            using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
 
-            if (!await reader.ReadAsync(ct))
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
                 return OperationResult<T>.Fail("Query returned no rows.");
 
             var result = mapper(reader);

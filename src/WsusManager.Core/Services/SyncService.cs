@@ -40,7 +40,7 @@ public class SyncService : ISyncService
 
         // Step 1: Connect to WSUS server
         progress.Report("[Step 1] Connecting to WSUS server...");
-        var connectResult = await _wsusServer.ConnectAsync(ct);
+        var connectResult = await _wsusServer.ConnectAsync(ct).ConfigureAwait(false);
         if (!connectResult.Success)
         {
             progress.Report($"[FAIL] {connectResult.Message}");
@@ -50,7 +50,7 @@ public class SyncService : ISyncService
 
         // Step 2: Get and report last sync info
         progress.Report("[Step 2] Checking last sync info...");
-        var lastSyncResult = await _wsusServer.GetLastSyncInfoAsync(ct);
+        var lastSyncResult = await _wsusServer.GetLastSyncInfoAsync(ct).ConfigureAwait(false);
         if (lastSyncResult.Success && lastSyncResult.Data is not null)
         {
             var info = lastSyncResult.Data;
@@ -61,7 +61,7 @@ public class SyncService : ISyncService
 
         // Step 3: Start synchronization
         progress.Report("[Step 3] Starting synchronization...");
-        var syncResult = await _wsusServer.StartSynchronizationAsync(progress, ct);
+        var syncResult = await _wsusServer.StartSynchronizationAsync(progress, ct).ConfigureAwait(false);
         if (!syncResult.Success)
         {
             progress.Report($"[FAIL] {syncResult.Message}");
@@ -76,7 +76,7 @@ public class SyncService : ISyncService
         if (profile == SyncProfile.FullSync)
         {
             progress.Report("[Step 4] Declining expired, superseded, and old updates...");
-            var declineResult = await _wsusServer.DeclineUpdatesAsync(progress, ct);
+            var declineResult = await _wsusServer.DeclineUpdatesAsync(progress, ct).ConfigureAwait(false);
             if (declineResult.Success)
             {
                 declinedCount = declineResult.Data;
@@ -96,7 +96,7 @@ public class SyncService : ISyncService
         if (profile == SyncProfile.FullSync || profile == SyncProfile.QuickSync)
         {
             progress.Report("[Step 5] Auto-approving updates...");
-            var approveResult = await _wsusServer.ApproveUpdatesAsync(maxAutoApproveCount, progress, ct);
+            var approveResult = await _wsusServer.ApproveUpdatesAsync(maxAutoApproveCount, progress, ct).ConfigureAwait(false);
             if (approveResult.Success)
             {
                 approvedCount = approveResult.Data;

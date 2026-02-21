@@ -38,7 +38,7 @@ public class WindowsServiceManager : IWindowsServiceManager
         return Task.Run(() =>
         {
             var displayName = ServiceDefinitions
-                .FirstOrDefault(d => d.ServiceName == serviceName).DisplayName
+                .FirstOrDefault(d => string.Equals(d.ServiceName, serviceName, StringComparison.Ordinal)).DisplayName
                 ?? serviceName;
 
             try
@@ -70,7 +70,7 @@ public class WindowsServiceManager : IWindowsServiceManager
             .Select(d => GetStatusAsync(d.ServiceName, ct))
             .ToArray();
 
-        return await Task.WhenAll(tasks);
+        return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -104,7 +104,7 @@ public class WindowsServiceManager : IWindowsServiceManager
                     _logService.Warning("Service {ServiceName} start attempt {Attempt} failed: {Error}",
                         serviceName, attempt, ex.Message);
 
-                    await Task.Delay(TimeSpan.FromSeconds(RetryDelaySeconds), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(RetryDelaySeconds), ct).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -160,7 +160,7 @@ public class WindowsServiceManager : IWindowsServiceManager
             ct.ThrowIfCancellationRequested();
 
             progress?.Report($"Starting {displayName} ({serviceName})...");
-            var result = await StartServiceAsync(serviceName, ct);
+            var result = await StartServiceAsync(serviceName, ct).ConfigureAwait(false);
 
             if (result.Success)
             {
@@ -187,7 +187,7 @@ public class WindowsServiceManager : IWindowsServiceManager
             ct.ThrowIfCancellationRequested();
 
             progress?.Report($"Stopping {displayName} ({serviceName})...");
-            var result = await StopServiceAsync(serviceName, ct);
+            var result = await StopServiceAsync(serviceName, ct).ConfigureAwait(false);
 
             if (result.Success)
             {

@@ -9,7 +9,7 @@ namespace WsusManager.Core.Services;
 /// - Requires administrator privileges (#Requires -RunAsAdministrator)
 /// - Is fully self-contained with no module imports or external dependencies
 /// - Uses Write-Host with colours for readable output
-/// - Ends with a "Press Enter" pause so the admin can read results
+/// - Ends with a "Press Enter" pause so the admin can read results.
 /// </summary>
 public class ScriptGeneratorService : IScriptGeneratorService
 {
@@ -68,11 +68,11 @@ public class ScriptGeneratorService : IScriptGeneratorService
 
         return key switch
         {
-            "CancelStuckJobs"  => BuildCancelStuckJobsScript(),
-            "ForceCheckIn"     => BuildForceCheckInScript(),
+            "CancelStuckJobs" => BuildCancelStuckJobsScript(),
+            "ForceCheckIn" => BuildForceCheckInScript(),
             "TestConnectivity" => BuildTestConnectivityScript(wsusServerUrl),
-            "RunDiagnostics"   => BuildRunDiagnosticsScript(),
-            "MassGpUpdate"     => BuildMassGpUpdateScript(hostnames),
+            "RunDiagnostics" => BuildRunDiagnosticsScript(),
+            "MassGpUpdate" => BuildMassGpUpdateScript(hostnames),
             _ => throw new ArgumentException(
                 $"Unknown operation type '{operationType}'. " +
                 "Valid values: CancelStuckJobs, ForceCheckIn, TestConnectivity, RunDiagnostics, MassGpUpdate " +
@@ -489,7 +489,7 @@ Read-Host
 
         try
         {
-            var uri = new Uri(url.Contains("://") ? url : "http://" + url);
+            var uri = new Uri(url.Contains("://", StringComparison.Ordinal) ? url : "http://" + url);
             return uri.Host;
         }
         catch

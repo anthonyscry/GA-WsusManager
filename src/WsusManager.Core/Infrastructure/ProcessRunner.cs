@@ -67,7 +67,7 @@ public class ProcessRunner : IProcessRunner
 
         try
         {
-            await proc.WaitForExitAsync(ct);
+            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

@@ -47,34 +47,34 @@ public class DeepCleanupService : IDeepCleanupService
         _logService.Info("Starting deep cleanup pipeline on {SqlInstance}", sqlInstance);
 
         // Capture DB size before step 1
-        var dbSizeBefore = await GetDatabaseSizeGbAsync(sqlInstance, ct);
+        var dbSizeBefore = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
         if (dbSizeBefore >= 0)
             progress.Report($"Current database size: {dbSizeBefore:F2} GB");
 
         try
         {
             // Step 1: WSUS built-in cleanup
-            await RunStep1WsusCleanupAsync(sqlInstance, progress, ct);
+            await RunStep1WsusCleanupAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
             // Step 2: Remove declined supersession records
-            await RunStep2RemoveDeclinedSupersessionAsync(sqlInstance, progress, ct);
+            await RunStep2RemoveDeclinedSupersessionAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
             // Step 3: Remove superseded supersession records (batched 10k)
-            await RunStep3RemoveSupersededSupersessionAsync(sqlInstance, progress, ct);
+            await RunStep3RemoveSupersededSupersessionAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
             // Step 4: Delete declined updates via spDeleteUpdate (100/batch)
-            await RunStep4DeleteDeclinedUpdatesAsync(sqlInstance, progress, ct);
+            await RunStep4DeleteDeclinedUpdatesAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
             // Step 5: Rebuild indexes + update statistics
-            await RunStep5RebuildIndexesAsync(sqlInstance, progress, ct);
+            await RunStep5RebuildIndexesAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
             // Step 6: Shrink database with retry logic
-            var dbSizeAfter = await RunStep6ShrinkDatabaseAsync(sqlInstance, dbSizeBefore, progress, ct);
+            var dbSizeAfter = await RunStep6ShrinkDatabaseAsync(sqlInstance, dbSizeBefore, progress, ct).ConfigureAwait(false);
 
             // Final size comparison
             if (dbSizeBefore >= 0 && dbSizeAfter >= 0)
@@ -119,7 +119,7 @@ public class DeepCleanupService : IDeepCleanupService
             "powershell.exe",
             $"-NonInteractive -NoProfile -Command \"{psCommand}\"",
             progress,
-            ct);
+            ct).ConfigureAwait(false);
 
         sw.Stop();
         if (result.Success)
@@ -146,7 +146,7 @@ public class DeepCleanupService : IDeepCleanupService
                 WHERE RevisionState = 2
             )";
 
-        var rowsDeleted = await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, sql, 0, ct);
+        var rowsDeleted = await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, sql, 0, ct).ConfigureAwait(false);
 
         sw.Stop();
         progress.Report($"[Step 2/6] Remove supersession records for declined updates... done ({rowsDeleted} records, {sw.Elapsed.TotalSeconds:F0}s)");
@@ -176,14 +176,14 @@ public class DeepCleanupService : IDeepCleanupService
                     WHERE RevisionState = 3
                 )";
 
-            var rowsDeleted = await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, batchSql, 0, ct);
+            var rowsDeleted = await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, batchSql, 0, ct).ConfigureAwait(false);
             totalDeleted += rowsDeleted;
 
             if (rowsDeleted < SupersessionBatchSize)
                 break; // No more rows to delete
 
             // 1-second delay between batches (matching PowerShell)
-            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
         }
 
         sw.Stop();
@@ -213,12 +213,12 @@ public class DeepCleanupService : IDeepCleanupService
         var connStr = _sqlService.BuildConnectionString(sqlInstance, SusDb);
         using (var conn = new SqlConnection(connStr))
         {
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
             using var cmd = conn.CreateCommand();
             cmd.CommandText = selectSql;
             cmd.CommandTimeout = 0; // Unlimited
-            using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
+            using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
                 if (!reader.IsDBNull(0))
                     updateIds.Add(reader.GetInt32(0));
@@ -240,7 +240,7 @@ public class DeepCleanupService : IDeepCleanupService
 
         using (var conn = new SqlConnection(connStr))
         {
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             for (int i = 0; i < updateIds.Count; i += DeclinedDeleteBatchSize)
             {
@@ -256,7 +256,7 @@ public class DeepCleanupService : IDeepCleanupService
                         cmd.CommandText = "EXEC spDeleteUpdate @localUpdateID";
                         cmd.CommandTimeout = 0; // Unlimited
                         cmd.Parameters.AddWithValue("@localUpdateID", updateId);
-                        await cmd.ExecuteNonQueryAsync(ct);
+                        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                         deleted++;
                     }
                     catch (SqlException)
@@ -333,13 +333,13 @@ public class DeepCleanupService : IDeepCleanupService
 
         using (var conn = new SqlConnection(connStr))
         {
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
             using var cmd = conn.CreateCommand();
             cmd.CommandText = indexSql;
             cmd.CommandTimeout = 0; // Unlimited — index rebuild can take a long time
 
-            using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (await reader.ReadAsync(ct))
+            using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
                 rebuilt = reader.GetInt32(0);
                 reorganized = reader.GetInt32(1);
@@ -349,7 +349,7 @@ public class DeepCleanupService : IDeepCleanupService
         progress.Report($"Indexes: Rebuilt={rebuilt}, Reorganized={reorganized}");
 
         // Update statistics
-        await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, "EXEC sp_updatestats", 0, ct);
+        await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, "EXEC sp_updatestats", 0, ct).ConfigureAwait(false);
         progress.Report("Statistics updated.");
 
         sw.Stop();
@@ -380,7 +380,7 @@ public class DeepCleanupService : IDeepCleanupService
 
             try
             {
-                await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, shrinkSql, 0, ct);
+                await _sqlService.ExecuteNonQueryAsync(sqlInstance, SusDb, shrinkSql, 0, ct).ConfigureAwait(false);
                 shrinkSucceeded = true;
             }
             catch (SqlException ex) when (IsBackupBlockingError(ex.Message))
@@ -391,7 +391,7 @@ public class DeepCleanupService : IDeepCleanupService
                 if (attempt < ShrinkMaxRetries)
                 {
                     progress.Report($"Shrink blocked by active backup. Retrying in {ShrinkRetryDelaySeconds}s (attempt {attempt}/{ShrinkMaxRetries})...");
-                    await Task.Delay(TimeSpan.FromSeconds(ShrinkRetryDelaySeconds), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(ShrinkRetryDelaySeconds), ct).ConfigureAwait(false);
                 }
                 else
                 {
@@ -400,7 +400,7 @@ public class DeepCleanupService : IDeepCleanupService
             }
         }
 
-        var dbSizeAfter = await GetDatabaseSizeGbAsync(sqlInstance, ct);
+        var dbSizeAfter = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
 
         sw.Stop();
         progress.Report($"[Step 6/6] Shrink database... done ({sw.Elapsed.TotalSeconds:F0}s)");
@@ -411,7 +411,7 @@ public class DeepCleanupService : IDeepCleanupService
 
     private static bool IsBackupBlockingError(string message) =>
         message.Contains("serialized", StringComparison.OrdinalIgnoreCase) ||
-        message.Contains("backup", StringComparison.OrdinalIgnoreCase) && message.Contains("operation", StringComparison.OrdinalIgnoreCase) ||
+        (message.Contains("backup", StringComparison.OrdinalIgnoreCase) && message.Contains("operation", StringComparison.OrdinalIgnoreCase)) ||
         message.Contains("file manipulation", StringComparison.OrdinalIgnoreCase);
 
     // ─── Helpers ─────────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ public class DeepCleanupService : IDeepCleanupService
                 WHERE database_id = DB_ID('SUSDB')
                     AND type = 0"; // type=0 = data files only
 
-            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, "master", sql, 10, ct);
+            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, "master", sql, 10, ct).ConfigureAwait(false);
             return sizeGb;
         }
         catch (Exception ex)

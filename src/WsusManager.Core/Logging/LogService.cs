@@ -16,7 +16,10 @@ public class LogService : ILogService, IDisposable
     private readonly Serilog.Core.Logger _logger;
     private bool _disposed;
 
-    public LogService() : this(DefaultLogDirectory) { }
+    public LogService()
+        : this(DefaultLogDirectory)
+    {
+    }
 
     public LogService(string logDirectory)
     {

@@ -10,7 +10,7 @@ namespace WsusManager.Core.Services.Interfaces;
 ///   3. Remove supersession records for superseded updates (10k batches)
 ///   4. Delete declined updates via spDeleteUpdate (100/batch)
 ///   5. Rebuild fragmented indexes + update statistics
-///   6. Shrink database (3 retries on backup-block)
+///   6. Shrink database (3 retries on backup-block).
 /// </summary>
 public interface IDeepCleanupService
 {

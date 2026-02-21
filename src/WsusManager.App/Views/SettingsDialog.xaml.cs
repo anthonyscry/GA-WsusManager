@@ -2,8 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using WsusManager.Core.Models;
 using WsusManager.App.Services;
+using WsusManager.Core.Models;
 
 namespace WsusManager.App.Views;
 
@@ -26,6 +26,7 @@ public partial class SettingsDialog : Window
     public AppSettings? Result { get; private set; }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="SettingsDialog"/> class.
     /// Initializes a new SettingsDialog pre-populated with the current settings.
     /// </summary>
     /// <param name="current">Current application settings to display as defaults.</param>
@@ -45,9 +46,9 @@ public partial class SettingsDialog : Window
             if (item is ComboBoxItem cbi)
             {
                 var text = cbi.Content?.ToString();
-                if (current.ServerMode == "AirGap" && text == "Air-Gap")
+                if (string.Equals(current.ServerMode, "AirGap", StringComparison.Ordinal) && string.Equals(text, "Air-Gap", StringComparison.Ordinal))
                     CboServerMode.SelectedItem = cbi;
-                else if (current.ServerMode != "AirGap" && text == "Online")
+                else if (!string.Equals(current.ServerMode, "AirGap", StringComparison.Ordinal) && string.Equals(text, "Online", StringComparison.Ordinal))
                     CboServerMode.SelectedItem = cbi;
             }
         }
@@ -182,7 +183,7 @@ public partial class SettingsDialog : Window
         // Determine server mode from ComboBox selection
         var selectedMode = "Online";
         if (CboServerMode.SelectedItem is ComboBoxItem selected &&
-            selected.Content?.ToString() == "Air-Gap")
+string.Equals(selected.Content?.ToString(), "Air-Gap", StringComparison.Ordinal))
         {
             selectedMode = "AirGap";
         }
@@ -208,7 +209,7 @@ public partial class SettingsDialog : Window
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
     {
         // Revert to entry theme
-        if (_previewTheme != _entryTheme)
+        if (!string.Equals(_previewTheme, _entryTheme, StringComparison.Ordinal))
         {
             _themeService.ApplyTheme(_entryTheme);
         }

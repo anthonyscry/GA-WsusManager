@@ -43,7 +43,7 @@ public class RobocopyService : IRobocopyService
             source, destination, maxAgeDays);
         progress?.Report($"Robocopy: {source} -> {destination}");
 
-        var result = await _processRunner.RunAsync("robocopy.exe", arguments, progress, ct);
+        var result = await _processRunner.RunAsync("robocopy.exe", arguments, progress, ct).ConfigureAwait(false);
 
         // Robocopy exit codes 0-7 are success, 8+ are errors
         if (result.ExitCode < 8)

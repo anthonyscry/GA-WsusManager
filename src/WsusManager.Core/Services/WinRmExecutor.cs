@@ -27,6 +27,7 @@ public class WinRmExecutor
         new(@"^[A-Za-z0-9.\-]+$", RegexOptions.Compiled);
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="WinRmExecutor"/> class.
     /// Initialises a new <see cref="WinRmExecutor"/>.
     /// </summary>
     /// <param name="processRunner">Process runner used to invoke powershell.exe.</param>
@@ -171,7 +172,7 @@ public class WinRmExecutor
         if (string.IsNullOrWhiteSpace(scriptBlock))
             return "(empty)";
 
-        var singleLine = scriptBlock.Replace(Environment.NewLine, " ").Trim();
+        var singleLine = scriptBlock.Replace(Environment.NewLine, " ", StringComparison.Ordinal).Trim();
         return singleLine.Length <= 80 ? singleLine : singleLine[..80] + "...";
     }
 

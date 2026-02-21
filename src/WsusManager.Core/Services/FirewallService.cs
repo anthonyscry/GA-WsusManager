@@ -36,12 +36,12 @@ public class FirewallService : IFirewallService
             var httpResult = await _processRunner.RunAsync(
                 NetshExe,
                 $"advfirewall firewall show rule name=\"{HttpRuleName}\"",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             var httpsResult = await _processRunner.RunAsync(
                 NetshExe,
                 $"advfirewall firewall show rule name=\"{HttpsRuleName}\"",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             bool bothExist = httpResult.Success && httpsResult.Success;
 
@@ -73,7 +73,7 @@ public class FirewallService : IFirewallService
                 NetshExe,
                 $"advfirewall firewall add rule name=\"{HttpRuleName}\" " +
                 $"dir=in action=allow protocol=TCP localport={HttpPort}",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (!httpResult.Success)
             {
@@ -91,7 +91,7 @@ public class FirewallService : IFirewallService
                 NetshExe,
                 $"advfirewall firewall add rule name=\"{HttpsRuleName}\" " +
                 $"dir=in action=allow protocol=TCP localport={HttpsPort}",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (!httpsResult.Success)
             {

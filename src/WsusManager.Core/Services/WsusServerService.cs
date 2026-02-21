@@ -92,7 +92,7 @@ public class WsusServerService : IWsusServerService
                 _logService.Error(inner, "Failed to connect to WSUS server");
                 return OperationResult.Fail($"Failed to connect to WSUS: {inner.Message}", inner);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 
     public async Task<OperationResult> StartSynchronizationAsync(
@@ -167,7 +167,7 @@ public class WsusServerService : IWsusServerService
                         // Progress reporting is best-effort
                     }
 
-                    await Task.Delay(SyncPollIntervalMs, ct);
+                    await Task.Delay(SyncPollIntervalMs, ct).ConfigureAwait(false);
                 }
 
                 return OperationResult.Fail("Synchronization timed out after 60 minutes.");
@@ -192,7 +192,7 @@ public class WsusServerService : IWsusServerService
                 _logService.Error(inner, "Synchronization failed");
                 return OperationResult.Fail($"Synchronization failed: {inner.Message}", inner);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 
     public async Task<OperationResult<SyncResult>> GetLastSyncInfoAsync(CancellationToken ct = default)
@@ -235,7 +235,7 @@ public class WsusServerService : IWsusServerService
                 _logService.Error(inner, "Failed to get last sync info");
                 return OperationResult<SyncResult>.Fail($"Failed to get sync info: {inner.Message}", inner);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 
     public async Task<OperationResult<int>> DeclineUpdatesAsync(

@@ -52,54 +52,54 @@ public class HealthService : IHealthService
 
         // Check 1: SQL Server Express service status
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckServiceAsync("MSSQL$SQLEXPRESS", "SQL Server Express", fixable: true));
+            CheckServiceAsync("MSSQL$SQLEXPRESS", "SQL Server Express", fixable: true)).ConfigureAwait(false);
 
         // Check 2: SQL Browser service status
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckServiceAsync("SQLBrowser", "SQL Browser", fixable: true));
+            CheckServiceAsync("SQLBrowser", "SQL Browser", fixable: true)).ConfigureAwait(false);
 
         // Check 3: SQL Server firewall rules (separate from WSUS rules)
         // SQL uses port 1433 — but for WSUS we check the 8530/8531 rules
         // Reporting the SQL Browser port 1434 rule existence via netsh is overkill;
         // instead, test SQL connectivity directly (done in check 12). Skip this as informational.
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckSqlFirewallRuleAsync());
+            CheckSqlFirewallRuleAsync()).ConfigureAwait(false);
 
         // Check 4: WSUS service status
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckServiceAsync("WsusService", "WSUS Service", fixable: true));
+            CheckServiceAsync("WsusService", "WSUS Service", fixable: true)).ConfigureAwait(false);
 
         // Check 5: IIS service status
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckServiceAsync("W3SVC", "IIS (W3SVC)", fixable: true));
+            CheckServiceAsync("W3SVC", "IIS (W3SVC)", fixable: true)).ConfigureAwait(false);
 
         // Check 6: WSUS Application Pool via appcmd
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckWsusAppPoolAsync(ct));
+            CheckWsusAppPoolAsync(ct)).ConfigureAwait(false);
 
         // Check 7: WSUS firewall rules (ports 8530/8531)
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckWsusFirewallRulesAsync(ct));
+            CheckWsusFirewallRulesAsync(ct)).ConfigureAwait(false);
 
         // Check 8: SUSDB database existence
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckSusDatabaseAsync(sqlInstance, ct));
+            CheckSusDatabaseAsync(sqlInstance, ct)).ConfigureAwait(false);
 
         // Check 9: NETWORK SERVICE SQL login
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckNetworkServiceLoginAsync(sqlInstance, ct));
+            CheckNetworkServiceLoginAsync(sqlInstance, ct)).ConfigureAwait(false);
 
         // Check 10: WSUS content directory permissions
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckContentPermissionsAsync(contentPath, sqlInstance, ct));
+            CheckContentPermissionsAsync(contentPath, sqlInstance, ct)).ConfigureAwait(false);
 
         // Check 11: SQL sysadmin permission (informational — Warning, not Fail)
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckSqlSysadminAsync(sqlInstance, ct));
+            CheckSqlSysadminAsync(sqlInstance, ct)).ConfigureAwait(false);
 
         // Check 12: SQL connectivity test
         await RunCheckAsync(checks, progress, ct, () =>
-            CheckSqlConnectivityAsync(sqlInstance, ct));
+            CheckSqlConnectivityAsync(sqlInstance, ct)).ConfigureAwait(false);
 
         var completedAt = DateTime.UtcNow;
 
@@ -134,7 +134,7 @@ public class HealthService : IHealthService
     {
         try
         {
-            var status = await _serviceManager.GetStatusAsync(serviceName);
+            var status = await _serviceManager.GetStatusAsync(serviceName).ConfigureAwait(false);
 
             if (status.IsRunning)
             {
@@ -144,7 +144,7 @@ public class HealthService : IHealthService
             // Service stopped — attempt repair if fixable
             if (fixable)
             {
-                var repairResult = await _serviceManager.StartServiceAsync(serviceName);
+                var repairResult = await _serviceManager.StartServiceAsync(serviceName).ConfigureAwait(false);
                 return DiagnosticCheckResult.FailWithRepair(
                     displayName,
                     "Stopped",
@@ -169,7 +169,7 @@ public class HealthService : IHealthService
         // For WSUS, the critical firewall rules are the WSUS HTTP/HTTPS rules (checks 7).
         // This check verifies SQL Browser is reachable; we test it via connectivity (check 12).
         // Mark as informational Pass — actual SQL connectivity is verified in check 12.
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return DiagnosticCheckResult.Pass("SQL Server Firewall", "Verified via connectivity test (check 12).");
     }
 
@@ -185,7 +185,7 @@ public class HealthService : IHealthService
             var result = await _processRunner.RunAsync(
                 appcmdPath,
                 "list apppool \"WsusPool\" /state:Started",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (result.Success)
             {
@@ -196,7 +196,7 @@ public class HealthService : IHealthService
             var repairResult = await _processRunner.RunAsync(
                 appcmdPath,
                 "start apppool /apppool.name:\"WsusPool\"",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             return DiagnosticCheckResult.FailWithRepair(
                 checkName,
@@ -220,7 +220,7 @@ public class HealthService : IHealthService
 
         try
         {
-            var checkResult = await _firewallService.CheckWsusRulesExistAsync(ct);
+            var checkResult = await _firewallService.CheckWsusRulesExistAsync(ct).ConfigureAwait(false);
 
             if (!checkResult.Success)
             {
@@ -235,7 +235,7 @@ public class HealthService : IHealthService
             // Rules missing — create them
             var repairProgress = new List<string>();
             var repairResult = await _firewallService.CreateWsusRulesAsync(
-                new Progress<string>(repairProgress.Add), ct);
+                new Progress<string>(repairProgress.Add), ct).ConfigureAwait(false);
 
             return DiagnosticCheckResult.FailWithRepair(
                 checkName,
@@ -260,13 +260,13 @@ public class HealthService : IHealthService
         {
             var connStr = BuildConnectionString(sqlInstance, "master");
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT DB_ID('SUSDB')";
             cmd.CommandTimeout = SqlCommandTimeoutSeconds;
 
-            var result = await cmd.ExecuteScalarAsync(ct);
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             bool exists = result != null && result != DBNull.Value;
 
             if (exists)
@@ -294,7 +294,7 @@ public class HealthService : IHealthService
 
         try
         {
-            var result = await _permissionsService.CheckNetworkServiceLoginAsync(sqlInstance, ct);
+            var result = await _permissionsService.CheckNetworkServiceLoginAsync(sqlInstance, ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -322,7 +322,7 @@ public class HealthService : IHealthService
 
         try
         {
-            var checkResult = await _permissionsService.CheckContentPermissionsAsync(contentPath, ct);
+            var checkResult = await _permissionsService.CheckContentPermissionsAsync(contentPath, ct).ConfigureAwait(false);
 
             if (!checkResult.Success)
             {
@@ -339,7 +339,7 @@ public class HealthService : IHealthService
             var repairResult = await _permissionsService.RepairContentPermissionsAsync(
                 contentPath,
                 new Progress<string>(repairProgress.Add),
-                ct);
+                ct).ConfigureAwait(false);
 
             return DiagnosticCheckResult.FailWithRepair(
                 checkName,
@@ -362,7 +362,7 @@ public class HealthService : IHealthService
 
         try
         {
-            var result = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct);
+            var result = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -392,12 +392,12 @@ public class HealthService : IHealthService
         {
             var connStr = BuildConnectionString(sqlInstance, "SUSDB");
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";
             cmd.CommandTimeout = SqlCommandTimeoutSeconds;
-            await cmd.ExecuteScalarAsync(ct);
+            await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
 
             return DiagnosticCheckResult.Pass(checkName, $"Connected to {sqlInstance} successfully.");
         }
@@ -437,7 +437,7 @@ public class HealthService : IHealthService
 
         try
         {
-            result = await checkFunc();
+            result = await checkFunc().ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
