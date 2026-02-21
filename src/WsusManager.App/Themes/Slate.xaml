@@ -1,0 +1,73 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Slate Theme — Color Tokens
+         Cool blue-gray tones with a steel accent.
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- Background Colors -->
+    <Color x:Key="ColorPrimaryBackground">#1B2127</Color>
+    <SolidColorBrush x:Key="PrimaryBackground" Color="{StaticResource ColorPrimaryBackground}"/>
+
+    <Color x:Key="ColorNavBackground">#222A32</Color>
+    <SolidColorBrush x:Key="NavBackground" Color="{StaticResource ColorNavBackground}"/>
+
+    <Color x:Key="ColorCardBackground">#2A333C</Color>
+    <SolidColorBrush x:Key="CardBackground" Color="{StaticResource ColorCardBackground}"/>
+
+    <Color x:Key="ColorInputBackground">#1B2127</Color>
+    <SolidColorBrush x:Key="InputBackground" Color="{StaticResource ColorInputBackground}"/>
+
+    <!-- Border Colors -->
+    <Color x:Key="ColorBorderPrimary">#3A444E</Color>
+    <SolidColorBrush x:Key="BorderPrimary" Color="{StaticResource ColorBorderPrimary}"/>
+
+    <Color x:Key="ColorBorderSubtle">#2A333C</Color>
+    <SolidColorBrush x:Key="BorderSubtle" Color="{StaticResource ColorBorderSubtle}"/>
+
+    <!-- Accent Colors -->
+    <Color x:Key="ColorAccentBrush">#78909C</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource ColorAccentBrush}"/>
+
+    <Color x:Key="ColorAccentHover">#90A4AE</Color>
+    <SolidColorBrush x:Key="AccentHover" Color="{StaticResource ColorAccentHover}"/>
+
+    <!-- Status Colors -->
+    <Color x:Key="ColorStatusSuccess">#3FB950</Color>
+    <SolidColorBrush x:Key="StatusSuccess" Color="{StaticResource ColorStatusSuccess}"/>
+
+    <Color x:Key="ColorStatusWarning">#D29922</Color>
+    <SolidColorBrush x:Key="StatusWarning" Color="{StaticResource ColorStatusWarning}"/>
+
+    <Color x:Key="ColorStatusError">#F85149</Color>
+    <SolidColorBrush x:Key="StatusError" Color="{StaticResource ColorStatusError}"/>
+
+    <!-- Text Colors -->
+    <Color x:Key="ColorTextPrimary">#ECEFF1</Color>
+    <SolidColorBrush x:Key="TextPrimary" Color="{StaticResource ColorTextPrimary}"/>
+
+    <Color x:Key="ColorTextSecondary">#90A4AE</Color>
+    <SolidColorBrush x:Key="TextSecondary" Color="{StaticResource ColorTextSecondary}"/>
+
+    <Color x:Key="ColorTextMuted">#546E7A</Color>
+    <SolidColorBrush x:Key="TextMuted" Color="{StaticResource ColorTextMuted}"/>
+
+    <!-- Button Colors -->
+    <Color x:Key="ColorButtonPrimary">#37474F</Color>
+    <SolidColorBrush x:Key="ButtonPrimary" Color="{StaticResource ColorButtonPrimary}"/>
+
+    <Color x:Key="ColorButtonPrimaryHover">#455A64</Color>
+    <SolidColorBrush x:Key="ButtonPrimaryHover" Color="{StaticResource ColorButtonPrimaryHover}"/>
+
+    <Color x:Key="ColorButtonDanger">#DA3633</Color>
+    <SolidColorBrush x:Key="ButtonDanger" Color="{StaticResource ColorButtonDanger}"/>
+
+    <Color x:Key="ColorButtonDangerHover">#F85149</Color>
+    <SolidColorBrush x:Key="ButtonDangerHover" Color="{StaticResource ColorButtonDangerHover}"/>
+
+    <!-- Nav Active State -->
+    <Color x:Key="ColorNavActiveBackground">#2A333C</Color>
+    <SolidColorBrush x:Key="NavActiveBackground" Color="{StaticResource ColorNavActiveBackground}"/>
+
+</ResourceDictionary>
