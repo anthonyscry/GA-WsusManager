@@ -13,13 +13,17 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 **Phase:** Not started (defining requirements)
 **Plan:** —
 **Status:** Defining requirements for v4.5 Enhancement Suite
-**Last activity:** 2026-02-21 — Milestone v4.5 started
+**Last activity:** 2026-02-21 — Milestone v4.5 started, requirements and roadmap created
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  GSD ► NEW MILESTONE INITIALIZED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Milestone v4.5: Enhancement Suite**
+
+**Target:** 7 phases (25-31), 31 plans
+**Timeline:** TBD
+**Focus:** UX polish, performance optimization, settings expansion, data filtering/export
 
 ## Previous Milestone: v4.4 Quality & Polish (Shipped 2026-02-21)
 
@@ -69,6 +73,61 @@ None open. All v4.4 blockers resolved.
 ### Pending Todos
 
 None. v4.4 completed cleanly.
+
+### v4.5 Requirements Summary
+
+**38 requirements across 7 phases:**
+
+**Phase 25 - Performance Optimization (PERF-08 to PERF-12):**
+- 30% startup time reduction
+- List virtualization for 2000+ computers
+- Lazy loading for update metadata
+- Batched log panel updates
+- Sub-100ms theme switching
+
+**Phase 26 - Keyboard & Accessibility (UX-01 to UX-05):**
+- Global keyboard shortcuts (F1, F5, Ctrl+S, Ctrl+Q)
+- Full keyboard navigation
+- AutomationId for UI automation
+- WCAG 2.1 AA compliance verification
+- Dialog centering behavior
+
+**Phase 27 - Visual Feedback Polish (UX-06 to UX-10):**
+- Estimated time remaining for long operations
+- Loading indicators on buttons
+- Actionable error messages
+- Consistent success/failure banners
+- Tooltip help text
+
+**Phase 28 - Settings Expansion (SET-01 to SET-08):**
+- Default operation profiles
+- Configurable logging level
+- Log retention policy
+- Window state persistence
+- Dashboard refresh interval
+- Confirmation prompt toggles
+- WinRM timeout/retry settings
+- Reset to defaults
+
+**Phase 29 - Data Filtering (DAT-01 to DAT-04):**
+- Computer status filter
+- Update approval status filter
+- Update classification filter
+- Real-time search
+
+**Phase 30 - Data Export (DAT-05 to DAT-08):**
+- Computer list CSV export
+- Update list CSV export
+- UTF-8 BOM for Excel
+- Export progress and destination
+
+**Phase 31 - Testing & Documentation:**
+- Performance benchmarks
+- Keyboard navigation tests
+- Settings persistence tests
+- Data filtering unit tests
+- CSV export validation
+- Documentation updates
 
 ---
 *State updated: 2026-02-21*
