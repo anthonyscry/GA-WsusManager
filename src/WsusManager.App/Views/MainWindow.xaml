@@ -7,7 +7,8 @@
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
-        Background="{DynamicResource PrimaryBackground}">
+        Background="{DynamicResource PrimaryBackground}"
+        automation:AutomationProperties.AutomationId="MainWindow">
 
     <Window.InputBindings>
         <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}"/>
@@ -62,6 +63,7 @@
                 <TextBlock DockPanel.Dock="Top" Text="MAINTENANCE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Online Sync"
                         Style="{StaticResource NavBtn}" x:Name="BtnSync"
+                        automation:AutomationProperties.AutomationId="OnlineSyncButton"
                         Command="{Binding RunOnlineSyncCommand}"/>
                 <Button DockPanel.Dock="Top" Content="Schedule Task"
                         Style="{StaticResource NavBtn}" x:Name="BtnSchedule"
@@ -72,6 +74,7 @@
                 <TextBlock DockPanel.Dock="Top" Text="DIAGNOSTICS" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Diagnostics"
                         x:Name="BtnDiagnostics"
+                        automation:AutomationProperties.AutomationId="DiagnosticsButton"
                         Command="{Binding NavigateCommand}" CommandParameter="Diagnostics">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
@@ -91,6 +94,7 @@
                 <TextBlock DockPanel.Dock="Top" Text="CLIENT TOOLS" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Client Tools"
                         x:Name="BtnClientTools"
+                        automation:AutomationProperties.AutomationId="ClientToolsButton"
                         Command="{Binding NavigateCommand}" CommandParameter="ClientTools">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
@@ -110,6 +114,7 @@
                 <TextBlock DockPanel.Dock="Top" Text="DATABASE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Database"
                         x:Name="BtnDatabase"
+                        automation:AutomationProperties.AutomationId="DatabaseButton"
                         Command="{Binding NavigateCommand}" CommandParameter="Database">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
@@ -299,6 +304,7 @@
                                                 Command="{Binding QuickCleanupCommand}"/>
                                         <Button Content="Online Sync" Style="{StaticResource QuickActionBtn}"
                                                 x:Name="QBtnSync" Margin="0,0,8,8"
+                                                automation:AutomationProperties.AutomationId="QuickSyncButton"
                                                 Command="{Binding QuickSyncCommand}"
                                                 IsEnabled="{Binding IsOnline}"/>
                                         <Button Content="Start Services" Style="{StaticResource QuickActionBtn}"
