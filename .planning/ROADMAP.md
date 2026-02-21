@@ -98,7 +98,11 @@ Plans:
   1. Admin provides a list of hostnames (typed or from a text file) and triggers mass GPUpdate — the app processes all hosts and shows per-host results
   2. When WinRM is unavailable for a host, the admin can generate a PowerShell script that performs the same operation and can be run manually on that host
   3. Generated scripts are complete and ready to run — no edits required before execution
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Mass GPUpdate across multiple hosts (CLI-03)
+- [ ] 15-02-PLAN.md — Script Generator fallback for WinRM-unavailable hosts (CLI-08)
 
 ## Progress
 
@@ -118,4 +122,4 @@ Plans:
 | 12. Settings & Mode Override | 2/2 | Complete   | 2026-02-21 | - |
 | 13. Operation Feedback & Dialog Polish | 2/2 | Complete    | 2026-02-21 | - |
 | 14. Client Management Core | 3/3 | Complete    | 2026-02-21 | - |
-| 15. Client Management Advanced | v4.2 | 0/TBD | Not started | - |
+| 15. Client Management Advanced | v4.2 | 0/2 | Not started | - |
