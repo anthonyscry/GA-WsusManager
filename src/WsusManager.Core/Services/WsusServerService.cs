@@ -325,7 +325,7 @@ public class WsusServerService : IWsusServerService
                 _logService.Error(inner, "Failed to decline updates");
                 return OperationResult<int>.Fail($"Failed to decline updates: {inner.Message}", inner);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 
     public async Task<OperationResult<int>> ApproveUpdatesAsync(
@@ -465,6 +465,6 @@ public class WsusServerService : IWsusServerService
                 _logService.Error(inner, "Failed to approve updates");
                 return OperationResult<int>.Fail($"Failed to approve updates: {inner.Message}", inner);
             }
-        }, ct);
+        }, ct).ConfigureAwait(false);
     }
 }

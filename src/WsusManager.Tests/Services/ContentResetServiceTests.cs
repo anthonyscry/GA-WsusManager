@@ -51,7 +51,7 @@ public class ContentResetServiceTests
 
         if (!File.Exists(ContentResetService.WsusUtilPath))
         {
-            var result = await service.ResetContentAsync();
+            var result = await service.ResetContentAsync().ConfigureAwait(false);
             Assert.False(result.Success);
             Assert.Contains("wsusutil.exe not found", result.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -82,7 +82,7 @@ public class ContentResetServiceTests
                 .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SuccessResult());
 
-            var result = await mockService.ResetContentAsync();
+            var result = await mockService.ResetContentAsync().ConfigureAwait(false);
 
             Assert.True(result.Success);
 
@@ -116,7 +116,7 @@ public class ContentResetServiceTests
                 .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(FailResult());
 
-            var result = await mockService.ResetContentAsync();
+            var result = await mockService.ResetContentAsync().ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("failed", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -147,7 +147,7 @@ public class ContentResetServiceTests
             var messages = new List<string>();
             var progress = new Progress<string>(msg => messages.Add(msg));
 
-            await mockService.ResetContentAsync(progress);
+            await mockService.ResetContentAsync(progress).ConfigureAwait(false);
 
             // At least the startup messages should appear
             Assert.True(messages.Count >= 2,
@@ -208,7 +208,7 @@ public class ContentResetServiceTests
                 .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProcessResult(0, [])); // Empty output
 
-            var result = await mockService.ResetContentAsync();
+            var result = await mockService.ResetContentAsync().ConfigureAwait(false);
 
             Assert.True(result.Success);
         }
@@ -240,7 +240,7 @@ public class ContentResetServiceTests
                 .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(SuccessResult());
 
-            var result = await mockService.ResetContentAsync();
+            var result = await mockService.ResetContentAsync().ConfigureAwait(false);
 
             Assert.True(result.Success);
         }
@@ -307,7 +307,7 @@ public class ContentResetServiceTests
                         System.Reflection.BindingFlags.Instance);
 
                 var runner = (IProcessRunner)processRunnerField!.GetValue(this)!;
-                var result = await runner.RunAsync(executablePath, "reset", progress, ct);
+                var result = await runner.RunAsync(executablePath, "reset", progress, ct).ConfigureAwait(false);
 
                 return result.Success
                     ? OperationResult.Ok("Content reset completed successfully.")

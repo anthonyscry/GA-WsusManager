@@ -28,7 +28,7 @@ public class InstallationServiceTests
         var service = CreateService();
         var options = new InstallOptions { InstallerPath = @"C:\NonExistent\Path" };
 
-        var result = await service.ValidatePrerequisitesAsync(options);
+        var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
         Assert.False(result.Success);
         Assert.Contains("does not exist", result.Message);
@@ -49,7 +49,7 @@ public class InstallationServiceTests
                 SaPassword = "ValidPassword123!@#"
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("SQLEXPRADV_x64_ENU.exe", result.Message);
@@ -76,7 +76,7 @@ public class InstallationServiceTests
                 SaPassword = ""
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("empty", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -103,7 +103,7 @@ public class InstallationServiceTests
                 SaPassword = "Short1!"
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("15", result.Message);
@@ -130,7 +130,7 @@ public class InstallationServiceTests
                 SaPassword = "NoDigitsHere!@#$%"
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("digit", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -157,7 +157,7 @@ public class InstallationServiceTests
                 SaPassword = "NoSpecialChar12345"
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.False(result.Success);
             Assert.Contains("special", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -184,7 +184,7 @@ public class InstallationServiceTests
                 SaPassword = "ValidPassword1!@#"
             };
 
-            var result = await service.ValidatePrerequisitesAsync(options);
+            var result = await service.ValidatePrerequisitesAsync(options).ConfigureAwait(false);
 
             Assert.True(result.Success);
         }
@@ -209,7 +209,7 @@ public class InstallationServiceTests
         };
 
         // Script won't be found in test environment
-        var result = await service.InstallAsync(options);
+        var result = await service.InstallAsync(options).ConfigureAwait(false);
 
         Assert.False(result.Success);
         Assert.Contains("Install script not found", result.Message);
@@ -245,7 +245,7 @@ public class InstallationServiceTests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProcessResult(0, ["Installation complete."]));
 
-            var result = await service.InstallAsync(options);
+            var result = await service.InstallAsync(options).ConfigureAwait(false);
 
             Assert.True(result.Success);
 
@@ -292,7 +292,7 @@ public class InstallationServiceTests
             var messages = new List<string>();
             var progress = new Progress<string>(msg => messages.Add(msg));
 
-            await service.InstallAsync(new InstallOptions { SaPassword = "Test123!@#$%^&*(" }, progress);
+            await service.InstallAsync(new InstallOptions { SaPassword = "Test123!@#$%^&*(" }, progress).ConfigureAwait(false);
 
             Assert.True(messages.Count >= 3, $"Expected at least 3 progress messages, got {messages.Count}");
         }
@@ -352,7 +352,7 @@ public class InstallationServiceTests
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var runner = (IProcessRunner)processRunnerField!.GetValue(this)!;
 
-            var result = await runner.RunAsync("powershell.exe", arguments, progress, ct);
+            var result = await runner.RunAsync("powershell.exe", arguments, progress, ct).ConfigureAwait(false);
             return result.Success
                 ? OperationResult.Ok("Installation completed successfully.")
                 : OperationResult.Fail($"Installation failed with exit code {result.ExitCode}.");

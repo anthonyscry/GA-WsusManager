@@ -92,7 +92,7 @@ public class SqlServiceTests
         try
         {
             var result = await svc.ExecuteScalarAsync<int>(
-                @"localhost\SQLEXPRESS", "master", "SELECT 1");
+                @"localhost\SQLEXPRESS", "master", "SELECT 1").ConfigureAwait(false);
             Assert.Equal(1, result);
         }
         catch (Exception ex) when (ex.Message.Contains("connect") || ex.Message.Contains("network") ||
@@ -111,7 +111,7 @@ public class SqlServiceTests
         {
             // This should work even if SUSDB doesn't exist: system query
             var rows = await svc.ExecuteNonQueryAsync(
-                @"localhost\SQLEXPRESS", "master", "DECLARE @x INT = 1");
+                @"localhost\SQLEXPRESS", "master", "DECLARE @x INT = 1").ConfigureAwait(false);
             // Non-query returns -1 for non-DML statements
             Assert.True(rows >= -1);
         }
@@ -132,7 +132,7 @@ public class SqlServiceTests
                 @"localhost\SQLEXPRESS",
                 "master",
                 "SELECT name FROM sys.databases WHERE name = 'NonExistentDb_XYZ_99999'",
-                r => r.GetString(0));
+                r => r.GetString(0)).ConfigureAwait(false);
 
             // If SQL is online: query returns no rows, so result should be failed
             Assert.False(result.Success);
@@ -154,7 +154,7 @@ public class SqlServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
         {
             // A pre-cancelled token should cause the connection open to throw
-            await svc.ExecuteScalarAsync<int>(@"localhost\SQLEXPRESS", "master", "SELECT 1", 0, cts.Token);
+            await svc.ExecuteScalarAsync<int>(@"localhost\SQLEXPRESS", "master", "SELECT 1", 0, cts.Token).ConfigureAwait(false);
         });
     }
 
@@ -167,7 +167,7 @@ public class SqlServiceTests
 
         // Try to connect with an invalid SQL instance - will throw
         var result = await svc.ExecuteReaderFirstAsync<int>(
-            "InvalidServer9999", "master", "SELECT 1", r => r.GetInt32(0));
+            "InvalidServer9999", "master", "SELECT 1", r => r.GetInt32(0)).ConfigureAwait(false);
 
         // Should return OperationResult<int>.Fail (not throw)
         Assert.False(result.Success);
@@ -187,7 +187,7 @@ public class SqlServiceTests
                 @"localhost\SQLEXPRESS",
                 "master",
                 "SELECT 1 WHERE 1=0", // Always returns 0 rows
-                r => r.GetInt32(0));
+                r => r.GetInt32(0)).ConfigureAwait(false);
 
             // If SQL is online: should return Fail result (no exception thrown)
             Assert.False(result.Success);
@@ -214,7 +214,7 @@ public class SqlServiceTests
             // If SQL is offline, SqlException may be thrown first, which is also acceptable behavior
             await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             {
-                await svc.ExecuteNonQueryAsync(@"localhost\SQLEXPRESS", "master", "SELECT 1", 0, cts.Token);
+                await svc.ExecuteNonQueryAsync(@"localhost\SQLEXPRESS", "master", "SELECT 1", 0, cts.Token).ConfigureAwait(false);
             });
         }
         catch (Exception ex) when (ex.Message.Contains("connect") || ex.Message.Contains("network") ||
