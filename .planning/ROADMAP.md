@@ -70,7 +70,10 @@ Plans:
   4. Deep cleanup runs all 6 steps and reports before/after database size
   5. Database backup produces a .bak file at the specified path
   6. Database restore from a .bak file completes and WSUS returns to operational state
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md — Fix BUG-08 (DeepCleanup Step 4 LocalUpdateID), BUG-04 (ApproveUpdates classification reflection), BUG-03 (DeclineUpdates expired/superseded only), BUG-01 (appcmd full path), BUG-05 (Convert.ToInt32 for sync progress)
 
 ### Phase 11: Stability Hardening
 **Goal**: The application handles edge cases and error conditions without crashing or leaving the UI in a broken state
@@ -95,5 +98,5 @@ Plans:
 | 7. Polish and Distribution | v4.0 | 7/7 | Complete | 2026-02-20 |
 | 8. Build Compatibility | v4.1 | 1/1 | Complete | 2026-02-21 |
 | 9. Launch and UI Verification | v4.1 | 1/1 | Complete | 2026-02-20 |
-| 10. Core Operations | v4.1 | 0/? | Not started | - |
+| 10. Core Operations | v4.1 | 1/1 | In progress | - |
 | 11. Stability Hardening | v4.1 | 0/? | Not started | - |
