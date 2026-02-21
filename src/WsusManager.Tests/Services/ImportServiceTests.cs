@@ -6,6 +6,20 @@ using WsusManager.Core.Services.Interfaces;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// High Priority - External data handlers (file paths, directory paths):
+// [ ] Null input: ImportAsync(null, progress, ...) - missing (options parameter)
+// [ ] Null input: ImportAsync(options with null SourcePath, ...) - missing
+// [ ] Null input: ImportAsync(options with null DestinationPath, ...) - tested (defaults)
+// [ ] Empty string: SourcePath with only whitespace - missing
+// [ ] Empty string: DestinationPath with only whitespace - missing
+// [ ] Boundary: Path with trailing slashes - partially tested
+// [ ] Boundary: UNC path with special characters - missing
+// [ ] Null content reset service (handled by constructor) - tested via mock
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Tests for ImportService: path validation, robocopy invocation,
 /// and optional content reset.

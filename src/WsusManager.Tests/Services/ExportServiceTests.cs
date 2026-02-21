@@ -6,6 +6,22 @@ using WsusManager.Core.Services.Interfaces;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// High Priority - External data handlers (file paths, directory paths):
+// [ ] Null input: ExportAsync(null, progress, ...) - missing (options parameter)
+// [ ] Null input: ExportAsync(options with null SourcePath, ...) - missing
+// [ ] Null input: ExportAsync(options with null FullExportPath, ...) - partially tested
+// [ ] Null input: ExportAsync(options with null DifferentialExportPath, ...) - partially tested
+// [ ] Empty string: SourcePath with only whitespace - missing
+// [ ] Empty string: FullExportPath with only whitespace - partially tested
+// [ ] Empty string: DifferentialExportPath with only whitespace - partially tested
+// [ ] Boundary: ExportDays = 0 (no files) - missing
+// [ ] Boundary: ExportDays = -1 (negative value) - missing
+// [ ] Boundary: ExportDays = int.MaxValue (unrealistic large) - missing
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Tests for ExportService: path validation, full/differential modes,
 /// and database backup copy.

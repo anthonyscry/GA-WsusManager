@@ -6,6 +6,31 @@ using WsusManager.Core.Services;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// High Priority - External data handlers (WinRM inputs, computer names):
+// [ ] Null hostname: CancelStuckJobsAsync(null, ...) - missing
+// [ ] Null hostname: ForceCheckInAsync(null, ...) - missing
+// [ ] Null hostname: TestConnectivityAsync(null, ...) - missing
+// [ ] Null hostname: RunDiagnosticsAsync(null, ...) - missing
+// [ ] Null errorCode: LookupErrorCode(null) - missing
+// [ ] Null hostnames list: MassForceCheckInAsync(null, ...) - missing
+// [x] Empty hostname: CancelStuckJobsAsync("", ...) - tested
+// [ ] Empty hostname: ForceCheckInAsync("", ...) - missing
+// [ ] Empty hostname: TestConnectivityAsync("", ...) - missing
+// [ ] Empty hostname: RunDiagnosticsAsync("", ...) - missing
+// [ ] Empty errorCode: LookupErrorCode("") - missing
+// [x] Empty hostnames list: MassForceCheckInAsync([], ...) - tested
+// [ ] Whitespace hostname: "   ", "\t", "\n" - partially tested (MassForceCheckIn)
+// [ ] Invalid computer name: "INVALID\\NAME/FORMAT", "../path" - missing
+// [ ] Boundary: Very long hostname (>255 chars) - missing
+// [ ] Boundary: hostname with null characters - missing
+// [ ] Null wsusServerUrl: TestConnectivityAsync(..., null, ...) - missing
+// [ ] Empty wsusServerUrl: TestConnectivityAsync(..., "", ...) - missing
+// [ ] Invalid URL format: "not-a-url", "http://" - partially tested (ExtractHostname)
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Unit tests for <see cref="ClientService"/> using mocked IProcessRunner and ILogService.
 /// WinRmExecutor is constructed from the mock runner so its real logic is exercised.
