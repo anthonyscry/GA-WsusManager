@@ -23,10 +23,10 @@ Requirements for UX & Client Management milestone. Each maps to roadmap phases.
 
 ### Dialog Polish
 
-- [ ] **DLG-01**: Install dialog validates installer path exists and contains required EXE before enabling Install button
-- [ ] **DLG-02**: Transfer dialog shows validation feedback for source/destination paths
-- [ ] **DLG-03**: All dialogs have consistent dark theme styling and spacing
-- [ ] **DLG-04**: Schedule Task dialog validates all fields before enabling Create button
+- [x] **DLG-01**: Install dialog validates installer path exists and contains required EXE before enabling Install button
+- [x] **DLG-02**: Transfer dialog shows validation feedback for source/destination paths
+- [x] **DLG-03**: All dialogs have consistent dark theme styling and spacing
+- [x] **DLG-04**: Schedule Task dialog validates all fields before enabling Create button
 
 ### Client Management
 
@@ -70,10 +70,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-02 | Phase 13 | Pending |
 | UX-03 | Phase 13 | Pending |
 | UX-04 | Phase 13 | Pending |
-| DLG-01 | Phase 13 | Pending |
-| DLG-02 | Phase 13 | Pending |
-| DLG-03 | Phase 13 | Pending |
-| DLG-04 | Phase 13 | Pending |
+| DLG-01 | Phase 13 | Complete |
+| DLG-02 | Phase 13 | Complete |
+| DLG-03 | Phase 13 | Complete |
+| DLG-04 | Phase 13 | Complete |
 | CLI-01 | Phase 14 | Pending |
 | CLI-02 | Phase 14 | Pending |
 | CLI-03 | Phase 15 | Pending |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** Phase 12 — Settings & Mode Override (v4.2)
+**Current focus:** Phase 13 — Operation Feedback & Dialog Polish (v4.2)
 
 ## Current Position
 
-Phase: 12 of 15 (Settings & Mode Override)
+Phase: 13 of 15 (Operation Feedback & Dialog Polish)
 Plan: 2 of 2 in current phase
-Status: Phase 12 verified — build passes (0 errors), 263/263 tests pass
-Last activity: 2026-02-21 — Phase 12 complete and verified
+Status: Phase 13 plan 02 complete — build passes (0 errors), 263/263 tests pass
+Last activity: 2026-02-21 — Phase 13 plan 02 complete (dialog validation)
 
-Progress: [████████████░░░░░░░░] 64% (12/18 phases complete)
+Progress: [████████████░░░░░░░░] 65% (13/18 phases in progress)
 
 ## Performance Metrics
 
@@ -35,6 +35,7 @@ Progress: [████████████░░░░░░░░] 64% (12
 - Last 4 plans (v4.1): stable
 - Trend: Stable
 | Phase 12-settings-and-mode-override P02 | 3 | 2 tasks | 2 files |
+| Phase 13-operation-feedback-and-dialog-polish P02 | 4 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -47,6 +48,8 @@ Progress: [████████████░░░░░░░░] 64% (12
 - [12-01]: OpenSettings has no CanExecute restriction — settings must be accessible regardless of WSUS installation state or running operations
 - [Phase 12-settings-and-mode-override]: Activate _modeOverrideActive on AirGap startup so first auto-refresh ping doesn't flip back to Online
 - [Phase 12-settings-and-mode-override]: ModeOverrideIndicator shows (auto) when not overriding — always visible to normalize the signal
+- [Phase 13-operation-feedback-and-dialog-polish]: Validation TextBlock uses hardcoded #F85149 matching Red resource — acceptable for simple inline label
+- [Phase 13-operation-feedback-and-dialog-polish]: TransferDialog Export mode always enables BtnOk (all paths optional) — only Import requires source path
 
 ### Pending Todos
 
@@ -59,5 +62,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Phase 12 complete and verified. Next: Phase 13 (Operation Feedback & Dialog Polish)
+Stopped at: Phase 13 plan 02 complete. Dialog validation added to Install, Transfer, Schedule dialogs. Phase 13 plans 01 is next.
 Resume file: None
