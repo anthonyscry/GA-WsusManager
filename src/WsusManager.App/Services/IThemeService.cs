@@ -1,6 +1,11 @@
 namespace WsusManager.App.Services;
 
 /// <summary>
+/// Theme metadata for UI binding (theme picker display names and swatch preview colors).
+/// </summary>
+public record ThemeInfo(string DisplayName, string PreviewBackground, string PreviewAccent);
+
+/// <summary>
 /// Manages runtime theme switching by swapping color ResourceDictionaries
 /// in Application.Current.Resources.MergedDictionaries.
 /// </summary>
@@ -21,4 +26,15 @@ public interface IThemeService
     /// Returns the list of available theme names.
     /// </summary>
     IReadOnlyList<string> AvailableThemes { get; }
+
+    /// <summary>
+    /// Gets theme metadata (display name, preview colors) for the specified theme name.
+    /// Returns null if the theme does not exist.
+    /// </summary>
+    ThemeInfo? GetThemeInfo(string themeName);
+
+    /// <summary>
+    /// Returns a read-only dictionary of all theme metadata keyed by theme name.
+    /// </summary>
+    IReadOnlyDictionary<string, ThemeInfo> ThemeInfos { get; }
 }
