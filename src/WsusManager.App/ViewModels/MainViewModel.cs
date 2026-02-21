@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -42,6 +43,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IScriptGeneratorService _scriptGeneratorService;
     private readonly IThemeService _themeService;
     private readonly IBenchmarkTimingService _benchmarkTimingService;
+    private readonly ISettingsValidationService _validationService;
     private readonly StringBuilder _logBuilder = new();
     private readonly Queue<string> _logBatchQueue = new();
     private DispatcherTimer? _logBatchTimer;
@@ -106,7 +108,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IClientService clientService,
         IScriptGeneratorService scriptGeneratorService,
         IThemeService themeService,
-        IBenchmarkTimingService benchmarkTimingService)
+        IBenchmarkTimingService benchmarkTimingService,
+        ISettingsValidationService validationService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -126,6 +129,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _scriptGeneratorService = scriptGeneratorService;
         _themeService = themeService;
         _benchmarkTimingService = benchmarkTimingService;
+        _validationService = validationService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -152,12 +156,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public Visibility IsClientToolsPanelVisible => string.Equals(CurrentPanel, "ClientTools", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility IsComputersPanelVisible => string.Equals(CurrentPanel, "Computers", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility IsUpdatesPanelVisible => string.Equals(CurrentPanel, "Updates", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility IsOperationPanelVisible => !string.Equals(CurrentPanel, "Dashboard", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Diagnostics", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Database", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "ClientTools"
-, StringComparison.Ordinal) ? Visibility.Visible
+, StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Computers", StringComparison.Ordinal) && !string.Equals(CurrentPanel, "Updates", StringComparison.Ordinal) ? Visibility.Visible
             : Visibility.Collapsed;
 
     [RelayCommand]
-    private void Navigate(string panel)
+    private async Task Navigate(string panel)
     {
         // Settings opens a modal dialog, not a panel
         if (string.Equals(panel, "Settings", StringComparison.Ordinal))
@@ -183,13 +191,29 @@ public partial class MainViewModel : ObservableObject, IDisposable
             "About" => "About",
             "GPO" => "Create GPO",
             "ClientTools" => "Client Tools",
+            "Computers" => "Computers",
+            "Updates" => "Updates",
             _ => panel
         };
+
+        // Load data when navigating to data panels (only load once)
+        if (string.Equals(panel, "Computers", StringComparison.Ordinal) &&
+            FilteredComputers.Count == 0)
+        {
+            await LoadComputersAsync().ConfigureAwait(false);
+        }
+        else if (string.Equals(panel, "Updates", StringComparison.Ordinal) &&
+                 FilteredUpdates.Count == 0)
+        {
+            await LoadUpdatesAsync().ConfigureAwait(false);
+        }
 
         OnPropertyChanged(nameof(IsDashboardVisible));
         OnPropertyChanged(nameof(IsDiagnosticsPanelVisible));
         OnPropertyChanged(nameof(IsDatabasePanelVisible));
         OnPropertyChanged(nameof(IsClientToolsPanelVisible));
+        OnPropertyChanged(nameof(IsComputersPanelVisible));
+        OnPropertyChanged(nameof(IsUpdatesPanelVisible));
         OnPropertyChanged(nameof(IsOperationPanelVisible));
     }
 
@@ -638,23 +662,140 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Loads computers into filtered collection. Called by Phase 29 Data Filtering.
-    /// Currently empty placeholder - implementation in Phase 29.
     /// </summary>
-    public async Task LoadComputersAsync(string? statusFilter = null, CancellationToken ct = default)
+    public async Task LoadComputersAsync(CancellationToken ct = default)
     {
-        // Phase 29 will implement: query WSUS API, apply filter, populate FilteredComputers
-        await Task.CompletedTask.ConfigureAwait(false);
+        try
+        {
+            _logService?.Debug("Loading computers...");
+
+            var computers = await _dashboardService.GetComputersAsync(ct).ConfigureAwait(false);
+
+            FilteredComputers.Clear();
+            foreach (var computer in computers)
+            {
+                FilteredComputers.Add(computer);
+            }
+
+            // Apply any active filters after loading
+            ApplyComputerFilters();
+
+            _logService?.Info("Loaded {0} computers", FilteredComputers.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            _logService?.Warning("Computer loading cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logService?.Error(ex, "Failed to load computers: {Message}", ex.Message);
+            FilteredComputers.Clear();
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(ComputerVisibleCount));
+            OnPropertyChanged(nameof(ComputerFilterCountText));
+        }
     }
 
     /// <summary>
     /// Loads updates into filtered collection. Called by Phase 29 Data Filtering.
-    /// Currently empty placeholder - implementation in Phase 29.
     /// </summary>
-    public async Task LoadUpdatesAsync(string? approvalFilter = null, string? classificationFilter = null, CancellationToken ct = default)
+    public async Task LoadUpdatesAsync(CancellationToken ct = default)
     {
-        // Phase 29 will implement: query DashboardService, apply filters, populate FilteredUpdates
-        await Task.CompletedTask.ConfigureAwait(false);
+        try
+        {
+            _logService?.Debug("Loading updates...");
+
+            var updates = await _dashboardService.GetUpdatesAsync(ct).ConfigureAwait(false);
+
+            FilteredUpdates.Clear();
+            foreach (var update in updates)
+            {
+                FilteredUpdates.Add(update);
+            }
+
+            // Apply any active filters after loading
+            ApplyUpdateFilters();
+
+            _logService?.Info("Loaded {0} updates", FilteredUpdates.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            _logService?.Warning("Update loading cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logService?.Error(ex, "Failed to load updates: {Message}", ex.Message);
+            FilteredUpdates.Clear();
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(UpdateVisibleCount));
+            OnPropertyChanged(nameof(UpdateFilterCountText));
+        }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DATA FILTERING - Computers Panel (Phase 29)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>Selected status filter for Computers panel.</summary>
+    [ObservableProperty]
+    private string _computerStatusFilter = "All";
+
+    /// <summary>Search text for Computers panel (debounced).</summary>
+    [ObservableProperty]
+    private string _computerSearchText = string.Empty;
+
+    /// <summary>Debounce timer for search input (300ms).</summary>
+    private DispatcherTimer? _computerSearchDebounceTimer;
+
+    /// <summary>Whether to show the Clear Filters button (any filter active).</summary>
+    public bool ShowClearComputerFilters =>
+        !string.Equals(ComputerStatusFilter, "All", StringComparison.Ordinal) ||
+        !string.IsNullOrWhiteSpace(ComputerSearchText);
+
+    /// <summary>Number of visible items after filtering.</summary>
+    public int ComputerVisibleCount => FilteredComputers.Count;
+
+    /// <summary>Text showing filter count (e.g., "15 of 200 computers visible").</summary>
+    public string ComputerFilterCountText =>
+        $"{FilteredComputers.Count} computers";
+
+    // ═══════════════════════════════════════════════════════════════
+    // DATA FILTERING - Updates Panel (Phase 29)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>Selected approval filter for Updates panel.</summary>
+    [ObservableProperty]
+    private string _updateApprovalFilter = "All";
+
+    /// <summary>Selected classification filter for Updates panel.</summary>
+    [ObservableProperty]
+    private string _updateClassificationFilter = "All";
+
+    /// <summary>Search text for Updates panel (debounced).</summary>
+    [ObservableProperty]
+    private string _updateSearchText = string.Empty;
+
+    /// <summary>Debounce timer for update search input (300ms).</summary>
+    private DispatcherTimer? _updateSearchDebounceTimer;
+
+    /// <summary>Whether to show the Clear Filters button (any filter active).</summary>
+    public bool ShowClearUpdateFilters =>
+        !string.Equals(UpdateApprovalFilter, "All", StringComparison.Ordinal) ||
+        !string.Equals(UpdateClassificationFilter, "All", StringComparison.Ordinal) ||
+        !string.IsNullOrWhiteSpace(UpdateSearchText);
+
+    /// <summary>Number of visible items after filtering.</summary>
+    public int UpdateVisibleCount => FilteredUpdates.Count;
+
+    /// <summary>Text showing filter count (e.g., "45 of 300 updates visible").</summary>
+    public string UpdateFilterCountText =>
+        $"{FilteredUpdates.Count} updates";
 
     // ═══════════════════════════════════════════════════════════════
     // DASHBOARD - Service Status Cards
@@ -768,15 +909,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task ResetContent()
     {
-        var confirm = MessageBox.Show(
-            "This will run 'wsusutil reset' to re-verify all WSUS content files against the database.\n\n" +
-            "This operation can take 10+ minutes on large content stores.\n\n" +
-            "Continue?",
-            "Confirm Content Reset",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
-
-        if (confirm != MessageBoxResult.Yes) return;
+        // Confirm before running destructive operation
+        if (!ConfirmDestructiveOperation("Content Reset"))
+            return;
 
         Navigate("Diagnostics");
 
@@ -824,6 +959,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanExecuteWsusOperation))]
     private async Task RunDeepCleanup()
     {
+        // Confirm before running destructive operation
+        if (!ConfirmDestructiveOperation("Deep Cleanup"))
+            return;
+
         Navigate("Database");
 
         await RunOperationAsync("Deep Cleanup", async (progress, ct) =>
@@ -898,6 +1037,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (dialog.ShowDialog() != true) return;
 
         var backupPath = dialog.FileName;
+
+        // Confirm before running destructive operation
+        if (!ConfirmDestructiveOperation("Restore Database"))
+            return;
+
         Navigate("Database");
 
         await RunOperationAsync("Restore Database", async (progress, ct) =>
@@ -1547,6 +1691,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ApplySettings(_settings);
         UpdateDashboardFromData(dashboardData);
 
+        // Restore filter settings from saved state
+        await InitializeFiltersAsync().ConfigureAwait(false);
+
         // Check WSUS installation and show message if needed
         if (!IsWsusInstalled)
         {
@@ -1570,7 +1717,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task OpenSettings()
     {
-        var dialog = new SettingsDialog(_settings, _themeService);
+        var dialog = new SettingsDialog(_settings, _themeService, _validationService);
         if (Application.Current.MainWindow is not null)
             dialog.Owner = Application.Current.MainWindow;
 
@@ -1583,7 +1730,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         updated.LiveTerminalMode = _settings.LiveTerminalMode;
 
         // Check if refresh interval changed (need timer restart)
-        var intervalChanged = updated.RefreshIntervalSeconds != _settings.RefreshIntervalSeconds;
+        var intervalChanged = updated.RefreshIntervalSeconds != _settings.RefreshIntervalSeconds ||
+                             updated.DashboardRefreshInterval != _settings.DashboardRefreshInterval;
 
         // Check if theme changed (theme already applied by dialog for preview)
         var themeChanged = !string.Equals(updated.SelectedTheme, _settings.SelectedTheme, StringComparison.OrdinalIgnoreCase);
@@ -1609,6 +1757,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AppendLog($"Settings saved. Server mode: {_settings.ServerMode}, Refresh: {_settings.RefreshIntervalSeconds}s{themeLog}");
     }
 
+    /// <summary>
+    /// Restores saved filter settings from AppSettings on application startup.
+    /// Called during initialization to apply persisted filter values.
+    /// </summary>
+    private async Task InitializeFiltersAsync()
+    {
+        // Restore Computers filters
+        ComputerStatusFilter = _settings.ComputerStatusFilter ?? "All";
+        ComputerSearchText = _settings.ComputerSearchText ?? string.Empty;
+
+        // Restore Updates filters
+        UpdateApprovalFilter = _settings.UpdateApprovalFilter ?? "All";
+        UpdateClassificationFilter = _settings.UpdateClassificationFilter ?? "All";
+        UpdateSearchText = _settings.UpdateSearchText ?? string.Empty;
+
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
     private void ApplySettings(AppSettings settings)
     {
         IsLogPanelExpanded = settings.LogPanelExpanded;
@@ -1619,6 +1785,29 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ConfigContentPath = settings.ContentPath;
         ConfigSqlInstance = settings.SqlInstance;
         ConfigLogPath = @"C:\WSUS\Logs";
+    }
+
+    /// <summary>
+    /// Shows a confirmation dialog for destructive operations if the setting is enabled.
+    /// Returns true if the user confirms or if prompts are disabled. Returns false if user cancels.
+    /// </summary>
+    /// <param name="operationName">The name of the destructive operation.</param>
+    /// <returns>True to proceed with operation, false to cancel.</returns>
+    private bool ConfirmDestructiveOperation(string operationName)
+    {
+        // If setting is disabled, auto-proceed
+        if (!_settings.RequireConfirmationDestructive)
+            return true;
+
+        // Show confirmation dialog
+        var result = MessageBox.Show(
+            $"Are you sure you want to run {operationName}?\n\nThis action cannot be undone.",
+            $"Confirm {operationName}",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        return result == MessageBoxResult.Yes;
     }
 
     private async Task SaveSettingsAsync()
@@ -1635,10 +1824,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void StartRefreshTimer()
     {
-        var interval = TimeSpan.FromSeconds(
-            _settings.RefreshIntervalSeconds > 0 ? _settings.RefreshIntervalSeconds : 30);
+        var intervalMs = GetRefreshIntervalMs();
 
-        _refreshTimer = new DispatcherTimer { Interval = interval };
+        // If disabled, don't start timer
+        if (intervalMs == 0)
+        {
+            _logService.Debug("Dashboard auto-refresh disabled");
+            return;
+        }
+
+        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(intervalMs) };
 
         // Store handler reference for unsubscription (memory leak prevention)
         _refreshTimerHandler = async (_, _) =>
@@ -1656,7 +1851,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _refreshTimer.Tick += _refreshTimerHandler;
         _refreshTimer.Start();
 
-        _logService.Debug("Dashboard auto-refresh started ({Interval}s interval)", interval.TotalSeconds);
+        _logService.Debug("Dashboard auto-refresh started ({Interval}s interval)", intervalMs / 1000.0);
+    }
+
+    /// <summary>
+    /// Converts DashboardRefreshInterval enum to milliseconds.
+    /// Returns 0 for Disabled (timer should not be started).
+    /// </summary>
+    private int GetRefreshIntervalMs()
+    {
+        return _settings.DashboardRefreshInterval switch
+        {
+            DashboardRefreshInterval.Sec10 => 10000,
+            DashboardRefreshInterval.Sec30 => 30000,
+            DashboardRefreshInterval.Sec60 => 60000,
+            DashboardRefreshInterval.Disabled => 0,
+            _ => 30000 // default to 30 seconds
+        };
     }
 
     /// <summary>
@@ -1708,31 +1919,236 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // DATA LIST MODELS (Phase 25: Infrastructure for Phase 29)
+    // DATA FILTERING HANDLERS (Phase 29)
     // ═══════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Represents a computer in the WSUS environment with filtering properties.
-    /// Used by Phase 29 Data Filtering panel with virtualized ListBox.
+    /// Called when ComputerStatusFilter changes. Applies filter and persists to settings.
     /// </summary>
-    public record ComputerInfo(
-        string Hostname,
-        string IpAddress,
-        string Status,
-        DateTime LastSync,
-        int PendingUpdates,
-        string OsVersion);
+    partial void OnComputerStatusFilterChanged(string value)
+    {
+        ApplyComputerFilters();
+        SaveFilterSettings();
+    }
 
     /// <summary>
-    /// Represents an update with filtering properties.
-    /// Used by Phase 29 Data Filtering panel with virtualized ListBox.
+    /// Called when ComputerSearchText changes. Debounces input before applying filter.
     /// </summary>
-    public record UpdateInfo(
-        Guid UpdateId,
-        string Title,
-        string? KbArticle,
-        string Classification,
-        DateTime ApprovalDate,
-        bool IsApproved,
-        bool IsDeclined);
+    partial void OnComputerSearchTextChanged(string value)
+    {
+        // Reset or start debounce timer
+        _computerSearchDebounceTimer?.Stop();
+        _computerSearchDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(300)
+        };
+        _computerSearchDebounceTimer.Tick += (s, e) =>
+        {
+            _computerSearchDebounceTimer?.Stop();
+            ApplyComputerFilters();
+            SaveFilterSettings();
+        };
+        _computerSearchDebounceTimer.Start();
+
+        // Update status text to show "(filtering...)"
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            _logService?.Debug("(filtering...)");
+        }
+    }
+
+    /// <summary>
+    /// Called when UpdateApprovalFilter changes. Applies filter and persists to settings.
+    /// </summary>
+    partial void OnUpdateApprovalFilterChanged(string value)
+    {
+        ApplyUpdateFilters();
+        SaveUpdateFilterSettings();
+    }
+
+    /// <summary>
+    /// Called when UpdateClassificationFilter changes. Applies filter and persists to settings.
+    /// </summary>
+    partial void OnUpdateClassificationFilterChanged(string value)
+    {
+        ApplyUpdateFilters();
+        SaveUpdateFilterSettings();
+    }
+
+    /// <summary>
+    /// Called when UpdateSearchText changes. Debounces input before applying filter.
+    /// </summary>
+    partial void OnUpdateSearchTextChanged(string value)
+    {
+        // Reset or start debounce timer
+        _updateSearchDebounceTimer?.Stop();
+        _updateSearchDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(300)
+        };
+        _updateSearchDebounceTimer.Tick += (s, e) =>
+        {
+            _updateSearchDebounceTimer?.Stop();
+            ApplyUpdateFilters();
+            SaveUpdateFilterSettings();
+        };
+        _updateSearchDebounceTimer.Start();
+
+        // Update status text to show "(filtering...)"
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            _logService?.Debug("(filtering...)");
+        }
+    }
+
+    /// <summary>
+    /// Applies computer status and search filters to the FilteredComputers collection.
+    /// Uses CollectionView.Filter for efficient O(n) filtering.
+    /// </summary>
+    private void ApplyComputerFilters()
+    {
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(FilteredComputers);
+        view.Filter = (obj) =>
+        {
+            if (obj is not ComputerInfo computer) return false;
+
+            // Status filter
+            if (!string.Equals(ComputerStatusFilter, "All", StringComparison.Ordinal))
+            {
+                if (!string.Equals(computer.Status, ComputerStatusFilter, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            // Search filter (case-insensitive substring)
+            if (!string.IsNullOrWhiteSpace(ComputerSearchText))
+            {
+                var search = ComputerSearchText.ToLowerInvariant();
+                var match = computer.Hostname.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           computer.IpAddress.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           computer.Status.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!match) return false;
+            }
+
+            return true;
+        };
+        view.Refresh();
+
+        // Notify UI updates
+        OnPropertyChanged(nameof(ShowClearComputerFilters));
+        OnPropertyChanged(nameof(ComputerVisibleCount));
+        OnPropertyChanged(nameof(ComputerFilterCountText));
+    }
+
+    /// <summary>
+    /// Applies update approval, classification, and search filters to the FilteredUpdates collection.
+    /// Uses CollectionView.Filter for efficient O(n) filtering.
+    /// </summary>
+    private void ApplyUpdateFilters()
+    {
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(FilteredUpdates);
+        view.Filter = (obj) =>
+        {
+            if (obj is not UpdateInfo update) return false;
+
+            // Approval filter (combines IsApproved and IsDeclined)
+            if (!string.Equals(UpdateApprovalFilter, "All", StringComparison.Ordinal))
+            {
+                bool matchesApproval = UpdateApprovalFilter switch
+                {
+                    "Approved" => update.IsApproved && !update.IsDeclined,
+                    "Not Approved" => !update.IsApproved && !update.IsDeclined,
+                    "Declined" => update.IsDeclined,
+                    _ => true
+                };
+                if (!matchesApproval) return false;
+            }
+
+            // Classification filter
+            if (!string.Equals(UpdateClassificationFilter, "All", StringComparison.Ordinal))
+            {
+                // Handle both classification string formats
+                var classification = update.Classification?.ToLowerInvariant() ?? "";
+                var filter = UpdateClassificationFilter.ToLowerInvariant();
+
+                // Exact match or partial match (e.g., "Critical" matches "Critical Updates")
+                if (!classification.Contains(filter))
+                    return false;
+            }
+
+            // Search filter (case-insensitive substring across multiple fields)
+            if (!string.IsNullOrWhiteSpace(UpdateSearchText))
+            {
+                var search = UpdateSearchText;
+                var match = (update.Title?.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                           (update.KbArticle?.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                           (update.Classification?.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                           (update.IsApproved && "approved".IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                           (update.IsDeclined && "declined".IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (!match) return false;
+            }
+
+            return true;
+        };
+        view.Refresh();
+
+        // Notify UI updates
+        OnPropertyChanged(nameof(ShowClearUpdateFilters));
+        OnPropertyChanged(nameof(UpdateVisibleCount));
+        OnPropertyChanged(nameof(UpdateFilterCountText));
+    }
+
+    /// <summary>
+    /// Saves computer filter settings to persistent storage.
+    /// </summary>
+    private void SaveFilterSettings()
+    {
+        _settings.ComputerStatusFilter = ComputerStatusFilter;
+        _settings.ComputerSearchText = ComputerSearchText;
+        // Note: Settings are persisted on application shutdown or explicit save
+        // For immediate persistence, call await SaveSettingsAsync()
+    }
+
+    /// <summary>
+    /// Saves update filter settings to persistent storage.
+    /// </summary>
+    private void SaveUpdateFilterSettings()
+    {
+        _settings.UpdateApprovalFilter = UpdateApprovalFilter;
+        _settings.UpdateClassificationFilter = UpdateClassificationFilter;
+        _settings.UpdateSearchText = UpdateSearchText;
+        // Note: Settings are persisted on application shutdown or explicit save
+        // For immediate persistence, call await SaveSettingsAsync()
+    }
+
+    /// <summary>
+    /// Clears all computer filters and resets to default state.
+    /// </summary>
+    [RelayCommand]
+    private void ClearComputerFilters()
+    {
+        ComputerStatusFilter = "All";
+        ComputerSearchText = string.Empty;
+        _computerSearchDebounceTimer?.Stop();
+        ApplyComputerFilters();
+        SaveFilterSettings();
+    }
+
+    /// <summary>
+    /// Clears all update filters and resets to default state.
+    /// </summary>
+    [RelayCommand]
+    private void ClearUpdateFilters()
+    {
+        UpdateApprovalFilter = "All";
+        UpdateClassificationFilter = "All";
+        UpdateSearchText = string.Empty;
+        _updateSearchDebounceTimer?.Stop();
+        ApplyUpdateFilters();
+        SaveUpdateFilterSettings();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Note: Data list models (ComputerInfo, UpdateInfo) are now in
+    // WsusManager.Core.Models namespace for proper layering
+    // ═══════════════════════════════════════════════════════════════
 }

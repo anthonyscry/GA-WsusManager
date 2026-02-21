@@ -12,10 +12,10 @@
 ## Phases
 
 - [x] **Phase 25: Performance Optimization** — Reduce startup time, optimize data loading, batch UI updates (completed 2026-02-21)
-- [x] **Phase 26: Keyboard & Accessibility** — Keyboard shortcuts, AutomationId, WCAG compliance (completed 2026-02-21)
+- [x] **Phase 26: Keyboard & Accessibility** — Keyboard shortcuts, AutomationId, WCAG compliance (completed 2026-02-21)
 - [ ] **Phase 27: Visual Feedback Polish** — Progress estimation, loading indicators, actionable errors
-- [ ] **Phase 28: Settings Expansion** — Operations config, logging config, advanced options
-- [ ] **Phase 29: Data Filtering** — Status filters, classification filters, real-time search
+- [x] **Phase 28: Settings Expansion** — Operations config, logging config, advanced options (completed 2026-02-21)
+- [x] **Phase 29: Data Filtering** — Status filters, classification filters, real-time search (completed 2026-02-21)
 - [ ] **Phase 30: Data Export** — CSV export for computers and updates with Excel compatibility
 - [ ] **Phase 31: Testing & Documentation** — Test coverage, UX testing, updated documentation
 
@@ -87,10 +87,10 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 <summary>🔄 v4.5 Enhancement Suite (Phases 25-31) — IN PROGRESS</summary>
 
 - [x] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (5/5 plans complete) (completed 2026-02-21)
-- [ ] Phase 26: Keyboard & Accessibility — Keyboard shortcuts, AutomationId, WCAG compliance
+- [x] Phase 26: Keyboard & Accessibility — Keyboard shortcuts, AutomationId, WCAG compliance (5/5 plans complete) (completed 2026-02-21)
 - [ ] Phase 27: Visual Feedback Polish — Progress estimation, loading indicators, actionable errors
-- [ ] Phase 28: Settings Expansion — Operations config, logging config, advanced options
-- [ ] Phase 29: Data Filtering — Status filters, classification filters, real-time search
+- [x] Phase 28: Settings Expansion — Operations config, logging config, advanced options (7/7 plans complete) (completed 2026-02-21)
+- [x] Phase 29: Data Filtering — Status filters, classification filters, real-time search (3/3 plans complete) (completed 2026-02-21)
 - [ ] Phase 30: Data Export — CSV export for computers and updates with Excel compatibility
 - [ ] Phase 31: Testing & Documentation — Test coverage, UX testing, updated documentation
 
@@ -134,16 +134,16 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 23. Memory Leak Detection | v4.4 | 1/1 | Complete | 2026-02-21 |
 | 24. Documentation Generation | v4.4 | 6/6 | Complete | 2026-02-21 |
 | 25. Performance Optimization | v4.5 | 5/5 | Complete | 2026-02-21 |
-| 26. Keyboard & Accessibility | 5/5 | Complete   | 2026-02-21 | - |
-| 27. Visual Feedback Polish | v4.5 | 0/4 | Not started | - |
-| 28. Settings Expansion | v4.5 | 0/4 | Not started | - |
-| 29. Data Filtering | v4.5 | 0/3 | Not started | - |
+| 26. Keyboard & Accessibility | v4.5 | 5/5 | Complete | 2026-02-21 |
+| 27. Visual Feedback Polish | v4.5 | 0/5 | Not started | - |
+| 28. Settings Expansion | v4.5 | 7/7 | Complete | 2026-02-21 |
+| 29. Data Filtering | v4.5 | 3/3 | Complete | 2026-02-21 |
 | 30. Data Export | v4.5 | 0/3 | Not started | - |
 | 31. Testing & Documentation | v4.5 | 0/4 | Not started | - |
 
 ---
 
-**Total:** 31 phases, 98 plans — 68 complete, 30 pending
+**Total:** 31 phases, 98 plans — 83 complete, 15 pending
 
 ## v4.5 Phase Details
 
@@ -237,7 +237,14 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 7. WinRM timeout and retry settings are configurable for client operations
 8. "Reset to Defaults" button restores all settings with confirmation dialog
 
-**Plans:** TBD
+**Plans:** 7/7 complete
+- [x] 28-01-PLAN.md — Extend AppSettings with new properties (2026-02-21) (SET-01, SET-02, SET-03)
+- [x] 28-02-PLAN.md — Create SettingsValidationService (2026-02-21) (SET-04)
+- [x] 28-03-PLAN.md — Create editable Settings dialog (2026-02-21) (SET-05)
+- [x] 28-04-PLAN.md — Settings persistence (2026-02-21) (SET-06)
+- [x] 28-05-PLAN.md — Window state persistence (2026-02-21) (SET-07)
+- [x] 28-06-PLAN.md — Confirmation prompts for destructive operations (2026-02-21) (SET-08)
+- [x] 28-07-PLAN.md — Reset to defaults (2026-02-21)
 
 ---
 
@@ -255,7 +262,10 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 3. Updates panel has filter dropdown for classification (All/Critical/Security/Definition/Updates)
 4. Search box filters visible items in real-time as user types (debounced 300ms)
 
-**Plans:** TBD
+**Plans:** 3/3 complete
+- [x] 29-01-PLAN.md — Computers panel filter UI (2026-02-21) (DAT-01)
+- [x] 29-02-PLAN.md — Updates panel filter UI (2026-02-21) (DAT-02, DAT-03)
+- [x] 29-03-PLAN.md — Data loading and filter persistence (2026-02-21) (DAT-04)
 
 ---
 

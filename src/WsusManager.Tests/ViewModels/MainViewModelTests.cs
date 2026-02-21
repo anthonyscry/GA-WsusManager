@@ -1,4 +1,5 @@
 using Moq;
+using System.Windows.Data;
 using WsusManager.App.ViewModels;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Models;
@@ -1068,4 +1069,125 @@ public class MainViewModelTests
 
     private static System.Windows.Media.Color Color(byte r, byte g, byte b) =>
         System.Windows.Media.Color.FromRgb(r, g, b);
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 29: Data Filtering Tests (Computers Panel)
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ComputerStatusFilter_WhenChanged_UpdatesProperty()
+    {
+        // Act
+        _vm.ComputerStatusFilter = "Online";
+
+        // Assert
+        Assert.Equal("Online", _vm.ComputerStatusFilter);
+    }
+
+    [Fact]
+    public void ShowClearComputerFilters_WhenStatusFilterNotAll_ReturnsTrue()
+    {
+        // Arrange
+        _vm.ComputerStatusFilter = "All";
+        Assert.False(_vm.ShowClearComputerFilters);
+
+        // Act
+        _vm.ComputerStatusFilter = "Online";
+
+        // Assert
+        Assert.True(_vm.ShowClearComputerFilters);
+    }
+
+    [Fact]
+    public void ShowClearComputerFilters_WhenSearchTextNotEmpty_ReturnsTrue()
+    {
+        // Arrange
+        _vm.ComputerSearchText = "";
+
+        // Act
+        _vm.ComputerSearchText = "test";
+
+        // Assert
+        Assert.True(_vm.ShowClearComputerFilters);
+    }
+
+    [Fact]
+    public void ClearComputerFiltersCommand_WhenExecuted_ResetsAllFilters()
+    {
+        // Arrange
+        _vm.ComputerStatusFilter = "Online";
+        _vm.ComputerSearchText = "test";
+
+        // Act
+        _vm.ClearComputerFiltersCommand.Execute(null);
+
+        // Assert
+        Assert.Equal("All", _vm.ComputerStatusFilter);
+        Assert.Empty(_vm.ComputerSearchText);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Phase 29: Data Filtering Tests (Updates Panel)
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void UpdateApprovalFilter_WhenChanged_UpdatesProperty()
+    {
+        // Act
+        _vm.UpdateApprovalFilter = "Approved";
+
+        // Assert
+        Assert.Equal("Approved", _vm.UpdateApprovalFilter);
+    }
+
+    [Fact]
+    public void UpdateClassificationFilter_WhenChanged_UpdatesProperty()
+    {
+        // Act
+        _vm.UpdateClassificationFilter = "Critical";
+
+        // Assert
+        Assert.Equal("Critical", _vm.UpdateClassificationFilter);
+    }
+
+    [Fact]
+    public void ShowClearUpdateFilters_WhenAnyFilterActive_ReturnsTrue()
+    {
+        // Arrange
+        _vm.UpdateApprovalFilter = "All";
+        _vm.UpdateClassificationFilter = "All";
+        _vm.UpdateSearchText = "";
+        Assert.False(_vm.ShowClearUpdateFilters);
+
+        // Act & Assert - Approval filter
+        _vm.UpdateApprovalFilter = "Approved";
+        Assert.True(_vm.ShowClearUpdateFilters);
+
+        // Act & Assert - Classification filter
+        _vm.UpdateApprovalFilter = "All";
+        _vm.UpdateClassificationFilter = "Critical";
+        Assert.True(_vm.ShowClearUpdateFilters);
+
+        // Act & Assert - Search filter
+        _vm.UpdateClassificationFilter = "All";
+        _vm.UpdateSearchText = "test";
+        Assert.True(_vm.ShowClearUpdateFilters);
+    }
+
+    [Fact]
+    public void ClearUpdateFiltersCommand_WhenExecuted_ResetsAllFilters()
+    {
+        // Arrange
+        _vm.UpdateApprovalFilter = "Approved";
+        _vm.UpdateClassificationFilter = "Security";
+        _vm.UpdateSearchText = "KB";
+
+        // Act
+        _vm.ClearUpdateFiltersCommand.Execute(null);
+
+        // Assert
+        Assert.Equal("All", _vm.UpdateApprovalFilter);
+        Assert.Equal("All", _vm.UpdateClassificationFilter);
+        Assert.Empty(_vm.UpdateSearchText);
+    }
 }

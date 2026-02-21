@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-**Phase:** 27-visual-feedback-polish
-**Plan:** Ready to execute — 5 of 5 plans
-**Status:** Planning complete, ready to execute visual feedback improvements
-**Last activity:** 2026-02-21 — Phase 27 (Visual Feedback Polish) planned with 5/5 plans
+**Phase:** 29-data-filtering
+**Plan:** Complete — 3/3 plans shipped
+**Status:** Phase 29 (Data Filtering) complete — ready for Phase 30
+**Last activity:** 2026-02-21 — Phase 29 (Data Filtering) completed with 3/3 plans shipped
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► PHASE 27 PLANNED ✓
+ GSD ► PHASE 29 COMPLETE ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Milestone v4.5: Enhancement Suite**
 
-**Completed:** Phase 25 (Performance) — 5/5 plans; Phase 26 (Keyboard & Accessibility) — 5/5 plans
-**Remaining:** 5 phases (27-31), 21 plans
-**Timeline:** Phase 25 (~20 min), Phase 26 (~25 min)
+**Completed:** Phase 25 (Performance) — 5/5 plans; Phase 26 (Keyboard & Accessibility) — 5/5 plans; Phase 28 (Settings Expansion) — 7/7 plans; Phase 29 (Data Filtering) — 3/3 plans
+**Remaining:** 3 phases (27, 30-31), 14 plans
+**Timeline:** Phase 25 (~20 min), Phase 26 (~25 min), Phase 28 (~30 min), Phase 29 (~40 min)
 **Focus:** UX polish, visual feedback, settings, data filtering/export
 
 ## Previous Milestone: v4.4 Quality & Polish (Shipped 2026-02-21)
@@ -94,7 +94,6 @@ None.
 **38 requirements across 7 phases:**
 
 **Phase 25 - Performance Optimization (PERF-08 to PERF-12):** ✅ COMPLETE
-**Phase 26 - Keyboard & Accessibility (UX-01 to UX-05):** ✅ COMPLETE
 - 30% startup time reduction
 - List virtualization for 2000+ computers
 - Lazy loading for update metadata
@@ -108,14 +107,14 @@ None.
 - WCAG 2.1 AA compliance verification
 - Dialog centering behavior
 
-**Phase 27 - Visual Feedback Polish (UX-06 to UX-10):** CURRENT
+**Phase 27 - Visual Feedback Polish (UX-06 to UX-10):** PENDING
 - Estimated time remaining for long operations
 - Loading indicators on buttons
 - Actionable error messages
 - Consistent success/failure banners
 - Tooltip help text
 
-**Phase 28 - Settings Expansion (SET-01 to SET-08):**
+**Phase 28 - Settings Expansion (SET-01 to SET-08):** ✅ COMPLETE
 - Default operation profiles
 - Configurable logging level
 - Log retention policy
@@ -125,13 +124,15 @@ None.
 - WinRM timeout/retry settings
 - Reset to defaults
 
-**Phase 29 - Data Filtering (DAT-01 to DAT-04):**
-- Computer status filter
-- Update approval status filter
-- Update classification filter
-- Real-time search
+**Phase 29 - Data Filtering (DAT-01 to DAT-04):** ✅ COMPLETE
+- Computer status filter (All/Online/Offline/Error)
+- Update approval status filter (All/Approved/Not Approved/Declined)
+- Update classification filter (All/Critical/Security/Definition/Updates)
+- Real-time search with 300ms debounce
+- Filter state persistence
+- Mock data for UI testing
 
-**Phase 30 - Data Export (DAT-05 to DAT-08):**
+**Phase 30 - Data Export (DAT-05 to DAT-08):** NEXT
 - Computer list CSV export
 - Update list CSV export
 - UTF-8 BOM for Excel
@@ -165,6 +166,67 @@ None.
 - KeyboardShortcutsTests: 2/2 passing
 - KeyboardNavigationTests: 12/12 passing
 - ThemeContrastTests: 55/55 passing
+
+### Phase 28 Summary (Settings Expansion) ✅
+
+**All 7 plans completed:**
+- 28-01: Extend AppSettings with New Properties ✓
+- 28-02: Create SettingsValidationService ✓
+- 28-03: Create Editable Settings Dialog ✓
+- 28-04: Settings Persistence ✓
+- 28-05: Window State Persistence ✓
+- 28-06: Confirmation Prompts for Destructive Operations ✓
+- 28-07: Reset to Defaults ✓
+
+**Key Implementation:**
+- 8 new AppSettings properties (DefaultSyncProfile, LogLevel, LogRetentionDays, LogMaxFileSizeMb, PersistWindowState, WindowBounds, DashboardRefreshInterval, RequireConfirmationDestructive)
+- SettingsValidationService with ValidateSettingsAsync() returning ValidationResult
+- Editable Settings dialog with 8 categories, 16 fields
+- Settings auto-save on OK, manual save button, reset to defaults button
+- Window state persistence (bounds, state) with validation
+- Confirmation prompts for ResetContent, RunDeepCleanup, RestoreDatabase
+- Reset to defaults with confirmation prompt
+
+**Test Results:**
+- All 544 unit tests passing
+- Settings validation tests cover all validation rules
+- Settings dialog tests verify UI state management
+
+### Phase 29 Summary (Data Filtering) ✅
+
+**All 3 plans completed:**
+- 29-01: Computers Panel Filter UI ✓ (DAT-01)
+- 29-02: Updates Panel Filter UI ✓ (DAT-02, DAT-03)
+- 29-03: Data Loading and Filter Persistence ✓ (DAT-04)
+
+**Key Implementation:**
+- Filter styles: FilterRow, FilterComboBox, FilterSearchBox, ClearFiltersButton, EmptyStateText
+- BoolToVisibilityConverter for conditional UI elements
+- ComputerInfo model (6 properties) and UpdateInfo model (7 properties) in Core.Models
+- PagedResult<T> model for pagination support
+- 5 filter properties in AppSettings (2 computers, 3 updates)
+- MVVM properties and commands: ComputerStatusFilter, ComputerSearchText, UpdateApprovalFilter, UpdateClassificationFilter, UpdateSearchText
+- ClearComputerFiltersCommand and ClearUpdateFiltersCommand
+- 300ms debounce via DispatcherTimer for search input
+- CollectionView filtering for O(n) performance
+- Virtualized ListBox (Computers) and ListView (Updates) with Recycling mode
+- Computers panel: 6 columns (Hostname, IP, Status, Last Sync, Pending, OS)
+- Updates panel: 5 columns (KB, Title, Classification, Status, Date) with color-coded status
+- DATA category in sidebar navigation
+- GetComputersAsync() and GetUpdatesAsync() in IDashboardService with mock data (10 computers, 12 updates)
+- LoadComputersAsync() and LoadUpdatesAsync() in MainViewModel
+- Auto-loading on first navigation to each panel
+- Filter state restoration during initialization
+- Empty state TextBlock with "No items match current filters" message
+
+**Test Results:**
+- All 544 unit tests passing
+- 8 new tests for filter properties and commands
+
+**Bug Fixes:**
+- Created PagedResult<> model (was missing from SqlService)
+- Fixed ILogService method names (LogDebug→Debug, LogInfo→Info, etc.)
+- Added ConfigureAwait(false) to async calls
 
 ## Performance Metrics
 

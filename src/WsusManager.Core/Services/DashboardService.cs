@@ -306,4 +306,60 @@ public class DashboardService : IDashboardService
             data.IsOnline = false;
         }
     }
+
+    /// <summary>
+    /// Gets a list of all computers from the WSUS server.
+    /// Phase 29: Returns mock data for UI testing.
+    /// Future: Query WSUS API for real computer list.
+    /// </summary>
+    public async Task<IReadOnlyList<ComputerInfo>> GetComputersAsync(CancellationToken ct = default)
+    {
+        // Phase 29: Return mock data for UI testing
+        // Future: Query WSUS API for real computer list
+        await Task.Delay(50, ct).ConfigureAwait(false); // Simulate network delay
+
+        var now = DateTime.UtcNow;
+        return new List<ComputerInfo>
+        {
+            new("LAB-PC001", "192.168.1.10", "Online", now.AddMinutes(-5), 0, "Windows 11 Pro"),
+            new("LAB-PC002", "192.168.1.11", "Online", now.AddMinutes(-10), 3, "Windows 10 Pro"),
+            new("LAB-PC003", "192.168.1.12", "Offline", now.AddHours(-2), 5, "Windows 10 Pro"),
+            new("LAB-SRV001", "192.168.1.20", "Online", now.AddMinutes(-15), 0, "Windows Server 2022"),
+            new("LAB-SRV002", "192.168.1.21", "Error", now.AddHours(-8), 12, "Windows Server 2019"),
+            new("HR-PC001", "192.168.2.10", "Online", now.AddMinutes(-30), 1, "Windows 11 Pro"),
+            new("HR-PC002", "192.168.2.11", "Offline", now.AddDays(-1), 0, "Windows 10 Pro"),
+            new("FIN-PC001", "192.168.3.10", "Online", now.AddMinutes(-20), 0, "Windows 11 Pro"),
+            new("FIN-PC002", "192.168.3.11", "Online", now.AddMinutes(-45), 7, "Windows 10 Pro"),
+            new("DEV-PC001", "192.168.4.10", "Error", now.AddHours(-4), 2, "Windows 11 Pro"),
+        };
+    }
+
+    /// <summary>
+    /// Gets a list of all updates from the WSUS database.
+    /// Phase 29: Returns mock data for UI testing.
+    /// Future: Query SUSDB for real update list.
+    /// </summary>
+    public async Task<IReadOnlyList<UpdateInfo>> GetUpdatesAsync(CancellationToken ct = default)
+    {
+        // Phase 29: Return mock data for UI testing
+        // Future: Query SUSDB for real update list
+        await Task.Delay(50, ct).ConfigureAwait(false); // Simulate database query
+
+        var now = DateTime.UtcNow;
+        return new List<UpdateInfo>
+        {
+            new(Guid.NewGuid(), "KB5034441", "Security Update for Windows 11", "Security Updates", now.AddDays(-5), true, false),
+            new(Guid.NewGuid(), "KB5034439", "Cumulative Update for Windows 11", "Critical Updates", now.AddDays(-5), true, false),
+            new(Guid.NewGuid(), "KB5034442", "Security Update for .NET Framework 3.5", "Security Updates", now.AddDays(-3), true, false),
+            new(Guid.NewGuid(), "KB5034443", "Security Update for Microsoft Defender", "Definition Updates", now.AddDays(-1), true, false),
+            new(Guid.NewGuid(), "KB5034444", "Cumulative Update for Windows 10", "Critical Updates", now.AddDays(-7), true, false),
+            new(Guid.NewGuid(), "KB5034445", "Security Update for Windows Server 2022", "Security Updates", now.AddDays(-4), false, false),
+            new(Guid.NewGuid(), "KB5034446", "Update for Windows 11", "Updates", now.AddDays(-2), false, false),
+            new(Guid.NewGuid(), "KB5034447", "Definition Update for Windows Defender", "Definition Updates", now.AddHours(-12), true, false),
+            new(Guid.NewGuid(), "KB5034448", "Security Update for Microsoft Office", "Security Updates", now.AddDays(-6), false, false),
+            new(Guid.NewGuid(), "KB5034449", "Critical Update for Windows Server 2019", "Critical Updates", now.AddDays(-10), true, false),
+            new(Guid.NewGuid(), "KB5034450", "Cumulative Update for .NET Framework", "Updates", now.AddDays(-8), false, true), // Declined
+            new(Guid.NewGuid(), "KB5034451", "Security Update for Windows 10", "Security Updates", now.AddDays(-9), false, false),
+        };
+    }
 }
