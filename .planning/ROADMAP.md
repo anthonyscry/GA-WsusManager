@@ -210,7 +210,12 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 4. Success/failure banners use consistent iconography and colors across all operations
 5. All toolbar and quick action buttons have tooltip help text on hover
 
-**Plans:** TBD
+**Plans:** 5/5 planned
+- [ ] 27-01-PLAN.md — Estimated time remaining for long operations (UX-06)
+- [ ] 27-02-PLAN.md — Loading indicators on buttons (UX-07)
+- [ ] 27-03-PLAN.md — Actionable error messages (UX-08)
+- [ ] 27-04-PLAN.md — Consistent success/failure banners (UX-09)
+- [ ] 27-05-PLAN.md — Tooltip help text (UX-10)
 
 ---
 
