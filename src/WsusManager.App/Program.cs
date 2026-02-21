@@ -110,6 +110,9 @@ public static class Program
         builder.Services.AddSingleton<WinRmExecutor>();
         builder.Services.AddSingleton<IClientService, ClientService>();
 
+        // Phase 15: Script Generator
+        builder.Services.AddSingleton<IScriptGeneratorService, ScriptGeneratorService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 

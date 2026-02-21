@@ -35,6 +35,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IScheduledTaskService _scheduledTaskService;
     private readonly IGpoDeploymentService _gpoDeploymentService;
     private readonly IClientService _clientService;
+    private readonly IScriptGeneratorService _scriptGeneratorService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -60,7 +61,8 @@ public partial class MainViewModel : ObservableObject
         IInstallationService installationService,
         IScheduledTaskService scheduledTaskService,
         IGpoDeploymentService gpoDeploymentService,
-        IClientService clientService)
+        IClientService clientService,
+        IScriptGeneratorService scriptGeneratorService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -77,6 +79,7 @@ public partial class MainViewModel : ObservableObject
         _scheduledTaskService = scheduledTaskService;
         _gpoDeploymentService = gpoDeploymentService;
         _clientService = clientService;
+        _scriptGeneratorService = scriptGeneratorService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -987,6 +990,84 @@ public partial class MainViewModel : ObservableObject
         });
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // SCRIPT GENERATOR (Phase 15)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Currently selected operation in the Script Generator dropdown.
+    /// Bound to the ComboBox SelectedItem in the Script Generator card.
+    /// </summary>
+    [ObservableProperty]
+    private string _selectedScriptOperation = string.Empty;
+
+    /// <summary>
+    /// List of available script operation display names for the ComboBox.
+    /// Provided by IScriptGeneratorService.GetAvailableOperations().
+    /// </summary>
+    public IReadOnlyList<string> ScriptOperations => _scriptGeneratorService.GetAvailableOperations();
+
+    /// <summary>
+    /// Generates a self-contained PowerShell script for the selected operation
+    /// and opens a SaveFileDialog so the admin can save it to disk.
+    /// Script generation is synchronous and instant — does not go through RunOperationAsync.
+    /// </summary>
+    [RelayCommand]
+    private void GenerateScript()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedScriptOperation))
+        {
+            AppendLog("Select an operation type first.");
+            return;
+        }
+
+        try
+        {
+            // Gather context parameters for operations that need them
+            var wsusUrl = $"http://{_settings.SqlInstance.Split('\\')[0]}:8530";
+
+            // For MassGpUpdate, pass the current MassHostnames list if populated
+            IReadOnlyList<string>? hostnames = null;
+            if (SelectedScriptOperation == "Mass GPUpdate" && !string.IsNullOrWhiteSpace(MassHostnames))
+            {
+                hostnames = MassHostnames
+                    .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+                    .Select(h => h.Trim())
+                    .Where(h => !string.IsNullOrWhiteSpace(h))
+                    .ToList();
+            }
+
+            var scriptContent = _scriptGeneratorService.GenerateScript(
+                SelectedScriptOperation,
+                wsusServerUrl: wsusUrl,
+                hostnames: hostnames);
+
+            // Default filename: WsusManager-{operation-slug}-{date}.ps1
+            var slug = SelectedScriptOperation.Replace(" ", "-").Replace("/", "-");
+            var defaultName = $"WsusManager-{slug}-{DateTime.Now:yyyy-MM-dd}.ps1";
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "Save PowerShell Script",
+                Filter = "PowerShell Scripts (*.ps1)|*.ps1|All Files (*.*)|*.*",
+                DefaultExt = ".ps1",
+                FileName = defaultName
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                File.WriteAllText(dialog.FileName, scriptContent, System.Text.Encoding.UTF8);
+                AppendLog($"Script saved to: {dialog.FileName}");
+                _logService.Info("Script saved: {Operation} → {Path}", SelectedScriptOperation, dialog.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[ERROR] Failed to generate script: {ex.Message}");
+            _logService.Error(ex, "GenerateScript failed for operation: {Operation}", SelectedScriptOperation);
+        }
+    }
+
     /// <summary>
     /// Looks up a WSUS/Windows Update error code locally. Instant — no remote call.
     /// Does not go through RunOperationAsync because it is synchronous and near-instant.
@@ -1148,8 +1229,9 @@ public partial class MainViewModel : ObservableObject
         RunClientForceCheckInCommand.NotifyCanExecuteChanged();
         RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
         RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
-        // Phase 15: Mass Operations
+        // Phase 15: Mass Operations + Script Generator
         RunMassGpUpdateCommand.NotifyCanExecuteChanged();
+        GenerateScriptCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════

@@ -633,6 +633,38 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Script Generator -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Script Generator" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Generate a ready-to-run PowerShell script for environments where WinRM is unavailable. Copy the script to the target host and run it as Administrator."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Operation:"
+                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding ScriptOperations}"
+                                                  SelectedItem="{Binding SelectedScriptOperation}"
+                                                  Background="{StaticResource BgInput}"
+                                                  Foreground="{StaticResource Text1}"
+                                                  BorderBrush="{StaticResource Border}"
+                                                  Padding="8,6" FontSize="13"/>
+                                    </Grid>
+                                    <Button Content="Generate Script" Style="{StaticResource BtnSec}"
+                                            Padding="16,8" HorizontalAlignment="Left"
+                                            Command="{Binding GenerateScriptCommand}"
+                                            ToolTip="Generate a PowerShell script file for the selected operation"/>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Error Code Lookup -->
                             <Border Background="{StaticResource BgCard}" CornerRadius="6"
                                     Padding="16">
