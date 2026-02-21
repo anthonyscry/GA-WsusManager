@@ -8,7 +8,15 @@
         ResizeMode="CanResize"
         Background="{DynamicResource PrimaryBackground}">
 
-    <Grid>
+    <Window.InputBindings>
+        <KeyBinding Key="F1" Command="{Binding ShowHelpCommand}"/>
+        <KeyBinding Key="F5" Command="{Binding RefreshDashboardFromShortcutCommand}"/>
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding OpenSettingsFromShortcutCommand}"/>
+        <KeyBinding Key="Q" Modifiers="Control" Command="{Binding QuitCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding CancelOperationFromShortcutCommand}"/>
+    </Window.InputBindings>
+
+    <Grid KeyboardNavigation.TabNavigation="Once">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="*"/>
@@ -19,7 +27,7 @@
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Column="0" Background="{DynamicResource NavBackground}"
                 BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="0,0,1,0">
-            <DockPanel LastChildFill="False">
+            <DockPanel LastChildFill="False" KeyboardNavigation.TabNavigation="Continue">
 
                 <!-- Branding -->
                 <StackPanel DockPanel.Dock="Top" Margin="15,16,15,8">
@@ -143,7 +151,7 @@
         <!-- ═══════════════════════════════════════════════════════════
              MAIN CONTENT AREA
              ═══════════════════════════════════════════════════════════ -->
-        <Grid Grid.Column="1">
+        <Grid Grid.Column="1" KeyboardNavigation.TabNavigation="Continue">
             <Grid.RowDefinitions>
                 <!-- Header -->
                 <RowDefinition Height="Auto"/>
@@ -187,7 +195,7 @@
             <!-- ═══════════════════════════════════════════════════════
                  CONTENT PANELS (visibility bound to CurrentPanel)
                  ═══════════════════════════════════════════════════════ -->
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="1" KeyboardNavigation.TabNavigation="Once">
 
                 <!-- Dashboard Panel -->
                 <Border x:Name="DashboardPanel"

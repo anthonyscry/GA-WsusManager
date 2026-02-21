@@ -7,7 +7,7 @@
         ResizeMode="NoResize"
         Background="{DynamicResource PrimaryBackground}">
 
-    <Grid Margin="24">
+    <Grid Margin="24" KeyboardNavigation.TabNavigation="Continue">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -31,7 +31,8 @@
                        FontSize="12" Margin="0,0,0,4"/>
             <ComboBox x:Name="CboServerMode"
                       Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
-                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12">
+                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
+                      KeyboardNavigation.DirectionalNavigation="Cycle">
                 <ComboBoxItem>Online</ComboBoxItem>
                 <ComboBoxItem>Air-Gap</ComboBoxItem>
             </ComboBox>

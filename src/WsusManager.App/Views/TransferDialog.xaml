@@ -7,7 +7,7 @@
         ResizeMode="NoResize"
         Background="{DynamicResource PrimaryBackground}">
 
-    <Grid Margin="24">
+    <Grid Margin="24" KeyboardNavigation.TabNavigation="Continue">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
