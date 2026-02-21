@@ -50,7 +50,7 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
 
 ### v4.3 Themes (Phases 16-17)
 
-- [ ] **Phase 16: Theme Infrastructure** — Split styles/tokens, migrate StaticResource to DynamicResource, implement ThemeService
+- [x] **Phase 16: Theme Infrastructure** — Split styles/tokens, migrate StaticResource to DynamicResource, implement ThemeService (2026-02-21)
 - [ ] **Phase 17: Theme Content and Picker** — 5 additional theme files, Settings Appearance section with live-preview swatch picker
 
 ## Phase Details
@@ -68,7 +68,7 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
 **Plans**: 1 plan
 
 Plans:
-- [ ] 16-01-PLAN.md — Split styles/tokens, DynamicResource migration, ViewModel brush migration, ThemeService (INFRA-01 through INFRA-05)
+- [x] 16-01-PLAN.md — Split styles/tokens, DynamicResource migration, ViewModel brush migration, ThemeService (INFRA-01 through INFRA-05)
 
 ### Phase 17: Theme Content and Picker
 **Goal**: Users can choose from 6 built-in color themes in Settings, see a live preview when clicking swatches, and have their selection persist across restarts
@@ -101,5 +101,5 @@ Plans:
 | 13. Operation Feedback & Dialog Polish | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 14. Client Management Core | v4.2 | 3/3 | Complete | 2026-02-21 |
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
-| 16. Theme Infrastructure | v4.3 | 0/1 | Not started | - |
+| 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
 | 17. Theme Content and Picker | v4.3 | 0/? | Not started | - |

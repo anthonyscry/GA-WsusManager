@@ -5,7 +5,7 @@
         Width="480" Height="400"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}">
+        Background="{DynamicResource PrimaryBackground}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -18,16 +18,16 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="Install WSUS" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource Text1}"/>
+                       Foreground="{DynamicResource TextPrimary}"/>
             <TextBlock Text="Installs SQL Server Express 2022 and the WSUS role. Place SQLEXPRADV_x64_ENU.exe in the installer directory."
-                       Foreground="{StaticResource Text2}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                       Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
         </StackPanel>
 
         <!-- Fields -->
         <StackPanel Grid.Row="1">
 
             <!-- Installer Path -->
-            <TextBlock Text="Installer Path" Foreground="{StaticResource Text2}"
+            <TextBlock Text="Installer Path" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
@@ -35,8 +35,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="TxtInstallerPath" Grid.Column="0" Text="C:\WSUS\SQLDB"
-                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                          TextChanged="Input_Changed"/>
                 <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
                         Padding="10,4" Margin="6,0,0,0" FontSize="11"
@@ -44,25 +44,25 @@
             </Grid>
 
             <!-- SA Username -->
-            <TextBlock Text="SA Username" Foreground="{StaticResource Text2}"
+            <TextBlock Text="SA Username" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtSaUsername" Text="sa"
-                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                      Margin="0,0,0,12"/>
 
             <!-- SA Password -->
-            <TextBlock Text="SA Password (15+ chars, 1 digit, 1 special char)" Foreground="{StaticResource Text2}"
+            <TextBlock Text="SA Password (15+ chars, 1 digit, 1 special char)" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <PasswordBox x:Name="PwdSaPassword"
-                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                          PasswordChanged="Input_Changed"/>
         </StackPanel>
 
         <!-- Validation Text -->
         <TextBlock x:Name="TxtValidation" Grid.Row="2"
-                   Foreground="#F85149" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Foreground="{DynamicResource StatusError}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"
                    Text="Enter installer path and SA password to continue."/>
 
         <!-- Buttons -->

@@ -46,6 +46,18 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private const int MaxAutoApproveCount = 200;
 
+    /// <summary>
+    /// Resolves a theme brush by key from the application's merged resource dictionaries.
+    /// Falls back to the provided default color if the resource is not found
+    /// (e.g., during unit tests where no WPF Application is running).
+    /// </summary>
+    private static SolidColorBrush GetThemeBrush(string resourceKey, Color fallback)
+    {
+        if (Application.Current?.TryFindResource(resourceKey) is SolidColorBrush brush)
+            return brush;
+        return new SolidColorBrush(fallback);
+    }
+
     public MainViewModel(
         ILogService logService,
         ISettingsService settingsService,
@@ -276,7 +288,7 @@ public partial class MainViewModel : ObservableObject
             {
                 StatusMessage = $"{operationName} completed successfully.";
                 StatusBannerText = $"{operationName} completed successfully.";
-                StatusBannerColor = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50)); // Green
+                StatusBannerColor = GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50));
                 AppendLog($"=== {operationName} completed ===");
                 _logService.Info("Operation completed: {Operation}", operationName);
             }
@@ -284,7 +296,7 @@ public partial class MainViewModel : ObservableObject
             {
                 StatusMessage = $"{operationName} failed.";
                 StatusBannerText = $"{operationName} failed.";
-                StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // Red
+                StatusBannerColor = GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
                 AppendLog($"=== {operationName} FAILED ===");
                 _logService.Warning("Operation failed: {Operation}", operationName);
             }
@@ -295,7 +307,7 @@ public partial class MainViewModel : ObservableObject
         {
             StatusMessage = $"{operationName} cancelled.";
             StatusBannerText = $"{operationName} cancelled.";
-            StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22)); // Orange
+            StatusBannerColor = GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22));
             AppendLog($"=== {operationName} CANCELLED ===");
             _logService.Info("Operation cancelled: {Operation}", operationName);
             return false;
@@ -304,7 +316,7 @@ public partial class MainViewModel : ObservableObject
         {
             StatusMessage = $"{operationName} failed with error.";
             StatusBannerText = $"{operationName} failed.";
-            StatusBannerColor = new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // Red
+            StatusBannerColor = GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
             AppendLog($"[ERROR] {ex.Message}");
             AppendLog($"=== {operationName} FAILED ===");
             _logService.Error(ex, "Operation error: {Operation}", operationName);
@@ -430,8 +442,8 @@ public partial class MainViewModel : ObservableObject
     private bool _isOnline = true;
 
     public SolidColorBrush ConnectionDotColor => IsOnline
-        ? new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50))   // Green
-        : new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49));  // Red
+        ? GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50))
+        : GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
 
     public string ConnectionStatusText => IsOnline ? "Online" : "Offline";
     public string ServerModeText => IsOnline ? "Online" : "Air-Gap";
@@ -1128,19 +1140,19 @@ public partial class MainViewModel : ObservableObject
         {
             ServicesValue = "N/A";
             ServicesSubtext = "Not Installed";
-            ServicesBarColor = new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E)); // gray
+            ServicesBarColor = GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E));
 
             DatabaseValue = "N/A";
             DatabaseSubtext = "Not Installed";
-            DatabaseBarColor = new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E));
+            DatabaseBarColor = GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E));
 
             DiskValue = "N/A";
             DiskSubtext = "Not Installed";
-            DiskBarColor = new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E));
+            DiskBarColor = GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E));
 
             TaskValue = "N/A";
             TaskSubtext = "Not Installed";
-            TaskBarColor = new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E));
+            TaskBarColor = GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E));
             return;
         }
 
@@ -1148,17 +1160,17 @@ public partial class MainViewModel : ObservableObject
         ServicesValue = $"{data.ServiceRunningCount} / {data.ServiceNames.Length}";
         ServicesSubtext = string.Join(", ", data.ServiceNames);
         ServicesBarColor = data.ServiceRunningCount == data.ServiceNames.Length
-            ? new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50))   // all running = green
+            ? GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50))
             : data.ServiceRunningCount > 0
-                ? new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22))  // some running = orange
-                : new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // none running = red
+                ? GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22))
+                : GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
 
         // Database Card
         if (data.DatabaseSizeGB < 0)
         {
             DatabaseValue = "Offline";
             DatabaseSubtext = "SQL Server not running";
-            DatabaseBarColor = new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49)); // red
+            DatabaseBarColor = GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
         }
         else
         {
@@ -1169,10 +1181,10 @@ public partial class MainViewModel : ObservableObject
                     ? "Warning - Approaching limit"
                     : "Healthy";
             DatabaseBarColor = data.DatabaseSizeGB >= 9
-                ? new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49))   // red
+                ? GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49))
                 : data.DatabaseSizeGB >= 7
-                    ? new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22))  // orange
-                    : new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50)); // green
+                    ? GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22))
+                    : GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50));
         }
 
         // Disk Card
@@ -1181,19 +1193,19 @@ public partial class MainViewModel : ObservableObject
             ? "Low disk space!"
             : $"Free on {(string.IsNullOrEmpty(_settings.ContentPath) ? "C:" : _settings.ContentPath[..2])} drive";
         DiskBarColor = data.DiskFreeGB < 10
-            ? new SolidColorBrush(Color.FromRgb(0xF8, 0x51, 0x49))   // red
+            ? GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49))
             : data.DiskFreeGB < 50
-                ? new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22))  // orange
-                : new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50)); // green
+                ? GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22))
+                : GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50));
 
         // Task Card
         TaskValue = data.TaskStatus;
         TaskSubtext = data.TaskStatus == "Ready" ? "Scheduled" : "";
         TaskBarColor = data.TaskStatus == "Ready"
-            ? new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x50))   // green
+            ? GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50))
             : data.TaskStatus == "Not Found"
-                ? new SolidColorBrush(Color.FromRgb(0x8B, 0x94, 0x9E))  // gray
-                : new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22)); // orange
+                ? GetThemeBrush("TextSecondary", Color.FromRgb(0x8B, 0x94, 0x9E))
+                : GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22));
     }
 
     /// <summary>

@@ -31,4 +31,8 @@ public class AppSettings
     /// <summary>Dashboard auto-refresh interval in seconds.</summary>
     [JsonPropertyName("refreshIntervalSeconds")]
     public int RefreshIntervalSeconds { get; set; } = 30;
+
+    /// <summary>Selected color theme name (e.g., "DefaultDark").</summary>
+    [JsonPropertyName("selectedTheme")]
+    public string SelectedTheme { get; set; } = "DefaultDark";
 }

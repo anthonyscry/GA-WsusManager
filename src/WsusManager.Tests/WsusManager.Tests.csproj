@@ -28,9 +28,10 @@
     <ProjectReference Include="..\WsusManager.App\WsusManager.App.csproj" />
   </ItemGroup>
 
-  <!-- Exclude ViewModel tests on non-Windows (they require WPF runtime) -->
+  <!-- Exclude ViewModel and App-dependent tests on non-Windows (they require WPF runtime) -->
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <Compile Remove="ViewModels\**" />
+    <Compile Remove="Services\ThemeServiceTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

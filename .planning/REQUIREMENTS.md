@@ -9,11 +9,11 @@ Requirements for the Themes milestone. Each maps to roadmap phases.
 
 ### Theme Infrastructure
 
-- [ ] **INFRA-01**: App splits DarkTheme.xaml into shared styles (permanent) and color tokens (swappable)
-- [ ] **INFRA-02**: All XAML color/brush references use DynamicResource instead of StaticResource
-- [ ] **INFRA-03**: All hardcoded hex color values in XAML are extracted to named theme resource keys
-- [ ] **INFRA-04**: ViewModel hardcoded Color.FromRgb() brushes use theme-aware resource lookup
-- [ ] **INFRA-05**: ThemeService can swap color dictionaries at runtime without app restart
+- [x] **INFRA-01**: App splits DarkTheme.xaml into shared styles (permanent) and color tokens (swappable)
+- [x] **INFRA-02**: All XAML color/brush references use DynamicResource instead of StaticResource
+- [x] **INFRA-03**: All hardcoded hex color values in XAML are extracted to named theme resource keys
+- [x] **INFRA-04**: ViewModel hardcoded Color.FromRgb() brushes use theme-aware resource lookup
+- [x] **INFRA-05**: ThemeService can swap color dictionaries at runtime without app restart
 
 ### Theme Content
 
@@ -57,11 +57,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 16 | Pending |
-| INFRA-02 | Phase 16 | Pending |
-| INFRA-03 | Phase 16 | Pending |
-| INFRA-04 | Phase 16 | Pending |
-| INFRA-05 | Phase 16 | Pending |
+| INFRA-01 | Phase 16 | Complete |
+| INFRA-02 | Phase 16 | Complete |
+| INFRA-03 | Phase 16 | Complete |
+| INFRA-04 | Phase 16 | Complete |
+| INFRA-05 | Phase 16 | Complete |
 | THEME-01 | Phase 17 | Pending |
 | THEME-02 | Phase 17 | Pending |
 | THEME-03 | Phase 17 | Pending |
@@ -79,4 +79,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after roadmap creation*
+*Last updated: 2026-02-21 after Phase 16 completion*

@@ -6,7 +6,7 @@
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
-        Background="{StaticResource BgDark}">
+        Background="{DynamicResource PrimaryBackground}">
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -17,19 +17,19 @@
         <!-- ═══════════════════════════════════════════════════════════
              SIDEBAR
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Column="0" Background="{StaticResource BgSidebar}"
-                BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+        <Border Grid.Column="0" Background="{DynamicResource NavBackground}"
+                BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="0,0,1,0">
             <DockPanel LastChildFill="False">
 
                 <!-- Branding -->
                 <StackPanel DockPanel.Dock="Top" Margin="15,16,15,8">
                     <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold"
-                               Foreground="{StaticResource Text1}"/>
+                               Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="{Binding VersionText}" FontSize="11"
-                               Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                               Foreground="{DynamicResource TextMuted}" Margin="0,2,0,0"/>
                 </StackPanel>
 
-                <Separator DockPanel.Dock="Top" Background="{StaticResource Border}" Margin="15,4"/>
+                <Separator DockPanel.Dock="Top" Background="{DynamicResource BorderPrimary}" Margin="15,4"/>
 
                 <!-- SETUP Category -->
                 <TextBlock DockPanel.Dock="Top" Text="SETUP" Style="{StaticResource CategoryLabel}"/>
@@ -64,10 +64,10 @@
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CurrentPanel}" Value="Diagnostics">
-                                    <Setter Property="Background" Value="#21262D"/>
-                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                     <Setter Property="BorderThickness" Value="3,0,0,0"/>
-                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -83,10 +83,10 @@
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CurrentPanel}" Value="ClientTools">
-                                    <Setter Property="Background" Value="#21262D"/>
-                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                     <Setter Property="BorderThickness" Value="3,0,0,0"/>
-                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -102,10 +102,10 @@
                         <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CurrentPanel}" Value="Database">
-                                    <Setter Property="Background" Value="#21262D"/>
-                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                     <Setter Property="BorderThickness" Value="3,0,0,0"/>
-                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -114,16 +114,16 @@
 
                 <!-- Bottom utility buttons -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,8">
-                    <Separator Background="{StaticResource Border}" Margin="15,4"/>
+                    <Separator Background="{DynamicResource BorderPrimary}" Margin="15,4"/>
                     <Button Command="{Binding NavigateCommand}" CommandParameter="Dashboard">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding CurrentPanel}" Value="Dashboard">
-                                        <Setter Property="Background" Value="#21262D"/>
-                                        <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                        <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                         <Setter Property="BorderThickness" Value="3,0,0,0"/>
-                                        <Setter Property="Foreground" Value="#E6EDF3"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -154,8 +154,8 @@
             </Grid.RowDefinitions>
 
             <!-- Header Bar -->
-            <Border Grid.Row="0" Background="{StaticResource BgCard}"
-                    BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1"
+            <Border Grid.Row="0" Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="0,0,0,1"
                     Padding="16,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -165,7 +165,7 @@
 
                     <TextBlock Grid.Column="0" Text="{Binding PageTitle}"
                                FontSize="18" FontWeight="SemiBold"
-                               Foreground="{StaticResource Text1}"
+                               Foreground="{DynamicResource TextPrimary}"
                                VerticalAlignment="Center"/>
 
                     <!-- Connection Status Indicator -->
@@ -175,9 +175,9 @@
                                  Fill="{Binding ConnectionDotColor}"
                                  Margin="0,0,6,0"/>
                         <TextBlock Text="{Binding ConnectionStatusText}"
-                                   Foreground="{StaticResource Text2}" FontSize="12"/>
+                                   Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
                         <TextBlock Text="{Binding ModeOverrideIndicator}"
-                                   Foreground="{StaticResource Text3}" FontSize="11"
+                                   Foreground="{DynamicResource TextMuted}" FontSize="11"
                                    Margin="4,0,0,0"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
@@ -199,7 +199,7 @@
                             <UniformGrid Rows="1" Columns="4" Margin="0,0,0,16">
 
                                 <!-- Services Card -->
-                                <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                         Margin="0,0,8,0">
                                     <StackPanel>
                                         <Border Background="{Binding ServicesBarColor}"
@@ -215,7 +215,7 @@
                                 </Border>
 
                                 <!-- Database Card -->
-                                <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                         Margin="4,0,4,0">
                                     <StackPanel>
                                         <Border Background="{Binding DatabaseBarColor}"
@@ -231,7 +231,7 @@
                                 </Border>
 
                                 <!-- Disk Card -->
-                                <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                         Margin="4,0,4,0">
                                     <StackPanel>
                                         <Border Background="{Binding DiskBarColor}"
@@ -247,7 +247,7 @@
                                 </Border>
 
                                 <!-- Task Card -->
-                                <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                         Margin="8,0,0,0">
                                     <StackPanel>
                                         <Border Background="{Binding TaskBarColor}"
@@ -265,11 +265,11 @@
                             </UniformGrid>
 
                             <!-- Quick Actions -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,16">
                                 <StackPanel>
                                     <TextBlock Text="Quick Actions" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <WrapPanel>
                                         <Button Content="Diagnostics" Style="{StaticResource QuickActionBtn}"
                                                 x:Name="QBtnDiagnostics" Margin="0,0,8,8"
@@ -295,11 +295,11 @@
                             </Border>
 
                             <!-- Configuration Info -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16">
                                 <StackPanel>
                                     <TextBlock Text="Configuration" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="140"/>
@@ -313,27 +313,27 @@
                                         </Grid.RowDefinitions>
 
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Content Path"
-                                                   Foreground="{StaticResource Text2}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,6"/>
                                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConfigContentPath}"
-                                                   Foreground="{StaticResource Text1}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,0,0,6"/>
 
                                         <TextBlock Grid.Row="1" Grid.Column="0" Text="SQL Instance"
-                                                   Foreground="{StaticResource Text2}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,6"/>
                                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfigSqlInstance}"
-                                                   Foreground="{StaticResource Text1}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,0,0,6"/>
 
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Log Path"
-                                                   Foreground="{StaticResource Text2}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,6"/>
                                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConfigLogPath}"
-                                                   Foreground="{StaticResource Text1}" FontSize="12" Margin="0,0,0,6"/>
+                                                   Foreground="{DynamicResource TextPrimary}" FontSize="12" Margin="0,0,0,6"/>
 
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Server Mode"
-                                                   Foreground="{StaticResource Text2}" FontSize="12"/>
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="12"/>
                                         <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
                                             <TextBlock Text="{Binding ServerModeText}"
-                                                       Foreground="{StaticResource Text1}" FontSize="12"/>
+                                                       Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
                                             <TextBlock Text="{Binding ModeOverrideIndicator}"
-                                                       Foreground="{StaticResource Text3}" FontSize="11"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11"
                                                        Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Grid>
@@ -350,13 +350,13 @@
                         <StackPanel>
 
                             <!-- Primary Actions -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Diagnostics" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <TextBlock Text="Run a comprehensive health check of all WSUS components. Failed checks are automatically repaired where possible."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
                                     <WrapPanel>
                                         <Button Content="Run Diagnostics" Style="{StaticResource BtnGreen}"
@@ -372,13 +372,13 @@
                             </Border>
 
                             <!-- Service Control -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16">
                                 <StackPanel>
                                     <TextBlock Text="Service Control" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <TextBlock Text="Start or stop individual WSUS services. Services are managed in dependency order."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                                     <!-- SQL Server Row -->
@@ -390,9 +390,9 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                             <TextBlock Text="SQL Server Express" FontSize="13"
-                                                       Foreground="{StaticResource Text1}"/>
+                                                       Foreground="{DynamicResource TextPrimary}"/>
                                             <TextBlock Text="MSSQL$SQLEXPRESS" FontSize="11"
-                                                       Foreground="{StaticResource Text3}"/>
+                                                       Foreground="{DynamicResource TextMuted}"/>
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
                                                 Padding="12,4" Margin="0,0,6,0"
@@ -406,7 +406,7 @@
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
                                     </Grid>
 
-                                    <Separator Background="{StaticResource Border}" Margin="0,4"/>
+                                    <Separator Background="{DynamicResource BorderPrimary}" Margin="0,4"/>
 
                                     <!-- IIS Row -->
                                     <Grid Margin="0,8,0,8">
@@ -417,9 +417,9 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                             <TextBlock Text="IIS (World Wide Web)" FontSize="13"
-                                                       Foreground="{StaticResource Text1}"/>
+                                                       Foreground="{DynamicResource TextPrimary}"/>
                                             <TextBlock Text="W3SVC" FontSize="11"
-                                                       Foreground="{StaticResource Text3}"/>
+                                                       Foreground="{DynamicResource TextMuted}"/>
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
                                                 Padding="12,4" Margin="0,0,6,0"
@@ -433,7 +433,7 @@
                                                 IsEnabled="{Binding IsWsusInstalled}"/>
                                     </Grid>
 
-                                    <Separator Background="{StaticResource Border}" Margin="0,4"/>
+                                    <Separator Background="{DynamicResource BorderPrimary}" Margin="0,4"/>
 
                                     <!-- WSUS Row -->
                                     <Grid Margin="0,8,0,0">
@@ -444,9 +444,9 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                             <TextBlock Text="WSUS Service" FontSize="13"
-                                                       Foreground="{StaticResource Text1}"/>
+                                                       Foreground="{DynamicResource TextPrimary}"/>
                                             <TextBlock Text="WsusService" FontSize="11"
-                                                       Foreground="{StaticResource Text3}"/>
+                                                       Foreground="{DynamicResource TextMuted}"/>
                                         </StackPanel>
                                         <Button Grid.Column="1" Content="Start" Style="{StaticResource BtnGreen}"
                                                 Padding="12,4" Margin="0,0,6,0"
@@ -474,28 +474,28 @@
                         <StackPanel>
 
                             <!-- DB Size Info -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Database Size" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,6"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
                                     <TextBlock Text="{Binding DatabaseValue}"
                                                FontSize="22" FontWeight="Bold"
-                                               Foreground="{StaticResource Text1}"/>
+                                               Foreground="{DynamicResource TextPrimary}"/>
                                     <TextBlock Text="{Binding DatabaseSubtext}"
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- Deep Cleanup -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Deep Cleanup" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="12"
-                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"
                                                Text="Runs the full 6-step cleanup pipeline: WSUS built-in cleanup, remove supersession records, delete declined updates, rebuild indexes, and shrink the database."/>
                                     <Button Content="Run Deep Cleanup" Style="{StaticResource BtnGreen}"
                                             Padding="16,8" HorizontalAlignment="Left"
@@ -505,13 +505,13 @@
                             </Border>
 
                             <!-- Backup Database -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Backup Database" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="12"
-                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"
                                                Text="Creates a compressed SQL backup of SUSDB. You will be prompted to choose a destination file. Requires SQL sysadmin permissions."/>
                                     <Button Content="Backup Database" Style="{StaticResource BtnSec}"
                                             Padding="16,8" HorizontalAlignment="Left"
@@ -521,16 +521,16 @@
                             </Border>
 
                             <!-- Restore Database -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16">
                                 <StackPanel>
                                     <TextBlock Text="Restore Database" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock TextWrapping="Wrap" FontSize="12"
-                                               Foreground="{StaticResource Text2}" Margin="0,0,0,4"
+                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"
                                                Text="Restores SUSDB from a backup file. WSUS and IIS services will be stopped during restore."/>
                                     <TextBlock TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text2}" Margin="0,0,0,12"
+                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"
                                                Text="WARNING: This replaces all current WSUS data."/>
                                     <Button Content="Restore Database" Style="{StaticResource BtnSec}"
                                             Padding="16,8" HorizontalAlignment="Left"
@@ -550,13 +550,13 @@
                         <StackPanel>
 
                             <!-- Target Host -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Target Host" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock Text="Enter the hostname of the client machine to manage. Operations use WinRM (Windows Remote Management)."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -564,24 +564,24 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Hostname:"
-                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="13"
                                                    VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding ClientHostname, UpdateSourceTrigger=PropertyChanged}"
-                                                 Background="{StaticResource BgInput}"
-                                                 Foreground="{StaticResource Text1}"
-                                                 BorderBrush="{StaticResource Border}"
+                                                 Background="{DynamicResource InputBackground}"
+                                                 Foreground="{DynamicResource TextPrimary}"
+                                                 BorderBrush="{DynamicResource BorderPrimary}"
                                                  Padding="8,6" FontSize="13"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
 
                             <!-- Remote Operations -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Remote Operations" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <WrapPanel>
                                         <Button Content="Cancel Stuck Jobs" Style="{StaticResource BtnSec}"
                                                 Padding="16,8" Margin="0,0,8,8"
@@ -604,18 +604,18 @@
                             </Border>
 
                             <!-- Mass Operations -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Mass Operations" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock Text="Enter hostnames (one per line, or comma-separated) or load from a text file. Mass GPUpdate runs gpupdate + WSUS check-in on every host."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
                                     <TextBox Text="{Binding MassHostnames, UpdateSourceTrigger=PropertyChanged}"
-                                             Background="{StaticResource BgInput}"
-                                             Foreground="{StaticResource Text1}"
-                                             BorderBrush="{StaticResource Border}"
+                                             Background="{DynamicResource InputBackground}"
+                                             Foreground="{DynamicResource TextPrimary}"
+                                             BorderBrush="{DynamicResource BorderPrimary}"
                                              Padding="8,6" FontSize="12" FontFamily="Consolas"
                                              AcceptsReturn="True" TextWrapping="Wrap"
                                              MinHeight="80" MaxHeight="150"
@@ -634,13 +634,13 @@
                             </Border>
 
                             <!-- Script Generator -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="Script Generator" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock Text="Generate a ready-to-run PowerShell script for environments where WinRM is unavailable. Copy the script to the target host and run it as Administrator."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -648,14 +648,14 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Operation:"
-                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="13"
                                                    VerticalAlignment="Center"/>
                                         <ComboBox Grid.Column="1"
                                                   ItemsSource="{Binding ScriptOperations}"
                                                   SelectedItem="{Binding SelectedScriptOperation}"
-                                                  Background="{StaticResource BgInput}"
-                                                  Foreground="{StaticResource Text1}"
-                                                  BorderBrush="{StaticResource Border}"
+                                                  Background="{DynamicResource InputBackground}"
+                                                  Foreground="{DynamicResource TextPrimary}"
+                                                  BorderBrush="{DynamicResource BorderPrimary}"
                                                   Padding="8,6" FontSize="13"/>
                                     </Grid>
                                     <Button Content="Generate Script" Style="{StaticResource BtnSec}"
@@ -666,13 +666,13 @@
                             </Border>
 
                             <!-- Error Code Lookup -->
-                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
                                     Padding="16">
                                 <StackPanel>
                                     <TextBlock Text="Error Code Lookup" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                                     <TextBlock Text="Enter a WSUS or Windows Update error code (e.g., 0x80072EE2) to see its description and recommended fix."
-                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                                TextWrapping="Wrap" Margin="0,0,0,12"/>
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -681,21 +681,21 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Error Code:"
-                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}" FontSize="13"
                                                    VerticalAlignment="Center"/>
                                         <TextBox Grid.Column="1"
                                                  Text="{Binding ErrorCodeInput, UpdateSourceTrigger=PropertyChanged}"
-                                                 Background="{StaticResource BgInput}"
-                                                 Foreground="{StaticResource Text1}"
-                                                 BorderBrush="{StaticResource Border}"
+                                                 Background="{DynamicResource InputBackground}"
+                                                 Foreground="{DynamicResource TextPrimary}"
+                                                 BorderBrush="{DynamicResource BorderPrimary}"
                                                  Padding="8,6" FontSize="13"/>
                                         <Button Grid.Column="2" Content="Lookup" Style="{StaticResource BtnSec}"
                                                 Padding="16,6" Margin="8,0,0,0"
                                                 Command="{Binding LookupErrorCodeCommand}"/>
                                     </Grid>
                                     <TextBox Text="{Binding ErrorCodeResult, Mode=OneWay}"
-                                             Background="{StaticResource BgDark}"
-                                             Foreground="{StaticResource Text1}"
+                                             Background="{DynamicResource PrimaryBackground}"
+                                             Foreground="{DynamicResource TextPrimary}"
                                              BorderThickness="0"
                                              FontFamily="Consolas" FontSize="12"
                                              IsReadOnly="True" TextWrapping="Wrap"
@@ -712,10 +712,10 @@
                         Visibility="{Binding IsOperationPanelVisible}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Text="{Binding PageTitle}" FontSize="20"
-                                   Foreground="{StaticResource Text2}"
+                                   Foreground="{DynamicResource TextSecondary}"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="This operation will be available in a future update."
-                                   Foreground="{StaticResource Text3}" FontSize="13"
+                                   Foreground="{DynamicResource TextMuted}" FontSize="13"
                                    Margin="0,8,0,0" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
@@ -725,11 +725,11 @@
             <!-- ═══════════════════════════════════════════════════════
                  LOG PANEL
                  ═══════════════════════════════════════════════════════ -->
-            <Border Grid.Row="2" Background="{StaticResource BgCard}"
-                    BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
+            <Border Grid.Row="2" Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource BorderPrimary}" BorderThickness="0,1,0,0">
                 <DockPanel>
                     <!-- Log Header -->
-                    <Border DockPanel.Dock="Top" Background="{StaticResource BgSidebar}"
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource NavBackground}"
                             Padding="12,6">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -741,9 +741,9 @@
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         VerticalAlignment="Center">
                                 <TextBlock Text="Output Log" FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Text1}" Margin="0,0,12,0"/>
+                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,12,0"/>
                                 <TextBlock Text="{Binding CurrentOperationName}"
-                                           FontSize="11" Foreground="{StaticResource Text2}"/>
+                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                             </StackPanel>
 
                             <!-- Progress bar and step text (shown during operations) -->
@@ -755,7 +755,7 @@
                                              Margin="0,0,8,0"
                                              VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding OperationStepText}"
-                                           FontSize="11" Foreground="{StaticResource Text2}"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                            VerticalAlignment="Center" MaxWidth="200"
                                            TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
@@ -801,10 +801,10 @@
 
             <!-- Status Bar -->
             <Border Grid.Row="2" VerticalAlignment="Bottom"
-                    Background="{StaticResource BgSidebar}"
+                    Background="{DynamicResource NavBackground}"
                     Padding="12,4" Visibility="Collapsed">
                 <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{StaticResource Text2}" FontSize="11"/>
+                           Foreground="{DynamicResource TextSecondary}" FontSize="11"/>
             </Border>
 
         </Grid>
