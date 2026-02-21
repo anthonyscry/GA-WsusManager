@@ -1,0 +1,198 @@
+###############################
+# Top-level .editorconfig file #
+###############################
+
+# Default settings for all files
+root = true
+
+# All files
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+end_of_line = crlf
+
+# Code files
+[*.{cs,csx,vb,vbx}]
+indent_size = 4
+
+# XML project files
+[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
+indent_size = 2
+
+# XML config files
+[*.{props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# C# files
+[*.cs]
+
+# New line preferences
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# Indentation preferences
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+
+# Space preferences
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+
+# Using directive preferences
+csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_sort_system_directives_first = true
+
+# Naming conventions
+dotnet_naming_rule.interface_should_be_begins_with_i.severity = warning
+dotnet_naming_rule.interface_should_be_begins_with_i.symbols = interface
+dotnet_naming_rule.interface_should_be_begins_with_i.style = begins_with_i
+
+dotnet_naming_rule.types_should_be_pascal_case.severity = warning
+dotnet_naming_rule.types_should_be_pascal_case.symbols = types
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case_with_underscore.style = camel_case_with_underscore
+
+# Symbol specifications
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum
+dotnet_naming_symbols.types.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+# Naming styles
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.begins_with_i.required_prefix = I
+dotnet_naming_style.begins_with_i.capitalization = pascal_case
+
+dotnet_naming_style.camel_case_with_underscore.required_prefix = _
+dotnet_naming_style.camel_case_with_underscore.capitalization = camel_case
+
+# Language keywords vs BCL types preferences
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# Modifier preferences
+dotnet_style_require_accessibility_modifiers = always:suggestion
+
+# ========================================
+# Phase 19: Static Analysis & Code Quality
+# ========================================
+# Incremental analyzer adoption strategy to avoid warning fatigue
+# See: /planning/phases/19-static-analysis-code-quality/19-01-PLAN.md
+
+# ========================================
+# StyleCop Analyzers - Phase 1a (Minimal - Critical Rules Only)
+# ========================================
+# SA1101: Prefix local calls with this - DISABLED (style preference, not critical)
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1600: Elements should be documented - DISABLED (handled in Phase 20)
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1611.severity = none  # Element parameter should be documented
+dotnet_diagnostic.SA1615.severity = none  # Element return value should be documented
+dotnet_diagnostic.SA1623.severity = none  # Property summary documentation
+
+# SA1633: File header - DISABLED (not required for this project)
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1413: Use mutable value types - DISABLED (style preference)
+dotnet_diagnostic.SA1413.severity = none
+
+# SA1503: Braces should not be omitted - DISABLED (team preference)
+dotnet_diagnostic.SA1503.severity = none
+
+# SA1309: Field names should not begin with underscore - DISABLED (team uses _field convention)
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1117, SA1116, SA1118: Parameters - DISABLED (style preference)
+dotnet_diagnostic.SA1117.severity = none
+dotnet_diagnostic.SA1116.severity = none
+dotnet_diagnostic.SA1118.severity = none
+
+# SA1512, SA1513, SA1515: Blank lines - DISABLED (style preference)
+dotnet_diagnostic.SA1512.severity = none
+dotnet_diagnostic.SA1513.severity = none
+dotnet_diagnostic.SA1515.severity = none
+
+# SA1201, SA1202, SA1203, SA1204: Ordering - DISABLED (not critical)
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.SA1202.severity = none
+dotnet_diagnostic.SA1203.severity = none
+dotnet_diagnostic.SA1204.severity = none
+
+# SA1122: Use string.IsNullOrEmpty - DISABLED (low priority)
+dotnet_diagnostic.SA1122.severity = none
+
+# SA1134: Type parameters should be named - DISABLED (style)
+dotnet_diagnostic.SA1134.severity = none
+
+# SA1501: Statement should not be on a single line - DISABLED (style)
+dotnet_diagnostic.SA1501.severity = none
+
+# SA1025: Code should not contain multiple whitespace - DISABLED (style)
+dotnet_diagnostic.SA1025.severity = none
+
+# ========================================
+# Meziantou.Analyzer - Phase 1a (Critical Only)
+# ========================================
+# MA0004: Use task timeout - ENABLED as warning (async best practice)
+dotnet_diagnostic.MA0004.severity = warning
+
+# MA0074: Avoid task continuation - ENABLED as warning (async best practice)
+dotnet_diagnostic.MA0074.severity = warning
+
+# MA0006: Use string.Equals with comparison - ENABLED as warning (performance)
+dotnet_diagnostic.MA0006.severity = warning
+
+# MA0051: Review arguments - ENABLED as warning (correctness)
+dotnet_diagnostic.MA0051.severity = warning
+
+# MA0011: Avoid action that is too long - DISABLED (handled by complexity analysis)
+dotnet_diagnostic.MA0011.severity = none
+
+# MA0049: Type name should not match containing namespace - DISABLED (false positive for WPF App class)
+dotnet_diagnostic.MA0049.severity = none
+
+# ========================================
+# Code Analysis Rules - Phase 1a (Critical Only)
+# ========================================
+# CA1707: Identifiers should not contain underscores - DISABLED (team uses _ convention)
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1305: Specify IFormatProvider - DISABLED (low priority)
+dotnet_diagnostic.CA1305.severity = none
+
+# ========================================
+# Critical Rules - Phase 1a (Warning Phase)
+# ========================================
+# CA2007: Consider calling ConfigureAwait on awaited task
+# Critical for UI thread - no deadlocks
+# Phase 1a: Warning - fix before elevating to error
+dotnet_diagnostic.CA2007.severity = warning
+
