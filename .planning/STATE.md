@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** Phase 13 — Operation Feedback & Dialog Polish (v4.2)
+**Current focus:** Phase 14 — Client Management Core (v4.2)
 
 ## Current Position
 
-Phase: 13 of 15 (Operation Feedback & Dialog Polish)
-Plan: 2 of 2 in current phase
-Status: Phase 13 complete — all 2 plans done, build passes (0 errors), 263/263 tests pass
-Last activity: 2026-02-20 — Phase 13 plan 01 complete (operation feedback: progress bar, step text, status banner)
+Phase: 14 of 15 (Client Management Core)
+Plan: 1 of 3 in current phase
+Status: Phase 14 in progress — plan 01 complete (interface, models, WinRM executor, error codes)
+Last activity: 2026-02-21 — Phase 14 plan 01 complete (IClientService, WinRmExecutor, ClientDiagnosticResult, WsusErrorCodes)
 
-Progress: [████████████░░░░░░░░] 65% (13/18 phases in progress)
+Progress: [████████████░░░░░░░░] 68% (14/18 phases in progress)
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [████████████░░░░░░░░] 65% (13
 | Phase 12-settings-and-mode-override P02 | 3 | 2 tasks | 2 files |
 | Phase 13-operation-feedback-and-dialog-polish P02 | 4 | 2 tasks | 6 files |
 | Phase 13-operation-feedback-and-dialog-polish P01 | 9 | 2 tasks | 4 files |
+| Phase 14-client-management-core P01 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -54,6 +55,10 @@ Progress: [████████████░░░░░░░░] 65% (13
 - [Phase 13-01]: ProgressBarVisibility computed from IsOperationRunning — reuses existing boolean, no state duplication; IsProgressBarVisible property added for XAML naming clarity
 - [Phase 13-01]: Status banner placed inside log panel DockPanel (above log text) — keeps result feedback contextually close to operation output
 - [Phase 13-01]: [Step N/M] prefix parsing done inline in Progress callback — no API change required for existing service callers
+- [14-01]: LookupErrorCode is synchronous — local dictionary lookup only, no remote call; matches CLI-06 requirement
+- [14-01]: WinRmExecutor returns failed ProcessResult on WinRM error, never throws — graceful failure with Script Generator fallback guidance
+- [14-01]: Hostname validated by regex (alphanumeric, hyphens, dots only) before any process spawn — prevents command injection
+- [14-01]: WsusErrorCodes keyed by uppercase hex without 0x prefix — Lookup() normalizes all formats (0x prefix, plain hex, signed/unsigned decimal)
 
 ### Pending Todos
 
@@ -61,10 +66,10 @@ None.
 
 ### Blockers/Concerns
 
-- WinRM availability on target hosts is not guaranteed — Phase 15 script generator (CLI-08) is the fallback path; design Phase 14 with this in mind from the start.
+None.
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: Phase 13 complete. Plan 01: operation feedback (ProgressBar, step text, banner in MainViewModel/MainWindow/DarkTheme). Plan 02: dialog validation. Next: Phase 14.
+Last session: 2026-02-21
+Stopped at: Completed 14-01-PLAN.md — IClientService, WinRmExecutor, ClientDiagnosticResult, WsusErrorCodes. Next: Phase 14 plan 02 (ClientService implementation).
 Resume file: None
