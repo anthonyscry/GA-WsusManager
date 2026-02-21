@@ -1,0 +1,6 @@
+Benchmark,Type,Platform,Mean,Error,StdDev,Gen0,Gen1,Allocated
+BenchmarkWinRMOperations.TestConnectivity,WinRM,NET 8.0,"N/A (requires WinRM)","N/A","N/A",-,,-
+BenchmarkWinRMOperations.StringManipulation,Mock,NET 8.0,"N/A (run on Windows)","N/A","N/A",-,,-
+BenchmarkWinRMOperations.HostArrayCreation,Mock,NET 8.0,"N/A (run on Windows)","N/A","N/A",-,,-
+BenchmarkWinRMOperations.HostnameValidation,Mock,NET 8.0,"N/A (run on Windows)","N/A","N/A",-,,-
+BenchmarkWinRMOperations.HostnameValidationFqdn,Mock,NET 8.0,"N/A (run on Windows)","N/A","N/A",-,,-
