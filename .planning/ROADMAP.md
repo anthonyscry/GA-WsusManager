@@ -26,7 +26,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 
 - [x] **Phase 8: Build Compatibility** — Retarget to .NET 8, fix CI/CD, verify published EXE runs on Windows Server 2019+ (completed 2026-02-21)
 - [x] **Phase 9: Launch and UI Verification** — App launches without crash, dark theme renders, all panels and log panel work (completed 2026-02-20)
-- [ ] **Phase 10: Core Operations** — All 6 operations execute successfully on a real WSUS server
+- [x] **Phase 10: Core Operations** — All 6 operations execute successfully on a real WSUS server (completed 2026-02-20)
 - [ ] **Phase 11: Stability Hardening** — No unhandled exceptions, cancellation works, concurrent operation blocking holds
 
 ## Phase Details
@@ -73,7 +73,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md — Fix BUG-08 (DeepCleanup Step 4 LocalUpdateID), BUG-04 (ApproveUpdates classification reflection), BUG-03 (DeclineUpdates expired/superseded only), BUG-01 (appcmd full path), BUG-05 (Convert.ToInt32 for sync progress)
+- [x] 10-01-PLAN.md — Fix BUG-08 (DeepCleanup Step 4 LocalUpdateID), BUG-04 (ApproveUpdates classification reflection), BUG-03 (DeclineUpdates expired/superseded only), BUG-01 (appcmd full path), BUG-05 (Convert.ToInt32 for sync progress)
 
 ### Phase 11: Stability Hardening
 **Goal**: The application handles edge cases and error conditions without crashing or leaving the UI in a broken state
