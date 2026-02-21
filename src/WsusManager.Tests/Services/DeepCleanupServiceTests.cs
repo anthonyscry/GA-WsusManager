@@ -29,9 +29,7 @@ public class DeepCleanupServiceTests
 
         // DB size query
         _mockSql
-            .Setup(s => s.ExecuteScalarAsync<double>(
-                It.IsAny<string>(), "master", It.Is<string>(q => q.Contains("sys.master_files")),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetDatabaseSizeAsync(It.IsAny<string>(), "SUSDB", It.IsAny<CancellationToken>()))
             .ReturnsAsync(3.5);
 
         // Step 2: delete declined supersession records

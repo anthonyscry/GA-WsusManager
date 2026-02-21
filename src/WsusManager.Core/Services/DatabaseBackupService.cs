@@ -65,7 +65,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 2. Get current DB size for disk space estimate
         progress.Report("Getting current database size...");
-        var dbSizeGb = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
+        var dbSizeGb = await _sqlService.GetDatabaseSizeAsync(sqlInstance, SusDb, ct).ConfigureAwait(false);
         if (dbSizeGb > 0)
         {
             var estimatedBackupGb = dbSizeGb * 0.80; // compressed backup = ~80% of DB size
@@ -306,26 +306,6 @@ public class DatabaseBackupService : IDatabaseBackupService
         progress.Report("Restarting WSUS service...");
         var wsusStart = await _serviceManager.StartServiceAsync("WsusService", ct).ConfigureAwait(false);
         progress.Report(wsusStart.Success ? "[OK] WSUS service started." : $"[WARN] WSUS start: {wsusStart.Message}");
-    }
-
-    private async Task<double> GetDatabaseSizeGbAsync(string sqlInstance, CancellationToken ct)
-    {
-        try
-        {
-            const string sql = @"
-                SELECT SUM(size * 8.0 / 1024 / 1024) AS SizeGB
-                FROM sys.master_files
-                WHERE database_id = DB_ID('SUSDB')
-                    AND type = 0";
-
-            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, MasterDb, sql, 10, ct).ConfigureAwait(false);
-            return sizeGb;
-        }
-        catch (Exception ex)
-        {
-            _logService.Warning("Could not get database size: {Error}", ex.Message);
-            return -1;
-        }
     }
 
     private static double GetDiskFreeGb(string path)

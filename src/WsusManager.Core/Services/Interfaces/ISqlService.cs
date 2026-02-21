@@ -72,4 +72,14 @@ public interface ISqlService
     /// <param name="connectTimeoutSeconds">Connection timeout (default 5s).</param>
     /// <returns>ADO.NET connection string.</returns>
     string BuildConnectionString(string sqlInstance, string database, int connectTimeoutSeconds = 5);
+
+    /// <summary>
+    /// Gets the size of a database in gigabytes.
+    /// Returns -1 if the query fails.
+    /// </summary>
+    /// <param name="sqlInstance">SQL Server instance.</param>
+    /// <param name="databaseName">Name of the database to measure (e.g., "SUSDB").</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Database size in GB, or -1 if query fails.</returns>
+    Task<double> GetDatabaseSizeAsync(string sqlInstance, string databaseName, CancellationToken ct = default);
 }
