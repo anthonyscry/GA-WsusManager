@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Services.Interfaces;
@@ -11,6 +12,7 @@ namespace WsusManager.App.Services;
 public class ThemeService : IThemeService
 {
     private readonly ILogService _logService;
+    private readonly Dictionary<string, ResourceDictionary> _themeCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Maps theme names to their XAML resource paths (relative to the App project).
@@ -75,34 +77,22 @@ public class ThemeService : IThemeService
 
         try
         {
-            var app = Application.Current;
-            if (app == null) return;
+            ResourceDictionary? themeDict = null;
 
-            // Create the new theme ResourceDictionary
-            var newThemeDict = new ResourceDictionary
+            // Try to use pre-loaded theme from cache
+            if (_themeCache.TryGetValue(themeName, out var cached))
             {
-                Source = new Uri(resourcePath, UriKind.Relative)
-            };
-
-            // Find and remove the current color dictionary (identified by "PrimaryBackground" key)
-            ResourceDictionary? existingColorDict = null;
-            foreach (var dict in app.Resources.MergedDictionaries)
+                themeDict = cached;
+            }
+            else
             {
-                if (dict.Contains("PrimaryBackground"))
-                {
-                    existingColorDict = dict;
-                    break;
-                }
+                // Fallback: load the theme (shouldn't happen if preload worked)
+                _logService.Warning("Theme not pre-loaded, loading on-demand: {ThemeName}", themeName);
+                themeDict = LoadThemeDictionary(resourcePath);
+                _themeCache[themeName] = themeDict;
             }
 
-            if (existingColorDict != null)
-            {
-                app.Resources.MergedDictionaries.Remove(existingColorDict);
-            }
-
-            // Add the new color dictionary
-            app.Resources.MergedDictionaries.Add(newThemeDict);
-
+            ApplyThemeDictionary(themeDict);
             CurrentTheme = themeName;
             _logService.Info("Theme applied: {ThemeName}", themeName);
         }
@@ -110,5 +100,72 @@ public class ThemeService : IThemeService
         {
             _logService.Error(ex, "Failed to apply theme: {ThemeName}", themeName);
         }
+    }
+
+    /// <summary>
+    /// Pre-loads all theme ResourceDictionaries into memory to enable instant theme switching.
+    /// Call this during application startup to avoid first-swap delay.
+    /// </summary>
+    public void PreloadThemes()
+    {
+        var themes = _themeMap.Keys.ToList();
+        var startTime = Stopwatch.StartNew();
+
+        foreach (var theme in themes)
+        {
+            try
+            {
+                if (!_themeCache.ContainsKey(theme))
+                {
+                    var resourcePath = _themeMap[theme];
+                    var dict = LoadThemeDictionary(resourcePath);
+                    _themeCache[theme] = dict;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.Warning("Failed to preload theme: {Theme}, Error: {Error}", theme, ex.Message);
+            }
+        }
+
+        startTime.Stop();
+        _logService.Info("Preloaded {Count} themes in {Ms}ms", _themeCache.Count, startTime.ElapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// Loads a ResourceDictionary from the specified relative path.
+    /// </summary>
+    private ResourceDictionary LoadThemeDictionary(string resourcePath)
+    {
+        return new ResourceDictionary { Source = new Uri(resourcePath, UriKind.Relative) };
+    }
+
+    /// <summary>
+    /// Applies a theme ResourceDictionary to the application resources.
+    /// Removes any existing theme dictionary before adding the new one.
+    /// </summary>
+    private void ApplyThemeDictionary(ResourceDictionary themeDict)
+    {
+        var app = Application.Current;
+        if (app == null) return;
+
+        // Find and remove the current color dictionary (identified by "PrimaryBackground" key)
+        ResourceDictionary? existingColorDict = null;
+        foreach (var dict in app.Resources.MergedDictionaries)
+        {
+            if (dict.Contains("PrimaryBackground"))
+            {
+                existingColorDict = dict;
+                break;
+            }
+        }
+
+        if (existingColorDict != null)
+        {
+            app.Resources.MergedDictionaries.Remove(existingColorDict);
+        }
+
+        // Add the new color dictionary
+        app.Resources.MergedDictionaries.Add(themeDict);
     }
 }
