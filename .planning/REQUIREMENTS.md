@@ -37,7 +37,7 @@ Requirements for UX & Client Management milestone. Each maps to roadmap phases.
 - [x] **CLI-05**: User can run quick diagnostics on a remote host (WSUS settings, service status, last check-in, pending reboot)
 - [x] **CLI-06**: User can look up common WSUS error codes with descriptions and fixes
 - [x] **CLI-07**: Remote operations execute via WinRM when available
-- [ ] **CLI-08**: User can generate ready-to-run PowerShell scripts as fallback when WinRM unavailable
+- [x] **CLI-08**: User can generate ready-to-run PowerShell scripts as fallback when WinRM unavailable
 
 ## Future Requirements
 
@@ -81,7 +81,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-05 | Phase 14 | Complete |
 | CLI-06 | Phase 14 | Complete |
 | CLI-07 | Phase 14 | Complete |
-| CLI-08 | Phase 15 | Pending |
+| CLI-08 | Phase 15 | Complete |
 
 **Coverage:**
 - v4.2 requirements: 20 total
