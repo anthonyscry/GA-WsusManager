@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Phase: 13 of 15 (Operation Feedback & Dialog Polish)
 Plan: 2 of 2 in current phase
-Status: Phase 13 plan 02 complete — build passes (0 errors), 263/263 tests pass
-Last activity: 2026-02-21 — Phase 13 plan 02 complete (dialog validation)
+Status: Phase 13 complete — all 2 plans done, build passes (0 errors), 263/263 tests pass
+Last activity: 2026-02-20 — Phase 13 plan 01 complete (operation feedback: progress bar, step text, status banner)
 
 Progress: [████████████░░░░░░░░] 65% (13/18 phases in progress)
 
@@ -36,6 +36,7 @@ Progress: [████████████░░░░░░░░] 65% (13
 - Trend: Stable
 | Phase 12-settings-and-mode-override P02 | 3 | 2 tasks | 2 files |
 | Phase 13-operation-feedback-and-dialog-polish P02 | 4 | 2 tasks | 6 files |
+| Phase 13-operation-feedback-and-dialog-polish P01 | 9 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -50,6 +51,9 @@ Progress: [████████████░░░░░░░░] 65% (13
 - [Phase 12-settings-and-mode-override]: ModeOverrideIndicator shows (auto) when not overriding — always visible to normalize the signal
 - [Phase 13-operation-feedback-and-dialog-polish]: Validation TextBlock uses hardcoded #F85149 matching Red resource — acceptable for simple inline label
 - [Phase 13-operation-feedback-and-dialog-polish]: TransferDialog Export mode always enables BtnOk (all paths optional) — only Import requires source path
+- [Phase 13-01]: ProgressBarVisibility computed from IsOperationRunning — reuses existing boolean, no state duplication; IsProgressBarVisible property added for XAML naming clarity
+- [Phase 13-01]: Status banner placed inside log panel DockPanel (above log text) — keeps result feedback contextually close to operation output
+- [Phase 13-01]: [Step N/M] prefix parsing done inline in Progress callback — no API change required for existing service callers
 
 ### Pending Todos
 
@@ -61,6 +65,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-21
-Stopped at: Phase 13 plan 02 complete. Dialog validation added to Install, Transfer, Schedule dialogs. Phase 13 plans 01 is next.
+Last session: 2026-02-20
+Stopped at: Phase 13 complete. Plan 01: operation feedback (ProgressBar, step text, banner in MainViewModel/MainWindow/DarkTheme). Plan 02: dialog validation. Next: Phase 14.
 Resume file: None

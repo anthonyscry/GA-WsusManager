@@ -16,10 +16,10 @@ Requirements for UX & Client Management milestone. Each maps to roadmap phases.
 
 ### Operation Feedback
 
-- [ ] **UX-01**: Operations display progress indicator (indeterminate progress bar) during execution
-- [ ] **UX-02**: Multi-step operations show current step name and step count (e.g., "Step 3/6: Rebuilding indexes")
-- [ ] **UX-03**: Operations show clear success/failure banner with summary when complete
-- [ ] **UX-04**: Log panel auto-scrolls to latest output during operations
+- [x] **UX-01**: Operations display progress indicator (indeterminate progress bar) during execution
+- [x] **UX-02**: Multi-step operations show current step name and step count (e.g., "Step 3/6: Rebuilding indexes")
+- [x] **UX-03**: Operations show clear success/failure banner with summary when complete
+- [x] **UX-04**: Log panel auto-scrolls to latest output during operations
 
 ### Dialog Polish
 
@@ -66,10 +66,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SET-02 | Phase 12 | Complete |
 | SET-03 | Phase 12 | Complete |
 | SET-04 | Phase 12 | Complete |
-| UX-01 | Phase 13 | Pending |
-| UX-02 | Phase 13 | Pending |
-| UX-03 | Phase 13 | Pending |
-| UX-04 | Phase 13 | Pending |
+| UX-01 | Phase 13 | Complete |
+| UX-02 | Phase 13 | Complete |
+| UX-03 | Phase 13 | Complete |
+| UX-04 | Phase 13 | Complete |
 | DLG-01 | Phase 13 | Complete |
 | DLG-02 | Phase 13 | Complete |
 | DLG-03 | Phase 13 | Complete |
