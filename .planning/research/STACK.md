@@ -1,233 +1,234 @@
 # Stack Research
 
-**Domain:** Windows Server Administration GUI Tool (WSUS Manager Rewrite)
-**Researched:** 2026-02-19
-**Confidence:** HIGH (C# stack verified via official docs; alternatives confirmed as inferior via multiple sources)
+**Domain:** WPF Runtime Theme Switching — v4.3 Theming Milestone
+**Researched:** 2026-02-20
+**Confidence:** HIGH (WPF theming patterns are stable, well-documented, and verified against official Microsoft docs)
+
+---
+
+## Milestone Scope
+
+This research covers ONLY what is new or changed for v4.3. The base stack (C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq) is validated and unchanged.
+
+**The single question this answers:** How do we add runtime color scheme switching to an existing WPF app where all XAML currently uses `StaticResource`?
 
 ---
 
 ## Decision Summary
 
-**Use C# (.NET 9) with WPF.**
+**Use native WPF ResourceDictionary merging with DynamicResource bindings.**
 
-This is not a close call. Every alternative (Rust, Go) introduces fundamental blockers — fragile or non-existent GUI ecosystems, no viable COM interop path for WSUS APIs, or no production-quality Windows native tooling. C# with WPF is the only option that satisfies all hard constraints without workarounds.
-
-The only real decision within C# is `.NET 8 LTS` vs `.NET 9`. Use **.NET 9** — it ships the Fluent dark theme natively, which is the key UI upgrade this rewrite targets. Server 2019+ supports it.
+No external theming library is needed. The existing `Themes/DarkTheme.xaml` file already establishes the correct architectural pattern — separate color brushes in a dedicated dictionary, referenced from all XAML. The v4.3 work is: (1) convert `StaticResource` to `DynamicResource` throughout, (2) create 5 additional theme XAML files using the same key names, (3) write a `ThemeService` that swaps the merged dictionary at runtime. That is the entire stack addition.
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (unchanged)
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| C# | 13 (.NET 9) | Application language | Only language with native WPF, .NET Framework COM interop, full Windows API access, and a production-quality single-EXE deployment model. Every alternative has a blocking gap. |
-| .NET 9 | 9.0 (latest patch) | Runtime and SDK | Ships Fluent dark theme for WPF natively. Supported on Windows Server 2019+. STS (Nov 2024 – May 2026); use .NET 8 LTS if you need >18 months of security patches without upgrades. |
-| WPF | Ships with .NET 9 | GUI framework | Microsoft's own, battle-tested, runs on Server 2019, supports DPI-aware rendering, produces single-EXE. The only full-featured Windows desktop GUI available in the .NET ecosystem with active development in 2025/2026. |
-| CommunityToolkit.Mvvm | 8.4.0 | MVVM pattern, source generators | Microsoft-maintained. `[ObservableProperty]` and `[RelayCommand]` source generators eliminate 80% of ViewModel boilerplate. Prevents the threading bugs that plagued the PowerShell version by enforcing clean separation of UI and logic. Compatible with .NET 9. |
+No new core technologies. Runtime theme switching is a native WPF capability.
 
-### Windows Integration Libraries
+### New: Theme Infrastructure (zero new NuGet packages)
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Microsoft.Data.SqlClient | 6.1.4 | SQL Server Express (SUSDB) connectivity | All database operations — replace every `Invoke-Sqlcmd` call from PowerShell. Latest stable (Jan 2026). Targets .NET 8+. |
-| System.ServiceProcess.ServiceController | Ships with .NET | Windows service management (SQL, WSUS, IIS) | Starting, stopping, querying service status. No NuGet package needed — use `System.ServiceProcess` namespace directly. |
-| Microsoft.Win32 namespace | Ships with .NET | Registry access, open/save file dialogs | Settings storage, path lookups, Windows standard file pickers. |
-| System.Net.NetworkInformation | Ships with .NET | Non-blocking network connectivity check | Use `Ping` with 500ms timeout for dashboard internet check — avoids the UI freeze documented in PowerShell v3.8.7. |
+| Component | Type | Purpose | Why This Way |
+|-----------|------|---------|--------------|
+| `DynamicResource` bindings | WPF built-in | Allow resource values to update at runtime without re-rendering the visual tree | `StaticResource` is resolved once at XAML load time and never updates. `DynamicResource` observes resource changes and re-applies. Required for live theme switching. |
+| Additional `*Theme.xaml` files | XAML files (Resource build action) | One file per color scheme (6 total including existing DarkTheme.xaml) | Each file defines the same set of brush/color keys with different values. Swapping which dictionary is merged changes all colors simultaneously. |
+| `IThemeService` + `ThemeService` | C# class in WsusManager.Core or WsusManager.App | Encapsulates the dictionary swap logic, maps theme name to XAML URI | Keeps theme switching testable and callable from SettingsDialog ViewModel. |
+| `ThemeName` property in `AppSettings` | String field in existing model | Persists selected theme across sessions | Slot into existing JSON persistence — no new infrastructure needed. |
 
-### WSUS API Strategy — Critical Decision
+### Supporting Libraries (unchanged)
 
-The `Microsoft.UpdateServices.Administration.dll` COM assemblies **do not work with .NET Core / .NET 5+**. This was confirmed as a known limitation (GitHub dotnet/core issue #5736): "DLLs built for Framework will generally not work with Core." The assemblies chain-load .NET Framework dependencies and throw `FileNotFoundException` on modern .NET.
-
-**Workaround approach used by the existing PowerShell version:** Direct SQL against SUSDB, plus `wsusutil.exe` process invocation for operations that require the WSUS API. This pattern is fully reproducible in C#:
-
-| WSUS Operation | Implementation in C# |
-|---|---|
-| Decline superseded updates | Direct SQL: `UPDATE tbUpdate SET IsDeclined = 1 WHERE ...` |
-| Delete updates (spDeleteUpdate) | Direct SQL: `EXEC spDeleteUpdate @localUpdateId` |
-| Rebuild indexes | Direct SQL: standard index maintenance T-SQL |
-| Shrink database | Direct SQL: `DBCC SHRINKDATABASE (SUSDB)` |
-| Sync/approval operations | `Process.Start("wsusutil.exe")` or PowerShell subprocess |
-| Content reset | `Process.Start("wsusutil.exe reset")` |
-
-The IUpdateServer COM object (for sync, approval, classification) can be accessed by loading the assembly via reflection with explicit .NET Framework targeting, **or** by running a short PowerShell subprocess. The existing codebase already shells out to PowerShell for these — in the rewrite, shell out to PowerShell for the true COM-dependent operations (sync, approval), and do everything else natively in C#.
-
-### Supporting Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Serilog | 4.x (latest) | Structured file logging | Replace the WsusUtilities `Write-Log` pattern. Use `Serilog.Sinks.File` for rolling log files at `C:\WSUS\Logs\`. More robust than manual file writes — handles concurrent access, rotation, and structured events. |
-| Serilog.Sinks.File | 6.x (latest) | File sink for Serilog | Provides rolling log files with size/date rotation. |
-| Microsoft.Extensions.DependencyInjection | 9.0.x | DI container | Wire up services, repositories, and ViewModels for testability. Prevents the closure-capture and scope bugs that plagued the PowerShell version's event handlers. |
-| Microsoft.Extensions.Hosting | 9.0.x | Application host, lifecycle | Provides hosted services pattern for background refresh timer (30s dashboard) without manual thread management. |
-| xunit | 2.9.x | Unit testing | Current standard for .NET testing. Better test isolation than NUnit. Fast parallel execution. |
-| Moq | 4.20.x | Mocking in tests | Interface-based mocking for services (SQL, process launchers, Windows API wrappers). |
-| DarkNet (Aldaviva/DarkNet) | latest | Native dark title bar on Windows 10/11 | WPF .NET 9 Fluent dark theme styles the client area; this library extends dark mode to the title bar and system chrome. Optional — verify Windows Server 2019 compatibility. |
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| Visual Studio 2022 or Rider | IDE | VS 2022 required for .NET 9 Native AOT compilation toolchain (not needed for regular single-file publish). |
-| `dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true` | Single-EXE build | Produces one EXE with embedded runtime. Add `-p:PublishTrimmed=true` to reduce size; add `-p:PublishReadyToRun=true` for faster startup. Expect 40-80MB for self-contained WPF. |
-| GitHub Actions with `windows-latest` runner | CI/CD | Existing pipeline. Replace PS2EXE step with `dotnet publish`. |
-| PSScriptAnalyzer | No longer needed | Replaced by C# compile-time analysis. |
+No new NuGet packages required. WPF's `ResourceDictionary.MergedDictionaries` API handles everything natively.
 
 ---
 
-## Installation
+## The Exact Implementation Pattern
 
+### Pattern: Dictionary Swap at Runtime
+
+This is the authoritative pattern for WPF runtime theme switching. It is documented in Microsoft's official WPF merged dictionaries docs (updated 2024-10-24) and corroborated by multiple community references.
+
+**Step 1 — Theme XAML files all use identical resource keys.**
+
+`Themes/DarkTheme.xaml` (existing — already correct structure):
 ```xml
-<!-- In .csproj — core packages -->
-<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
-<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.*" />
-<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.*" />
-
-<!-- Logging -->
-<PackageReference Include="Serilog" Version="4.*" />
-<PackageReference Include="Serilog.Sinks.File" Version="6.*" />
-
-<!-- Testing (test project only) -->
-<PackageReference Include="xunit" Version="2.9.*" />
-<PackageReference Include="Moq" Version="4.20.*" />
-<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-<PackageReference Include="xunit.runner.visualstudio" Version="2.8.*" />
+<SolidColorBrush x:Key="BgDark"    Color="#0D1117"/>
+<SolidColorBrush x:Key="BgSidebar" Color="#161B22"/>
+<SolidColorBrush x:Key="BgCard"    Color="#21262D"/>
+<!-- ... same keys in every theme file, different color values -->
 ```
 
+`Themes/JustBlackTheme.xaml` (new — same keys, different values):
 ```xml
-<!-- In .csproj — build configuration for single-file EXE -->
-<PropertyGroup>
-  <OutputType>WinExe</OutputType>
-  <TargetFramework>net9.0-windows</TargetFramework>
-  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  <UseWPF>true</UseWPF>
-  <PublishSingleFile>true</PublishSingleFile>
-  <SelfContained>true</SelfContained>
-  <PublishReadyToRun>true</PublishReadyToRun>
-  <PublishTrimmed>false</PublishTrimmed>  <!-- WPF is not trim-compatible -->
-  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-</PropertyGroup>
+<SolidColorBrush x:Key="BgDark"    Color="#000000"/>
+<SolidColorBrush x:Key="BgSidebar" Color="#0A0A0A"/>
+<SolidColorBrush x:Key="BgCard"    Color="#141414"/>
+<!-- ... -->
 ```
 
-> **Note on PublishTrimmed:** WPF is not trim-compatible as of .NET 9. Do not enable trimming — it will break XAML bindings and reflection-based features silently. This is confirmed in the WPF GitHub issues.
+**Step 2 — All XAML uses `DynamicResource` (not `StaticResource`).**
 
-> **Note on NativeAOT:** WPF does not support NativeAOT as of .NET 9. Do not use it.
+```xml
+<!-- Before (current state — does NOT update at runtime) -->
+<Window Background="{StaticResource BgDark}">
+
+<!-- After (required for live switching) -->
+<Window Background="{DynamicResource BgDark}">
+```
+
+This change must be applied to all 283 `StaticResource` references across 8 XAML files.
+
+**Step 3 — `ThemeService` swaps the merged dictionary.**
+
+```csharp
+public class ThemeService : IThemeService
+{
+    private static readonly Dictionary<string, Uri> ThemeUris = new()
+    {
+        ["DefaultDark"]  = new Uri("pack://application:,,,/WsusManager.App;component/Themes/DarkTheme.xaml"),
+        ["JustBlack"]    = new Uri("pack://application:,,,/WsusManager.App;component/Themes/JustBlackTheme.xaml"),
+        ["Slate"]        = new Uri("pack://application:,,,/WsusManager.App;component/Themes/SlateTheme.xaml"),
+        ["Serenity"]     = new Uri("pack://application:,,,/WsusManager.App;component/Themes/SerenityTheme.xaml"),
+        ["Rose"]         = new Uri("pack://application:,,,/WsusManager.App;component/Themes/RoseTheme.xaml"),
+        ["ClassicBlue"]  = new Uri("pack://application:,,,/WsusManager.App;component/Themes/ClassicBlueTheme.xaml"),
+    };
+
+    public void ApplyTheme(string themeName)
+    {
+        if (!ThemeUris.TryGetValue(themeName, out var uri)) return;
+
+        var mergedDicts = Application.Current.Resources.MergedDictionaries;
+
+        // Remove existing theme dictionary (leave other merged dicts untouched)
+        var existing = mergedDicts.FirstOrDefault(d =>
+            d.Source != null && d.Source.ToString().Contains("/Themes/"));
+        if (existing != null)
+            mergedDicts.Remove(existing);
+
+        // Add new theme dictionary — DynamicResource bindings update automatically
+        mergedDicts.Add(new ResourceDictionary { Source = uri });
+    }
+}
+```
+
+**Step 4 — XAML files are embedded as `Resource` build action** (already the case for all XAML in the project — WPF default). Pack URI format: `pack://application:,,,/AssemblyName;component/Path/File.xaml`.
+
+**Step 5 — `AppSettings` gains a `ThemeName` property** (string, default `"DefaultDark"`). Saved/loaded via existing JSON persistence in `ISettingsService`. No schema migration needed — JSON deserialization uses the default value when the key is absent.
 
 ---
 
-## Alternatives Considered and Rejected
+## Critical Integration Constraint: StaticResource Migration
 
-### Rust
+**All 283 `StaticResource` references in 8 XAML files must become `DynamicResource`.**
 
-| Criterion | Assessment |
-|---|---|
-| GUI framework | No mature, production-ready Windows-native GUI framework. The 2025 survey of Rust GUI libraries confirms fragmentation — NWG (native-windows-gui), Freya, Dioxus all have significant gaps or are cross-platform (not Windows-native). |
-| Windows API / COM | `windows-rs` crate provides COM access and is actively developed by Microsoft. Technically viable. |
-| WSUS COM interop | No evidence of anyone successfully using WSUS COM API from Rust. Would require significant FFI work. |
-| Single EXE | Yes — Rust produces small static binaries. |
-| Developer productivity | Borrow checker adds significant overhead for GUI state management (shared mutable UI state is exactly what Rust makes hard). |
-| Verdict | REJECTED. GUI ecosystem not production-ready for this use case. High risk, high cost. |
+This is not optional. `StaticResource` is resolved once at XAML parse time and is permanently fixed. Only `DynamicResource` subscribes to the WPF resource system for updates.
 
-### Go
+**Current breakdown (verified by code analysis):**
 
-| Criterion | Assessment |
-|---|---|
-| GUI framework | `walk` (lxn/walk) is the most Windows-native option but is significantly behind WPF in feature maturity. Low active development in recent years. |
-| Windows API | WMI access via several packages (StackExchange/wmi, microsoft/wmi). Functional but requires CGO or specialized wrappers for COM. |
-| WSUS COM interop | WMI packages use COM under the hood for WMI queries. But WSUS API (IUpdateServer, IUpdateServer2) goes beyond WMI — no established Go path. |
-| Single EXE | Yes — Go produces single static binaries natively. |
-| SQL access | Available via `database/sql` + driver, but no SqlClient equivalent mature. |
-| Developer productivity | Go ecosystem is excellent for backends/CLI; desktop GUI is second-class. Compared to C# for Windows admin tools, Go provides less value. |
-| Verdict | REJECTED. No viable WSUS COM interop path, immature GUI framework. |
+| File | StaticResource count |
+|------|---------------------|
+| `MainWindow.xaml` | 157 |
+| `SettingsDialog.xaml` | 18 |
+| `ScheduleTaskDialog.xaml` | 26 |
+| `TransferDialog.xaml` | 28 |
+| `SyncProfileDialog.xaml` | 14 |
+| `InstallDialog.xaml` | 15 |
+| `GpoInstructionsDialog.xaml` | 7 |
+| `DarkTheme.xaml` | 18 (internal — `BasedOn` refs, not color refs) |
 
-### Electron / Tauri (web-based)
+**XAML styles in DarkTheme.xaml that use `StaticResource` internally** (e.g., `{StaticResource Text2}` inside a `Style`) also need to become `DynamicResource` for proper propagation. The `BasedOn="{StaticResource NavBtn}"` style inheritance references are fine as `StaticResource` — those reference style objects, not color resources, and don't change when the theme swaps.
 
-| Criterion | Assessment |
-|---|---|
-| Admin tool fit | Admin tools on Windows with complex OS integration are a poor fit for web-stack GUIs. |
-| Single EXE | Tauri can produce single EXE; Electron cannot easily. |
-| Windows API | P/Invoke through native modules possible but cumbersome. |
-| Air-gap deployment | Tauri (Rust backend) is viable; Electron requires Node.js runtime. |
-| Verdict | REJECTED. Complexity for Windows API work outweighs benefits. Not the right tool. |
-
-### .NET 8 LTS vs .NET 9 STS
-
-Both are valid choices. The tradeoff:
-
-- **.NET 9 (recommended):** Fluent dark theme ships built-in (the key UI upgrade). Supported until May 2026. Upgrade to .NET 10 LTS when it ships (Nov 2025 — already available).
-- **.NET 8 LTS:** Supported until Nov 2026. No native Fluent theme (requires manual Fluent resource dictionary approach or third-party themes). More conservative choice if upgrade cadence is a concern.
-
-**Recommendation:** Use .NET 9, then upgrade to .NET 10 as part of the v4.1 maintenance cycle. The Fluent theme is a core requirement of the rewrite and should not be a bolt-on.
+**Performance note:** `DynamicResource` has a small overhead vs `StaticResource` — WPF maintains a lookup table and notifies dependents on change. For ~283 bindings on a single-screen admin tool, this is completely imperceptible. Microsoft's own guidance confirms the performance difference is negligible for typical UI sizes.
 
 ---
 
-## What NOT to Use
+## What NOT to Add
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `System.Data.SqlClient` (old namespace) | Deprecated by Microsoft as of 2024. Security updates stopped. | `Microsoft.Data.SqlClient` 6.x |
-| `BinaryFormatter` | Removed in .NET 9. Was unsafe (deserialization attacks). | `System.Text.Json` for settings |
-| Native AOT with WPF | WPF does not support NativeAOT as of .NET 9. Compilation fails. | Standard self-contained publish |
-| `PublishTrimmed=true` with WPF | WPF is not trim-compatible — breaks XAML binding reflection silently. | Omit `PublishTrimmed` |
-| `Assembly.CodeBase` | Throws `PlatformNotSupportedException` in single-file apps. | `AppContext.BaseDirectory` |
-| `Register-ObjectEvent` pattern | PowerShell-only threading workaround. Replaced by native `async/await`. | `async Task` methods throughout |
-| Code-behind in XAML (beyond constructor) | Couples UI to business logic, same trap as the PowerShell version. | MVVM ViewModels with `[RelayCommand]` |
-| Microsoft.UpdateServices.Administration | Does not work with .NET Core / .NET 5+. Throws `FileNotFoundException`. | Direct SQL against SUSDB + `wsusutil.exe` subprocess |
-| PS2EXE | PowerShell-specific compile tool. Not applicable to C#. | `dotnet publish -p:PublishSingleFile=true` |
-| WinForms | Less capable than WPF for the dark theme, XAML styling, and DPI-aware layout needed here. Lower-level API for complex UIs. | WPF |
+| MaterialDesignInXamlToolkit | Imposes Material Design visual language on top of the existing custom dark theme. Would require rewriting all styles and controls to match MDIX conventions. Massive scope expansion. | Native ResourceDictionary swap — already exactly what's needed |
+| MahApps.Metro | Same problem as MDIX — opinionated control library that would conflict with existing custom styles | Native ResourceDictionary swap |
+| HandyControl | Different control library ecosystem; integration requires adapting all existing controls | Native ResourceDictionary swap |
+| FluentWPF / Wpf.Ui | Fluent design library — conflicts with the existing custom GA-AppLocker-style dark theme | Native ResourceDictionary swap |
+| `StaticResource` for color bindings | Cannot update at runtime — theme switch has no visible effect | `DynamicResource` for all color/brush references |
+| External JSON theme files (loose files) | Requires deployment of additional files alongside EXE, breaking the single-EXE constraint. Also slower to load, no design-time support. | Embedded XAML `Resource` files (compiled into EXE assembly) |
+| `Application.Current.Resources.MergedDictionaries.Clear()` | Clears ALL merged dictionaries, including any non-theme dictionaries added in future. | Remove only the theme dictionary by matching source URI pattern |
 
 ---
 
-## Version Compatibility Notes
+## Installation / Changes Required
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| CommunityToolkit.Mvvm 8.4.0 | .NET 8, .NET 9, .NET Standard 2.0 | C# 13 partial properties feature for `[ObservableProperty]` requires .NET 9 SDK. Falls back gracefully on .NET 8. |
-| Microsoft.Data.SqlClient 6.1.4 | .NET 8.0+, .NET Framework 4.6.2+ | Does NOT target .NET Standard 2.0 (dropped in v5+). Must use .NET 8+ target. |
-| WPF Fluent ThemeMode API | .NET 9 on Windows 10+ (build 1809+) | Windows Server 2019 = build 1809. Fluent theme is confirmed compatible. Dark mode works. `ThemeMode` in code is experimental in .NET 9, stabilized in .NET 10. |
-| Self-contained single EXE | Windows Server 2019 64-bit | `win-x64` RuntimeIdentifier required. Native libraries extract to `%TEMP%\.net` on first run. Subsequent runs use cached extraction — near-instant startup. |
+### No new NuGet packages.
+
+### New files to create:
+
+```
+src/WsusManager.App/Themes/
+├── DarkTheme.xaml          (existing — unchanged)
+├── JustBlackTheme.xaml     (new)
+├── SlateTheme.xaml         (new)
+├── SerenityTheme.xaml      (new)
+├── RoseTheme.xaml          (new)
+└── ClassicBlueTheme.xaml   (new)
+
+src/WsusManager.Core/Services/
+├── Interfaces/IThemeService.cs   (new)
+└── ThemeService.cs               (new)
+```
+
+### Existing files to modify:
+
+```
+src/WsusManager.Core/Models/AppSettings.cs
+  — Add: public string ThemeName { get; set; } = "DefaultDark";
+
+src/WsusManager.App/App.xaml.cs  (or Program.cs)
+  — Apply saved theme on startup before window shows
+
+src/WsusManager.App/Views/SettingsDialog.xaml + .xaml.cs
+  — Add theme picker UI section
+
+src/WsusManager.App/ViewModels/MainViewModel.cs (or SettingsViewModel)
+  — Wire ThemeService.ApplyTheme() to theme selection
+
+All 8 XAML files:
+  — Replace StaticResource → DynamicResource for color/brush keys
+  — Keep StaticResource for Style references (BasedOn, TargetType)
+```
 
 ---
 
-## Stack Patterns
+## Alternatives Considered
 
-**For WSUS operations requiring COM API (sync, approval):**
-- Shell out to a short PowerShell one-liner: `Start-Process powershell -ArgumentList "-NonInteractive -Command ..."`
-- Or keep one thin PowerShell wrapper script alongside the EXE for these specific operations
-- Do not attempt to load `Microsoft.UpdateServices.Administration.dll` in .NET 9 — it will fail
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| Native ResourceDictionary swap | MaterialDesignInXamlToolkit theming | MDIX theming controls the entire visual language. Our existing custom styles (NavBtn, BtnGreen, BtnRed, LogTextBox, etc.) would need full rewrites. Out-of-scope, high risk. |
+| Native ResourceDictionary swap | Code-only theme (set brush colors in C#) | No XAML designer support. More complex code. No benefit over ResourceDictionary approach. |
+| Embedded XAML theme files | Loose file themes (file:// URIs) | Breaks single-EXE distribution constraint. External files can be deleted/corrupted. |
+| Single merged dict swap | Per-control style injection | Requires touching every control individually. Does not scale to 6 themes and 8 XAML files. |
 
-**For database operations (everything else):**
-- Use `Microsoft.Data.SqlClient` directly with connection string `Server=localhost\SQLEXPRESS;Database=SUSDB;Integrated Security=true;TrustServerCertificate=true`
-- Wrap in a `ISqlHelper` interface for unit testability
+---
 
-**For Windows service management:**
-- Use `System.ServiceProcess.ServiceController` for status/start/stop
-- No additional NuGet package needed
+## Version Compatibility
 
-**For single-EXE with air-gapped deployment:**
-- `SelfContained=true` + `PublishSingleFile=true` + `win-x64`
-- EXE is fully self-contained — no .NET runtime on target machine required
-- Expected size: 40-80MB (WPF + .NET runtime embedded)
-- No internet dependency at runtime — all libraries embedded
+| Component | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `DynamicResource` bindings | All WPF versions including .NET 8 WPF | Fundamental WPF feature, no version concerns |
+| Pack URI `pack://application:,,,/AssemblyName;component/...` | .NET 8 WPF | Standard format for embedded resources in single-file apps; verified to work with `PublishSingleFile=true` since WPF resources are compiled into the assembly before single-file bundling |
+| `ResourceDictionary.MergedDictionaries` manipulation | .NET 8 WPF | Thread-safety: must be called on UI thread (use `Application.Current.Dispatcher.Invoke` if calling from a background thread) |
 
 ---
 
 ## Sources
 
-- [What's New in WPF for .NET 9 — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90) — Fluent theme, ThemeMode API, Windows Server 2019 compatibility (HIGH confidence)
-- [Single-File Deployment Overview — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview) — PublishSingleFile constraints, NativeAOT limitations, extraction behavior (HIGH confidence)
-- [NuGet: Microsoft.Data.SqlClient 6.1.4](https://www.nuget.org/packages/Microsoft.Data.SqlClient) — Latest stable version, target frameworks (HIGH confidence)
-- [NuGet: CommunityToolkit.Mvvm 8.4.0](https://www.nuget.org/packages/CommunityToolkit.Mvvm) — Latest stable version, .NET 9 compatibility (HIGH confidence)
-- [dotnet/core Issue #5736](https://github.com/dotnet/core/issues/5736) — Microsoft.UpdateServices.Administration.dll incompatibility with .NET Core/5+ (HIGH confidence — official repo)
-- [2025 Survey of Rust GUI Libraries — boringcactus](https://www.boringcactus.com/2025/04/13/2025-survey-of-rust-gui-libraries.html) — Rust GUI ecosystem maturity assessment (MEDIUM confidence)
-- [Rust for Windows — Microsoft Learn](https://learn.microsoft.com/en-us/windows/dev-environment/rust/rust-for-windows) — windows-rs crate COM capabilities (HIGH confidence)
-- [Should You Use WPF with .NET in 2025? — Inedo Blog](https://blog.inedo.com/dotnet/wpf-on-dotnet) — WPF viability in 2025 (MEDIUM confidence)
-- [CommunityToolkit.Mvvm Introduction — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/) — MVVM Toolkit official docs (HIGH confidence)
-- [Serilog .NET 9 Structured Logging — Medium](https://medium.com/@michaelmaurice410/how-structured-logging-with-serilog-in-net-9-980229322ebe) — Serilog .NET 9 compatibility (MEDIUM confidence)
+- [Merged resource dictionaries — WPF .NET (Microsoft Learn, updated 2024-10-24)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-merged-dictionaries?view=netdesktop-8.0) — Dictionary swap pattern, pack URI formats, Resource build action requirement (HIGH confidence)
+- [Pack URIs in WPF — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/app-development/pack-uris-in-wpf) — Embedded resource URI format for single-file apps (HIGH confidence)
+- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — DynamicResource requirement, dictionary clear-and-add runtime pattern (MEDIUM confidence — corroborates official docs)
+- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — StaticResource vs DynamicResource runtime behavior, SkinResourceDictionary pattern tradeoffs (MEDIUM confidence)
+- Code analysis of existing codebase: 283 `StaticResource` refs, 0 `DynamicResource` refs across 8 XAML files (HIGH confidence — direct verification)
 
 ---
 
-*Stack research for: Windows Server WSUS Administration GUI Tool (GA-WsusManager v4)*
-*Researched: 2026-02-19*
+*Stack research for: v4.3 WPF theming system — runtime color scheme switching*
+*Researched: 2026-02-20*

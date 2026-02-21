@@ -1,327 +1,369 @@
 # Pitfalls Research
 
-**Domain:** C#/WPF Windows Server admin tool (WSUS management rewrite)
-**Researched:** 2026-02-19
-**Confidence:** HIGH (core WPF/C# pitfalls verified via official docs and multiple sources; WSUS API compatibility confirmed via GitHub issue #5736 and Microsoft Q&A)
+**Domain:** WPF runtime theming — adding a dynamic theme system to an existing C#/.NET 8 WPF application with established XAML
+**Researched:** 2026-02-20
+**Confidence:** HIGH (WPF StaticResource/DynamicResource behavior, BasedOn limitation, MergedDictionaries order rules verified via official Microsoft docs and community expert sources; code-behind color pitfall based on direct codebase audit of MainViewModel.cs)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Microsoft.UpdateServices.Administration Is Incompatible with Modern .NET
+### Pitfall 1: StaticResource References Do Not Update When Theme Changes
 
 **What goes wrong:**
-The WSUS managed API (`Microsoft.UpdateServices.Administration.dll`) was built for .NET Framework. When referenced from a .NET 5+ / .NET 9 project, it throws `FileNotFoundException` for its dependent assemblies (`Microsoft.UpdateServices.Utils`, `System.Configuration.ConfigurationManager`). Binding redirects — the .NET Framework escape hatch — do not exist in .NET Core. There is no NuGet package. The DLL must be sourced manually from the Windows SxS folder and its transitive dependencies cannot be resolved by modern .NET's loader.
+`{StaticResource BgDark}` is resolved once at XAML parse time and permanently frozen. When you swap the `MergedDictionaries` entry at runtime, controls using `StaticResource` show the original color. They do not react to the dictionary swap. The visual result is a partially-themed UI: some elements update (those using `DynamicResource`), others retain the original dark palette, producing a broken mixed-theme state.
+
+The current codebase uses `{StaticResource ...}` throughout all XAML files. Every reference must be audited before theming will work.
 
 **Why it happens:**
-Developers assume "any .NET DLL works with any .NET." The WSUS API DLLs were compiled against .NET Framework 4.0 and depend on Framework-only infrastructure. Modern .NET has an entirely different assembly loader with no compatibility bridge for this particular dependency chain.
+`StaticResource` was the right default when there was one theme and it never changed. It is faster and simpler than `DynamicResource`. Migrating to theming requires deliberately converting all color and brush references — the WPF tooling does not flag unconverted `StaticResource` usages as errors, so it is easy to miss individual occurrences.
 
 **How to avoid:**
-Do not attempt to reference `Microsoft.UpdateServices.Administration` from a .NET 9 project. Instead, use two alternatives based on the operation type:
-- **High-level WSUS operations** (approve updates, get update counts, trigger sync): Invoke `wsusutil.exe` or PowerShell's `Get-WsusServer` via `Process.Start()` with captured stdout. This is safe, well-tested, and the same approach the PowerShell version used anyway.
-- **Database maintenance** (decline superseded, purge, index rebuild, shrink): Call SUSDB directly via `Microsoft.Data.SqlClient` with the documented stored procedures (`spDeleteUpdate`, `spGetObsoleteUpdatesToCleanup`) and raw T-SQL. The current PowerShell version already does this and the approach is proven.
+Convert all brush and color resource references from `{StaticResource X}` to `{DynamicResource X}` in all `.xaml` files, for every resource key defined in the theme dictionaries (BgDark, BgSidebar, BgCard, BgInput, Border, Blue, Green, Orange, Red, Text1, Text2, Text3, ColorGreen, ColorOrange, ColorRed, ColorBlue, ColorText2). Style references (`{StaticResource NavBtn}`) do NOT need conversion — only brush/color values inside styles do.
 
-The architecture must treat the WSUS managed API as inaccessible and design around it from day one.
+Confirm completeness by grepping for `StaticResource` after migration:
+```bash
+grep -rn "StaticResource Bg\|StaticResource Text\|StaticResource Blue\|StaticResource Green\|StaticResource Orange\|StaticResource Red\|StaticResource Border\|StaticResource Color" src/
+```
+Zero results means the migration is complete.
 
 **Warning signs:**
-- Any project reference to `Microsoft.UpdateServices.Administration.dll`
-- Any use of `AdminProxy.GetUpdateServer()` in C# code
-- Build succeeds but app crashes on first WSUS API call at runtime (assembly chain failure)
+- After applying a new theme, main window background changes but sidebar stays dark
+- Card backgrounds and borders retain previous theme colors
+- Log panel TextBox background does not change
 
 **Phase to address:**
-Phase 1 (Foundation) — Establish the integration strategy before writing any WSUS-touching code. Document the "no managed WSUS API" constraint in architecture docs.
+Phase 1 (Infrastructure and XAML Migration) — This is the foundational change. All other theming work depends on it.
 
 ---
 
-### Pitfall 2: .NET Single-File EXE Extraction Blocked by Antivirus on Air-Gapped Servers
+### Pitfall 2: Inline Hardcoded Hex Colors in XAML Cannot Be Themed
 
 **What goes wrong:**
-.NET single-file self-contained executables extract their payload to `%TEMP%\.net\<AppName>\<hash>\` on first run. On hardened Windows Server environments (especially air-gapped networks with strict endpoint protection), this extraction triggers antivirus heuristics and the extracted DLLs are deleted mid-startup, causing the app to crash with `FileNotFoundException` or simply refuse to launch.
+The current codebase contains raw hex colors set directly in XAML attribute values and `DataTrigger.Setter` values, bypassing the resource dictionary entirely:
 
-This is a confirmed known issue in the .NET runtime (`dotnet/runtime#2300`): Symantec Endpoint Protection and similar products delete the extracted files.
+- `MainWindow.xaml` — Four active nav highlight `DataTrigger` setters use hardcoded `#21262D`, `#58A6FF`, `#E6EDF3`
+- `InstallDialog.xaml` line 65 — Validation error TextBlock uses `Foreground="#F85149"` directly
+- `ScheduleTaskDialog.xaml` line 124 — Same `#F85149` hardcode
+- `TransferDialog.xaml` line 130 — Same `#F85149` hardcode
+- `DarkTheme.xaml` ControlTemplate triggers — `Background` value `#21262D` hardcoded in `NavBtn` template
+- `DarkTheme.xaml` button styles — `#238636`, `#2EA043`, `#DA3633`, `#F85149` hardcoded in `Btn`, `BtnGreen`, `BtnRed` templates
+
+These values are invisible to the theme swap. They will remain the dark theme's exact hex values regardless of which theme is active, producing colored artifacts in light themes.
 
 **Why it happens:**
-Security-hardened servers treat any EXE that unpacks binaries to a temp directory as suspicious. The behavior is identical to how malware droppers operate. Air-gapped networks are disproportionately likely to run strict AV because they handle sensitive data.
+When there is one theme, the distinction between a named resource and a hardcoded hex value is invisible — both produce the same result. Developers reach for the inline hex value when it is faster than defining and referencing a named resource.
 
 **How to avoid:**
-Use `IncludeAllContentForSelfExtract` in the publish configuration. This embeds all content directly in the EXE so nothing is extracted to disk at runtime, eliminating the temp-folder attack surface. The trade-off is slower cold startup (everything decompresses in memory) but this is acceptable for an admin tool that administrators launch intentionally.
+Move every hardcoded color into a named resource key in the theme dictionaries, then reference it via `{DynamicResource X}`. Required additions per theme file:
 
-```xml
-<PublishSingleFile>true</PublishSingleFile>
-<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-<SelfContained>true</SelfContained>
-<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+```
+BtnPrimaryBg         (#238636 green button background)
+BtnPrimaryHover      (#2EA043 green button hover)
+BtnDangerBg          (#DA3633 red button background)
+BtnDangerHover       (#F85149 red button hover)
+NavActiveBackground  (#21262D nav active background)
+NavActiveAccent      (#58A6FF nav active border — per-theme accent)
+NavActiveForeground  (#E6EDF3 nav active text)
+TextError            (#F85149 validation error text)
 ```
 
-Additionally, set `DOTNET_BUNDLE_EXTRACT_BASE_DIR` to a known, whitelisted directory as a fallback if `IncludeAllContentForSelfExtract` is unavailable for any reason.
-
 **Warning signs:**
-- App launches fine in dev environment but crashes on server
-- App works once then stops working after AV scan runs
-- `%TEMP%\.net\` directory missing or empty when app tries to start
+- Apply a light theme and nav bar active-page indicator stays dark
+- Button hover backgrounds do not change with theme
+- Validation error text stays red-on-dark even with a light background
 
 **Phase to address:**
-Phase 1 (Foundation/Build Setup) — Configure the publish profile correctly before any other code is written. Validate on a test server with AV enabled before assuming the deployment model works.
+Phase 1 (Infrastructure and XAML Migration) — Must be addressed in the same pass as the `StaticResource` → `DynamicResource` conversion.
 
 ---
 
-### Pitfall 3: Async Void Event Handlers Silently Swallow Exceptions
+### Pitfall 3: Hardcoded SolidColorBrush in ViewModel Code-Behind Bypasses Theming
 
 **What goes wrong:**
-WPF button click handlers are `void` event handlers. When made `async void`, any unhandled exception inside them bypasses normal try/catch and is raised on the thread pool with no traceable context, crashing the application or — worse — silently terminating the operation with no user feedback.
+`MainViewModel.cs` creates `SolidColorBrush` objects directly in C# code using hardcoded `Color.FromRgb()` values. These include:
 
-In an admin tool where every operation has real consequences (database shrink, service restart, firewall rule changes), silent operation failure is a critical UX and reliability failure.
+- Dashboard card bar colors (ServicesBarColor, DatabaseBarColor, DiskBarColor, TaskBarColor) — all initialized to `Color.FromRgb(0x8B, 0x94, 0x9E)` (Text2 gray)
+- Status banner colors — Green `0x3F, 0xB9, 0x50`, Red `0xF8, 0x51, 0x49`, Orange `0xD2, 0x99, 0x22`
+- Connection dot color — Green or Red depending on `IsOnline`
+- Dashboard service/disk/task bar colors set from business logic using those same hex values
+
+These brushes are set as `[ObservableProperty]` values and bound directly in XAML. The theme swap has no effect on them because they are never read from the resource dictionary at all.
 
 **Why it happens:**
-`async void` is required for WPF event handlers because the event signature is `EventHandler` (returns `void`). Developers add `async` to use `await` inside them without understanding that exception propagation is fundamentally broken for `async void`. The application appears to work in happy-path testing but crashes unpredictably in production.
+ViewModel code does not participate in XAML resource lookup. It creates brushes from constants because it needs to compute them based on state (e.g., "green if all services running, orange if some, red if none"). There is no obvious way to look up a theme resource from a ViewModel.
 
 **How to avoid:**
-Wrap every `async void` event handler body in a try/catch that routes exceptions to a centralized error handler:
+Use `Application.Current.TryFindResource()` to look up brush resources by key from C# code:
 
 ```csharp
-private async void BtnHealthCheck_Click(object sender, RoutedEventArgs e)
+private static SolidColorBrush GetBrush(string key)
 {
-    try
-    {
-        await RunOperationAsync("Health Check", PerformHealthCheckAsync);
-    }
-    catch (Exception ex)
-    {
-        HandleFatalError(ex);
-    }
+    return Application.Current.TryFindResource(key) as SolidColorBrush
+        ?? new SolidColorBrush(Colors.Gray);
 }
+
+// Usage:
+ServicesBarColor = allRunning
+    ? GetBrush("Green")
+    : someRunning
+        ? GetBrush("Orange")
+        : GetBrush("Red");
 ```
 
-All actual logic lives in `async Task` methods, never in the `async void` handler itself. The handler is only a thin dispatcher. This is the pattern mandated by `RelayCommand` in CommunityToolkit.Mvvm — use it.
+On theme change, the ViewModel must call `OnPropertyChanged` on all brush properties so bindings re-evaluate and call `GetBrush()` with the now-active theme. A `ThemeService.ThemeChanged` event subscription in the ViewModel handles this.
+
+The semantic color names (Green, Orange, Red, Blue) remain constant across themes — only their actual color values change per theme. This means the logic stays correct: "green = healthy" remains true regardless of which green the active theme defines.
 
 **Warning signs:**
-- Operations that start but produce no output and no error
-- WPF application crash with `TaskScheduler.UnobservedTaskException` in event log
-- Operations that work in debug but fail silently in release
+- Apply a light theme and dashboard card status bars remain GitHub-dark green/red/orange
+- Connection dot stays the dark-theme green even after theme switch
+- Status banner after operations shows dark-theme color regardless of active theme
 
 **Phase to address:**
-Phase 1 (Foundation) — Establish the operation execution pattern (`RunOperationAsync` wrapper or MVVM `RelayCommand`) before implementing any operations. Every operation goes through this gate.
+Phase 1 (Infrastructure) — Requires establishing a `ThemeService` with a change event before any ViewModel color properties can be fixed.
 
 ---
 
-### Pitfall 4: UI Thread Blocking from "Looks Async" Code
+### Pitfall 4: MergedDictionaries Clear-and-Replace Breaks Style Inheritance Chain
 
 **What goes wrong:**
-`await Task.Run(...)` offloads CPU work to a thread pool thread, but code that runs after the `await` resumes on the UI thread. If that code does any blocking I/O, network calls, or heavy computation synchronously, the UI freezes — even though the method is marked `async`.
+The recommended approach for runtime theme switching is to clear `Application.Current.Resources.MergedDictionaries` and add a new theme dictionary. If the base styles (NavBtn, Btn, BtnSec, etc.) are part of the cleared dictionary, all controls temporarily lose their entire style definition during the swap — visible as a white-flash or unstyled-controls flicker.
 
-Common manifestations in an admin tool:
-- `ServiceController.WaitForStatus()` called on the UI thread after an `await`
-- File I/O during export/import verification
-- SQL connection establishment (which can take several seconds on a slow `localhost\SQLEXPRESS`)
+More critically: if the `DarkTheme.xaml` is cleared and only a color-only replacement is added, then styles defined in `DarkTheme.xaml` (like `NavBtn`, `LogTextBox`, the custom `ProgressBar` template) are lost entirely and controls revert to default WPF appearance.
 
 **Why it happens:**
-Developers see `async/await` and assume the entire method is off-thread. The SynchronizationContext means continuation code (after `await`) runs on the UI thread unless explicitly wrapped in another `Task.Run`.
+Developers start with a single `DarkTheme.xaml` that mixes both structural styles and color values. When switching themes, they swap the entire file, destroying the structural styles along with the colors.
 
 **How to avoid:**
-Keep the UI thread exclusively for UI updates. Any call that can block goes inside `Task.Run()`. The pattern:
+Split the single `DarkTheme.xaml` into two layers:
+
+1. **`Themes/Base.xaml`** — All structural styles (NavBtn, Btn, BtnSec, BtnGreen, BtnRed, LogTextBox, ProgressBar template, ScrollBar style, etc.) — never swapped
+2. **`Themes/Colors/DarkTheme.xaml`** — Only brush/color definitions — swapped on theme change
+
+In `App.xaml`:
+```xml
+<Application.Resources>
+    <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="Themes/Base.xaml"/>
+            <ResourceDictionary Source="Themes/Colors/DarkTheme.xaml"/>
+        </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+</Application.Resources>
+```
+
+Only the second entry (the color dictionary) is swapped at runtime. `Base.xaml` is never touched.
+
+**Warning signs:**
+- Theme switch causes a visible flash of unstyled white controls
+- After switching theme, buttons lose their custom template and revert to default Windows buttons
+- Log panel TextBox loses its font/padding/dark styling after theme switch
+
+**Phase to address:**
+Phase 1 (Infrastructure) — The Base/Colors split is the foundational architectural decision. Must be done before implementing any themes.
+
+---
+
+### Pitfall 5: BasedOn Cannot Use DynamicResource — Derived Styles Break at Theme Change
+
+**What goes wrong:**
+WPF does not allow `BasedOn="{DynamicResource BaseStyleKey}"`. Attempting it throws a parse exception: `"DynamicResourceExtension is not valid for BasedOn."` Styles using `BasedOn="{StaticResource NavBtn}"` resolve the base style once at load time. When the theme dictionary is replaced at runtime, the base style is re-evaluated with new values, but derived styles using `BasedOn` may not fully re-inherit because the static base reference was already resolved.
+
+The codebase has `NavBtnActive` and `QuickActionBtn` using `BasedOn="{StaticResource NavBtn}"` and `BasedOn="{StaticResource BtnSec}"` respectively. Additionally, `MainWindow.xaml` uses inline `<Style BasedOn="{StaticResource NavBtn}">` in four `DataTrigger` button styles.
+
+**Why it happens:**
+`BasedOn` is a fundamental WPF style composition mechanism and has no dynamic equivalent. This is a known WPF design limitation. Developers expecting full dynamic style inheritance discover the limitation only after implementing theming.
+
+**How to avoid:**
+Two strategies, choose based on style complexity:
+
+Option A (for simple derived styles): Eliminate inheritance — duplicate the full style definition in each theme dictionary rather than using `BasedOn`. This is appropriate for `NavBtnActive` and `QuickActionBtn` which only add 1-2 properties to their base.
+
+Option B (for complex inherited styles): Keep `BasedOn="{StaticResource ...}"` but ensure all brush/color values within the derived style's setters use `{DynamicResource ...}`. The derived style's non-color structural properties are inherited once; the color properties re-evaluate on theme change because they use `DynamicResource`. This works correctly for the existing codebase since only colors change between themes.
+
+Option B is correct for this project. The structural layout (padding, borders, font size, template) does not change between themes — only the color values do. The inline `DataTrigger` styles in `MainWindow.xaml` must have their hardcoded hex values (covered in Pitfall 2) replaced with `DynamicResource` references; `BasedOn="{StaticResource NavBtn}"` itself remains valid and does not need to change.
+
+**Warning signs:**
+- XAML parse exception: `"DynamicResourceExtension cannot be set on the 'BasedOn' property"`
+- Active nav button ignores the new theme's accent color after switch
+- `NavBtnActive` style still shows the previous theme's blue accent
+
+**Phase to address:**
+Phase 1 (Infrastructure) — The `BasedOn` limitation must be understood before deciding the style split strategy.
+
+---
+
+### Pitfall 6: Live Preview Applies to Application, Not Just Settings Dialog
+
+**What goes wrong:**
+Live preview — showing the new theme while the user is still deciding in the Settings dialog — requires applying the theme to `Application.Current.Resources.MergedDictionaries` immediately. This means the theme change takes effect across the entire running application while the dialog is open, not just in a sandboxed preview area inside the dialog itself.
+
+If the user cancels the dialog, the app is left with the preview theme applied. Without an explicit revert mechanism, the previously-saved theme is lost for the current session (though it will reload on next launch from JSON). If the user cancels repeatedly, this pattern can create orphaned resource dictionaries in the merged collection.
+
+**Why it happens:**
+True per-control-tree isolation for preview would require each control to have its own resource scope (ResourceDictionary attached to the element's `Resources`), which is architecturally complex and redundant. The simplest approach — just apply to `Application.Current` — has the cancel-revert problem.
+
+**How to avoid:**
+On dialog open, capture the current theme name. On preview, apply the new theme. On Save, persist the new theme name to JSON. On Cancel, re-apply the captured original theme name:
 
 ```csharp
-await Task.Run(async () =>
-{
-    // ALL blocking work here: SQL queries, service waits, file I/O
-    var result = await DoSlowWorkAsync(cancellationToken);
-    return result;
-});
-// UI updates only after this point
-StatusText = "Operation complete";
+// On dialog open:
+var originalTheme = _settingsService.CurrentTheme;
+
+// On each preview selection:
+_themeService.ApplyTheme(selectedTheme);
+
+// On Cancel:
+_themeService.ApplyTheme(originalTheme);
+// Do NOT save to JSON
+
+// On Save:
+_settingsService.SaveTheme(selectedTheme);
+// Already applied; just persist
 ```
 
-Use `IProgress<string>` for log-line reporting from the background thread to the UI thread. Never call `Dispatcher.Invoke` manually — it is a sign the architecture is wrong.
-
 **Warning signs:**
-- UI feels "sticky" or non-responsive during operations
-- `await`-heavy methods that still freeze the window
-- `Dispatcher.Invoke` calls anywhere in the codebase
+- User clicks Cancel and the app stays on the last-previewed theme
+- Application resources contains multiple theme color dictionaries after repeated preview cycles (leaked dictionary entries)
+- Theme applied on preview but reverts incorrectly on Cancel (original not captured before first preview)
 
 **Phase to address:**
-Phase 1 (Foundation) — The `RunOperationAsync` pattern must enforce this separation. Code review checklist: no `Dispatcher.Invoke`, no blocking calls after `await` on UI thread.
-
----
-
-### Pitfall 5: Rewrite Loses Accumulated Edge-Case Behavior
-
-**What goes wrong:**
-The PowerShell v3.8.x codebase has 3000+ LOC of GUI logic, 11 modules, and 323 tests. It encodes 3+ years of discovered edge cases: SQL command timeout differences between module versions, batched deletion to avoid lock timeouts, retry logic on DB shrink when backup is running, the `wsusutil reset` fix for air-gap post-import, etc.
-
-A rewrite that treats the existing code as "documentation" rather than specification will silently drop these behaviors. The app will appear feature-complete but fail on the edge cases that made users trust the PowerShell version.
-
-**Why it happens:**
-Rewrites are seductive. The new code is clean, the old code is messy. Developers skim the old code for the "happy path" and miss the error handling, retry loops, and workarounds that are scattered in catch blocks and comments.
-
-**How to avoid:**
-Before writing any operation in C#:
-1. Read the corresponding PowerShell module function in full, including catch blocks
-2. Extract every retry, timeout override, batch size, and workaround as an explicit requirement comment
-3. Write the C# implementation against those requirements, not against the "obvious" behavior
-4. Port the Pester tests to xUnit before implementing (test-first reveals the edge cases)
-
-Critical behaviors that must be explicitly preserved:
-- SQL command timeout set to 0 (unlimited) for index rebuild and DB shrink operations
-- Batched deletion (100 updates per batch) for `spDeleteUpdate` to avoid transaction log overflow
-- Supersession record removal before declined update purge (two-step, not one)
-- Retry on DB shrink (3 attempts, 30s delay) when backup is running
-- Re-query service status instead of calling `Refresh()` (avoids stale cache)
-- `BeginOutputReadLine()` required immediately after `Process.Start()` before any `WaitForExit()`
-
-**Warning signs:**
-- New implementation "works in testing" but fails in production on real WSUS servers with large databases
-- Deep cleanup runs faster than expected (skipped a step)
-- Services show wrong status (cached `ServiceController` not refreshed)
-
-**Phase to address:**
-Phase 2+ (each feature phase) — Each operation phase must begin with a review of the corresponding PowerShell source before writing C#.
+Phase 2 (Theme Picker in Settings) — applies during the preview feature implementation.
 
 ---
 
 ## Moderate Pitfalls
 
-### Pitfall 6: ServiceController Status Caching
+### Pitfall 7: Theme Applied After Window Load Causes Initial Flash
 
 **What goes wrong:**
-`ServiceController` caches the service status. Calling `sc.Status` multiple times returns a stale value. The PowerShell version discovered this and explicitly re-queries services. The C# version will rediscover this bug if `ServiceController` is used naively.
+If the theme name is loaded from JSON in `MainViewModel` constructor (or a deferred `InitializeAsync()`) rather than in `App.xaml.cs` before `Application.MainWindow` is shown, the window briefly renders with the default theme's colors before the saved theme is applied — a visible flash of the wrong theme.
 
 **How to avoid:**
-Always call `sc.Refresh()` immediately before reading `sc.Status`. Alternatively, create a new `ServiceController` instance each time status is needed — this avoids the caching entirely. The existing PowerShell workaround (re-query instead of using the `Refresh()` method) was needed because PSCustomObjects don't support `Refresh()`, but in C# `sc.Refresh()` works correctly.
+Apply the saved theme in `App.xaml.cs` `OnStartup()` before showing `MainWindow`:
 
 ```csharp
-using var sc = new ServiceController("WsusService");
-sc.Refresh();
-var status = sc.Status; // Fresh value
-```
-
-Wrap `ServiceController` in a `using` block — it implements `IDisposable` and must be properly disposed.
-
-**Phase to address:**
-Phase 2 (Service Management) — establish the pattern before any service status reads.
-
----
-
-### Pitfall 7: SQL Command Timeout Default of 30 Seconds
-
-**What goes wrong:**
-`SqlCommand.CommandTimeout` defaults to 30 seconds. WSUS database maintenance operations (index rebuild, statistics update, database shrink on large SUSDB) routinely take minutes. Operations will silently time out and report failure even though the underlying SQL work was progressing normally.
-
-**How to avoid:**
-Set `CommandTimeout = 0` (unlimited) for all maintenance operations. Use a named constant:
-
-```csharp
-private const int MaintenanceCommandTimeout = 0; // Unlimited for long-running DB ops
-private const int StandardCommandTimeout = 30;    // Default for queries
-```
-
-Never use the default for operations involving index rebuild, statistics update, shrink, or stored procedure execution on SUSDB.
-
-**Phase to address:**
-Phase 3 (Database Operations) — add a code review gate: every `SqlCommand` must have an explicit `CommandTimeout`.
-
----
-
-### Pitfall 8: Progress Flooding the UI Thread
-
-**What goes wrong:**
-Reporting progress too frequently from a background operation floods the UI thread's message queue. The WPF rendering pipeline has lower priority than input processing, so thousands of `IProgress.Report()` calls per second cause visible UI lag and apparent freezing — even when the background operation is fully off-thread.
-
-This is confirmed in WPF documentation and community testing: sending 1,000,000 rapid updates causes the UI to stop repainting because the render/paint message is deprioritized.
-
-**How to avoid:**
-Rate-limit progress reporting. Only report when there is a meaningful status change, or throttle to a maximum of ~10 reports per second using a timestamp check:
-
-```csharp
-private DateTime _lastProgressReport = DateTime.MinValue;
-private void ReportProgressIfThrottled(string message)
+protected override void OnStartup(StartupEventArgs e)
 {
-    var now = DateTime.UtcNow;
-    if ((now - _lastProgressReport).TotalMilliseconds > 100)
-    {
-        _progress.Report(message);
-        _lastProgressReport = now;
-    }
+    base.OnStartup(e);
+    var settings = _settingsService.Load();
+    _themeService.ApplyTheme(settings.Theme); // Before MainWindow creation
+    var window = new MainWindow();
+    window.Show();
 }
 ```
 
-For batch operations (e.g., deleting 5,000 updates in 50 batches), report once per batch, not once per update.
+The `MergedDictionaries` slot for colors must already be present in `App.xaml` (as a default) so the startup call replaces the right entry rather than appending a duplicate.
+
+**Warning signs:**
+- On launch, the app briefly shows dark colors before switching to the saved light theme
+- Users with a saved non-default theme see the wrong theme for ~100ms on startup
 
 **Phase to address:**
-Phase 3+ (any phase with long-running operations) — establish the throttling pattern in the `RunOperationAsync` infrastructure.
+Phase 1 (Infrastructure) — the startup loading order must be locked in before any themes are tested.
 
 ---
 
-### Pitfall 9: Process stdout Deadlock from Synchronous Read
+### Pitfall 8: Duplicate Resource Keys in Merged Dictionary Stack
 
 **What goes wrong:**
-If the app uses `Process.StandardOutput.ReadToEnd()` synchronously while the child process is still running and waiting to write to stderr, both the parent and child deadlock. The child fills the stderr buffer waiting to write, the parent is blocking waiting for stdout to finish. Neither can proceed.
+WPF's merged dictionary resolution order means the last-defined key wins. If a key appears in both `Base.xaml` and a color theme dictionary, the theme dictionary wins (since it is merged after Base). This is intentional for color overrides. However, if a key appears in `DarkTheme.xaml` that is NOT a color (e.g., a `ControlTemplate`), and the same key is also defined in `Base.xaml`, the `DarkTheme.xaml` version silently wins and may override the structural template with a partial or wrong version.
 
-This is a well-documented .NET pitfall in `System.Diagnostics.Process` and directly relevant to operations that shell out to `wsusutil.exe`, `sqlcmd.exe`, or PowerShell scripts.
+The current `DarkTheme.xaml` mixes both structural styles and colors. The split to Base/Colors must be done carefully to avoid leaving duplicate key definitions across the two files.
 
 **How to avoid:**
-Always use async output reading:
-```csharp
-process.OutputDataReceived += (s, e) => { if (e.Data != null) AppendLog(e.Data); };
-process.ErrorDataReceived += (s, e) => { if (e.Data != null) AppendLog("[ERR] " + e.Data); };
-process.Start();
-process.BeginOutputReadLine();  // Required — must call this
-process.BeginErrorReadLine();   // Required — must call this
-await process.WaitForExitAsync(cancellationToken);
-```
+After the Base/Colors split:
+1. Each resource key should appear in exactly one file (either Base.xaml or exactly one Colors/*.xaml)
+2. Run a quick audit to verify no key appears in both Base.xaml and any Colors file
+3. Color-only resources (brushes, colors) belong exclusively in Colors/*.xaml
+4. Template-only resources belong exclusively in Base.xaml
 
-Never call `ReadToEnd()` or `ReadLine()` directly on redirected streams of a running process. Never mix sync and async reads on the same stream.
+**Warning signs:**
+- PSScriptAnalyzer equivalent (XAML lint): multiple definitions of the same key across files
+- One theme renders a style differently from another despite both defining the same colors
 
 **Phase to address:**
-Phase 2 (any phase that launches external processes) — establish the process-launching helper before first use.
+Phase 1 (Infrastructure) — part of the Base/Colors split work.
 
 ---
 
-### Pitfall 10: WPF Fluent/Dark Theme Is Experimental in .NET 9
+### Pitfall 9: Missing Resource Key in a Non-Default Theme Renders Silently as Default Value
 
 **What goes wrong:**
-WPF .NET 9 introduced `ThemeMode` with Fluent dark theme support, but it is marked experimental. Known crashes exist when the system theme is toggled between light and dark while the app is running (threading exception: "calling thread cannot access this object"). Generated elements like `DataGrid` rows use `ThemeStyle` rather than `Style`, causing inconsistent appearance.
+When a `DynamicResource` reference cannot find its key in the current resource dictionary, WPF does not throw an exception — it silently applies the dependency property's default value. For `Foreground`, the default is `Black`. For `Background`, it is often `null` (transparent). In a dark theme, `Black` foreground on a dark background is invisible text. In a light theme, `null` (transparent) background shows the window background color unintentionally.
 
-**How to avoid:**
-Do not rely on `Application.ThemeMode` (experimental API). Instead, implement dark theme using explicit `ResourceDictionary` entries with a custom color palette — the same approach the PowerShell version used. This is fully stable, completely predictable, and not subject to OS theme change events. Since this is an admin tool always deployed to server environments (not interactive desktops), there is no requirement to respond to system theme changes.
-
-**Phase to address:**
-Phase 1 (Foundation/UI Shell) — decide on the theming approach before any UI work begins.
-
----
-
-### Pitfall 11: UAC Manifest Missing in Debug vs Release
-
-**What goes wrong:**
-Visual Studio runs the application under the IDE's elevated token during debugging. The admin privilege requirement appears satisfied. But when the compiled EXE is run by an administrator on the target server, if the application manifest does not specify `requireAdministrator`, Windows launches it as a standard user and all privileged operations (service start/stop, firewall rules, SQL Server access) fail with access denied errors.
-
-**How to avoid:**
-Embed `requireAdministrator` in the application manifest from the start:
-
-```xml
-<!-- app.manifest -->
-<requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
-```
-
-Test the build artifact directly from the command line (not from VS) before declaring it working.
-
-**Phase to address:**
-Phase 1 (Foundation) — set the manifest level before writing any privileged code. Test outside the IDE.
-
----
-
-### Pitfall 12: WSUS Managed API Deprioritized Because It "Works on Dev"
-
-**What goes wrong:**
-On a developer's workstation where the WSUS role is installed alongside the WSUS management console, the `Microsoft.UpdateServices.Administration.dll` may actually be loadable under .NET Framework compatibility shims or because the dev machine happens to have all dependencies in the GAC. This leads to "it works here" confidence that collapses when deployed to a production Windows Server 2019 running the newer WinSxS version of the assembly.
+Each of the 6 themes must define every key used anywhere in the application. A theme that is missing even one key produces invisible or garbled UI in exactly that element.
 
 **Why it happens:**
-Dev machines accumulate years of installed software, SDK compatibility layers, and GAC entries that production servers don't have. The runtime assembly resolution path on a clean Windows Server 2019 deployment is completely different.
+The non-default theme dictionaries are created by copying the default dark theme and modifying colors. If a new resource key is later added to `DarkTheme.xaml` for a new feature, it is easy to forget to add it to all 5 other themes.
 
 **How to avoid:**
-Treat Pitfall 1 as absolute. Do not attempt to use the managed WSUS API regardless of whether it appears to work locally. The production failure mode is guaranteed and the workaround (direct SQL + process invocation) is already proven in v3.8.x.
+Establish a canonical list of all resource keys in a comment block at the top of each theme file — all 6 files must have the same list. Add a startup assertion in debug builds:
+
+```csharp
+#if DEBUG
+private void ValidateThemeKeys()
+{
+    var requiredKeys = new[] {
+        "BgDark", "BgSidebar", "BgCard", "BgInput", "Border",
+        "Blue", "Green", "Orange", "Red",
+        "Text1", "Text2", "Text3",
+        "ColorGreen", "ColorOrange", "ColorRed", "ColorBlue", "ColorText2",
+        "BtnPrimaryBg", "BtnPrimaryHover", "BtnDangerBg", "BtnDangerHover",
+        "NavActiveBackground", "NavActiveAccent", "NavActiveForeground",
+        "TextError"
+    };
+    foreach (var key in requiredKeys)
+    {
+        if (Application.Current.TryFindResource(key) == null)
+            throw new InvalidOperationException($"Theme is missing required resource key: {key}");
+    }
+}
+#endif
+```
+
+**Warning signs:**
+- After applying a theme, a control's text becomes invisible (black on dark background)
+- A panel's background disappears and shows the window chrome color instead
+- Debug-build assertion fires immediately on launch with the non-default theme
 
 **Phase to address:**
-Phase 1 (Foundation) — document the constraint explicitly and add a CI check that the project has no reference to `Microsoft.UpdateServices.Administration`.
+Phase 1 (Infrastructure) — define the canonical key list before creating the first non-default theme.
+
+---
+
+### Pitfall 10: ComboBox and TextBox Native Controls Use System Colors
+
+**What goes wrong:**
+WPF's built-in `ComboBox` and `TextBox` controls render parts of themselves using system colors, not application resources. Specifically:
+- `ComboBox` dropdown popup background uses `SystemColors.Window` (white on Windows with light system theme)
+- `TextBox` selection highlight uses `SystemColors.Highlight`
+- `ComboBox` item hover background uses `SystemColors.HighlightBrush`
+- Scrollbar inside `ComboBox` dropdown uses system scrollbar colors
+
+The current `SettingsDialog.xaml` and `MainWindow.xaml` have `ComboBox` and `TextBox` controls with background/foreground manually set to the dark theme resources. These may partially work for the custom background, but the popup and selection rendering will diverge from the custom theme.
+
+**How to avoid:**
+Override the default `ComboBox` and `TextBox` `ControlTemplate` in `Base.xaml` with custom templates that use `{DynamicResource ...}` for all visual elements, including popup background, item hover, and selection highlight. This is more work than setting a few properties but is the only reliable way to achieve full theme coverage on these controls.
+
+For the 6-theme scope of this milestone, a simpler acceptable mitigation is to add implicit styles for ComboBox and TextBox in `Base.xaml` that set the most common divergent properties:
+```xml
+<Style TargetType="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Text1}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+</Style>
+```
+This will not fully theme the popup but prevents the most jarring color conflicts.
+
+**Warning signs:**
+- With a light theme active, ComboBox dropdown popup is light (matching system) but ComboBox header is themed dark
+- ComboBox selected item text color does not match the theme's Text1
+- TextBox selection color is Windows blue on a custom dark theme
+
+**Phase to address:**
+Phase 2 (Theme Implementation) — full ComboBox/TextBox template override may be deferred to a later milestone if the simplified implicit style approach is acceptable.
 
 ---
 
@@ -329,13 +371,12 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `Dispatcher.Invoke` for UI updates | Works immediately | Signals wrong threading architecture; becomes unmaintainable | Never — use `IProgress<T>` or data binding instead |
-| `async void` without try/catch wrapper | Less boilerplate | Silent exception swallowing, app crashes with no trace | Never in operation code; only allowed as a thin dispatcher to a task method |
-| Hardcoded SQL command timeout (30s default) | No extra lines | Maintenance operations timeout on large databases | Never — always set explicitly |
-| Using `ServiceController.Status` without `Refresh()` | Simpler code | Returns stale status, shows wrong service state in UI | Never — always refresh before reading |
-| Single-threaded operation execution (blocking UI) | Simpler code path | UI freezes, users think app is broken, double-click triggers duplicate operations | Never for operations > 100ms |
-| Loading WSUS API DLL with `Assembly.LoadFrom()` | Access to high-level API | Breaks on clean server deployment; unsupportable | Never |
-| Copying edge-case logic from PS version "later" | Faster initial build | Edge cases surface in production on real WSUS databases | Never — port edge cases in the same phase as the feature |
+| Leave some `StaticResource` brush references unconverted | Fewer changes, faster first theme | Those elements permanently locked to initial theme color; subtle bugs accumulate | Never — always convert all brush/color references |
+| Skip the Base.xaml / Colors split; put everything in one file per theme | Simpler file structure | Every theme file must duplicate all structural styles; maintenance burden multiplies by 6 | Never — structural duplication is technical debt from day one |
+| Keep hardcoded hex values in ControlTemplate triggers "for now" | Avoid refactoring template internals | Active nav state uses wrong color in non-default themes | Never — these are the most visible UI elements |
+| Apply theme via `foreach` resource update instead of dictionary swap | Avoids clear-and-replace complexity | Leaks stale entries; resource lookup gets slower over time | Never |
+| Validate theme key completeness only manually | Faster development | Missing keys produce invisible text silently in production | Never — add debug-build assertion |
+| Compute ViewModel brush colors from hardcoded constants | No ThemeService dependency | Dashboard status indicators are permanently dark-theme colors | Never — ViewModel brushes must use `TryFindResource` |
 
 ---
 
@@ -343,14 +384,11 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| SQL Server Express (SUSDB) | Using default 30s `CommandTimeout` for maintenance | Set `CommandTimeout = 0` for all index rebuild, shrink, stored procedure calls |
-| SQL Server Express (SUSDB) | Forgetting `TrustServerCertificate=true` for `localhost\SQLEXPRESS` | Always include in connection string; v3.8.11 fixed this after production failures |
-| Windows Services (`ServiceController`) | Reading `Status` from cached instance | Call `sc.Refresh()` or instantiate fresh `ServiceController` before every status read |
-| External processes (`wsusutil`, `sqlcmd`) | Synchronous stdout read while process is running | Use `BeginOutputReadLine()` + `BeginErrorReadLine()` immediately after `Start()` |
-| External processes | Not calling `BeginOutputReadLine()` at all | Process output hangs in buffer; `WaitForExit` never returns |
-| Windows Firewall (via NetFW COM or `netsh`) | COM interop for firewall on .NET 9 | Use `Process.Start("netsh", ...)` with captured output; proven reliable in v3.8.x |
-| Scheduled Tasks | Using `Microsoft.Win32.TaskScheduler` NuGet without testing on Server 2019 | TaskScheduler library is well-tested on Server 2019; verify credential prompts work with domain accounts |
-| WSUS content verification | Calling `wsusutil reset` without async output capture | Long-running; must use async process pattern or app appears to hang |
+| `Application.Current.Resources.MergedDictionaries` | Appending a new dictionary instead of replacing index 1 | Always swap by index: `MergedDictionaries[1] = newDict` where index 0 is Base.xaml and index 1 is the current color theme |
+| `ThemeService` + `ISettingsService` | Saving theme name before validating the theme dictionary loads without errors | Load and validate the dictionary before persisting; on failure, keep existing theme and show error |
+| Settings JSON + Theme | Reading theme name in ViewModel init rather than App.xaml.cs `OnStartup` | Load and apply theme in `OnStartup` before first window creation to prevent launch flash |
+| `TryFindResource` in ViewModel | Calling `TryFindResource` during ViewModel initialization before `App.xaml.cs` finishes loading resources | Call `TryFindResource` only after startup, or subscribe to `ThemeChanged` event and refresh on each change |
+| Live preview + Cancel | Not capturing `originalTheme` before opening Settings dialog | Always snapshot current theme on dialog open; revert on Cancel without saving to JSON |
 
 ---
 
@@ -358,23 +396,9 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Dashboard polling on UI thread | UI freezes every 30 seconds during refresh | All DB queries run on background thread; only property binding updates UI | First time a DB query takes > 200ms |
-| Unbatched `spDeleteUpdate` calls | SQL transaction log fills, operations fail or take hours | Batch at 100 updates per call (proven in v3.8.x) | When declined update count > ~200 |
-| `IProgress.Report()` called per-row in SQL loops | UI lags during bulk operations, message queue floods | Throttle to ~10 reports/sec; report per-batch not per-row | When processing > 1,000 updates |
-| `ServiceController` instance held open across operations | Stale status displayed in dashboard | Create fresh instance per status check; dispose in `using` | When services are restarted between checks |
-| Export copy without buffering | Slow file transfer for large WSUS content directories | Use `File.Copy` or buffered stream copy, not byte-by-byte | When exporting > 1GB content |
-
----
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Path interpolation in SQL strings | SQL injection via WSUS content path or server name | Use `SqlParameter` for all variable SQL; never interpolate paths |
-| Path traversal in export/import | Attacker-controlled path escapes to system dirs | Validate all paths with `Path.GetFullPath()` + prefix check before use |
-| Running EXE without `requireAdministrator` manifest | Operations silently fail as standard user; confusing UX | Embed manifest from project creation |
-| Logging credentials or connection strings | Log file captures SQL Server auth | Never log connection strings; redact passwords from any logged CLI args |
-| Trusting file names from import media | USB-sourced filenames could contain path traversal | Normalize all import source paths with `Path.GetFullPath()` and validate against allowed base path |
+| Too many `DynamicResource` references causing UI thread overhead | Slight lag on window resize, animation stutter | `DynamicResource` overhead is per-element, not per-reference; 200+ controls with `DynamicResource` on 4-5 properties is still negligible for a single-window admin tool | Not a real risk at this app's scale — ignore |
+| Creating new `ResourceDictionary` on every theme switch instead of caching | Memory pressure if user switches themes repeatedly | Pre-instantiate one `ResourceDictionary` per theme on startup and cache them; swap by reference not by `Source` URI | Only visible if user switches themes 100+ times in a session |
+| Calling `OnPropertyChanged` on every ViewModel property on theme change | Extra re-render cycle | Only call `OnPropertyChanged` for brush properties computed via `TryFindResource`; the rest update automatically via `DynamicResource` bindings | Minimal impact, but cleaner to be precise |
 
 ---
 
@@ -382,24 +406,25 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| No visual feedback during long operations | Admins double-click, launching duplicate operations | Disable all operation buttons immediately when operation starts; show progress in log panel |
-| Dialogs that block without explanation | Admin doesn't know if app is working or frozen | Show operation name and elapsed time in status bar; keep log panel auto-scrolling |
-| Dialogs shown after switching to operation view | User sees blank operation panel before dialog | Show dialog first (before switching views); only switch view on confirmation |
-| No cancel capability for long operations | Admins must kill the process to stop an errant operation | Every operation accepts `CancellationToken`; Cancel button always visible and functional |
-| Error messages with stack traces | Non-technical admin sees exception gibberish | Wrap all operations with user-friendly error dialog; log full details to file |
-| Buttons re-enabled but operation still running | User triggers second operation over the first | Reset `IsOperationRunning` flag and re-enable buttons only in the `finally` block |
+| Theme preview changes entire UI immediately | Disorienting if user is mid-operation (log panel scrolling, progress visible) | Disable preview during active operations; show a tooltip "Changes preview when no operation is running" or use a static swatch preview inside the dialog instead |
+| Theme names like "Serenity" mean nothing until seen | User must click each theme to understand it | Show a small color-swatch palette next to each theme name in the picker; 3-5 color dots representative of bg/accent/text |
+| Light theme with dark-only icon assets | Icons designed for dark backgrounds look wrong on light themes | All 6 icons in DarkTheme.xaml are vector-based `SolidColorBrush` fills, not bitmaps, so they automatically inherit the theme's colors — verify this works; if any icon uses a hardcoded dark fill color, add it to the resource key list |
+| Insufficient contrast ratio in "lighter" themes | Text unreadable for users with vision impairments | Target minimum 4.5:1 contrast ratio (WCAG 2.1 AA) for all text/background pairs; tool: https://webaim.org/resources/contrastchecker/ |
+| Settings dialog changes theme but user does not notice app-wide change | Disorientation — user expects preview only inside dialog | Add a brief note in the Settings dialog: "Theme applies to the entire application immediately." |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Health Check:** Appears to pass — verify it actually checks SQL connection, WSUS service, IIS app pool, firewall ports 8530/8531, AND content directory permissions. Missing any one check is partial, not complete.
-- [ ] **Deep Cleanup:** Shows "cleanup complete" — verify the 6-step sequence runs in order: WSUS built-in cleanup → supersession record removal (declined) → supersession record removal (superseded, batched) → `spDeleteUpdate` (batched, 100/call) → index rebuild → shrink. Each step is required.
-- [ ] **Export/Import:** Files copy successfully — verify the content directory structure is preserved exactly (`C:\WSUS\` root, not `C:\WSUS\wsuscontent\`). Wrong root causes silent WSUS content mismatch.
-- [ ] **Service Start:** Returns success — verify SQL Server starts before WSUS (dependency order). Starting WSUS before SQL fails silently on some configurations.
-- [ ] **Cancel:** Button click stops spinner — verify the underlying process is actually killed (`Process.Kill()`), not just that the UI returns to idle while the process runs in the background.
-- [ ] **Settings Persist:** Values save — verify settings survive application restart, not just session persistence in memory.
-- [ ] **Single-EXE:** Runs on dev machine — verify it runs on a clean Windows Server 2019 installation with no .NET SDK installed and with AV enabled.
+- [ ] **StaticResource migration:** All brush/color resources use `{DynamicResource ...}` — verify with grep for `StaticResource Bg`, `StaticResource Text`, `StaticResource Blue`, `StaticResource Green`, `StaticResource Red`, `StaticResource Border`, `StaticResource Orange`, `StaticResource Color` in all `.xaml` files
+- [ ] **Inline hex cleanup:** No raw `#RRGGBB` hex values in XAML `Setter.Value`, `Foreground=`, or `Background=` attributes — verify with grep for `#[0-9A-Fa-f]{6}` in `.xaml` files
+- [ ] **ViewModel brushes:** All `SolidColorBrush` properties in `MainViewModel.cs` call `GetBrush(key)` using `TryFindResource`, not `Color.FromRgb()` literals — verify all 15 occurrences in `MainViewModel.cs` are converted
+- [ ] **Cancel reverts:** Open Settings, select a different theme, click Cancel — app returns to previously saved theme immediately
+- [ ] **Persistence survives restart:** Select a non-default theme, save, close and relaunch the EXE — the non-default theme is active from the first frame (no flash)
+- [ ] **All 6 themes pass key validation:** Debug-build assertion fires zero times for all 6 theme dictionaries
+- [ ] **NavBtn active state themes:** Navigate to each panel while each theme is active — the left-border accent matches the theme's accent color, not the hardcoded `#58A6FF`
+- [ ] **Validation error text:** Trigger a validation error in InstallDialog while using a light theme — error text is readable (not red-on-light-red or invisible)
+- [ ] **Dashboard status bars:** Switch to a non-dark theme, force a dashboard refresh — ServicesBarColor and other bar colors update to the theme's color values, not the dark-theme hex constants
 
 ---
 
@@ -407,12 +432,11 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| WSUS API incompatibility discovered mid-build | HIGH | Rearchitect the WSUS-touching operations to use direct SQL + process invocation; roughly 1-2 weeks of rework |
-| Single-file AV blocking discovered in deployment | MEDIUM | Rebuild with `IncludeAllContentForSelfExtract`; requires publish pipeline change + re-test |
-| Async void exceptions swallowing errors | MEDIUM | Audit all event handlers and wrap in try/catch; add global `TaskScheduler.UnobservedTaskException` handler as backstop |
-| SQL timeout failures on large databases | LOW | Add `CommandTimeout = 0` to the specific failing command; targeted fix |
-| Edge cases missing from ported operations | HIGH | Re-audit PowerShell source for each affected operation; write regression tests before fixing |
-| Progress flooding causing UI lag | LOW | Add throttling wrapper to `IProgress.Report` call sites; minimal code change |
+| Realized mid-milestone that Base.xaml/Colors split was skipped | HIGH | All theme files must be restructured; all XAML referencing styles needs retesting; roughly 1-2 days of rework |
+| ViewModel brush hardcodes missed — dashboard bars wrong after shipping | LOW | Add `TryFindResource` helper to ViewModel, convert affected properties, issue patch release |
+| Missing resource key shipped in one theme (invisible text) | LOW | Add key to the missing theme dictionary; test all 6 themes in CI; patch release |
+| Cancel-reverts not working — users stuck with preview theme | MEDIUM | Add `originalTheme` capture to Settings dialog open; requires theme service wiring; no data loss |
+| StaticResource references missed in one dialog | LOW | Convert the missed references in that dialog; localized change; easily verifiable by grep |
 
 ---
 
@@ -420,40 +444,34 @@ Phase 1 (Foundation) — document the constraint explicitly and add a CI check t
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| WSUS managed API incompatibility | Phase 1 (Foundation) | CI check: no reference to `Microsoft.UpdateServices.Administration` |
-| Single-file AV blocking | Phase 1 (Build Setup) | Deploy to clean Server 2019 VM with AV enabled; EXE launches without errors |
-| Async void exception swallowing | Phase 1 (Foundation) | Code review gate: no `async void` without wrapping try/catch |
-| UI thread blocking | Phase 1 (Foundation) | No `Dispatcher.Invoke` in codebase; all operations tested with UI responsiveness check |
-| Rewrite missing edge cases | Phase 2+ (each feature) | Port Pester tests to xUnit before implementing each operation |
-| ServiceController caching | Phase 2 (Service Management) | Unit test: read status twice with a stop/start between; both values correct |
-| SQL command timeout | Phase 3 (Database Operations) | Code review gate: every `SqlCommand` has explicit `CommandTimeout` |
-| Progress flooding | Phase 3+ (operations) | Log output panel remains responsive during 5,000-update cleanup operation |
-| Process stdout deadlock | Phase 2 (any external process) | Integration test: `wsusutil check-health` runs to completion without hanging |
-| Fluent theme crashes | Phase 1 (UI Shell) | Custom resource dictionary; no `Application.ThemeMode` usage |
-| UAC manifest missing | Phase 1 (Foundation) | Run compiled EXE from command line as non-elevated user; UAC prompt appears |
-| WSUS API "works on dev" false confidence | Phase 1 (Foundation) | CI runs on clean Server 2019 agent, not dev machine |
+| StaticResource not updating on theme change | Phase 1 (Infrastructure and XAML Migration) | Grep for `StaticResource Bg/Text/Blue/etc` returns zero results |
+| Inline hardcoded hex in XAML | Phase 1 (Infrastructure and XAML Migration) | Grep for `#[0-9A-Fa-f]{6}` in `.xaml` returns zero results |
+| Hardcoded SolidColorBrush in ViewModel | Phase 1 (Infrastructure) | `MainViewModel.cs` contains no `Color.FromRgb` literals; all brushes use `TryFindResource` |
+| MergedDictionaries clear breaks styles | Phase 1 (Infrastructure) | Base.xaml and Colors split in place before first non-default theme is written |
+| BasedOn + DynamicResource limitation | Phase 1 (Infrastructure) | Color values in derived styles use `DynamicResource`; `BasedOn` attribute left as `StaticResource` |
+| Live preview cancel does not revert | Phase 2 (Theme Picker) | Manual test: open Settings, preview 3 themes, click Cancel — original theme restored |
+| Theme flash on launch | Phase 1 (Infrastructure) | Launch with each of 6 themes saved; no flash visible on startup |
+| Duplicate resource keys after split | Phase 1 (Infrastructure) | Build-time: no duplicate keys across Base.xaml and any Colors file |
+| Missing key in non-default theme | Phase 2 (Theme Implementation) | Debug-build assertion runs on CI for all 6 themes; zero assertion failures |
+| ComboBox/TextBox system color bleed | Phase 2 (Theme Implementation) | Visual review of Settings dialog with all 6 themes; no white-popup-on-dark mismatch |
 
 ---
 
 ## Sources
 
-- [dotnet/runtime#2300 — Single-file: Antivirus deletes extracted files](https://github.com/dotnet/runtime/issues/2300) — HIGH confidence (official .NET repo)
-- [dotnet/core#5736 — FileNotFoundException with WSUS API DLL in .NET Core](https://github.com/dotnet/core/issues/5736) — HIGH confidence (official .NET repo)
-- [Microsoft Q&A — How to use WSUS APIs with C# in Visual Studio](https://learn.microsoft.com/en-us/answers/questions/1298593/how-to-use-the-wsus-apis-with-c-in-visual-studio) — HIGH confidence (Microsoft official)
-- [Microsoft Q&A — UI freezing due to Task.Run activity in async/await](https://learn.microsoft.com/en-us/answers/questions/1366732/ui-freezing-due-to-task-run-activity-in-async-awai) — HIGH confidence (Microsoft official)
-- [dotnet/runtime#28583 — proc.StandardOutput.ReadAsync doesn't cancel if no output](https://github.com/dotnet/runtime/issues/28583) — HIGH confidence (official .NET repo)
-- [Process.StandardOutput docs — deadlock warning](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standardoutput) — HIGH confidence (Microsoft official)
-- [ServiceController docs — Refresh() requirement](https://learn.microsoft.com/en-us/dotnet/api/system.serviceprocess.servicecontroller) — HIGH confidence (Microsoft official)
-- [ServiceController wrong status GitHub issue #88105](https://github.com/dotnet/runtime/issues/88105) — HIGH confidence (official .NET repo)
-- [Rick Strahl — Async void event handling in WPF](https://weblog.west-wind.com/posts/2022/Apr/22/Async-and-Async-Void-Event-Handling-in-WPF) — MEDIUM confidence (verified against official docs)
-- [Brian Lagunas — Progress reporting WPF UI freeze](https://brianlagunas.com/does-reporting-progress-with-task-run-freeze-your-wpf-ui/) — MEDIUM confidence (WPF community expert, consistent with official rendering docs)
-- [.NET Single-file deployment overview](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview) — HIGH confidence (Microsoft official)
-- [WPF .NET 9 ThemeMode experimental status](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90) — HIGH confidence (Microsoft official)
-- [UAC manifest configuration](https://learn.microsoft.com/en-us/cpp/build/reference/manifestuac-embeds-uac-information-in-manifest) — HIGH confidence (Microsoft official)
-- [WSUS deprecation announcement — September 2024](https://techcommunity.microsoft.com/blog/windows-itpro-blog/windows-server-update-services-wsus-deprecation/4250436) — HIGH confidence (Microsoft official)
-- GA-WsusManager CLAUDE.md — 12 documented anti-patterns from production PowerShell version — HIGH confidence (first-party production experience)
+- [Merged resource dictionaries — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-merged-dictionaries) — HIGH confidence (Microsoft official)
+- [XAML resources overview — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-overview) — HIGH confidence (Microsoft official)
+- [Styles and templates — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/styles-templates-overview?view=netdesktop-9.0) — HIGH confidence (Microsoft official)
+- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — MEDIUM confidence (verified against official docs; StaticResource/DynamicResource behavior matches Microsoft docs exactly)
+- [WPF Merged Dictionary problems and solutions — Michael's Coding Spot](https://michaelscodingspot.com/wpf-merged-dictionary-problemsandsolutions/) — MEDIUM confidence (well-researched community article; BasedOn/DynamicResource limitation confirmed by multiple sources)
+- [WPF complete guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — MEDIUM confidence (runtime switching pattern is consistent with official docs)
+- [WPF How To Switching Themes at Runtime — Telerik UI for WPF](https://docs.telerik.com/devtools/wpf/styling-and-appearance/how-to/styling-apperance-themes-runtime) — MEDIUM confidence (commercial component vendor; pattern is standard WPF)
+- [StaticResource & DynamicResource in WPF — Medium](https://medium.com/@payton9609/staticresource-dynamicresource-in-wpf-c121b1a85574) — LOW confidence (WebSearch only; but describes confirmed WPF behavior)
+- [Color Contrast Accessibility WCAG 2025 Guide — AllAccessible](https://www.allaccessible.org/blog/color-contrast-accessibility-wcag-guide-2025) — MEDIUM confidence (WCAG 2.1 AA 4.5:1 ratio requirement is a W3C standard)
+- [Offering a Dark Mode Doesn't Satisfy WCAG Color Contrast — BOIA](https://www.boia.org/blog/offering-a-dark-mode-doesnt-satisfy-wcag-color-contrast-requirements) — MEDIUM confidence (accessibility testing organization)
+- GA-WsusManager codebase direct audit (`MainViewModel.cs`, `MainWindow.xaml`, `DarkTheme.xaml`, all dialog `.xaml` files) — HIGH confidence (first-party source)
 
 ---
 
-*Pitfalls research for: C#/WPF Windows Server WSUS admin tool rewrite*
-*Researched: 2026-02-19*
+*Pitfalls research for: WPF runtime theming — adding 6-theme system to existing C#/.NET 8 WPF admin app*
+*Researched: 2026-02-20*

@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** GA-WsusManager v4 (C# Rewrite)
-**Domain:** Windows Server WSUS Administration GUI Tool
-**Researched:** 2026-02-19
+**Project:** GA-WsusManager v4.3 — Runtime Theme Switching
+**Domain:** WPF/.NET 8 runtime theming system for an existing C# admin GUI application
+**Researched:** 2026-02-20
 **Confidence:** HIGH
 
 ## Executive Summary
 
-GA-WsusManager v4 is a production rewrite of a battle-tested PowerShell/WPF admin tool for managing Windows Server Update Services on Windows Server 2019+. The rewrite is motivated by the PowerShell version having reached practical complexity limits — 12 documented anti-patterns, recurring async/threading bugs, slow startup, and a fragile deployment model that requires Scripts/ and Modules/ folders alongside the EXE. The recommended approach is C# 13 with .NET 9 and WPF, using CommunityToolkit.Mvvm for MVVM source generation, Microsoft.Data.SqlClient for all SUSDB operations, and dotnet publish single-file self-contained EXE for deployment. This is not a close call — every alternative language (Rust, Go, Electron) has a blocking gap in either GUI maturity, Windows API access, or WSUS integration.
+The v4.3 milestone adds a 6-theme runtime color scheme switcher to an existing C#/.NET 8 WPF application. The research verdict is clear and low-risk: native WPF `ResourceDictionary` merging with `DynamicResource` bindings is the correct and complete solution. No new NuGet packages are required. No external theming library should be considered. The foundation already exists — `Themes/DarkTheme.xaml` establishes the right architectural pattern; the v4.3 work is a migration and extension of what is already there.
 
-The critical architectural constraint is that `Microsoft.UpdateServices.Administration.dll` — the WSUS managed API — is incompatible with .NET 5+. This is confirmed via GitHub dotnet/core issue #5736 and means all WSUS operations must go through direct SQL against SUSDB (for database maintenance) or `wsusutil.exe` via `Process.Start()` (for export, import, reset, and health check). This constraint is actually an advantage: the existing PowerShell v3.8.x codebase already operates this way and the approach is proven across 3+ years of production use. The rewrite reproduces this pattern natively in C#, removing the PowerShell subprocess layer for most operations.
+The single highest-risk item is the foundational prerequisite: the existing codebase uses `{StaticResource}` throughout all 8 XAML files (283 total references). `StaticResource` is resolved once at XAML parse time and never updates. Every color/brush reference must become `{DynamicResource}` before a runtime theme swap has any visible effect. Additionally, `DarkTheme.xaml` currently mixes color token definitions with structural style definitions — these must be split into two separate files (`DarkTheme.xaml` for color tokens only, `SharedStyles.xaml` for all style blocks) before any non-default theme can work correctly. These two foundational changes gate all other work and must be completed and verified before writing a single non-default theme file.
 
-The primary risk is a rewrite that achieves feature parity on the happy path but silently drops the accumulated edge-case behaviors embedded in the PowerShell codebase: SQL command timeouts set to unlimited for maintenance operations, batched deletion of 100 updates per call to prevent transaction log overflow, retry logic on DB shrink when backup is running, two-step supersession record removal before update purge, and the `wsusutil reset` fix for post-import air-gap content states. Each feature phase must begin with a review of the corresponding PowerShell source before writing C#. Port the Pester test suite to xUnit test-first to surface these edge cases before they are missed.
+The live-preview interaction pattern (apply theme immediately on swatch click, revert on Cancel) is the key differentiator identified in feature research and maps directly to Chrome's theme picker model. It is achievable with low implementation complexity once the infrastructure is correct, but requires careful Cancel-revert logic: the SettingsDialog must snapshot the active theme name on open and restore it if the user cancels. Six additional pitfalls are documented in PITFALLS.md — hardcoded hex values in XAML, hardcoded `SolidColorBrush` creation in `MainViewModel.cs`, `BasedOn` style inheritance constraints, theme flash on startup, missing keys in non-default themes, and ComboBox system-color bleed — each with concrete prevention strategies. None require significant rework if addressed in Phase 1.
 
 ---
 
@@ -19,245 +19,141 @@ The primary risk is a rewrite that achieves feature parity on the happy path but
 
 ### Recommended Stack
 
-C# (.NET 9) with WPF is the only stack that satisfies all hard constraints: native WPF GUI, full Windows API access, .NET COM interop path for future needs, and production-quality single-EXE deployment. All alternatives were evaluated and rejected. Use .NET 9 specifically (not .NET 8 LTS) because it ships the WPF Fluent dark theme natively — a core UI requirement of the rewrite. The Fluent `ThemeMode` API is experimental in .NET 9; implement dark theme via explicit ResourceDictionary entries instead.
+Runtime theme switching in WPF is entirely a native platform capability. The stack addition for v4.3 is zero new NuGet packages. The existing base stack (C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq) is unchanged. The mechanism is: (1) theme XAML files define color token resources with identical keys across all themes; (2) all color references in XAML views use `DynamicResource` instead of `StaticResource`; (3) a `ThemeService` class swaps the active theme dictionary in `Application.Current.Resources.MergedDictionaries` at runtime; (4) WPF's resource notification system automatically propagates the change to all bound elements.
 
-**Core technologies:**
-- **C# 13 / .NET 9**: Application language and runtime — only option with native WPF, COM interop, single-EXE deployment, and active Windows tooling ecosystem
-- **WPF (net9.0-windows)**: GUI framework — Microsoft-maintained, battle-tested, DPI-aware, Fluent theme capable; only full-featured Windows desktop GUI in the .NET ecosystem
-- **CommunityToolkit.Mvvm 8.4.0**: MVVM pattern with source generators — `[ObservableProperty]` and `[RelayCommand]` eliminate 80% of ViewModel boilerplate and prevent threading bugs via clean UI/logic separation
-- **Microsoft.Data.SqlClient 6.1.4**: SQL Server Express (SUSDB) connectivity — replaces every `Invoke-Sqlcmd` call; requires .NET 8+ target
-- **Serilog 4.x + Serilog.Sinks.File 6.x**: Structured file logging to `C:\WSUS\Logs\` with rolling files — replaces manual `Write-Log` pattern
-- **Microsoft.Extensions.Hosting 9.0.x + DependencyInjection 9.0.x**: DI container and application lifecycle — prevents closure-capture and scope bugs from PowerShell event handlers
-- **xUnit 2.9.x + Moq 4.20.x**: Unit testing and mocking — fast parallel execution with interface-based mocking for all services
+All external theming libraries (MaterialDesignInXamlToolkit, MahApps.Metro, HandyControl, FluentWPF/Wpf.Ui) were explicitly researched and rejected. They impose opinionated control libraries that conflict with the existing custom GA-AppLocker-style dark theme and would require full style rewrites — out of scope and high risk. External JSON theme files (loose files on disk) were also rejected: they break the single-EXE deployment constraint and have no design-time support. Embedded XAML files with `Resource` build action are the correct approach — they compile into the EXE assembly and work correctly with `PublishSingleFile=true`.
 
-**Critical version notes:**
-- `PublishTrimmed=true` must NOT be used — WPF is not trim-compatible, breaks XAML bindings silently
-- NativeAOT must NOT be used — WPF does not support it in .NET 9
-- Use `AppContext.BaseDirectory` not `Assembly.CodeBase` — throws in single-file apps
-- `System.Data.SqlClient` (old namespace) is deprecated; use `Microsoft.Data.SqlClient` exclusively
-- Known .NET 9 regression (dotnet/sdk#43461): some WPF assemblies may be missing from self-contained publish; pin to .NET 8 as fallback if this manifests and upgrade to .NET 10 when available
+**New components (zero new NuGet packages):**
+- `DynamicResource` bindings (WPF built-in) — allows resource values to propagate to controls at runtime; replaces existing `StaticResource` for all color/brush keys
+- `Themes/SharedStyles.xaml` (new XAML file) — structural styles extracted from `DarkTheme.xaml`; references color tokens via `{DynamicResource}`; merged permanently in `App.xaml`, never swapped
+- 5 additional `*Theme.xaml` files (new XAML files, `Resource` build action) — one file per additional color scheme; all defining the same 22 token keys (14 original + 8 new for hardcoded hex extraction)
+- `IThemeService` + `ThemeService` (new C# class in `WsusManager.App/Services/`) — encapsulates dictionary swap logic, maps theme name to XAML URI, tracks current theme, exposes `ThemeChanged` event
+- `SelectedTheme` property on `AppSettings` (string, default `"Default Dark"`) — persists selected theme via existing `ISettingsService` JSON path; no new persistence infrastructure needed
+
+**Version compatibility:** All mechanisms confirmed compatible with .NET 8 WPF and `PublishSingleFile=true`. Pack URI format `pack://application:,,,/AssemblyName;component/Themes/File.xaml` (or relative `new Uri("Themes/DarkTheme.xaml", UriKind.Relative)`) works correctly with single-file EXE publication — WPF resources are compiled into the assembly before bundling.
 
 ### Expected Features
 
-This is a rewrite of an existing production tool, not a greenfield product. "MVP" means feature parity with v3.8.12 so users can switch over. No net-new features are required for v4.0. WSUS was deprecated by Microsoft in September 2024, so the ecosystem is frozen — no new competitive tooling exists and the differentiation space for this tool's air-gap + single-server niche is uncontested.
+The feature research identified the MVP for a theme picker in a daily-use server admin tool. Light themes were explicitly identified as an anti-feature for this product — all 6 themes are dark-family (appropriate for server rooms and data center environments where the existing dark-is-table-stakes identity must be maintained).
 
-**Must have (v4.0 — parity with v3.8.12):**
-- Dashboard: service status (SQL/WSUS/IIS), DB size with 10GB limit warning, last sync time, auto-refresh (30s)
-- Health check + auto-repair diagnostics: SQL connectivity, WSUS service, IIS app pool, firewall ports 8530/8531, content directory permissions
-- Deep cleanup: 6-step pipeline (WSUS built-in cleanup, supersession record removal for declined, supersession removal for superseded in batches, spDeleteUpdate in batches of 100, index rebuild, DB shrink with retry)
-- Service management quick actions: start/stop SQL Server, WSUS, IIS without UI freeze
-- Online sync with profile selection (Full/Quick/Sync Only)
-- Air-gap export/import workflow: full + differential (days-based filter)
-- Database backup and restore
-- Scheduled task creation for unattended maintenance
-- WSUS + SQL Express installation wizard
-- Settings persistence to `%APPDATA%\WsusManager\settings.json`
-- Operation log panel with cancel button
-- Server mode toggle (Online vs Air-Gap) with context-aware UI
-- Admin privilege enforcement via UAC manifest at startup
-- Single-file EXE distribution (no Scripts/Modules folders required)
-- Dark theme, DPI-aware rendering
+**Must have (table stakes):**
+- 6 built-in themes — users expect shipped themes to pick from; planned: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
+- Theme applies to entire UI immediately — partial theming looks broken; requires DynamicResource migration throughout all 8 XAML files
+- Selected theme persists across restarts — lost preference is a regression; `SelectedTheme` field in `AppSettings`
+- Theme accessible from Settings dialog — configuration belongs in Settings; add an "Appearance" section
+- Visual swatches in the picker — text-only theme names do not help users choose; 3x2 swatch grid showing each theme's colors
+- Default theme on first run — `AppSettings.SelectedTheme` defaults to `"Default Dark"`
+- Human-readable theme names — display names, not file names
 
-**Should have (v4.1 — post-parity improvements):**
-- IIS app pool optimization (queue length 2000, ping disabled, no memory limit)
-- Compliance summary: client count, % patched, last seen from SUSDB
-- Export path pre-flight validation
-- Live terminal mode toggle (external PowerShell window for raw output)
+**Should have (differentiators):**
+- Live preview — theme applies before Save is clicked; Chrome-style instant feedback; revert on Cancel; this is the key UX differentiator
+- Active theme indicator in picker — checkmark or highlight border on the currently active swatch
+- Theme swap without restart — modern expectation; enabled by DynamicResource migration
 
-**Defer (v4.x+):**
-- Update approval workflow UI (native WSUS console is adequate; enormous scope)
-- Client force check-in trigger (requires WinRM/GPO; complex)
-- HTTPS/SSL configuration helper (infrequent need; CLI is adequate)
-- GPO deployment helper (low frequency; CLI is adequate)
+**Defer to v4.x:**
+- Smooth fade transition on theme switch — low value, medium complexity; skip if it adds risk
+- High-contrast accessibility theme — defer; requires accessibility audit
 
-**Anti-features — do not build:**
-- Multi-server management (scope explosion; run one instance per server)
-- Web-based/remote UI (wrong model for local admin tool)
-- Third-party application patching (different API surface entirely)
-- Real-time WSUS client monitoring (WSUS reporting is pull-based; "real-time" is misleading)
-- Cloud/Azure integration (contradicts air-gap use case)
+**Anti-features (explicitly not building):**
+- External theme file import — code injection vector; single-file EXE constraint; not building
+- Custom color editor — enormous scope; 6 well-designed themes cover the range; not building
+- Light themes — conflicts with product identity and server-room use case; not building
+- Per-section theming — visual incoherence; themes are only coherent when applied globally
 
 ### Architecture Approach
 
-The architecture follows strict three-layer MVVM: a WPF presentation layer (Views with zero code-behind logic), a service layer (all business logic behind interfaces, injected via DI), and an infrastructure layer (ProcessRunner for external processes, SqlHelper for SUSDB, FileSystemHelper). The main entry point uses `Microsoft.Extensions.Hosting` Generic Host for DI wiring and lifecycle management. All UI state lives in `MainViewModel` using CommunityToolkit.Mvvm observables; all long-running operations use `async Task` RelayCommands with `CancellationToken` threading, and a single `IsOperationRunning` flag that automatically disables all commands via `[NotifyCanExecuteChangedFor]`. The separation of `WsusManager.App` (WPF) from `WsusManager.Core` (no WPF dependency) is mandatory — it makes all service and ViewModel code unit-testable without a WPF runtime.
+The theming architecture follows a strict token/style split. Color token dictionaries (one per theme, swappable) define only the 22 brush and color resources. The `SharedStyles.xaml` dictionary (permanent, never swapped) defines all structural styles — `NavBtn`, `BtnGreen`, `BtnRed`, `LogTextBox`, custom `ProgressBar` template, `ScrollBar` style, etc. — referencing color tokens via `{DynamicResource}`. This split is the foundational architectural requirement: keeping styles in the swappable dictionary destroys and recreates them on every theme change, producing visual flicker and style loss on affected controls.
+
+The `ThemeService` is a UI-layer singleton registered in `Program.cs`. It lives in `WsusManager.App/Services/`, not `WsusManager.Core`, because it has a direct dependency on `Application.Current.Resources` (a WPF runtime object). The `MainViewModel` and `SettingsDialog` receive `IThemeService` via constructor injection. Theme switching is always synchronous and always called on the UI thread — `MergedDictionaries` manipulation is not thread-safe.
 
 **Major components:**
-1. `WsusManager.App` (WPF) — Presentation: MainWindow.xaml, MainViewModel, dialog ViewModels/Views, DI host wiring in Program.cs
-2. `WsusManager.Core` — Business logic: IWsusService (operations, sync, cleanup), IDatabaseService (SQL maintenance), IHealthService (diagnostics, auto-repair), IWindowsServiceManager (service start/stop/status), IFirewallService (netsh rules), ISettingsService (JSON persistence), ILogService (Serilog wrapper)
-3. Infrastructure — Low-level: ProcessRunner (async process execution with stdout/stderr capture), SqlHelper (connection factory, query helpers, sysadmin check), FileSystemHelper (path validation)
-4. `WsusManager.Tests` (xUnit) — Unit tests for all Core services and ViewModels using mocked interfaces
-5. `WsusManager.ApiShim` (optional, .NET Framework 4.8) — Only if WSUS COM API operations prove necessary; communicates via JSON stdin/stdout
+1. `Themes/SharedStyles.xaml` (permanent, index 0 in `MergedDictionaries`) — all structural styles; references color tokens via `{DynamicResource}`; never touched at runtime
+2. `Themes/*Theme.xaml` (6 swappable color files, index 1 in `MergedDictionaries`) — 22 token keys each; swapped at runtime by `ThemeService`
+3. `ThemeService` — holds the URI map for all 6 themes; executes the `MergedDictionaries[1]` swap; exposes `CurrentTheme`, `AvailableThemes`, and `ThemeChanged` event
+4. `SettingsDialog` (extended) — captures `_originalTheme` on open; calls `ApplyTheme` on swatch click for live preview; reverts on Cancel via `_themeService.ApplyTheme(_originalTheme)`; passes selected theme in `Result`
+5. `MainViewModel` (extended) — injects `IThemeService`; calls `ApplyTheme` in `ApplySettings()` during startup; `GetBrush(key)` helper using `TryFindResource` replaces all `Color.FromRgb()` constants for dashboard card colors; subscribes to `ThemeChanged` to refresh brush properties
 
-**Build order dependency (non-negotiable):**
-1. Infrastructure + Models (no dependencies)
-2. SettingsService + LogService (needed by all services)
-3. WindowsServiceManager + FirewallService + DatabaseService
-4. WsusService + HealthService
-5. MainViewModel + DI host
-6. MainWindow XAML + dashboard views
-7. Dialog ViewModels + Views
+**Data flows:**
+- Swatch click → `SettingsDialog.OnThemeSelected` → `_themeService.ApplyTheme(name)` → `MergedDictionaries[1]` swapped → WPF propagates to all `DynamicResource` bindings automatically
+- Cancel → `_themeService.ApplyTheme(_originalTheme)` → reverts to pre-dialog state; does not save to JSON
+- Save → `Result.SelectedTheme` returned → `_settingsService.SaveAsync` → JSON persisted; theme already applied, no second call needed
+- Startup → `App.xaml.cs` `OnStartup()` → `_settingsService.Load()` → `_themeService.ApplyTheme(settings.SelectedTheme)` → before `MainWindow.Show()` (prevents theme flash)
 
 ### Critical Pitfalls
 
-1. **WSUS managed API incompatible with .NET 9** — Do not reference `Microsoft.UpdateServices.Administration.dll`. Use direct SQL against SUSDB for all database operations and `ProcessRunner` wrapping `wsusutil.exe` for export/import/reset/checkhealth. Add a CI check that the project has zero references to this assembly. Treat this as absolute — it works on some dev machines (GAC entries) but fails on every clean Server 2019 deployment.
+1. **StaticResource references do not update on theme swap** — All 283 `{StaticResource}` color references across 8 XAML files must become `{DynamicResource}`. Style key references (`{StaticResource NavBtn}`) must stay as `StaticResource`. Verify completion with grep for `StaticResource Bg`, `StaticResource Text`, `StaticResource Blue`, etc. — zero results means complete.
 
-2. **Single-file EXE extraction blocked by antivirus on air-gapped servers** — Use `IncludeAllContentForSelfExtract=true` in the publish profile. This embeds all content in the EXE rather than extracting to `%TEMP%\.net\`, which antivirus heuristics treat as a dropper. Validate the published EXE on a clean Windows Server 2019 VM with AV enabled before declaring the deployment model functional.
+2. **Inline hardcoded hex colors in XAML bypass the theming system** — `MainWindow.xaml` DataTrigger setters hardcode `#21262D`, `#58A6FF`, `#E6EDF3`. Multiple dialogs hardcode `#F85149`. `DarkTheme.xaml` ControlTemplate triggers hardcode `#238636`, `#2EA043`, `#DA3633`. All must be extracted to 8 new named resource keys added to all theme files: `NavActiveBackground`, `NavActiveAccent`, `NavActiveForeground`, `TextError`, `BtnPrimaryBg`, `BtnPrimaryHover`, `BtnDangerBg`, `BtnDangerHover`.
 
-3. **Async void event handlers silently swallow exceptions** — Every `async void` WPF event handler must wrap its body in try/catch that routes to a centralized error handler. All actual operation logic lives in `async Task` methods, never in `async void` handlers directly. Use `RelayCommand` from CommunityToolkit.Mvvm — it enforces this pattern automatically.
+3. **Hardcoded SolidColorBrush in MainViewModel bypasses theming** — `MainViewModel.cs` creates brushes via `Color.FromRgb()` literals for dashboard card status bars and connection dot. These must be replaced with a `GetBrush(key)` helper using `Application.Current.TryFindResource(key)`. The `ThemeService` needs a `ThemeChanged` event so the ViewModel refreshes brush `ObservableProperty` values when the theme swaps.
 
-4. **Rewrite silently drops accumulated edge-case behaviors** — Before writing any C# operation, read the corresponding PowerShell module function in full including catch blocks. Port the Pester tests to xUnit test-first. Critical behaviors that must be explicitly preserved: SQL `CommandTimeout = 0` for maintenance operations (default 30s will time out), batch size of 100 for `spDeleteUpdate`, two-step supersession removal, DB shrink retry (3 attempts, 30s delay when backup is running), and `BeginOutputReadLine()` called immediately after `Process.Start()`.
+4. **Styles in the swappable dictionary cause flash and style loss** — `DarkTheme.xaml` currently mixes color tokens and structural styles. Clearing the dictionary to swap themes destroys the structural styles. Must split into `SharedStyles.xaml` (permanent) and color-only theme files before implementing any non-default theme. This is the foundational architectural change that gates everything else.
 
-5. **UI thread blocking from "looks async" code** — Code after an `await` resumes on the UI thread. Any blocking call (ServiceController.WaitForStatus, file I/O, SQL connection establishment) after an `await` in a command handler freezes the UI. Keep all blocking work inside `Task.Run()`. Never use `Dispatcher.Invoke` — its presence in code signals an architectural mistake. Use `IProgress<T>` for log-line reporting from background threads.
+5. **Live preview Cancel does not revert without an explicit snapshot** — SettingsDialog must capture `_originalTheme = _themeService.CurrentTheme` on open, before any swatch is clicked. Cancel handler must call `_themeService.ApplyTheme(_originalTheme)`. Without this, Cancel leaves the app in the last-previewed theme state until the next restart.
 
 ---
 
 ## Implications for Roadmap
 
-### Phase 1: Foundation and Build Infrastructure
+Based on research, the work separates naturally into two phases with a strict dependency order. Phase 1 must be complete and verified before Phase 2 begins — writing theme files before the infrastructure is correct produces themes that appear to do nothing.
 
-**Rationale:** Every subsequent phase depends on this. The WSUS API incompatibility constraint, the UAC manifest, the single-file publish configuration, the dark theme approach, and the async operation pattern must all be established before any feature code is written. Getting these wrong late is expensive.
+### Phase 1: Infrastructure and XAML Migration
 
-**Delivers:** Compilable solution structure with correct csproj configuration, DI host wiring, ProcessRunner with async output capture, SqlHelper with connection pooling, the `RunOperationAsync` wrapper pattern, UAC manifest, dark ResourceDictionary theme, single-file publish pipeline, and CI/CD that validates the EXE on a clean Windows Server environment.
+**Rationale:** All theming work is blocked until the foundational plumbing is correct. The `StaticResource` migration and the token/style split are prerequisites for everything in Phase 2. This phase resolves Pitfalls 1, 2, 3, 4, 7, and 8 — the infrastructure-layer pitfalls — before any visible feature work begins. The app should render identically to today after Phase 1 completes; the only difference is that the architecture now supports runtime theme switching.
 
-**Addresses from FEATURES.md:** Single-file EXE deployment, admin privilege enforcement, dark theme, DPI awareness
+**Delivers:** A working single-theme app with correct theming infrastructure. `DarkTheme.xaml` contains only color tokens. `SharedStyles.xaml` contains all styles referencing color tokens via `DynamicResource`. All 8 XAML files use `DynamicResource` for color/brush references. `ThemeService` is registered and functional. `AppSettings` has `SelectedTheme`. Startup applies saved theme before window shows. `MainViewModel` retrieves brush colors from the resource dictionary, not from hardcoded constants.
 
-**Avoids from PITFALLS.md:**
-- Pitfall 1 (WSUS API incompatibility): CI check blocks any reference to `Microsoft.UpdateServices.Administration`
-- Pitfall 2 (AV blocking single-file EXE): `IncludeAllContentForSelfExtract=true` in publish profile
-- Pitfall 3 (async void exceptions): `RunOperationAsync` wrapper established before any operation code
-- Pitfall 4 (UI thread blocking): pattern enforced in code review gate
-- Pitfall 10 (Fluent theme crashes): explicit ResourceDictionary, no `Application.ThemeMode`
-- Pitfall 11 (UAC manifest missing): manifest embedded from project creation
+**Work items:**
+- Split `DarkTheme.xaml` into `SharedStyles.xaml` (styles) + `DarkTheme.xaml` (14 color tokens only); update `App.xaml` to merge both at indices 0 and 1
+- Extract 8 hardcoded hex values from XAML setters and ControlTemplate triggers to new named resource keys; add all 8 to `DarkTheme.xaml`
+- Migrate all 283 `{StaticResource}` color references to `{DynamicResource}` across 8 XAML files; keep style name references as `{StaticResource}`
+- Implement `IThemeService` and `ThemeService` with URI map for all 6 themes and a `ThemeChanged` event; register as singleton in `Program.cs`
+- Add `SelectedTheme` property to `AppSettings` (default: `"Default Dark"`)
+- Apply saved theme in `App.xaml.cs` `OnStartup()` before `MainWindow` is created
+- Replace `Color.FromRgb()` literals in `MainViewModel.cs` with `GetBrush(key)` via `TryFindResource`; subscribe to `ThemeChanged` to refresh brush `ObservableProperty` values
+- Add debug-build key validation assertion covering all 22 required keys
 
-**Research flag:** Standard patterns — no additional research needed. WPF/DI bootstrapping is well-documented.
+**Avoids:** Pitfalls 1 (StaticResource), 2 (hardcoded hex), 3 (ViewModel brushes), 4 (styles in swappable dict), 7 (startup flash), 8 (duplicate keys after split)
 
----
-
-### Phase 2: Application Shell and Dashboard
-
-**Rationale:** The dashboard is the daily-use surface. It requires all the service integrations that every subsequent operation phase also needs: WindowsServiceManager, DatabaseService for size queries, and the PeriodicTimer refresh pattern. Building this second validates that DI, data binding, and background refresh work correctly before adding operation complexity.
-
-**Delivers:** MainWindow XAML with nav structure, MainViewModel with observable dashboard properties, 30-second PeriodicTimer refresh (no Dispatcher.Invoke), service status cards (SQL/WSUS/IIS), DB size with 10GB limit warning, last sync display, settings persistence, server mode toggle (Online/Air-Gap), operation log panel stub.
-
-**Uses from STACK.md:** CommunityToolkit.Mvvm observables, `System.ServiceProcess.ServiceController` with `sc.Refresh()` pattern, `Microsoft.Data.SqlClient` for size query, `PeriodicTimer` for refresh
-
-**Implements from ARCHITECTURE.md:** Pattern 5 (Dashboard State via Polling + Dispatcher-Free Updates), IWindowsServiceManager, IDatabaseService (size/sync queries only), ISettingsService
-
-**Avoids from PITFALLS.md:**
-- Pitfall 6 (ServiceController caching): `sc.Refresh()` or new instance per read established here
-- Pitfall 8 (progress flooding): dashboard refresh throttled to 30s, never per-row
-
-**Research flag:** Standard patterns. PeriodicTimer and ObservableProperty are well-documented.
+**Research flag:** Standard WPF patterns — well-documented mechanisms. No phase research needed.
 
 ---
 
-### Phase 3: Core Operations — Diagnostics and Service Management
+### Phase 2: Theme Files, Picker UI, and Live Preview
 
-**Rationale:** Health check + auto-repair is the most commonly used operation and validates the full operation execution pattern (async command, cancellation, progress reporting, IProgress, log panel output). Service management (start/stop SQL/WSUS/IIS) is a prerequisite for the repair flow and for the installation wizard.
+**Rationale:** Phase 1 establishes the correct infrastructure. Phase 2 delivers the visible feature: 5 additional theme color files and the Settings dialog picker with live preview. Writing theme files after the infrastructure is correct is purely mechanical — copy `DarkTheme.xaml`, change 22 color values, verify with the debug-build key assertion. The picker UI wires swatch clicks to an already-working `ThemeService`. Cancel revert is the trickiest implementation detail and is the primary risk in this phase.
 
-**Delivers:** Health check (SQL connectivity, WSUS service, IIS app pool, firewall 8530/8531, content directory permissions), auto-repair for detected failures, service start/stop quick actions, cancel button wired to CancellationTokenSource.
+**Delivers:** The complete v4.3 feature — 6 themes, Chrome-style live preview picker in Settings, active theme indicator, Cancel revert, and persistence across restarts.
 
-**Uses from STACK.md:** ProcessRunner (`netsh advfirewall`), ServiceController (Refresh pattern), `Microsoft.Data.SqlClient` (SQL connectivity test)
+**Work items:**
+- Create 5 additional theme files (`JustBlackTheme.xaml`, `SlateTheme.xaml`, `SerenityTheme.xaml`, `RoseTheme.xaml`, `ClassicBlueTheme.xaml`), each defining all 22 required keys; verify each with WCAG 2.1 AA contrast ratio check (4.5:1 minimum) using https://webaim.org/resources/contrastchecker/
+- Extend `SettingsDialog.xaml` with an "Appearance" section containing a 3x2 swatch grid; increase dialog height from 380px to ~500px; swatch colors are hardcoded in the picker XAML (presentational only — must show target theme while a different theme is active)
+- Update `SettingsDialog.xaml.cs` to inject `IThemeService`, capture `_originalTheme` on open, wire swatch click to `ApplyTheme` for live preview, call `ApplyTheme(_originalTheme)` on Cancel, include `SelectedTheme` in `Result`
+- Update `MainViewModel.cs` to inject `IThemeService`, call `ApplyTheme(settings.SelectedTheme)` in `ApplySettings()`
+- Add implicit `ComboBox` and `TextBox` styles to `SharedStyles.xaml` to mitigate system-color bleed in dropdown popups (simplified approach — full ControlTemplate override deferred if not needed)
+- Integration test all 4 scenarios: swatch click live preview, Cancel reverts, Save persists, restart restores
 
-**Implements from ARCHITECTURE.md:** Pattern 2 (Async Command Pattern with CancellationToken), IHealthService, IFirewallService, Pattern 3 (OperationResult)
+**Avoids:** Pitfalls 5 (BasedOn/DynamicResource — color values in derived styles use `DynamicResource`; `BasedOn` attribute remains `StaticResource`), 6 (Cancel revert with `_originalTheme` snapshot), 9 (missing keys — debug assertion from Phase 1 catches immediately), 10 (ComboBox system color — implicit style mitigation)
 
-**Avoids from PITFALLS.md:**
-- Pitfall 5 (rewrite drops edge cases): port Pester tests from `Tests/WsusAutoDetection.Tests.ps1` and `Tests/WsusHealth.Tests.ps1` to xUnit before implementing
-- Pitfall 9 (process stdout deadlock): ProcessRunner uses `BeginOutputReadLine()` + `BeginErrorReadLine()` established in Phase 1
-
-**Research flag:** Standard patterns for service management. Health check logic should be reviewed against PowerShell source before coding.
-
----
-
-### Phase 4: Database Operations — Deep Cleanup and Backup/Restore
-
-**Rationale:** Deep cleanup is the highest-complexity operation (6-step pipeline with batching, retry logic, and unlimited SQL timeouts). Building it as a dedicated phase allows full focus on the edge cases documented in PITFALLS.md. Database backup and restore are grouped here because they share SqlHelper and the same safety preconditions (sysadmin check).
-
-**Delivers:** Full 6-step deep cleanup pipeline (WSUS built-in cleanup, supersession removal for declined, batched supersession removal for superseded, batched spDeleteUpdate at 100/batch, index rebuild, DB shrink with 3-attempt retry), database backup (SUSDB backup via SQL), database restore, sysadmin permission check before all DB operations, before/after size reporting.
-
-**Uses from STACK.md:** `Microsoft.Data.SqlClient` with `CommandTimeout = 0` for maintenance, connection string `Data Source=localhost\SQLEXPRESS;Initial Catalog=SUSDB;Integrated Security=true;TrustServerCertificate=true`
-
-**Implements from ARCHITECTURE.md:** IDatabaseService (full implementation), Pattern 3 (OperationResult for DB failures vs programming errors), operation flow diagram for deep cleanup
-
-**Avoids from PITFALLS.md:**
-- Pitfall 5 (rewrite drops edge cases): port `Tests/WsusDatabase.Tests.ps1`, review `WsusDatabase.psm1` in full before implementing
-- Pitfall 7 (SQL command timeout): every `SqlCommand` in this phase has explicit `CommandTimeout`; code review gate enforced
-- Pitfall 8 (progress flooding): throttle to per-batch reporting, not per-update
-
-**Research flag:** Needs careful review of PowerShell source. The batching logic (100/call for spDeleteUpdate, 10k/call for supersession records), retry on shrink, and two-step supersession removal are not obvious from documentation and must be extracted from the existing codebase.
-
----
-
-### Phase 5: WSUS Operations — Sync, Export, and Import
-
-**Rationale:** Online sync (profile-based), air-gap export (full + differential), and import are grouped because they all flow through the same ProcessRunner + wsusutil.exe integration path. These are the operations most critical for GA-ASI's air-gap network use case.
-
-**Delivers:** Online sync with Full/Quick/Sync-Only profiles, export full (complete WSUS content mirror), export differential (days-based filter), import from USB source, content reset (`wsusutil reset`) for post-import air-gap state, server mode toggle that hides/shows relevant operations.
-
-**Uses from STACK.md:** ProcessRunner wrapping `wsusutil.exe` at `%ProgramFiles%\Update Services\Tools\wsusutil.exe`, `System.IO` for file copy operations with buffered streams
-
-**Implements from ARCHITECTURE.md:** IWsusService (sync, export, import operations), WSUS Administration Shim pattern (process-based isolation for wsusutil)
-
-**Avoids from PITFALLS.md:**
-- Pitfall 5 (edge cases): review `WsusExport.psm1` and `Invoke-WsusMonthlyMaintenance.ps1` in full; port export path validation and pre-flight checks
-- Pitfall 9 (process stdout deadlock): ProcessRunner pattern from Phase 1 handles this
-
-**Research flag:** Needs review of PowerShell source for export/import. Differential export behavior, path handling, and the content directory root (`C:\WSUS\`, not `C:\WSUS\wsuscontent\`) are non-obvious requirements.
-
----
-
-### Phase 6: WSUS Installation Wizard and Scheduled Tasks
-
-**Rationale:** The installation wizard is high complexity (multi-step, downloads SQL Express, configures WSUS, firewall, GPO path) but is only used once per server. Deferred until core operations are solid. Scheduled tasks are grouped here because they depend on the operational workflows established in Phases 3-5.
-
-**Delivers:** WSUS + SQL Express installation wizard (guided multi-step UI, path selection, SQL download check, WSUS role configuration, firewall setup), scheduled task creation for maintenance and sync operations, credential prompting for domain task execution.
-
-**Uses from STACK.md:** `Microsoft.Win32.TaskScheduler` NuGet or `ProcessRunner` + `schtasks.exe`, ProcessRunner for wsusutil and installation process execution
-
-**Implements from ARCHITECTURE.md:** Dialog ViewModel pattern per dialog (Install wizard dialog VM, Schedule dialog VM)
-
-**Avoids from PITFALLS.md:**
-- Pitfall 5 (edge cases): review `Install-WsusWithSqlExpress.ps1` in full before implementing; NonInteractive mode handling is critical to avoid dialog lockup
-
-**Research flag:** Scheduled task library (`Microsoft.Win32.TaskScheduler`) needs verification on Windows Server 2019 with domain credentials. If it proves problematic, fall back to `schtasks.exe` via ProcessRunner.
-
----
-
-### Phase 7: Polish, Testing, and Distribution
-
-**Rationale:** Final phase locks in quality. EXE validation tests, startup benchmarking, AV-on-server deployment validation, CI/CD pipeline with clean Server 2019 runner.
-
-**Delivers:** xUnit EXE validation tests (PE header, 64-bit, version info, startup benchmark), GitHub Actions workflow replacing PS2EXE step with `dotnet publish`, deployment validation on clean Windows Server 2019 VM with AV enabled, full test suite (service unit tests, ViewModel tests, integration tests), updated documentation.
-
-**Avoids from PITFALLS.md:**
-- Pitfall 2 (AV blocking): validated in this phase on real target environment
-- Pitfall 12 (WSUS API "works on dev" false confidence): CI runs on clean Server 2019 agent
-
-**Research flag:** Standard patterns. CI/CD pipeline changes are mechanical.
+**Research flag:** Standard WPF patterns — no phase research needed. Color palette selection for 5 non-default themes is a design decision, not a research question.
 
 ---
 
 ### Phase Ordering Rationale
 
-- **Infrastructure first (Phase 1):** The WSUS API incompatibility constraint, UAC manifest, and async operation pattern must be enforced before any feature code is written. Wrong decisions here contaminate every subsequent phase.
-- **Dashboard second (Phase 2):** Validates the DI wiring, data binding, and service integration before adding operation complexity. Provides the visible skeleton that all subsequent phases hang features onto.
-- **Operations in dependency order (Phases 3-6):** Architecture research confirmed the build order: service management underlies health check underlies database operations. Each phase depends on the prior phase's infrastructure.
-- **Installation wizard last (Phase 6):** High complexity, low frequency. Core operations must be solid before building the path that is used exactly once per server.
-- **Polish last (Phase 7):** Cannot validate deployment until the product is complete.
-
----
+- **Infrastructure before themes:** Writing beautiful themes before the `StaticResource` → `DynamicResource` migration produces themes that appear to do nothing. The migration must be verified complete (grep returns zero results) before any non-default theme is authored.
+- **Token/style split gates all theme files:** Adding a second theme without the split destroys the structural styles when the dictionary swaps. This is the most disorienting failure mode and hardest to debug after the fact. The split is the first task in Phase 1 for this reason.
+- **ViewModel brush migration belongs in Phase 1:** The `ThemeService` needs a `ThemeChanged` event for `MainViewModel` brush properties to work. If deferred to Phase 2, the dashboard card status bars will be wrong for all non-default themes when Phase 2 ships. No user should ever see partially-themed dashboard bars.
+- **5 additional theme files are the simplest part:** After the infrastructure is correct, writing a theme file is copy-paste-change-colors work. This is rightly the Phase 2 entry point, not the starting point.
+- **Cancel revert is the trickiest Phase 2 item:** The `_originalTheme` snapshot must be captured before the first swatch click, not after. Requires care but is not complex once the pattern is clear.
 
 ### Research Flags
 
-**Needs additional research or careful source review during planning:**
-- Phase 4 (Deep Cleanup): SQL batching logic, supersession removal order, and DB shrink retry must be extracted from PowerShell source `WsusDatabase.psm1` before writing specs
-- Phase 5 (Sync/Export/Import): Differential export behavior, wsusutil argument specifics, content directory root conventions
-- Phase 6 (Installation Wizard): `Microsoft.Win32.TaskScheduler` NuGet library compatibility on Server 2019 with domain credentials needs validation
+All implementation work follows well-documented WPF patterns. No phase requires a `/gsd:research-phase` call before implementation begins.
 
-**Standard patterns — skip research-phase:**
-- Phase 1 (Foundation): WPF DI bootstrapping and publish configuration are fully documented in official .NET docs
-- Phase 2 (Dashboard): ObservableProperty, PeriodicTimer, ServiceController patterns are canonical .NET
-- Phase 7 (Polish/CI): GitHub Actions dotnet publish pipeline is standard
+**Standard patterns — skip research phase for both phases:**
+- Phase 1: WPF `DynamicResource` behavior, `MergedDictionaries` manipulation, and `TryFindResource` are Microsoft-official APIs with official documentation. The split/migration work is mechanical.
+- Phase 2: Theme file authoring (color selection), swatch grid XAML layout, and `SettingsDialog` extension follow standard WPF patterns. The live preview + Cancel revert pattern is explicitly specified in the research.
 
 ---
 
@@ -265,56 +161,48 @@ The architecture follows strict three-layer MVVM: a WPF presentation layer (View
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All recommendations sourced from official Microsoft docs and verified NuGet package listings. .NET 9 WPF Fluent theme confirmed on Windows Server 2019 (build 1809). One known .NET 9 regression (dotnet/sdk#43461) tracked. |
-| Features | HIGH | Existing v3.8.12 codebase provides validated production feature set. Competitor landscape is MEDIUM (WSUS ecosystem thin/deprecated, few comparable tools). Feature priority matrix is judgment-based. |
-| Architecture | HIGH | WPF/MVVM/DI patterns are well-established. WSUS API incompatibility confirmed via official GitHub issue. Single-EXE publication known regression tracked. ProcessRunner pattern proven in existing codebase. |
-| Pitfalls | HIGH | Core pitfalls sourced from official .NET GitHub issues and Microsoft docs. Edge-case behaviors sourced from production PowerShell codebase (first-party). |
+| Stack | HIGH | Native WPF mechanisms verified against Microsoft official docs (updated 2024-10-24). Pack URI + `PublishSingleFile=true` compatibility confirmed. Zero new NuGet packages — no version uncertainty. |
+| Features | HIGH | Feature set derived from Chrome's picker model (documented reference), WCAG 2.1 AA accessibility standards, and direct codebase audit. Anti-features clearly justified with rationale. |
+| Architecture | HIGH | Token/style split pattern verified by multiple authoritative sources. `ThemeService` design follows established WPF singleton patterns. All 4 data flows traced (swatch click, Cancel, Save, startup). |
+| Pitfalls | HIGH | All 10 pitfalls grounded in WPF's documented resource system behavior or direct codebase audit of `MainViewModel.cs`, `MainWindow.xaml`, `DarkTheme.xaml`, and all dialog `.xaml` files. Prevention strategies are specific and verifiable with grep or debug assertions. |
 
-**Overall confidence: HIGH**
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **.NET 9 self-contained publish regression (dotnet/sdk#43461):** WPF assemblies may be missing from publish output. Mitigation is to pin to .NET 8 for first production release if the regression manifests. Track .NET 10 (Nov 2025, already available) as the upgrade path. Validate the published EXE on a clean Server 2019 VM in Phase 7 before any release decision.
+- **Color palette design for 5 non-default themes** — The research specifies the theme names (Just Black, Slate, Serenity, Rose, Classic Blue) and the required key structure (22 keys) but does not specify exact hex color values. Color selection is a design decision, not a research question. Apply WCAG 2.1 AA contrast ratio (4.5:1 minimum) as the objective constraint. Use the WebAIM contrast checker (https://webaim.org/resources/contrastchecker/) during Phase 2 theme authoring.
 
-- **`Application.ThemeMode` experimental status:** The WPF Fluent dark theme API is experimental in .NET 9 with known threading crashes on system theme changes. Mitigated by using explicit ResourceDictionary dark palette instead. Re-evaluate for .NET 10 which stabilizes the API.
+- **ThemeChanged event design** — The research identifies that `MainViewModel.cs` brush `ObservableProperty` values must refresh when the theme changes, and that `ThemeService` needs a `ThemeChanged` event for this. The exact event signature and subscription pattern is left to Phase 1 implementation. Options: standard C# `event Action<string> ThemeChanged` on the service, or a messenger pattern via `CommunityToolkit.Mvvm.Messaging` (already in the project). Either approach is valid — resolve during Phase 1 implementation.
 
-- **WsusApiShim necessity:** It is unclear from research whether auto-approval with granular classification control requires the WSUS COM API or whether direct SQL + wsusutil can achieve the same result. The v3.8.x codebase uses `MaxAutoApproveCount = 200` and `Definition Updates` auto-approval via PowerShell COM. If the C# implementation cannot replicate this via SQL alone, the optional WsusApiShim (.NET Framework 4.8 helper process) must be built. Assess in Phase 5.
-
-- **Scheduled task credential handling:** The `Microsoft.Win32.TaskScheduler` NuGet library is recommended over `schtasks.exe` for type safety, but has not been validated on Windows Server 2019 with domain credentials in the context of this project. Validate early in Phase 6 with a fallback to `schtasks.exe` via ProcessRunner.
+- **ComboBox/TextBox full ControlTemplate override** — The research recommends an implicit style approach as acceptable mitigation for Phase 2, with full `ControlTemplate` override deferred. If visual review during Phase 2 integration testing shows unacceptable system-color bleed in ComboBox dropdowns across non-default themes, the scope will need to expand. Flag during Phase 2 integration testing before declaring the milestone complete.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [What's New in WPF for .NET 9 — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90) — Fluent theme, ThemeMode API, Server 2019 compatibility
-- [Single-File Deployment Overview — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview) — PublishSingleFile constraints, extraction behavior, NativeAOT limitations
-- [NuGet: Microsoft.Data.SqlClient 6.1.4](https://www.nuget.org/packages/Microsoft.Data.SqlClient) — latest stable, .NET 8+ requirement
-- [NuGet: CommunityToolkit.Mvvm 8.4.0](https://www.nuget.org/packages/CommunityToolkit.Mvvm) — .NET 9 compatibility
-- [dotnet/core Issue #5736](https://github.com/dotnet/core/issues/5736) — WSUS managed API incompatibility with .NET Core/5+
-- [dotnet/runtime#2300](https://github.com/dotnet/runtime/issues/2300) — Single-file EXE antivirus extraction blocking
-- [dotnet/sdk#43461](https://github.com/dotnet/sdk/issues/43461) — .NET 9 self-contained publish WPF assembly regression
-- [Process.StandardOutput docs — deadlock warning](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standardoutput) — stdout deadlock
-- [ServiceController docs — Refresh() requirement](https://learn.microsoft.com/en-us/dotnet/api/system.serviceprocess.servicecontroller) — status caching
-- [CommunityToolkit.Mvvm IoC documentation](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/ioc) — DI pattern
-- [.NET Generic Host documentation](https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host) — host setup
-- [Microsoft Q&A — WSUS APIs with C#](https://learn.microsoft.com/en-us/answers/questions/1298593/how-to-use-the-wsus-apis-with-c-in-visual-studio) — API incompatibility confirmation
-- [WPF .NET 9 ThemeMode experimental status](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net90) — experimental API warning
-- [UAC manifest configuration](https://learn.microsoft.com/en-us/cpp/build/reference/manifestuac-embeds-uac-information-in-manifest) — requireAdministrator
-- GA-WsusManager CLAUDE.md — 12 documented anti-patterns, v3.8.x production feature set, edge case behaviors (first-party)
-- [WSUS Deprecation Announcement — Microsoft TechCommunity (September 2024)](https://techcommunity.microsoft.com/blog/windows-itpro-blog/windows-server-update-services-wsus-deprecation/4250436)
+- [Merged resource dictionaries — WPF .NET (Microsoft Learn, updated 2024-10-24)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-merged-dictionaries?view=netdesktop-8.0) — dictionary swap pattern, pack URI formats, Resource build action requirement
+- [Pack URIs in WPF — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/app-development/pack-uris-in-wpf) — embedded resource URI format for single-file apps
+- [XAML resources overview — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-overview) — StaticResource vs DynamicResource resolution behavior
+- [Styles and templates — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/styles-templates-overview?view=netdesktop-9.0) — BasedOn limitation, style inheritance chain
+- [WPF How To Switching Themes at Runtime — Telerik UI for WPF](https://docs.telerik.com/devtools/wpf/styling-and-appearance/how-to/styling-apperance-themes-runtime) — runtime switching pattern (vendor documentation)
+- [CommunityToolkit.Mvvm IoC documentation — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/ioc) — DI registration pattern
+- [ResourceDictionary and XAML Resource References — Microsoft Learn](https://learn.microsoft.com/en-us/windows/apps/design/style/xaml-resource-dictionary) — general resource dictionary behavior
+- GA-WsusManager codebase direct audit — 283 `StaticResource` refs across 8 XAML files; 15 `Color.FromRgb()` literals in `MainViewModel.cs`; 14 token keys in `DarkTheme.xaml`; complete hardcoded hex location inventory
 
 ### Secondary (MEDIUM confidence)
-- [Optimize-WsusServer — GitHub (awarre)](https://github.com/awarre/Optimize-WsusServer) — competitor feature analysis
-- [WSUS Maintenance Guide — Microsoft Learn](https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/update-management/wsus-maintenance-guide) — maintenance best practices
-- [Should You Use WPF with .NET in 2025? — Inedo Blog](https://blog.inedo.com/dotnet/wpf-on-dotnet) — WPF viability assessment
-- [2025 Survey of Rust GUI Libraries — boringcactus](https://www.boringcactus.com/2025/04/13/2025-survey-of-rust-gui-libraries.html) — Rust alternative rejection
-- [Brian Lagunas — Progress reporting WPF UI freeze](https://brianlagunas.com/does-reporting-progress-with-task-run-freeze-your-wpf-ui/) — progress throttling
-- [Rick Strahl — Async void event handling in WPF](https://weblog.west-wind.com/posts/2022/Apr/22/Async-and-Async-Void-Event-Handling-in-WPF) — async void pitfall
-- [Offline Windows Patching for Air-Gapped Networks — BatchPatch](https://batchpatch.com/offline-windows-patching-for-isolated-or-air-gapped-networks) — air-gap feature validation
-- [Serilog .NET 9 Structured Logging — Medium](https://medium.com/@michaelmaurice410/how-structured-logging-with-serilog-in-net-9-980229322ebe) — Serilog compatibility
+- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — DynamicResource requirement, dictionary swap runtime pattern; corroborates official docs
+- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — StaticResource vs DynamicResource runtime behavior, SkinResourceDictionary pattern tradeoffs
+- [WPF Merged Dictionary problems and solutions — Michael's Coding Spot](https://michaelscodingspot.com/wpf-merged-dictionary-problemsandsolutions/) — BasedOn/DynamicResource limitation, duplicate key resolution order
+- [WPF: StaticResource vs. DynamicResource — CodeProject](https://www.codeproject.com/Articles/393086/WPF-StaticResource-vs-DynamicResource) — authoritative reference on resolution timing
+- [Color Contrast Accessibility WCAG 2025 Guide — AllAccessible](https://www.allaccessible.org/blog/color-contrast-accessibility-wcag-guide-2025) — WCAG 2.1 AA 4.5:1 contrast requirement
+- [Offering a Dark Mode Doesn't Satisfy WCAG Color Contrast — BOIA](https://www.boia.org/blog/offering-a-dark-mode-doesnt-satisfy-wcag-color-contrast-requirements) — accessibility testing guidance
+
+### Tertiary (LOW confidence)
+- [Mastering Dynamic Resources in WPF — Moldstud](https://moldstud.com/articles/p-mastering-dynamic-resources-in-wpf-a-comprehensive-guide-for-developers) — general guidance, performance benchmarks; corroborated by official docs
+- [StaticResource & DynamicResource in WPF — Medium](https://medium.com/@payton9609/staticresource-dynamicresource-in-wpf-c121b1a85574) — describes confirmed WPF behavior; single source
 
 ---
 
-*Research completed: 2026-02-19*
+*Research completed: 2026-02-20*
 *Ready for roadmap: yes*

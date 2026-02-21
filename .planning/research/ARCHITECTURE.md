@@ -1,8 +1,8 @@
 # Architecture Research
 
-**Domain:** Windows Server administration GUI tool (WPF/.NET 9, WSUS + SQL Server Express)
-**Researched:** 2026-02-19
-**Confidence:** HIGH (WPF/MVVM/DI patterns), MEDIUM (WSUS API constraints)
+**Domain:** Windows Server administration GUI tool (WPF/.NET 8, WSUS + SQL Server Express)
+**Researched:** 2026-02-19 (initial), 2026-02-20 (v4.3 theming addendum)
+**Confidence:** HIGH
 
 ## Standard Architecture
 
@@ -43,10 +43,6 @@
 │  │  (wsusutil,    │  │  (Microsoft.Data │  │  (C:\WSUS\,      │   │
 │  │   netsh, sc)   │  │   .SqlClient)    │  │  content, logs)  │   │
 │  └────────────────┘  └─────────────────┘  └──────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  WSUS Administration Shim  (Process-based isolation)         │  │
-│  │  Spawns a .NET Framework helper EXE when WSUS COM API needed │  │
-│  └──────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────┘
             │
 ┌───────────▼────────────────────────────────────────────────────────┐
@@ -71,7 +67,6 @@
 | `ILogService` | Structured file logging to `C:\WSUS\Logs\` | Serilog with file sink |
 | `ProcessRunner` | Launch external processes with captured stdout/stderr | `System.Diagnostics.Process` with `async` stream reading |
 | `SqlHelper` | SQL connection factory, query execution, sysadmin checks | `Microsoft.Data.SqlClient` connection pooling |
-| `WsusApiShim` (optional) | Bridge to `Microsoft.UpdateServices.Administration` COM API | Separate .NET Framework 4.8 helper process, communicates over stdin/stdout JSON |
 
 ---
 
@@ -79,23 +74,16 @@
 
 **Confidence: HIGH** — confirmed via community forum at social.technet.microsoft.com.
 
-`Microsoft.UpdateServices.Administration` is a .NET Framework 4.x COM-interop assembly. It **does not load in .NET 9** (modern .NET). There are no plans from Microsoft to update it.
-
-**Implication:** Any operation that uses `IUpdateServer`, `IUpdateApproval`, etc. requires a strategy.
+`Microsoft.UpdateServices.Administration` is a .NET Framework 4.x COM-interop assembly. It **does not load in .NET 8** (modern .NET). There are no plans from Microsoft to update it.
 
 **Recommended strategy: Bypass the WSUS COM API entirely.**
 
-The existing PowerShell v3 codebase already demonstrates this is viable. Nearly all operations in the current v3.8.x codebase use:
+The existing PowerShell v3 codebase already demonstrates this is viable. Nearly all operations use:
 1. Direct SUSDB SQL queries (most maintenance, cleanup, index operations)
 2. `wsusutil.exe` via shell (export, import, reset, checkhealth)
 3. `WsusServerCleanup` via the built-in WSUS API through PowerShell (which runs in .NET Framework)
 
-For v4.0 in .NET 9, use the same two approaches natively:
-- SQL queries via `Microsoft.Data.SqlClient` for all database operations
-- `ProcessRunner` wrapping `wsusutil.exe` for export/import/reset/checkhealth
-- Auto-approve operations: call `wsusutil.exe approveall` or use stored procedures in SUSDB
-
-**If COM API access is truly required** (e.g., auto-approval with granular classification control), use the **WsusApiShim** pattern: a tiny separate .NET Framework 4.8 EXE that accepts JSON over stdin, calls the COM API, and returns JSON over stdout. The main .NET 9 app spawns it via `ProcessRunner`. This isolates the .NET Framework dependency completely and keeps the main app on .NET 9.
+For v4.x in .NET 8, use the same two approaches natively — SQL queries via `Microsoft.Data.SqlClient` and `ProcessRunner` wrapping `wsusutil.exe`.
 
 ---
 
@@ -108,56 +96,296 @@ WsusManager/
 │   │   ├── App.xaml                  # Application definition (no StartupUri)
 │   │   ├── App.xaml.cs               # DI host setup, startup
 │   │   ├── Program.cs                # [STAThread] Main() bootstrapper
+│   │   ├── Themes/
+│   │   │   ├── DarkTheme.xaml        # Color tokens only (default theme)
+│   │   │   ├── SharedStyles.xaml     # All styles/templates (permanent)
+│   │   │   ├── JustBlackTheme.xaml   # Alternative themes
+│   │   │   ├── SlateTheme.xaml
+│   │   │   ├── SerenityTheme.xaml
+│   │   │   ├── RoseTheme.xaml
+│   │   │   └── ClassicBlueTheme.xaml
+│   │   ├── Services/
+│   │   │   ├── IThemeService.cs      # Theme switching interface (UI-layer only)
+│   │   │   └── ThemeService.cs       # Swaps MergedDictionaries at runtime
 │   │   ├── Views/
-│   │   │   ├── MainWindow.xaml       # Main application window (XAML only)
-│   │   │   ├── MainWindow.xaml.cs    # Constructor only (DataContext = ViewModel)
-│   │   │   └── Dialogs/              # Modal dialogs (Settings, Export, Restore, etc.)
+│   │   │   ├── MainWindow.xaml       # Main window (DynamicResource for colors)
+│   │   │   ├── MainWindow.xaml.cs    # Constructor only
+│   │   │   └── ...dialogs
 │   │   ├── ViewModels/
-│   │   │   ├── MainViewModel.cs      # Primary ViewModel (dashboard + operation control)
-│   │   │   └── Dialogs/              # Per-dialog ViewModels
+│   │   │   └── MainViewModel.cs      # Primary ViewModel
 │   │   └── Converters/               # IValueConverter implementations
 │   │
 │   └── WsusManager.Core/             # Business logic library (no WPF dependency)
 │       ├── Services/
-│       │   ├── Interfaces/           # IWsusService, IDatabaseService, etc.
-│       │   ├── WsusService.cs        # WSUS operations via wsusutil + SQL
-│       │   ├── DatabaseService.cs    # SQL Server / SUSDB operations
-│       │   ├── HealthService.cs      # Diagnostics and auto-repair
-│       │   ├── WindowsServiceManager.cs
-│       │   ├── FirewallService.cs
-│       │   └── SettingsService.cs
 │       ├── Infrastructure/
-│       │   ├── ProcessRunner.cs      # External process execution (async)
-│       │   ├── SqlHelper.cs          # SqlClient connection + query helpers
-│       │   └── FileSystemHelper.cs   # Path validation, directory helpers
 │       ├── Models/
-│       │   ├── AppSettings.cs        # Settings data model (JSON serializable)
-│       │   ├── WsusHealthResult.cs   # Health check result model
-│       │   ├── DatabaseStats.cs      # DB size, update counts, etc.
-│       │   └── OperationResult.cs    # Generic operation result (success/failure/output)
+│       │   └── AppSettings.cs        # Includes SelectedTheme property
 │       └── Logging/
-│           └── LogService.cs         # Serilog wrapper with C:\WSUS\Logs\ file sink
 │
 ├── tests/
-│   └── WsusManager.Tests/            # xUnit test project
-│       ├── Services/                 # Unit tests per service
-│       ├── Infrastructure/           # ProcessRunner, SqlHelper tests
-│       └── ViewModels/               # ViewModel unit tests
-│
-├── tools/
-│   └── WsusManager.ApiShim/          # Optional: .NET Framework 4.8 helper
-│       └── Program.cs                # Reads JSON stdin, calls WSUS COM API
+│   └── WsusManager.Tests/
 │
 └── WsusManager.sln
 ```
 
-### Structure Rationale
+---
 
-- **WsusManager.App vs WsusManager.Core:** Separating WPF from business logic enables unit testing all services without a WPF runtime. The Core library has no WPF dependency — only .NET Standard 2.1 / .NET 9 compatible libraries.
-- **Services/Interfaces/:** All services behind interfaces. ViewModels only see interfaces, never concrete implementations. This enables mocking in tests.
-- **Infrastructure/:** Low-level system calls (process spawning, SQL, filesystem) isolated from business logic. Easy to swap implementations.
-- **Models/:** Plain data objects with no behavior. Serializable to/from JSON. ViewModel observability happens in the ViewModel, not the model.
-- **tools/WsusManager.ApiShim/:** Only built if COM API operations are required. Optional deployment artifact (not required for single-EXE distribution if not needed).
+## v4.3 Theming Architecture Addendum
+
+**Confidence: HIGH** — Patterns confirmed by multiple authoritative WPF theming sources.
+
+### Theming System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        WsusManager.App (UI)                          │
+│                                                                       │
+│  ┌──────────────┐  ┌────────────────────┐  ┌─────────────────────┐  │
+│  │ MainWindow   │  │  SettingsDialog    │  │  Other Dialogs      │  │
+│  │ .xaml        │  │  .xaml (extended)  │  │  (color refs →      │  │
+│  │ DynamicRes   │  │  + ThemePickerPanel│  │   DynamicResource)  │  │
+│  └──────┬───────┘  └────────┬───────────┘  └──────────────────── ┘  │
+│         │                   │ DynamicResource bindings               │
+│  ┌──────▼───────────────────▼────────────────────────────────────┐  │
+│  │                      App.xaml Resources                         │  │
+│  │   MergedDictionary[0] = Themes/{Active}Theme.xaml  (swappable) │  │
+│  │   MergedDictionary[1] = Themes/SharedStyles.xaml   (permanent) │  │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────── ┐ │
+│  │                     Themes/ Directory                            │ │
+│  │  [0] DarkTheme.xaml     (color tokens only — 14 keys)           │ │
+│  │  [0] JustBlackTheme.xaml                                        │ │
+│  │  [0] SlateTheme.xaml                                            │ │
+│  │  [0] SerenityTheme.xaml                                         │ │
+│  │  [0] RoseTheme.xaml                                             │ │
+│  │  [0] ClassicBlueTheme.xaml                                      │ │
+│  │  [1] SharedStyles.xaml  (all styles — refs DynamicResource)     │ │
+│  └──────────────────────────────────────────────────────────────── ┘ │
+│                                                                       │
+│  ┌──────────────────────┐   ┌────────────────────────────────────┐  │
+│  │  MainViewModel.cs    │   │  ThemeService.cs (NEW)             │  │
+│  │  + SelectedTheme     │   │  ApplyTheme(string themeName)      │  │
+│  │  (applies on startup)│   │  AvailableThemes list              │  │
+│  └──────────┬───────────┘   └────────────────────────────────────┘  │
+│             │ injects IThemeService                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼─────────────────────────────────┐
+│                      WsusManager.Core (Services)                      │
+│  AppSettings.cs + string SelectedTheme = "Default Dark"               │
+│  SettingsService.cs — unchanged, already persists AppSettings         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### The Core Architectural Split: Tokens vs Styles
+
+The existing `DarkTheme.xaml` mixes two concerns:
+
+1. **Color tokens** — `SolidColorBrush` and `Color` resource definitions (14 keys: BgDark, BgSidebar, BgCard, BgInput, Border, Blue, Green, Orange, Red, Text1, Text2, Text3, ColorGreen, ColorOrange, ColorRed, ColorBlue, ColorText2)
+2. **Style definitions** — `<Style>` blocks for NavBtn, NavBtnActive, Btn, BtnSec, BtnGreen, BtnRed, QuickActionBtn, CategoryLabel, CardTitle, CardValue, CardSubtext, LogTextBox, ProgressBar, ScrollBar
+
+For runtime theme switching, these must be separated:
+
+- **Theme files** (swappable) — color tokens only. One file per theme, all 14 keys defined identically.
+- **SharedStyles.xaml** (permanent) — all `<Style>` blocks. References color tokens via `{DynamicResource}` so styles automatically adapt when the token dictionary swaps.
+
+This split is required because WPF's `{StaticResource}` is resolved once at XAML parse time. Swapping the dictionary has no effect on elements that used `{StaticResource}`. Only `{DynamicResource}` responds to runtime dictionary changes.
+
+### ThemeService Component
+
+```csharp
+// WsusManager.App/Services/IThemeService.cs
+public interface IThemeService
+{
+    IReadOnlyList<string> AvailableThemes { get; }
+    string CurrentTheme { get; }
+    void ApplyTheme(string themeName);
+}
+
+// WsusManager.App/Services/ThemeService.cs
+public class ThemeService : IThemeService
+{
+    // Position 0 in MergedDictionaries is always the swappable color token dict
+    private const int ThemeDictionaryIndex = 0;
+
+    private static readonly Dictionary<string, string> ThemeUris = new()
+    {
+        ["Default Dark"]  = "Themes/DarkTheme.xaml",
+        ["Just Black"]    = "Themes/JustBlackTheme.xaml",
+        ["Slate"]         = "Themes/SlateTheme.xaml",
+        ["Serenity"]      = "Themes/SerenityTheme.xaml",
+        ["Rose"]          = "Themes/RoseTheme.xaml",
+        ["Classic Blue"]  = "Themes/ClassicBlueTheme.xaml",
+    };
+
+    public IReadOnlyList<string> AvailableThemes => ThemeUris.Keys.ToList();
+    public string CurrentTheme { get; private set; } = "Default Dark";
+
+    // MUST be called from UI thread — manipulates Application.Current.Resources
+    public void ApplyTheme(string themeName)
+    {
+        if (!ThemeUris.TryGetValue(themeName, out var uri)) return;
+
+        var dicts = Application.Current.Resources.MergedDictionaries;
+        if (dicts.Count > ThemeDictionaryIndex)
+            dicts.RemoveAt(ThemeDictionaryIndex);
+
+        dicts.Insert(ThemeDictionaryIndex, new ResourceDictionary
+        {
+            Source = new Uri(uri, UriKind.Relative)
+        });
+
+        CurrentTheme = themeName;
+    }
+}
+```
+
+### What Changes in the Existing Codebase
+
+| File | Change | Detail |
+|------|--------|--------|
+| `Themes/DarkTheme.xaml` | Refactored | Remove all `<Style>` blocks — keep 14 color token keys only |
+| `App.xaml` | Modified | Add `SharedStyles.xaml` as second `MergedDictionary` |
+| `AppSettings.cs` | Modified | Add `string SelectedTheme = "Default Dark"` property |
+| `MainWindow.xaml` | Modified | 157 color `{StaticResource}` → `{DynamicResource}` (style refs stay StaticResource) |
+| `SettingsDialog.xaml` | Modified | Add ThemePicker section; increase Height |
+| `SettingsDialog.xaml.cs` | Modified | Inject `IThemeService`, store `_originalTheme`, revert on Cancel, include theme in Result |
+| `InstallDialog.xaml` | Modified | 15 color refs → `{DynamicResource}` |
+| `TransferDialog.xaml` | Modified | 28 color refs → `{DynamicResource}` |
+| `ScheduleTaskDialog.xaml` | Modified | 26 color refs → `{DynamicResource}` |
+| `SyncProfileDialog.xaml` | Modified | 14 color refs → `{DynamicResource}` |
+| `GpoInstructionsDialog.xaml` | Modified | 7 color refs → `{DynamicResource}` |
+| `MainViewModel.cs` | Modified | Inject `IThemeService`, call `ApplyTheme` in `InitializeAsync` and `OpenSettings` |
+| `Program.cs` | Modified | Register `IThemeService, ThemeService` as singleton |
+
+**New files:**
+- `Themes/SharedStyles.xaml` — all styles extracted from DarkTheme.xaml, colors → `{DynamicResource}`
+- `Themes/JustBlackTheme.xaml`, `SlateTheme.xaml`, `SerenityTheme.xaml`, `RoseTheme.xaml`, `ClassicBlueTheme.xaml` — 5 color token files
+- `Services/IThemeService.cs` + `Services/ThemeService.cs`
+
+**What does NOT change:**
+- All services in `WsusManager.Core` — theming is purely UI-layer
+- `SettingsService.cs` — already persists `AppSettings` generically; adding a new field requires no code change
+- All `*.cs` files in `Views/` except `SettingsDialog.xaml.cs`
+- Test project — `ThemeService` has no testable logic (visual output, WPF runtime required)
+
+### Theme File Structure (Color Tokens Only)
+
+Every theme file must define all 14 keys. Missing a key causes `ResourceReferenceKeyNotFoundException` at the point where that resource is first accessed.
+
+```xml
+<!-- Themes/SlateTheme.xaml — cool grey variant example -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Background Colors -->
+    <SolidColorBrush x:Key="BgDark"    Color="#1E2130"/>
+    <SolidColorBrush x:Key="BgSidebar" Color="#252A3B"/>
+    <SolidColorBrush x:Key="BgCard"    Color="#2D3348"/>
+    <SolidColorBrush x:Key="BgInput"   Color="#1E2130"/>
+    <SolidColorBrush x:Key="Border"    Color="#3A4060"/>
+
+    <!-- Accent Colors -->
+    <SolidColorBrush x:Key="Blue"   Color="#7B9CFF"/>
+    <SolidColorBrush x:Key="Green"  Color="#4DC973"/>
+    <SolidColorBrush x:Key="Orange" Color="#E0A030"/>
+    <SolidColorBrush x:Key="Red"    Color="#FF5F56"/>
+
+    <!-- Text Colors -->
+    <SolidColorBrush x:Key="Text1" Color="#E8EEF8"/>
+    <SolidColorBrush x:Key="Text2" Color="#8E99BB"/>
+    <SolidColorBrush x:Key="Text3" Color="#4A5275"/>
+
+    <!-- Raw Color Values (for code-behind / converter usage) -->
+    <Color x:Key="ColorGreen">#4DC973</Color>
+    <Color x:Key="ColorOrange">#E0A030</Color>
+    <Color x:Key="ColorRed">#FF5F56</Color>
+    <Color x:Key="ColorBlue">#7B9CFF</Color>
+    <Color x:Key="ColorText2">#8E99BB</Color>
+</ResourceDictionary>
+```
+
+### Data Flow for Theme Changes
+
+**On theme selection in SettingsDialog (live preview):**
+```
+User clicks theme swatch
+    ↓
+SettingsDialog.OnThemeSelected(themeName)
+    ↓
+_themeService.ApplyTheme(themeName)  [UI thread — event handler]
+    ↓
+ThemeService swaps MergedDictionaries[0]
+    ↓
+WPF DynamicResource engine propagates to all bound elements
+    ↓ (immediate, no manual refresh needed)
+All open windows repaint with new colors
+```
+
+**On Cancel (revert live preview):**
+```
+User clicks Cancel
+    ↓
+SettingsDialog.BtnCancel_Click
+    ↓
+_themeService.ApplyTheme(_originalTheme)  [reverts to pre-dialog state]
+    ↓
+DialogResult = false; Close()
+```
+
+**On Save:**
+```
+User clicks Save
+    ↓
+SettingsDialog.Result includes SelectedTheme = current theme name
+    ↓
+MainViewModel.OpenSettings → updated._settings.SelectedTheme = Result.SelectedTheme
+    ↓
+_settingsService.SaveAsync(_settings)  [theme name persisted to JSON]
+    ↓ (theme is already applied — no second ApplyTheme call needed)
+```
+
+**On application startup (restore saved theme):**
+```
+Program.cs → MainViewModel.InitializeAsync()
+    ↓
+_settingsService.LoadAsync() → AppSettings.SelectedTheme = "Slate"
+    ↓
+ApplySettings(settings) → _themeService.ApplyTheme(settings.SelectedTheme)
+    ↓ (before MainWindow is shown — no flash of wrong theme)
+```
+
+### ThemePicker UI in SettingsDialog
+
+The ThemePicker section sits below existing settings rows. Design constraints:
+
+- 6 clickable color swatches arranged in a 3x2 grid (or single row with wrapping)
+- Each swatch shows a small rectangle using the theme's primary color, plus a label
+- Active selection shows a border/highlight ring
+- Clicking applies live preview immediately via `_themeService.ApplyTheme()`
+- SettingsDialog height increases from 380px to approximately 500px to accommodate
+
+The swatch colors are hardcoded in the ThemePicker XAML (not dynamically bound) because they must show the target theme's color while a different theme is active. They are presentational only.
+
+### Build Order for v4.3
+
+Dependencies determine order. Each step must compile before the next:
+
+1. **Split DarkTheme.xaml → DarkTheme.xaml (tokens) + SharedStyles.xaml (styles)** — Update `App.xaml` to merge both. Migrate all `{StaticResource}` color references in `SharedStyles.xaml` to `{DynamicResource}`. Verify app builds and renders correctly with default dark theme. This is the foundation — all other steps depend on the token/style separation being correct.
+
+2. **Add `IThemeService` and `ThemeService`** — Define interface and implementation. Register in `Program.cs` as singleton. No UI changes yet. The service is functional once the token dictionary is properly separated (Step 1).
+
+3. **Add `SelectedTheme` to `AppSettings`** — Single property with default value. Forward-compatible with existing `settings.json` files (JSON deserializer ignores missing properties and uses the default).
+
+4. **Create 5 additional theme files** — Independent of each other. Requires the finalized list of 14 token keys from Step 1. Each file is a copy of `DarkTheme.xaml` with different color values.
+
+5. **Migrate `{StaticResource}` → `{DynamicResource}` in all view XAML files** — Affects MainWindow.xaml (157 refs), SettingsDialog.xaml (18), InstallDialog.xaml (15), TransferDialog.xaml (28), ScheduleTaskDialog.xaml (26), SyncProfileDialog.xaml (14), GpoInstructionsDialog.xaml (7). Total: ~265 mechanical changes. Style key references (NavBtn, BtnSec, etc.) must stay as `{StaticResource}`. Color token references (BgDark, Text1, Blue, etc.) become `{DynamicResource}`. Verify each dialog opens correctly after migration.
+
+6. **Update `MainViewModel`** — Add `IThemeService` constructor parameter. Call `_themeService.ApplyTheme(settings.SelectedTheme)` in `ApplySettings()`. No new commands needed — theme selection happens inside SettingsDialog.
+
+7. **Extend `SettingsDialog`** — Add ThemePicker section to XAML. Update constructor to accept `IThemeService`. Store `_originalTheme` at open time. Wire swatch click handlers to call live preview. Pass `SelectedTheme` in `Result`. Handle Cancel revert.
+
+8. **Integration test** — Switch theme → Save → reopen Settings (selection preserved) → restart app (theme restored from JSON). Test Cancel reverts the preview.
 
 ---
 
@@ -167,331 +395,29 @@ WsusManager/
 
 **What:** Use `Microsoft.Extensions.Hosting` `Host.CreateApplicationBuilder()` as the DI/logging/config container. Wire `MainWindow` and `MainViewModel` through the DI container so all service dependencies are injected automatically.
 
-**When to use:** Always — this is the modern .NET 9 WPF startup pattern.
+**When to use:** Always — this is the modern .NET 8 WPF startup pattern.
 
-**Trade-offs:** Slightly more startup ceremony than `new App()`, but gains unified DI, structured logging (via `ILogger<T>`), and configuration (`appsettings.json`) for free.
-
-**Example:**
-```csharp
-// Program.cs
-[STAThread]
-public static void Main(string[] args)
-{
-    var builder = Host.CreateApplicationBuilder(args);
-
-    // Services
-    builder.Services.AddSingleton<ISettingsService, SettingsService>();
-    builder.Services.AddSingleton<ILogService, LogService>();
-    builder.Services.AddSingleton<SqlHelper>();
-    builder.Services.AddSingleton<ProcessRunner>();
-    builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
-    builder.Services.AddSingleton<IWindowsServiceManager, WindowsServiceManager>();
-    builder.Services.AddSingleton<IFirewallService, FirewallService>();
-    builder.Services.AddSingleton<IHealthService, HealthService>();
-    builder.Services.AddSingleton<IWsusService, WsusService>();
-
-    // ViewModels
-    builder.Services.AddSingleton<MainViewModel>();
-
-    // Views
-    builder.Services.AddSingleton<MainWindow>();
-
-    // Add Serilog
-    builder.Services.AddLogging(lb =>
-        lb.AddSerilog(new LoggerConfiguration()
-            .WriteTo.File(@"C:\WSUS\Logs\WsusManager-.log", rollingInterval: RollingInterval.Day)
-            .CreateLogger()));
-
-    var host = builder.Build();
-
-    var app = new Application();
-    var window = host.Services.GetRequiredService<MainWindow>();
-    app.Run(window);
-}
-```
+**Trade-offs:** Slightly more startup ceremony than `new App()`, but gains unified DI, structured logging (via `ILogger<T>`), and configuration for free.
 
 ### Pattern 2: Async Command Pattern with CancellationToken
 
-**What:** All long-running operations in the ViewModel use `async Task` RelayCommands. Each operation accepts a `CancellationToken` from a shared `CancellationTokenSource` that the Cancel button triggers. Progress is reported via `IProgress<OperationProgress>`.
+**What:** All long-running operations in the ViewModel use `async Task` RelayCommands. Each operation accepts a `CancellationToken` from a shared `CancellationTokenSource` that the Cancel button triggers.
 
-**When to use:** Every operation that runs for more than ~200ms (health check, cleanup, sync, export, install).
-
-**Trade-offs:** Requires discipline to pass `CancellationToken` through all service method calls. The payoff is that cancellation works at every layer without killing the process.
-
-**Example:**
-```csharp
-// MainViewModel.cs
-public partial class MainViewModel : ObservableObject
-{
-    private CancellationTokenSource? _operationCts;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RunHealthCheckCommand))]
-    [NotifyCanExecuteChangedFor(nameof(RunDeepCleanupCommand))]
-    private bool _isOperationRunning;
-
-    [ObservableProperty]
-    private string _logOutput = string.Empty;
-
-    [RelayCommand(CanExecute = nameof(CanRunOperation))]
-    private async Task RunHealthCheckAsync()
-    {
-        _operationCts = new CancellationTokenSource();
-        IsOperationRunning = true;
-
-        var progress = new Progress<string>(line =>
-            LogOutput += line + Environment.NewLine);
-
-        try
-        {
-            await _healthService.RunDiagnosticsAsync(progress, _operationCts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            LogOutput += "[Cancelled]" + Environment.NewLine;
-        }
-        finally
-        {
-            IsOperationRunning = false;
-            _operationCts.Dispose();
-            _operationCts = null;
-        }
-    }
-
-    [RelayCommand]
-    private void CancelOperation() => _operationCts?.Cancel();
-
-    private bool CanRunOperation() => !IsOperationRunning;
-}
-```
+**When to use:** Every operation that runs for more than ~200ms (health check, cleanup, sync, export, install). Theme switching is synchronous and does not use this pattern.
 
 ### Pattern 3: Service Methods Return `OperationResult`
 
-**What:** Every service method returns `OperationResult` (or `OperationResult<T>`) rather than throwing exceptions for expected failure conditions. Exceptions are still thrown for programming errors (null args, etc.) but operational failures (SQL Server down, service not found) return a structured result.
+**What:** Every service method returns `OperationResult` (or `OperationResult<T>`) rather than throwing exceptions for expected failure conditions.
 
-**When to use:** All public service methods.
+**When to use:** All public service methods in `WsusManager.Core`. `ThemeService.ApplyTheme` is void (theme switching cannot meaningfully fail except for missing XAML file, which is a programming error).
 
-**Trade-offs:** More verbose than throw-on-failure, but prevents exception-based control flow and makes caller logic cleaner.
+### Pattern 4: Split Token Dictionary + Stable Style Dictionary (Theming)
 
-**Example:**
-```csharp
-public record OperationResult(bool Success, string Message, Exception? Exception = null)
-{
-    public static OperationResult Ok(string message = "Success") => new(true, message);
-    public static OperationResult Fail(string message, Exception? ex = null) => new(false, message, ex);
-}
+**What:** Color tokens (brush/color resource keys) live in a swappable `ResourceDictionary`. Style definitions live in a separate permanent dictionary that references color tokens via `{DynamicResource}`. Only the token dictionary is swapped at runtime.
 
-// In HealthService
-public async Task<OperationResult> CheckSqlConnectivityAsync(CancellationToken ct)
-{
-    try
-    {
-        await _sqlHelper.TestConnectionAsync(ct);
-        return OperationResult.Ok("SQL Server connection verified");
-    }
-    catch (SqlException ex)
-    {
-        return OperationResult.Fail($"SQL Server unreachable: {ex.Message}", ex);
-    }
-}
-```
+**When to use:** Any WPF application requiring runtime theme switching.
 
-### Pattern 4: ProcessRunner for External Commands
-
-**What:** All shell command execution is centralized in `ProcessRunner`. It spawns processes with redirected stdout/stderr, returns output line-by-line via `IAsyncEnumerable<string>` or an `IProgress<string>` callback, and respects `CancellationToken` (kills the process on cancellation).
-
-**When to use:** `wsusutil.exe`, `netsh.exe`, `sc.exe`, `wuauclt.exe`, any shell command.
-
-**Trade-offs:** All process output flows through one path — easier to log, test, and cancel. Slightly higher overhead than direct calls but negligible for admin tools.
-
-**Example:**
-```csharp
-public class ProcessRunner
-{
-    public async Task<ProcessResult> RunAsync(
-        string executable,
-        string arguments,
-        IProgress<string>? progress = null,
-        CancellationToken ct = default)
-    {
-        using var proc = new Process
-        {
-            StartInfo = new ProcessStartInfo(executable, arguments)
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
-
-        var outputLines = new List<string>();
-        proc.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            outputLines.Add(e.Data);
-            progress?.Report(e.Data);
-        };
-        proc.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            outputLines.Add($"[ERR] {e.Data}");
-            progress?.Report($"[ERR] {e.Data}");
-        };
-
-        proc.Start();
-        proc.BeginOutputReadLine();
-        proc.BeginErrorReadLine();
-
-        await proc.WaitForExitAsync(ct);
-
-        return new ProcessResult(proc.ExitCode, outputLines);
-    }
-}
-```
-
-### Pattern 5: Dashboard State via Polling + Dispatcher-Free Updates
-
-**What:** A background `PeriodicTimer` (30-second interval) calls `RefreshDashboardAsync()` on the ViewModel. Because the ViewModel uses `[ObservableProperty]` from CommunityToolkit.Mvvm, property changes automatically marshal to the UI thread via the synchronization context captured at construction time. No explicit `Dispatcher.Invoke` is needed.
-
-**When to use:** Auto-refresh of WSUS service status, DB size, sync date, update counts.
-
-**Trade-offs:** `PeriodicTimer` (introduced in .NET 6) is allocation-free and cancellation-aware. No timer cleanup bugs.
-
-**Example:**
-```csharp
-// MainViewModel.cs constructor or OnActivated
-private async Task StartDashboardRefreshAsync(CancellationToken ct)
-{
-    using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
-    while (await timer.WaitForNextTickAsync(ct))
-    {
-        await RefreshDashboardAsync(ct);
-    }
-}
-
-// Properties update automatically on UI thread (no Dispatcher.Invoke needed)
-[ObservableProperty]
-private string _databaseSize = "—";
-
-[ObservableProperty]
-private string _wsusServiceStatus = "Unknown";
-```
-
----
-
-## Data Flow
-
-### Operation Flow (e.g., Deep Cleanup)
-
-```
-[User clicks "Deep Cleanup"]
-    ↓
-MainViewModel.RunDeepCleanupCommand
-    ├── Sets IsOperationRunning = true (disables all commands via CanExecute)
-    ├── Creates new CancellationTokenSource
-    ├── Creates Progress<string> that appends to LogOutput property
-    ↓
-IWsusService.RunDeepCleanupAsync(progress, cancellationToken)
-    ├── Step 1: IDatabaseService.DeclineSupersededUpdatesAsync(ct)
-    │       └── SqlHelper.ExecuteNonQueryAsync(SUSDB query, ct)
-    ├── Step 2: IDatabaseService.PurgeDeclinedUpdatesAsync(progress, ct)
-    │       └── SqlHelper.ExecuteReaderAsync → batched deletes, reports per batch
-    ├── Step 3: IDatabaseService.RebuildIndexesAsync(progress, ct)
-    │       └── SqlHelper.ExecuteNonQueryAsync(sp_WsusDbIndexMaintenance, ct)
-    └── Step 4: IDatabaseService.ShrinkDatabaseAsync(ct)
-            └── SqlHelper.ExecuteNonQueryAsync(DBCC SHRINKDATABASE, ct)
-    ↓
-Returns OperationResult
-    ↓
-MainViewModel finally block:
-    ├── Sets IsOperationRunning = false (re-enables commands)
-    └── Reports final status to LogOutput
-```
-
-### Dashboard Refresh Flow
-
-```
-PeriodicTimer (30s tick)
-    ↓
-MainViewModel.RefreshDashboardAsync()
-    ├── IWindowsServiceManager.GetServiceStatusAsync("WsusService") → StatusText
-    ├── IWindowsServiceManager.GetServiceStatusAsync("MSSQL$SQLEXPRESS") → StatusText
-    ├── IDatabaseService.GetDatabaseSizeAsync() → string "4.2 GB / 10 GB limit"
-    ├── IWsusService.GetLastSyncDateAsync() → DateTime? → string
-    └── IWsusService.GetPendingUpdateCountAsync() → int
-    ↓
-[ObservableProperty] setters fire on captured SynchronizationContext
-    ↓
-WPF data binding updates UI labels — no Dispatcher.Invoke needed
-```
-
-### Settings Flow
-
-```
-App startup
-    ↓
-ISettingsService.LoadAsync()
-    └── System.Text.Json deserialize %APPDATA%\WsusManager\settings.json
-    ↓
-MainViewModel receives AppSettings via DI constructor
-    ↓
-User changes setting in Settings dialog
-    ↓
-SettingsViewModel updates AppSettings model
-    ↓
-ISettingsService.SaveAsync(settings)
-    └── System.Text.Json serialize → write file
-    ↓
-MainViewModel observes change (via IOptions<AppSettings> or direct property)
-```
-
----
-
-## Build Order (Phase Dependencies)
-
-The component dependency graph determines what must be built before what:
-
-```
-1. Infrastructure (no dependencies)
-   ├── ProcessRunner
-   ├── SqlHelper
-   └── FileSystemHelper
-
-2. Models (no dependencies)
-   ├── AppSettings
-   ├── OperationResult
-   ├── WsusHealthResult
-   └── DatabaseStats
-
-3. Core Services (depends on Infrastructure + Models)
-   ├── ISettingsService / SettingsService   ← needed by all other services
-   ├── ILogService / LogService             ← needed by all other services
-   ├── IWindowsServiceManager               ← needed by HealthService
-   ├── IFirewallService                     ← needed by HealthService
-   ├── IDatabaseService                     ← needed by WsusService, HealthService
-   ├── IWsusService                         ← depends on DatabaseService
-   └── IHealthService                       ← depends on ServiceManager, Firewall, Database
-
-4. ViewModel (depends on all Services)
-   └── MainViewModel + Dialog ViewModels
-
-5. Views (depends on ViewModels)
-   ├── MainWindow.xaml
-   └── Dialogs/
-
-6. App Entry Point (wires everything together)
-   └── Program.cs (DI registration, host startup)
-```
-
-**Recommended phase build sequence:**
-- **Phase 1:** Infrastructure + Models + SettingsService + LogService (foundation — fully testable, no WPF)
-- **Phase 2:** WindowsServiceManager + FirewallService + DatabaseService (core system integrations)
-- **Phase 3:** WsusService + HealthService (WSUS-specific logic — builds on Phase 2)
-- **Phase 4:** MainViewModel + DI host wiring (ties all services together)
-- **Phase 5:** MainWindow XAML + data bindings + dashboard (visible product)
-- **Phase 6:** Dialog ViewModels + Views (Export, Restore, Settings, Install)
-- **Phase 7:** ScheduledTask, GPO deployment, air-gap workflows
+**Trade-offs:** Requires migrating `{StaticResource}` → `{DynamicResource}` for color references in all XAML. `DynamicResource` has negligible overhead (<2% UI thread impact at typical admin tool density).
 
 ---
 
@@ -501,41 +427,55 @@ The component dependency graph determines what must be built before what:
 
 **What people do:** Call `Application.Current.Dispatcher.Invoke()` to update UI from service code.
 
-**Why it's wrong:** It creates a hard dependency on the WPF runtime in the Core library, breaks unit testing, and is the root cause of every threading bug in the PowerShell v3 codebase. The 12 documented PowerShell anti-patterns in CLAUDE.md are largely symptoms of not having this boundary.
+**Why it's wrong:** Creates hard WPF dependency in Core library, breaks unit testing. Properties on `ObservableObject` automatically marshal to the UI thread — no dispatcher calls needed.
 
-**Do this instead:** Properties on `ObservableObject` (CommunityToolkit.Mvvm) automatically marshal to the UI thread. Services report progress via `IProgress<T>` — the `Progress<T>` class captures the synchronization context at construction (which is the UI thread if created in a ViewModel). No dispatcher calls needed anywhere in the Core library.
+**Do this instead:** Use `[ObservableProperty]` from CommunityToolkit.Mvvm. Use `IProgress<T>` for service-to-ViewModel reporting.
 
-### Anti-Pattern 2: Shared Mutable State Between Operations
+### Anti-Pattern 2: Keeping StaticResource for Color Tokens in Views
 
-**What people do:** Use class-level `bool _operationRunning` flags and update them from multiple concurrent paths.
+**What people do:** Leave `{StaticResource BgDark}` unchanged in XAML views after splitting the dictionaries.
 
-**Why it's wrong:** Race conditions when async operations complete out of order. This was PowerShell anti-pattern #12 (operation status flag not resetting).
+**Why it's wrong:** `{StaticResource}` is resolved once at XAML load time. Swapping the merged dictionary at runtime has no effect on those elements. Theme changes appear to do nothing.
 
-**Do this instead:** Use `[ObservableProperty] private bool _isOperationRunning` as the single source of truth. `[NotifyCanExecuteChangedFor]` automatically disables all operation commands when it is `true`. The `finally` block in every command handler resets it — there is only one place to forget.
+**Do this instead:** All color token references in view XAML use `{DynamicResource}`. Style name references (NavBtn, BtnSec, etc.) can stay `{StaticResource}` — styles themselves do not swap, only the colors inside them.
 
-### Anti-Pattern 3: Large Monolithic ViewModel
+### Anti-Pattern 3: Putting Styles in the Swappable Dictionary
 
-**What people do:** Put all operations and all UI state into one 3000-line ViewModel (exactly what PowerShell WsusManagementGui.ps1 became).
+**What people do:** Keep styles in the theme file alongside color tokens so no reorganization is needed.
 
-**Why it's wrong:** Impossible to test, hard to reason about, every change has side effects.
+**Why it's wrong:** Styles that use `{StaticResource}` internally (for earlier-defined brushes in the same dictionary) break when that dictionary is cleared and replaced — the resource lookup scope no longer exists. WPF must also reparse all style templates on every theme change.
 
-**Do this instead:** `MainViewModel` owns only: dashboard state, operation running state, log output, and navigation state. Each dialog (Settings, Export, Install, etc.) gets its own dialog ViewModel. Operations that require complex parameter input go to a dialog ViewModel that is shown, collects input, and returns a result — then `MainViewModel` calls the service with that result.
+**Do this instead:** Styles go in `SharedStyles.xaml` (permanent). Colors go in the swappable theme files. Styles reference colors via `{DynamicResource}`.
 
-### Anti-Pattern 4: ProcessRunner Without Cancellation Propagation
+### Anti-Pattern 4: Not Reverting Theme on Cancel
 
-**What people do:** Start a process with `proc.Start()` and then call `CancellationToken.Register(() => proc.Kill())` as an afterthought.
+**What people do:** Apply live preview immediately on selection change, but do not restore the original theme when the user clicks Cancel.
 
-**Why it's wrong:** The process may have already exited by the time `Kill()` is called. On Windows Server, `Kill()` without `entireProcessTree: true` leaves orphan child processes. `WaitForExitAsync` does not respect cancellation by default before .NET 6.
+**Why it's wrong:** Cancel means "nothing changed." If the theme changed during preview and is not reverted, the visual state diverges from `settings.json` until the next restart.
 
-**Do this instead:** Use `proc.WaitForExitAsync(ct)` (available since .NET 5) which respects cancellation. On cancellation, call `proc.Kill(entireProcessTree: true)` inside the `catch (OperationCanceledException)` block.
+**Do this instead:** Store `_originalTheme` when the dialog opens. `BtnCancel_Click` calls `_themeService.ApplyTheme(_originalTheme)` before closing.
 
-### Anti-Pattern 5: Accessing SUSDB Directly in Every Service
+### Anti-Pattern 5: Calling ApplyTheme from a Background Thread
 
-**What people do:** Scatter `new SqlConnection(connStr)` calls throughout service classes.
+**What people do:** Call `ThemeService.ApplyTheme` from a `Task.Run` or async continuation.
 
-**Why it's wrong:** Connection string is duplicated, error handling is inconsistent, sysadmin checks are missed, testing requires a real SQL Server.
+**Why it's wrong:** `Application.Current.Resources.MergedDictionaries` is a UI-thread-only object. Modifying it from a background thread throws `InvalidOperationException`.
 
-**Do this instead:** All SQL access flows through `SqlHelper`. It owns the connection string (read from settings), provides async `ExecuteNonQueryAsync`, `ExecuteScalarAsync`, `ExecuteReaderAsync`, and `TestConnectionAsync` helpers, and checks the sysadmin permission once via `Assert-SqlSysadmin` equivalent. Services call `_sqlHelper.ExecuteNonQueryAsync(...)` — they never construct `SqlConnection` directly.
+**Do this instead:** `ApplyTheme` is always called from UI thread — in SettingsDialog event handlers and in `MainViewModel.ApplySettings()` which runs synchronously on the UI thread at startup.
+
+### Anti-Pattern 6: Hardcoding Colors in New UI Elements
+
+**What people do:** Add ThemePicker UI in SettingsDialog using hardcoded hex values like `Background="#21262D"`.
+
+**Why it's wrong:** Hardcoded colors bypass the theming system. The ThemePicker panel looks wrong in non-dark themes.
+
+**Do this instead:** All color values in styles reference token keys via `{DynamicResource}`. New UI for the ThemePicker uses existing token keys (BgCard, Border, Text1, etc.).
+
+### Anti-Pattern 7: Shared Mutable State Between Operations
+
+**What people do:** Use class-level `bool _operationRunning` flags updated from multiple concurrent paths.
+
+**Why it's wrong:** Race conditions when async operations complete out of order. Use `[ObservableProperty] private bool _isOperationRunning` as the single source of truth with `[NotifyCanExecuteChangedFor]`.
 
 ---
 
@@ -546,73 +486,41 @@ The component dependency graph determines what must be built before what:
 | System | Integration Pattern | Notes |
 |--------|---------------------|-------|
 | SQL Server Express (SUSDB) | `Microsoft.Data.SqlClient` async ADO.NET | Connection string: `Data Source=localhost\SQLEXPRESS;Initial Catalog=SUSDB;Integrated Security=true;TrustServerCertificate=true` |
-| WSUS Windows Service | `System.ServiceProcess.ServiceController` | Re-query status every time (no `Refresh()` — not available on ServiceController in .NET 9 the same way as .NET Framework) |
-| IIS (W3SVC) | `ServiceController` + optional `ProcessRunner` wrapping `appcmd.exe` | Only for start/stop, not full IIS management |
-| Windows Firewall | `ProcessRunner` + `netsh advfirewall firewall` | `netsh` is present on all Windows Server 2019+ targets |
+| WSUS Windows Service | `System.ServiceProcess.ServiceController` | Re-query status every time |
+| IIS (W3SVC) | `ServiceController` + `ProcessRunner` wrapping `appcmd.exe` | Only for start/stop |
+| Windows Firewall | `ProcessRunner` + `netsh advfirewall firewall` | Present on all Windows Server 2019+ targets |
 | `wsusutil.exe` | `ProcessRunner` | Path: `%ProgramFiles%\Update Services\Tools\wsusutil.exe` |
-| Windows Task Scheduler | `Microsoft.Win32.TaskScheduler` (TaskScheduler NuGet) or `ProcessRunner` + `schtasks.exe` | NuGet library preferred for type safety |
-| Windows Event Log | `Microsoft.Extensions.Logging.EventLog` (built into generic host on Windows) | Already provided by generic host |
-| File System (C:\WSUS\) | `System.IO` directly | Validate paths with `Path.GetFullPath` + prefix check to prevent traversal |
+| WPF Resource System | `Application.Current.Resources.MergedDictionaries` | Theme switching — UI thread only |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
 | ViewModel to Service | Constructor-injected interface, `async Task` calls | ViewModel never knows concrete types |
-| Service to Infrastructure | Constructor-injected `SqlHelper` / `ProcessRunner` | Infrastructure classes are concrete (no interface needed unless testing requires mocking) |
-| ViewModel to ViewModel (Dialogs) | Dialog ViewModel returned as result; `MainViewModel` invokes service after dialog completes | No shared state between dialog and main ViewModel |
-| Main App to WsusApiShim (if used) | `ProcessRunner` spawning a separate process, JSON over stdin/stdout | Only needed if WSUS COM API auto-approval proves necessary |
+| `SettingsDialog` ↔ `ThemeService` | Direct call (DI injection) | Dialog gets `IThemeService` for live preview |
+| `MainViewModel` ↔ `ThemeService` | Direct call (DI injection) | ViewModel applies theme on startup and after settings save |
+| `ThemeService` ↔ WPF Resources | `Application.Current.Resources.MergedDictionaries` | Must run on UI thread — no async, no Task.Run |
+| `AppSettings` ↔ theme names | `string SelectedTheme` property | ThemeService maps name → XAML URI internally |
 
 ---
 
 ## Single EXE Publication
 
-The application publishes as a self-contained single-file EXE using .NET 9's `PublishSingleFile` + `SelfContained` options:
-
-```xml
-<!-- WsusManager.App.csproj -->
-<PropertyGroup>
-  <PublishSingleFile>true</PublishSingleFile>
-  <SelfContained>true</SelfContained>
-  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  <PublishReadyToRun>true</PublishReadyToRun>
-  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-</PropertyGroup>
-```
-
-**Known .NET 9 regression** (confirmed in GitHub dotnet/sdk issue #43461): Some WPF assemblies (`PresentationCore.dll`, `PresentationFramework*.dll`) may be missing from self-contained publish output when targeting `net9.0-windows`. **Mitigation:** Pin to .NET 8 for the first production release and track the fix for .NET 9.1+. The architecture does not change — only the target framework moniker.
-
-**EXE size:** Expected 15-25MB self-contained (WPF runtime embedded). The PowerShell version was 280KB + 180KB modules = ~460KB, but required PowerShell runtime (~100MB). The C# EXE is larger in bytes but has zero external dependencies on the target server.
-
----
-
-## Scaling Considerations
-
-This is a single-server admin tool, not a distributed application. "Scaling" here means managing complexity as the codebase grows.
-
-| Concern | Approach |
-|---------|----------|
-| Adding new operations | Add method to appropriate service interface → implement → add command to ViewModel. The DI wiring in `Program.cs` is the only change needed. |
-| Adding new dialogs | New dialog ViewModel in `ViewModels/Dialogs/`, new XAML in `Views/Dialogs/`. Register dialog ViewModel in DI if it needs services. |
-| Multi-server support (future) | Currently out of scope. Architecture supports it: replace `ISettingsService` single-server config with a list; `IWsusService` takes a server connection parameter. ViewModel holds the active server context. |
-| Test coverage | `WsusManager.Core` has no WPF dependency → all service code is unit-testable with `xUnit` + mocked interfaces. ViewModel tests use `CommunityToolkit.Mvvm`'s `ObservableObject` which works in test contexts. |
+The application publishes as a self-contained single-file EXE using .NET 8's `PublishSingleFile` + `SelfContained` options. Theme XAML files are embedded as application resources (Build Action: `Resource`) and referenced via relative URIs (`new Uri("Themes/DarkTheme.xaml", UriKind.Relative)`). This works correctly with single-file EXE publication — WPF resource packs are bundled into the EXE.
 
 ---
 
 ## Sources
 
+- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — HIGH confidence (confirmed pattern)
+- [WPF complete guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — HIGH confidence (SkinResourceDictionary pattern, XAML Designer considerations)
+- [Mastering Dynamic Resources in WPF — Moldstud](https://moldstud.com/articles/p-mastering-dynamic-resources-in-wpf-a-comprehensive-guide-for-developers) — MEDIUM confidence (practical guidance, performance benchmarks)
+- [WPF: StaticResource vs. DynamicResource — CodeProject](https://www.codeproject.com/Articles/393086/WPF-StaticResource-vs-DynamicResource) — HIGH confidence (authoritative reference)
 - [CommunityToolkit.Mvvm IoC documentation](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/ioc) — HIGH confidence
-- [.NET Community Toolkit 8.4 announcement](https://devblogs.microsoft.com/dotnet/announcing-the-dotnet-community-toolkit-840/) — HIGH confidence (partial properties, analyzers)
 - [.NET Generic Host documentation](https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host) — HIGH confidence
-- [Task-based Asynchronous Pattern (TAP)](https://learn.microsoft.com/en-us/dotnet/standard/asynchronous-programming-patterns/task-based-asynchronous-pattern-tap) — HIGH confidence
-- [Async patterns for MVVM commands](https://learn.microsoft.com/en-us/archive/msdn-magazine/2014/april/async-programming-patterns-for-asynchronous-mvvm-applications-commands) — MEDIUM confidence (2014 article, patterns still valid)
-- [Microsoft.Data.SqlClient async programming](https://learn.microsoft.com/en-us/sql/connect/ado-net/asynchronous-programming) — HIGH confidence
-- [Single file deployment overview](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview) — HIGH confidence
-- [.NET 9 self-contained publish regression](https://github.com/dotnet/sdk/issues/43461) — HIGH confidence (confirmed GitHub issue)
-- WSUS COM API .NET Core incompatibility — MEDIUM confidence (community forum, no official Microsoft statement found; architecture avoids this entirely)
-- PowerShell v3.8.x source patterns — HIGH confidence (existing codebase, 12 documented anti-patterns in CLAUDE.md)
+- Existing codebase analysis: `DarkTheme.xaml` (14 token keys, 18 internal StaticResource cross-refs), `MainWindow.xaml` (157 StaticResource usages), `App.xaml` (single MergedDictionary structure), `AppSettings.cs` (existing settings model), `SettingsService.cs` (JSON persistence pattern)
 
 ---
 
-*Architecture research for: C#/.NET WPF WSUS management administration tool*
-*Researched: 2026-02-19*
+*Architecture research for: C#/.NET 8 WPF WSUS management administration tool with v4.3 theming system*
+*Initial research: 2026-02-19 | Theming addendum: 2026-02-20*
