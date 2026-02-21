@@ -39,7 +39,7 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 
 ### Documentation
 
-- [ ] **DOC-01**: README.md expanded with screenshots, installation, troubleshooting
+- [x] **DOC-01**: README.md expanded with screenshots, installation, troubleshooting
 - [ ] **DOC-02**: CONTRIBUTING.md documents build, test, and commit conventions
 - [ ] **DOC-03**: API documentation website generated via DocFX
 - [ ] **DOC-04**: CI/CD pipeline documented (GitHub Actions workflow)
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-05 | Phase 22 | Complete |
 | PERF-06 | Phase 23 | Complete |
 | PERF-07 | Phase 21 | Pending |
-| DOC-01 | Phase 24 | Pending |
+| DOC-01 | Phase 24 | Complete |
 | DOC-02 | Phase 24 | Pending |
 | DOC-03 | Phase 24 | Pending |
 | DOC-04 | Phase 24 | Pending |

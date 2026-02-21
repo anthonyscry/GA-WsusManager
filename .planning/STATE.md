@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** v4.4 Quality & Polish — Phase 24 in progress (2/6 plans complete)
+**Current focus:** v4.4 Quality & Polish — Phase 24 in progress (3/6 plans complete)
 
 ## Current Position
 
@@ -33,6 +33,7 @@ Phase 23: [████████████] Complete — Memory leak detect
 Phase 24: [██░░░░░░░░░░░] In Progress — Documentation Generation (2/6 plans complete)
   ├─ 24-05: [████████████] Complete — Release process docs and changelog (3 min)
   ├─ 24-01: [████████████] Complete — README.md update for C# v4.0 (3 min)
+    ├─ 24-06: [████████████] Complete — Architecture documentation with MVVM, DI, design decisions (5 min)
   └─ 24-02: [░░░░░░░░░░░░] Pending — Architecture Documentation
   └─ 24-03: [░░░░░░░░░░░░] Pending — Contributing Guidelines
   └─ 24-04: [░░░░░░░░░░░░] Pending — CLI Documentation
@@ -78,6 +79,27 @@ Phase 24: [██░░░░░░░░░░░] In Progress — Documentatio
 - Plan 01: Memory Leak Detection and Prevention - All leaks fixed (StringBuilder, IDisposable, event handlers)
   - StringBuilder for LogOutput with 1000-line trim (prevents ~500KB accumulation)
   - MainViewModel implements IDisposable (timer, CTS, log builder cleanup)
+  - All 6 dialogs with ESC handler cleanup in Closed events
+  - App.OnExit unsubscribes static event handlers
+  - Commit: a31eda5
+  - Requirements satisfied: PERF-06
+
+**Phase 24 In Progress:**
+- Plan 05: Release Process Documentation - Release workflow documentation and CHANGELOG.md
+  - Added docs/releases.md with comprehensive release process
+  - Added CHANGELOG.md with version history structure
+  - Commit: 43db42f
+  - Requirements satisfied: DOC-06
+- Plan 01: User Documentation (README.md) - Updated for C# v4.0 application
+  - Updated version to 4.0.0, changed description to C# WPF
+  - Removed all PowerShell-specific references (Scripts/, Modules/, build.ps1)
+  - Added dotnet CLI build instructions
+  - Added 6-theme documentation (DefaultDark, Slate, ClassicBlue, Serenity, Rose, JustBlack)
+  - Expanded features into categories (Core, UX, Client Management, Automation)
+  - Added comprehensive troubleshooting section (7 common issues)
+  - Created docs/screenshots/ directory with placeholder instructions
+  - Commits: d1c6d4f, 986e05d
+  - Requirements satisfied: DOC-01
   - DispatcherTimer handler stored and explicitly unsubscribed
   - All 6 dialogs with ESC handler cleanup in Closed events
   - App.OnExit unsubscribes static event handlers
@@ -93,6 +115,16 @@ Phase 24: [██░░░░░░░░░░░] In Progress — Documentatio
   - Commit: 43db42f, 83f0276
   - Duration: 3 min
 - Plan 01: README.md Enhancement (DOC-01) - Pending
+- Plan 06: Architecture Documentation (DOC-02) - COMPLETE
+  - Created docs/architecture.md with comprehensive architecture documentation
+  - Documented MVVM pattern with Model, View, ViewModel examples
+  - Documented dependency injection with Microsoft.Extensions.DependencyInjection
+  - Documented async/await pattern and ConfigureAwait guidelines
+  - Documented design decisions with rationale (.NET 8, WPF, xUnit)
+  - Updated CONTRIBUTING.md with Architecture section
+  - Updated README.md documentation links
+  - Commit: c1877d1, 094db37, 440e8a5
+  - Duration: 5 min
 - Plan 02: Architecture Documentation (DOC-02) - Pending
 - Plan 03: Contributing Guidelines (DOC-03) - Pending
 - Plan 04: CLI Documentation (DOC-04) - Pending
