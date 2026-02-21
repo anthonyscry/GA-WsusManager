@@ -109,6 +109,13 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Navigate(string panel)
     {
+        // Settings opens a modal dialog, not a panel
+        if (panel == "Settings")
+        {
+            _ = OpenSettings();
+            return;
+        }
+
         CurrentPanel = panel;
         PageTitle = panel switch
         {
@@ -884,8 +891,9 @@ public partial class MainViewModel : ObservableObject
         RunInstallWsusCommand.NotifyCanExecuteChanged();
         RunScheduleTaskCommand.NotifyCanExecuteChanged();
         RunCreateGpoCommand.NotifyCanExecuteChanged();
-        // Phase 12: Mode Override
+        // Phase 12: Mode Override + Settings
         ToggleModeCommand.NotifyCanExecuteChanged();
+        OpenSettingsCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -921,6 +929,49 @@ public partial class MainViewModel : ObservableObject
         StartRefreshTimer();
 
         _logService.Info("Application initialized, dashboard loaded");
+    }
+
+    /// <summary>
+    /// Opens the Settings dialog. Always accessible — no CanExecute restriction.
+    /// On OK, applies the new settings in-memory and persists to disk.
+    /// If the refresh interval changed, restarts the auto-refresh timer.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenSettings()
+    {
+        var dialog = new SettingsDialog(_settings);
+        if (Application.Current.MainWindow is not null)
+            dialog.Owner = Application.Current.MainWindow;
+
+        if (dialog.ShowDialog() != true || dialog.Result is null) return;
+
+        var updated = dialog.Result;
+
+        // Preserve fields not shown in dialog
+        updated.LogPanelExpanded = _settings.LogPanelExpanded;
+        updated.LiveTerminalMode = _settings.LiveTerminalMode;
+
+        // Check if refresh interval changed (need timer restart)
+        var intervalChanged = updated.RefreshIntervalSeconds != _settings.RefreshIntervalSeconds;
+
+        // Apply in-memory
+        _settings = updated;
+        ApplySettings(_settings);
+
+        // Restart timer if interval changed
+        if (intervalChanged)
+        {
+            StopRefreshTimer();
+            StartRefreshTimer();
+        }
+
+        // Persist to disk
+        await SaveSettingsAsync();
+
+        // Refresh dashboard so new paths/mode take effect immediately
+        await RefreshDashboard();
+
+        AppendLog($"Settings saved. Server mode: {_settings.ServerMode}, Refresh: {_settings.RefreshIntervalSeconds}s");
     }
 
     private void ApplySettings(AppSettings settings)
