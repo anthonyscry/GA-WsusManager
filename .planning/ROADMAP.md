@@ -122,4 +122,4 @@ Plans:
 | 12. Settings & Mode Override | 2/2 | Complete   | 2026-02-21 | - |
 | 13. Operation Feedback & Dialog Polish | 2/2 | Complete    | 2026-02-21 | - |
 | 14. Client Management Core | 3/3 | Complete    | 2026-02-21 | - |
-| 15. Client Management Advanced | v4.2 | 0/2 | Not started | - |
+| 15. Client Management Advanced | 2/2 | Complete   | 2026-02-21 | - |

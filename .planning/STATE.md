@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 15 of 15 (Client Management Advanced)
-Plan: 1 of 2 in current phase — plan 01 complete
-Status: Phase 15 in progress — plan 01 done (Mass GPUpdate batch operations)
-Last activity: 2026-02-21 — Phase 15 plan 01 complete (MassForceCheckInAsync + Mass Operations UI card)
+Plan: 2 of 2 in current phase — plan 02 complete
+Status: Phase 15 complete — all plans done
+Last activity: 2026-02-21 — Phase 15 plan 02 complete (Script Generator service + UI card)
 
-Progress: [████████████████░░░░] 72% (15/18 phases in progress)
+Progress: [████████████████████] 100% (15/15 phases complete)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [████████████████░░░░] 72% (15
 | Phase 14-client-management-core P02 | 3 | 2 tasks | 2 files |
 | Phase 14-client-management-core P03 | 2 | 2 tasks | 3 files |
 | Phase 15-client-management-advanced P01 | 4 | 2 tasks | 5 files |
+| Phase 15-client-management-advanced P02 | 5 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Progress: [████████████████░░░░] 72% (15
 - [15-01]: Parse MassHostnames in ViewModel (not service) — service receives clean IReadOnlyList<string>; ViewModel handles user input formatting
 - [15-01]: LoadHostFile has no CanExecute restriction — file loading always available, consistent with single-host hostname field
 - [15-01]: ConcurrentBag replaces List in CreateProgressCapture test helper — Progress<T> posts callbacks to threadpool in xUnit (no SyncCtx), causing collection-modified race
+- [15-02]: ScriptGeneratorService uses @"..." verbatim strings for PS templates — prevents C# compiler from treating PowerShell $() subexpressions as interpolation holes
+- [15-02]: GenerateScript command is synchronous (no RunOperationAsync) — script generation is local/instant, SaveFileDialog handles the only I/O
 
 ### Pending Todos
 
@@ -83,5 +86,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 15-01-PLAN.md — Mass GPUpdate service + UI card, all 282 tests pass. Phase 15 plan 01 complete. Next: Phase 15 plan 02 (Script Generator).
+Stopped at: Completed 15-02-PLAN.md — Script Generator service + UI card, 336 tests pass. Phase 15 plan 02 complete. All phases complete — v4.2 milestone done.
 Resume file: None
