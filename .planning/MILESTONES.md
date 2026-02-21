@@ -35,3 +35,23 @@
 
 ---
 
+
+## v4.2 UX & Client Management (Shipped: 2026-02-21)
+
+**Phases completed:** 4 phases (12-15), 9 plans
+**Timeline:** 2026-02-20 → 2026-02-21 (1 day)
+**Codebase:** ~21,000 LOC C# across 97 .cs files + 8 .xaml files
+**Tests:** 336 xUnit tests (up from 263)
+**Git range:** 39bfbd6..5c59046 (47 files changed, +7,571 / -57)
+
+**Key accomplishments:**
+1. Editable Settings dialog with JSON persistence and immediate effect — no app restart needed
+2. Dashboard mode toggle with manual Online/Air-Gap override that survives auto-refresh
+3. Operation progress feedback — indeterminate progress bar, [Step N/M] text, success/failure/cancel banners
+4. Real-time dialog validation for Install, Transfer, and Schedule dialogs with inline feedback
+5. Full WinRM client management toolset — cancel stuck jobs, force check-in, test connectivity, run diagnostics, error code lookup (20 codes)
+6. Mass GPUpdate across multiple hosts with per-host progress reporting and partial-success handling
+7. Script Generator producing 5 self-contained PowerShell scripts as WinRM fallback for air-gapped hosts
+
+---
+

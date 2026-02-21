@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A production-ready C#/.NET 8 WPF application for managing WSUS servers with SQL Server Express on Windows Server 2019+. Delivers full feature parity with the PowerShell v3.8.12 in a single-file EXE with zero threading bugs, sub-second startup, and native async operations. Built for GA-ASI IT administrators managing critical WSUS infrastructure, including air-gapped networks.
+A production-ready C#/.NET 8 WPF application for managing WSUS servers with SQL Server Express on Windows Server 2019+. Delivers full feature parity with the PowerShell v3.8.12 in a single-file EXE with zero threading bugs, sub-second startup, and native async operations. Includes a complete client troubleshooting toolkit with WinRM remote operations, mass host management, and PowerShell script generation for air-gapped environments. Built for GA-ASI IT administrators managing critical WSUS infrastructure.
 
 ## Core Value
 
@@ -27,18 +27,19 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ Button CanExecute refresh for proper visual disabling — v4.1
 - ✓ 263 xUnit tests passing — v4.1
 
+- ✓ Editable settings dialog with JSON persistence and immediate effect — v4.2
+- ✓ Dashboard mode toggle with manual Online/Air-Gap override — v4.2
+- ✓ Operation progress bar, step tracking, success/failure banners — v4.2
+- ✓ Real-time dialog validation (Install, Transfer, Schedule) — v4.2
+- ✓ WinRM client management: cancel stuck jobs, force check-in, test connectivity, diagnostics — v4.2
+- ✓ Error code lookup (20 common WSUS/WU codes) — v4.2
+- ✓ Mass GPUpdate across multiple hosts — v4.2
+- ✓ Script Generator producing self-contained PowerShell fallback scripts — v4.2
+- ✓ 336 xUnit tests passing — v4.2
+
 ### Active
 
-## Current Milestone: v4.2 UX & Client Management
-
-**Goal:** Polish the user experience and add client troubleshooting tools so admins can diagnose and fix stuck WSUS clients directly from the GUI.
-
-**Target features:**
-- Editable settings dialog (currently read-only)
-- Operation progress feedback (progress bars, status indicators)
-- Dialog polish (install, export/import, restore, schedule)
-- Client troubleshooting tools (cancel stuck jobs, force check-in, mass GPUpdate, connectivity testing, diagnostics, error code lookup)
-- Manual offline/Air-Gap mode override (dashboard toggle + settings persistence)
+(Next milestone requirements will be defined via `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -48,14 +49,17 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - Real-time multi-server management — single server at a time
 - PowerShell script backward compatibility — clean break from PS codebase
 - Building on C# POC — started fresh per user preference
+- Active Directory browser — use existing AD tools, just accept hostnames
+- Client-side agent/service — admin tool only, not a client endpoint
+- SCCM/Intune integration — different tooling ecosystem
 
 ## Context
 
 ### Current State
-- **Version:** v4.1 shipped 2026-02-20
-- **Codebase:** ~13,000 LOC C# across 88 .cs + 8 .xaml files
+- **Version:** v4.2 shipped 2026-02-21
+- **Codebase:** ~21,000 LOC C# across 97 .cs + 8 .xaml files
 - **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
-- **Tests:** 263 xUnit tests (263 on WSL, ~277 on Windows CI with WPF)
+- **Tests:** 336 xUnit tests
 - **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 
@@ -81,6 +85,10 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 | schtasks.exe for scheduled tasks | Simpler than COM TaskScheduler API | ✓ Good — no NuGet dep needed |
 | Shell out to PS for WSUS install | Install script too complex to rewrite | ✓ Good — reuses proven logic |
 | Separate CI workflow (build-csharp.yml) | Keeps PowerShell build.yml untouched | ✓ Good — no conflicts |
+| Settings dialog as modal (not panel) | Configuration is transient, not persistent view | ✓ Good — always accessible |
+| Sequential WinRM for mass operations | Prevent network saturation on large batches | ✓ Good — reliable for 50+ hosts |
+| Verbatim strings for PS script templates | Avoids C# interpolation conflicts with PowerShell $() | ✓ Good — clean separation |
+| WinRM pre-check before every remote op | Fail fast with clear message and Script Generator guidance | ✓ Good — better UX than timeout |
 
 ## Constraints
 
@@ -92,4 +100,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-20 after v4.2 milestone start*
+*Last updated: 2026-02-21 after v4.2 milestone completion*
