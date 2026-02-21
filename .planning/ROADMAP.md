@@ -86,7 +86,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 <details>
 <summary>🔄 v4.5 Enhancement Suite (Phases 25-31) — IN PROGRESS</summary>
 
-- [ ] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (1/5 plans complete)
+- [x] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (5/5 plans complete) (completed 2026-02-21)
 - [ ] Phase 26: Keyboard & Accessibility — Keyboard shortcuts, AutomationId, WCAG compliance
 - [ ] Phase 27: Visual Feedback Polish — Progress estimation, loading indicators, actionable errors
 - [ ] Phase 28: Settings Expansion — Operations config, logging config, advanced options
@@ -133,7 +133,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 22. Performance Benchmarking | v4.4 | 3/3 | Complete | 2026-02-21 |
 | 23. Memory Leak Detection | v4.4 | 1/1 | Complete | 2026-02-21 |
 | 24. Documentation Generation | v4.4 | 6/6 | Complete | 2026-02-21 |
-| 25. Performance Optimization | 5/5 | Complete   | 2026-02-21 | 2026-02-21 |
+| 25. Performance Optimization | 5/5 | Complete    | 2026-02-21 | 2026-02-21 |
 | 26. Keyboard & Accessibility | v4.5 | 0/4 | Not started | - |
 | 27. Visual Feedback Polish | v4.5 | 0/4 | Not started | - |
 | 28. Settings Expansion | v4.5 | 0/4 | Not started | - |
