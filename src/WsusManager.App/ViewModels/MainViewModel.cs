@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -482,6 +483,44 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             AppendLog($"[ERROR] Failed to save log: {ex.Message}");
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DATA LISTS (Phase 25: Virtualization Infrastructure)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Filtered list of computers for Phase 29 Data Filtering panel.
+    /// Uses ObservableCollection for efficient UI updates with virtualization.
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<ComputerInfo> _filteredComputers = new();
+
+    /// <summary>
+    /// Filtered list of updates for Phase 29 Data Filtering panel.
+    /// Uses ObservableCollection for efficient UI updates with virtualization.
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<UpdateInfo> _filteredUpdates = new();
+
+    /// <summary>
+    /// Loads computers into filtered collection. Called by Phase 29 Data Filtering.
+    /// Currently empty placeholder - implementation in Phase 29.
+    /// </summary>
+    public async Task LoadComputersAsync(string? statusFilter = null, CancellationToken ct = default)
+    {
+        // Phase 29 will implement: query WSUS API, apply filter, populate FilteredComputers
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Loads updates into filtered collection. Called by Phase 29 Data Filtering.
+    /// Currently empty placeholder - implementation in Phase 29.
+    /// </summary>
+    public async Task LoadUpdatesAsync(string? approvalFilter = null, string? classificationFilter = null, CancellationToken ct = default)
+    {
+        // Phase 29 will implement: query DashboardService, apply filters, populate FilteredUpdates
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1534,4 +1573,33 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         GC.SuppressFinalize(this);
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DATA LIST MODELS (Phase 25: Infrastructure for Phase 29)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Represents a computer in the WSUS environment with filtering properties.
+    /// Used by Phase 29 Data Filtering panel with virtualized ListBox.
+    /// </summary>
+    public record ComputerInfo(
+        string Hostname,
+        string IpAddress,
+        string Status,
+        DateTime LastSync,
+        int PendingUpdates,
+        string OsVersion);
+
+    /// <summary>
+    /// Represents an update with filtering properties.
+    /// Used by Phase 29 Data Filtering panel with virtualized ListBox.
+    /// </summary>
+    public record UpdateInfo(
+        Guid UpdateId,
+        string Title,
+        string? KbArticle,
+        string Classification,
+        DateTime ApprovalDate,
+        bool IsApproved,
+        bool IsDeclined);
 }
