@@ -133,7 +133,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 22. Performance Benchmarking | v4.4 | 3/3 | Complete | 2026-02-21 |
 | 23. Memory Leak Detection | v4.4 | 1/1 | Complete | 2026-02-21 |
 | 24. Documentation Generation | v4.4 | 6/6 | Complete | 2026-02-21 |
-| 25. Performance Optimization | v4.5 | 1/5 | In progress | 2026-02-21 |
+| 25. Performance Optimization | 3/5 | In Progress|  | 2026-02-21 |
 | 26. Keyboard & Accessibility | v4.5 | 0/4 | Not started | - |
 | 27. Visual Feedback Polish | v4.5 | 0/4 | Not started | - |
 | 28. Settings Expansion | v4.5 | 0/4 | Not started | - |
@@ -163,7 +163,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 5. Theme switching applies changes within 100ms for instant visual feedback
 
 **Plans:**
-- [ ] 25-01-PLAN.md — Parallelize initialization for faster startup (PERF-08)
+3/5 plans executed
 - [ ] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
 - [ ] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
 - [x] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12) ✅
