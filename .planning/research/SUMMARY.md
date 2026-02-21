@@ -1,208 +1,249 @@
 # Project Research Summary
 
-**Project:** GA-WsusManager v4.3 — Runtime Theme Switching
-**Domain:** WPF/.NET 8 runtime theming system for an existing C# admin GUI application
-**Researched:** 2026-02-20
-**Confidence:** HIGH
+**Project:** GA-WsusManager v4.4 Quality & Polish
+**Domain:** C#/.NET 8 WPF Desktop Application — Quality & Polish Improvements
+**Researched:** 2026-02-21
+**Confidence:** MEDIUM
 
 ## Executive Summary
 
-The v4.3 milestone adds a 6-theme runtime color scheme switcher to an existing C#/.NET 8 WPF application. The research verdict is clear and low-risk: native WPF `ResourceDictionary` merging with `DynamicResource` bindings is the correct and complete solution. No new NuGet packages are required. No external theming library should be considered. The foundation already exists — `Themes/DarkTheme.xaml` establishes the right architectural pattern; the v4.3 work is a migration and extension of what is already there.
+GA-WsusManager v4.4 is a quality and polish milestone for an existing production WPF desktop application. The research reveals that this is a well-established codebase (336 existing xUnit tests, .NET 8, MVVM architecture) seeking to add professional-grade quality engineering practices rather than build new features. The recommended approach focuses on incremental quality improvements: static analysis with Roslyn analyzers, code coverage reporting, XML documentation, and performance benchmarking.
 
-The single highest-risk item is the foundational prerequisite: the existing codebase uses `{StaticResource}` throughout all 8 XAML files (283 total references). `StaticResource` is resolved once at XAML parse time and never updates. Every color/brush reference must become `{DynamicResource}` before a runtime theme swap has any visible effect. Additionally, `DarkTheme.xaml` currently mixes color token definitions with structural style definitions — these must be split into two separate files (`DarkTheme.xaml` for color tokens only, `SharedStyles.xaml` for all style blocks) before any non-default theme can work correctly. These two foundational changes gate all other work and must be completed and verified before writing a single non-default theme file.
+Expert practitioners in the .NET WPF space recommend a layered quality strategy: start with compiler-level quality gates (Roslyn analyzers, warning-free builds), add test coverage measurement (Coverlet + ReportGenerator), then expand to advanced practices (UI automation with FlaUI, performance benchmarking with BenchmarkDotNet, API documentation with DocFX). The research identifies critical risks: brittle integration tests due to timing/environment issues, misleading code coverage that misses edge cases, WPF memory leaks from event handlers, async/await deadlocks in UI thread, and analyzer warning fatigue that causes teams to disable quality gates entirely. Mitigation involves proper test isolation, branch coverage focus, weak event patterns, consistent async propagation, and incremental analyzer adoption.
 
-The live-preview interaction pattern (apply theme immediately on swatch click, revert on Cancel) is the key differentiator identified in feature research and maps directly to Chrome's theme picker model. It is achievable with low implementation complexity once the infrastructure is correct, but requires careful Cancel-revert logic: the SettingsDialog must snapshot the active theme name on open and restore it if the user cancels. Six additional pitfalls are documented in PITFALLS.md — hardcoded hex values in XAML, hardcoded `SolidColorBrush` creation in `MainViewModel.cs`, `BasedOn` style inheritance constraints, theme flash on startup, missing keys in non-default themes, and ComboBox system-color bleed — each with concrete prevention strategies. None require significant rework if addressed in Phase 1.
-
----
+The v4.4 milestone positions GA-WsusManager as "professional-grade" open-source — rigorous quality practices without enterprise over-engineering. Most PowerShell-based WSUS tools have zero tests, no static analysis, and minimal documentation; commercial tools are polished but expensive and over-featured. This milestone differentiates by demonstrating engineering rigor through transparency (coverage reports, benchmarks, public CI results) rather than feature sprawl.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Runtime theme switching in WPF is entirely a native platform capability. The stack addition for v4.3 is zero new NuGet packages. The existing base stack (C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq) is unchanged. The mechanism is: (1) theme XAML files define color token resources with identical keys across all themes; (2) all color references in XAML views use `DynamicResource` instead of `StaticResource`; (3) a `ThemeService` class swaps the active theme dictionary in `Application.Current.Resources.MergedDictionaries` at runtime; (4) WPF's resource notification system automatically propagates the change to all bound elements.
+**Core technologies:**
+- **FlaUI.UIA3** (v4.0.0) — WPF UI automation testing; modern WPF automation with lambda-based API, better than deprecated WinAppDriver
+- **BenchmarkDotNet** (v0.14.x) — Performance benchmarking; industry standard for .NET, integrates with Visual Studio, generates diagsession files
+- **coverlet.collector** (v6.0.2) — Code coverage collection; already in test project, generates Cobertura/OpenCover reports
+- **ReportGenerator** (v5.x) — Coverage report generation; HTML reports with risk hotspot analysis and badge generation
+- **SonarAnalyzer.CSharp** (v10.x) — Enhanced static analysis; security, reliability, and performance rules beyond built-in analyzers
+- **.NET 8 SDK Analyzers** (built-in) — Core code quality; already enabled, no NuGet needed, auto-updates with SDK
+- **DocFX** (v2.x) — API documentation generation; .NET-focused, generates static HTML from XML comments
 
-All external theming libraries (MaterialDesignInXamlToolkit, MahApps.Metro, HandyControl, FluentWPF/Wpf.Ui) were explicitly researched and rejected. They impose opinionated control libraries that conflict with the existing custom GA-AppLocker-style dark theme and would require full style rewrites — out of scope and high risk. External JSON theme files (loose files on disk) were also rejected: they break the single-EXE deployment constraint and have no design-time support. Embedded XAML files with `Resource` build action are the correct approach — they compile into the EXE assembly and work correctly with `PublishSingleFile=true`.
-
-**New components (zero new NuGet packages):**
-- `DynamicResource` bindings (WPF built-in) — allows resource values to propagate to controls at runtime; replaces existing `StaticResource` for all color/brush keys
-- `Themes/SharedStyles.xaml` (new XAML file) — structural styles extracted from `DarkTheme.xaml`; references color tokens via `{DynamicResource}`; merged permanently in `App.xaml`, never swapped
-- 5 additional `*Theme.xaml` files (new XAML files, `Resource` build action) — one file per additional color scheme; all defining the same 22 token keys (14 original + 8 new for hardcoded hex extraction)
-- `IThemeService` + `ThemeService` (new C# class in `WsusManager.App/Services/`) — encapsulates dictionary swap logic, maps theme name to XAML URI, tracks current theme, exposes `ThemeChanged` event
-- `SelectedTheme` property on `AppSettings` (string, default `"Default Dark"`) — persists selected theme via existing `ISettingsService` JSON path; no new persistence infrastructure needed
-
-**Version compatibility:** All mechanisms confirmed compatible with .NET 8 WPF and `PublishSingleFile=true`. Pack URI format `pack://application:,,,/AssemblyName;component/Themes/File.xaml` (or relative `new Uri("Themes/DarkTheme.xaml", UriKind.Relative)`) works correctly with single-file EXE publication — WPF resources are compiled into the assembly before bundling.
+**Key insight:** Most quality tools are already in the ecosystem. The primary additions are FlaUI (UI automation), BenchmarkDotNet (performance), ReportGenerator (coverage HTML), and SonarAnalyzer (enhanced static analysis). The existing stack (xUnit, Moq, Serilog, CommunityToolkit.Mvvm) remains unchanged.
 
 ### Expected Features
 
-The feature research identified the MVP for a theme picker in a daily-use server admin tool. Light themes were explicitly identified as an anti-feature for this product — all 6 themes are dark-family (appropriate for server rooms and data center environments where the existing dark-is-table-stakes identity must be maintained).
-
 **Must have (table stakes):**
-- 6 built-in themes — users expect shipped themes to pick from; planned: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
-- Theme applies to entire UI immediately — partial theming looks broken; requires DynamicResource migration throughout all 8 XAML files
-- Selected theme persists across restarts — lost preference is a regression; `SelectedTheme` field in `AppSettings`
-- Theme accessible from Settings dialog — configuration belongs in Settings; add an "Appearance" section
-- Visual swatches in the picker — text-only theme names do not help users choose; 3x2 swatch grid showing each theme's colors
-- Default theme on first run — `AppSettings.SelectedTheme` defaults to `"Default Dark"`
-- Human-readable theme names — display names, not file names
+- **Unit Test Coverage >80%** — Industry standard for production codebase; already have 336 tests — verify coverage meets threshold
+- **Zero Compiler Warnings** — Warnings signal code quality issues; builds with warnings feel incomplete
+- **XML Documentation Comments** — IntelliSense shows blank for undocumented APIs; professional expectation (currently ~70% coverage)
+- **Exception Handling Documentation** — Users need to know what exceptions to catch; require `<exception>` tags on all public APIs
+- **Error Messages** — Users need clear, actionable error messages; already have global error handler — verify coverage
+- **Logging** — Troubleshooting production issues requires logs; already have Serilog — verify comprehensive coverage
 
-**Should have (differentiators):**
-- Live preview — theme applies before Save is clicked; Chrome-style instant feedback; revert on Cancel; this is the key UX differentiator
-- Active theme indicator in picker — checkmark or highlight border on the currently active swatch
-- Theme swap without restart — modern expectation; enabled by DynamicResource migration
+**Should have (competitive):**
+- **Startup Time Benchmarking** — Prove "sub-second startup" claim with data; users trust verified claims (already measuring startup)
+- **Code Coverage Reporting** — Transparent quality metrics; visible coverage builds trust (use coverlet.collector already in project)
+- **Performance Baselines** — Detect performance regressions automatically; rare in internal tools (BenchmarkDotNet for critical paths)
+- **API Documentation Website** — Professional developer experience; enables future extensibility (DocFX to generate from XML comments)
+- **Developer Documentation** — Onboarding contributors; understanding architecture decisions (CONTRIBUTING.md, design docs)
 
-**Defer to v4.x:**
-- Smooth fade transition on theme switch — low value, medium complexity; skip if it adds risk
-- High-contrast accessibility theme — defer; requires accessibility audit
-
-**Anti-features (explicitly not building):**
-- External theme file import — code injection vector; single-file EXE constraint; not building
-- Custom color editor — enormous scope; 6 well-designed themes cover the range; not building
-- Light themes — conflicts with product identity and server-room use case; not building
-- Per-section theming — visual incoherence; themes are only coherent when applied globally
+**Defer (v2+):**
+- **UI Automation Tests** — Catch UI regressions before users; requires FlaUI framework (too complex for v4.4)
+- **Integration Tests** — Test real SQL/WSUS interactions; requires test WSUS environment (complex setup)
+- **Memory Leak Detection** — Long-running server admin tools must not leak; requires profiling tools (defer to v4.5+)
+- **100% Code Coverage** — Diminishing returns; tests become brittle (target 80% line + 70% branch)
 
 ### Architecture Approach
 
-The theming architecture follows a strict token/style split. Color token dictionaries (one per theme, swappable) define only the 22 brush and color resources. The `SharedStyles.xaml` dictionary (permanent, never swapped) defines all structural styles — `NavBtn`, `BtnGreen`, `BtnRed`, `LogTextBox`, custom `ProgressBar` template, `ScrollBar` style, etc. — referencing color tokens via `{DynamicResource}`. This split is the foundational architectural requirement: keeping styles in the swappable dictionary destroys and recreates them on every theme change, producing visual flicker and style loss on affected controls.
-
-The `ThemeService` is a UI-layer singleton registered in `Program.cs`. It lives in `WsusManager.App/Services/`, not `WsusManager.Core`, because it has a direct dependency on `Application.Current.Resources` (a WPF runtime object). The `MainViewModel` and `SettingsDialog` receive `IThemeService` via constructor injection. Theme switching is always synchronous and always called on the UI thread — `MergedDictionaries` manipulation is not thread-safe.
+The research reveals a standard .NET 8 WPF MVVM application with a clear separation between Core (business logic), App (UI layer), and Tests (unit validation). The v4.4 quality improvements add a new "Quality & Polish Layer" consisting of four new project types: Integration Tests (WsusManager.E2E), UI Automation (WsusManager.UI.Tests), Benchmark Suites (WsusManager.Benchmarks), and Documentation (WsusManager.Docs).
 
 **Major components:**
-1. `Themes/SharedStyles.xaml` (permanent, index 0 in `MergedDictionaries`) — all structural styles; references color tokens via `{DynamicResource}`; never touched at runtime
-2. `Themes/*Theme.xaml` (6 swappable color files, index 1 in `MergedDictionaries`) — 22 token keys each; swapped at runtime by `ThemeService`
-3. `ThemeService` — holds the URI map for all 6 themes; executes the `MergedDictionaries[1]` swap; exposes `CurrentTheme`, `AvailableThemes`, and `ThemeChanged` event
-4. `SettingsDialog` (extended) — captures `_originalTheme` on open; calls `ApplyTheme` on swatch click for live preview; reverts on Cancel via `_themeService.ApplyTheme(_originalTheme)`; passes selected theme in `Result`
-5. `MainViewModel` (extended) — injects `IThemeService`; calls `ApplyTheme` in `ApplySettings()` during startup; `GetBrush(key)` helper using `TryFindResource` replaces all `Color.FromRgb()` constants for dashboard card colors; subscribes to `ThemeChanged` to refresh brush properties
+1. **Quality & Polish Layer** — New projects for integration testing, UI automation, performance benchmarking, and documentation generation; sits above existing application layer
+2. **Analysis & Instrumentation** — Roslyn analyzers (.editorconfig), code coverage (Coverlet), and documentation generation (DocFx); provides compile-time and build-time quality gates
+3. **Application Layer** — Existing MainViewModel (MVVM), Service Layer (18 services with DI), and Core/Infrastructure (LogService, ProcessRunner, WinRmExecutor, ThemeService)
+4. **External Dependencies** — WSUS API (runtime), SQL Server, WinRM, FileSystem, Registry
 
-**Data flows:**
-- Swatch click → `SettingsDialog.OnThemeSelected` → `_themeService.ApplyTheme(name)` → `MergedDictionaries[1]` swapped → WPF propagates to all `DynamicResource` bindings automatically
-- Cancel → `_themeService.ApplyTheme(_originalTheme)` → reverts to pre-dialog state; does not save to JSON
-- Save → `Result.SelectedTheme` returned → `_settingsService.SaveAsync` → JSON persisted; theme already applied, no second call needed
-- Startup → `App.xaml.cs` `OnStartup()` → `_settingsService.Load()` → `_themeService.ApplyTheme(settings.SelectedTheme)` → before `MainWindow.Show()` (prevents theme flash)
+**Key architectural patterns:**
+- **Test Pyramid for WPF** — Three-tier testing: UI automation (10-20 critical paths, slow), integration (50-100 workflows, medium), unit (300+ tests, fast)
+- **Page Object Model** — Encapsulate UI elements and interactions in reusable "page" classes for maintainable UI automation
+- **Shared Analyzer Configuration** — Directory.Build.props centralizes Roslyn analyzer packages and rules for entire solution
+- **Integration Test Fixture** — Reusable test fixture with shared service context to reduce setup overhead
+- **Benchmark with Baseline** — BenchmarkDotNet with baseline comparison for regression detection
+- **DocFx from XML Comments** — Generate API documentation website from triple-slash comments
 
 ### Critical Pitfalls
 
-1. **StaticResource references do not update on theme swap** — All 283 `{StaticResource}` color references across 8 XAML files must become `{DynamicResource}`. Style key references (`{StaticResource NavBtn}`) must stay as `StaticResource`. Verify completion with grep for `StaticResource Bg`, `StaticResource Text`, `StaticResource Blue`, etc. — zero results means complete.
+1. **Brittle Integration Tests** — Tests pass locally but fail intermittently in CI due to timing variations, display settings, DPI scaling, or system performance differences. Prevention: Use modern frameworks like FlaUI, implement robust wait strategies with explicit timeouts, use test data factories for consistent state, configure tests with proper permissions in isolated environments, use stable automation properties instead of visual characteristics.
 
-2. **Inline hardcoded hex colors in XAML bypass the theming system** — `MainWindow.xaml` DataTrigger setters hardcode `#21262D`, `#58A6FF`, `#E6EDF3`. Multiple dialogs hardcode `#F85149`. `DarkTheme.xaml` ControlTemplate triggers hardcode `#238636`, `#2EA043`, `#DA3633`. All must be extracted to 8 new named resource keys added to all theme files: `NavActiveBackground`, `NavActiveAccent`, `NavActiveForeground`, `TextError`, `BtnPrimaryBg`, `BtnPrimaryHover`, `BtnDangerBg`, `BtnDangerHover`.
+2. **Misleading Code Coverage** — Achieving high coverage percentages (80%+) while missing critical edge cases, error handling paths, and exception scenarios. Prevention: Focus on branch coverage rather than line coverage, use parameterized testing (xUnit `Theory`) for edge cases, test exception paths explicitly with `Assert.Throws`, cover null/empty/invalid input scenarios, verify catch blocks are actually executed.
 
-3. **Hardcoded SolidColorBrush in MainViewModel bypasses theming** — `MainViewModel.cs` creates brushes via `Color.FromRgb()` literals for dashboard card status bars and connection dot. These must be replaced with a `GetBrush(key)` helper using `Application.Current.TryFindResource(key)`. The `ThemeService` needs a `ThemeChanged` event so the ViewModel refreshes brush `ObservableProperty` values when the theme swaps.
+3. **Memory Leaks from Event Handlers** — Application memory usage grows over time, UI controls aren't garbage collected, performance degrades. Prevention: Always unsubscribe event handlers in `Unloaded` events, use `ObservableCollection` for data-bound collections, use weak event patterns for long-lived publishers, call `RemoveValueChanged` for every `AddValueChanged`, implement `IDisposable` and `IAsyncDisposable` properly.
 
-4. **Styles in the swappable dictionary cause flash and style loss** — `DarkTheme.xaml` currently mixes color tokens and structural styles. Clearing the dictionary to swap themes destroys the structural styles. Must split into `SharedStyles.xaml` (permanent) and color-only theme files before implementing any non-default theme. This is the foundational architectural change that gates everything else.
+4. **Async/Await Deadlocks in UI Thread** — UI freezes completely, application hangs waiting for operations to complete. Prevention: Never use `Task.Result` or `.Wait()` on UI thread, always use `async/await` consistently throughout call stack, use `ConfigureAwait(false)` in library code (non-UI layers), use `Dispatcher.InvokeAsync` for cross-thread UI updates, pass `CancellationToken` to all async operations.
 
-5. **Live preview Cancel does not revert without an explicit snapshot** — SettingsDialog must capture `_originalTheme = _themeService.CurrentTheme` on open, before any swatch is clicked. Cancel handler must call `_themeService.ApplyTheme(_originalTheme)`. Without this, Cancel leaves the app in the last-previewed theme state until the next restart.
-
----
+5. **Static Analyzer Warning Fatigue** — Developers disable Roslyn analyzers or ignore warnings due to excessive false positives and low-value warnings. Prevention: Start with `MinimumRecommendedRules` for incremental adoption, use .editorconfig for fine-grained rule control, set `CodeAnalysisTreatWarningsAsErrors` to `false` initially, address warnings incrementally not all at once, customize severity levels, focus on CA (code analysis) rules over IDE (style) rules.
 
 ## Implications for Roadmap
 
-Based on research, the work separates naturally into two phases with a strict dependency order. Phase 1 must be complete and verified before Phase 2 begins — writing theme files before the infrastructure is correct produces themes that appear to do nothing.
+Based on research, suggested phase structure:
 
-### Phase 1: Infrastructure and XAML Migration
+### Phase 1: Static Analysis & Code Quality Foundation
+**Rationale:** Static analysis is the foundation of all quality improvements and enables warning-free builds. This phase establishes the quality gate infrastructure without requiring new test projects or complex setups. SDK analyzers are built into .NET 8 and require no external dependencies.
 
-**Rationale:** All theming work is blocked until the foundational plumbing is correct. The `StaticResource` migration and the token/style split are prerequisites for everything in Phase 2. This phase resolves Pitfalls 1, 2, 3, 4, 7, and 8 — the infrastructure-layer pitfalls — before any visible feature work begins. The app should render identically to today after Phase 1 completes; the only difference is that the architecture now supports runtime theme switching.
+**Delivers:** Roslyn analyzer configuration (.editorconfig), Directory.Build.props with shared analyzer packages, zero compiler warnings in Release builds, XML documentation generation enabled.
 
-**Delivers:** A working single-theme app with correct theming infrastructure. `DarkTheme.xaml` contains only color tokens. `SharedStyles.xaml` contains all styles referencing color tokens via `DynamicResource`. All 8 XAML files use `DynamicResource` for color/brush references. `ThemeService` is registered and functional. `AppSettings` has `SelectedTheme`. Startup applies saved theme before window shows. `MainViewModel` retrieves brush colors from the resource dictionary, not from hardcoded constants.
+**Addresses:** Table stakes features (zero compiler warnings, XML documentation), avoids static analyzer warning fatigue (Pitfall #5).
 
-**Work items:**
-- Split `DarkTheme.xaml` into `SharedStyles.xaml` (styles) + `DarkTheme.xaml` (14 color tokens only); update `App.xaml` to merge both at indices 0 and 1
-- Extract 8 hardcoded hex values from XAML setters and ControlTemplate triggers to new named resource keys; add all 8 to `DarkTheme.xaml`
-- Migrate all 283 `{StaticResource}` color references to `{DynamicResource}` across 8 XAML files; keep style name references as `{StaticResource}`
-- Implement `IThemeService` and `ThemeService` with URI map for all 6 themes and a `ThemeChanged` event; register as singleton in `Program.cs`
-- Add `SelectedTheme` property to `AppSettings` (default: `"Default Dark"`)
-- Apply saved theme in `App.xaml.cs` `OnStartup()` before `MainWindow` is created
-- Replace `Color.FromRgb()` literals in `MainViewModel.cs` with `GetBrush(key)` via `TryFindResource`; subscribe to `ThemeChanged` to refresh brush `ObservableProperty` values
-- Add debug-build key validation assertion covering all 22 required keys
+**Uses:** .NET 8 SDK Analyzers (built-in), SonarAnalyzer.CSharp (enhanced rules), EditorConfig (rule configuration).
 
-**Avoids:** Pitfalls 1 (StaticResource), 2 (hardcoded hex), 3 (ViewModel brushes), 4 (styles in swappable dict), 7 (startup flash), 8 (duplicate keys after split)
+**Avoids:** Analyzer warning fatigue via incremental adoption and severity configuration.
 
-**Research flag:** Standard WPF patterns — well-documented mechanisms. No phase research needed.
+### Phase 2: Code Coverage & Reporting
+**Rationale:** Code coverage measurement validates that existing 336 tests provide meaningful coverage. Coverlet is already installed in the project, so this phase primarily adds reporting infrastructure and CI integration. Coverage reporting builds trust and provides transparency.
 
----
+**Delivers:** Code coverage collection with Coverlet, HTML coverage reports with ReportGenerator, CI/CD coverage artifact upload, coverage badges for README.
 
-### Phase 2: Theme Files, Picker UI, and Live Preview
+**Addresses:** Table stakes features (>80% coverage), avoids misleading code coverage (Pitfall #2) via branch coverage focus.
 
-**Rationale:** Phase 1 establishes the correct infrastructure. Phase 2 delivers the visible feature: 5 additional theme color files and the Settings dialog picker with live preview. Writing theme files after the infrastructure is correct is purely mechanical — copy `DarkTheme.xaml`, change 22 color values, verify with the debug-build key assertion. The picker UI wires swatch clicks to an already-working `ThemeService`. Cancel revert is the trickiest implementation detail and is the primary risk in this phase.
+**Uses:** coverlet.collector (v6.0.2, already installed), ReportGenerator (global tool), GitHub Actions coverage reporting.
 
-**Delivers:** The complete v4.3 feature — 6 themes, Chrome-style live preview picker in Settings, active theme indicator, Cancel revert, and persistence across restarts.
+**Implements:** Test Pyramid pattern (unit test foundation).
 
-**Work items:**
-- Create 5 additional theme files (`JustBlackTheme.xaml`, `SlateTheme.xaml`, `SerenityTheme.xaml`, `RoseTheme.xaml`, `ClassicBlueTheme.xaml`), each defining all 22 required keys; verify each with WCAG 2.1 AA contrast ratio check (4.5:1 minimum) using https://webaim.org/resources/contrastchecker/
-- Extend `SettingsDialog.xaml` with an "Appearance" section containing a 3x2 swatch grid; increase dialog height from 380px to ~500px; swatch colors are hardcoded in the picker XAML (presentational only — must show target theme while a different theme is active)
-- Update `SettingsDialog.xaml.cs` to inject `IThemeService`, capture `_originalTheme` on open, wire swatch click to `ApplyTheme` for live preview, call `ApplyTheme(_originalTheme)` on Cancel, include `SelectedTheme` in `Result`
-- Update `MainViewModel.cs` to inject `IThemeService`, call `ApplyTheme(settings.SelectedTheme)` in `ApplySettings()`
-- Add implicit `ComboBox` and `TextBox` styles to `SharedStyles.xaml` to mitigate system-color bleed in dropdown popups (simplified approach — full ControlTemplate override deferred if not needed)
-- Integration test all 4 scenarios: swatch click live preview, Cancel reverts, Save persists, restart restores
+### Phase 3: XML Documentation & API Reference
+**Rationale:** XML documentation is required for IntelliSense and enables DocFX generation. This phase documents public APIs first (where users benefit) before expanding to internal implementation details. DocFX generates professional documentation websites from XML comments.
 
-**Avoids:** Pitfalls 5 (BasedOn/DynamicResource — color values in derived styles use `DynamicResource`; `BasedOn` attribute remains `StaticResource`), 6 (Cancel revert with `_originalTheme` snapshot), 9 (missing keys — debug assertion from Phase 1 catches immediately), 10 (ComboBox system color — implicit style mitigation)
+**Delivers:** XML documentation comments on all public APIs, `<exception>` tags for exception documentation, DocFX configuration and static HTML site, API documentation website deployment.
 
-**Research flag:** Standard WPF patterns — no phase research needed. Color palette selection for 5 non-default themes is a design decision, not a research question.
+**Addresses:** Table stakes features (XML documentation, exception docs), competitive features (API documentation website).
 
----
+**Uses:** DocFX (v2.x global tool), XML documentation generation (`<GenerateDocumentationFile>true</GenerateDocumentationFile>`).
+
+**Implements:** DocFx from XML Comments pattern.
+
+### Phase 4: Performance Benchmarking
+**Rationale:** Performance benchmarking validates the "sub-second startup" claim and detects regressions before they reach production. BenchmarkDotNet is the industry standard and integrates with Visual Studio for profiling. This phase focuses on critical paths only (startup, database operations, sync operations).
+
+**Delivers:** BenchmarkDotNet console project, startup time benchmarks (cold/warm), database operation benchmarks, CI benchmark results (manual trigger), performance baseline data.
+
+**Addresses:** Competitive features (startup time benchmarking, performance baselines), avoids slow cold startup performance trap.
+
+**Uses:** BenchmarkDotNet (v0.14.x), dotnet-trace, dotnet-counters, PerfView (for deep profiling).
+
+**Implements:** Benchmark with Baseline Comparison pattern.
+
+### Phase 5: Integration Testing (Optional/Deferred)
+**Rationale:** Integration tests validate end-to-end workflows across service boundaries. This phase is optional for v4.4 because it requires test environment setup (WSUS installation, SQL Express). Defer to v4.5 or run manually/on-demand.
+
+**Delivers:** WsusManager.E2E test project, workflow tests (Health→Repair→Dashboard, Backup→Cleanup→Restore, Export→Import cycle), CI integration with test categorization.
+
+**Addresses:** Anti-feature (integration tests in every CI run are too slow), avoids brittle integration tests (Pitfall #1).
+
+**Uses:** xUnit (existing), IAsyncLifetime fixture pattern, test categorization (Category="E2E").
+
+**Implements:** Integration Test Fixture with Shared Context pattern.
+
+### Phase 6: UI Automation (Optional/Deferred)
+**Rationale:** UI automation tests critical user paths but adds significant complexity and maintenance burden. This phase is optional for v4.4 because FlaUI requires stable element selectors and tests can be flaky. Defer to v4.5+ or only for critical paths.
+
+**Delivers:** WsusManager.UI.Tests project, FlaUI.UIA3 integration, Page Object Model for MainWindow and dialogs, critical path tests (install, transfer, schedule), CI integration (Windows runner with UI).
+
+**Addresses:** Anti-feature (UI automation for every dialog is overkill), avoids brittle UI tests via stable selectors.
+
+**Uses:** FlaUI.UIA3 (v4.0.0), xUnit with `[STAThread]` assembly attribute, Page Object Model pattern.
+
+**Implements:** Page Object Model for UI Automation pattern.
+
+### Phase 7: Memory Leak Detection (Optional/Deferred)
+**Rationale:** Memory leak detection ensures long-running operations don't degrade performance. This phase is optional for v4.4 because it requires specialized profiling tools and manual analysis. Defer to v4.5+ or before major releases.
+
+**Delivers:** Memory profiling with dotMemory or PerfView, before/after snapshot comparison tests, event handler audit, weak event pattern implementation for long-lived publishers.
+
+**Addresses:** Competitive features (memory leak detection), avoids memory leaks from events (Pitfall #3).
+
+**Uses:** dotMemory (JetBrains) or PerfView (Microsoft), memory snapshot comparison, leak detection test scenarios.
+
+**Implements:** Weak event patterns, proper cleanup in Unloaded events.
 
 ### Phase Ordering Rationale
 
-- **Infrastructure before themes:** Writing beautiful themes before the `StaticResource` → `DynamicResource` migration produces themes that appear to do nothing. The migration must be verified complete (grep returns zero results) before any non-default theme is authored.
-- **Token/style split gates all theme files:** Adding a second theme without the split destroys the structural styles when the dictionary swaps. This is the most disorienting failure mode and hardest to debug after the fact. The split is the first task in Phase 1 for this reason.
-- **ViewModel brush migration belongs in Phase 1:** The `ThemeService` needs a `ThemeChanged` event for `MainViewModel` brush properties to work. If deferred to Phase 2, the dashboard card status bars will be wrong for all non-default themes when Phase 2 ships. No user should ever see partially-themed dashboard bars.
-- **5 additional theme files are the simplest part:** After the infrastructure is correct, writing a theme file is copy-paste-change-colors work. This is rightly the Phase 2 entry point, not the starting point.
-- **Cancel revert is the trickiest Phase 2 item:** The `_originalTheme` snapshot must be captured before the first swatch click, not after. Requires care but is not complex once the pattern is clear.
+1. **Foundation first** — Static analysis (Phase 1) establishes quality gates that enable all subsequent phases. Without zero-warning builds and analyzer configuration, other quality improvements accumulate technical debt.
+
+2. **Leverage existing infrastructure** — Code coverage (Phase 2) uses coverlet.collector already installed, providing quick wins with minimal setup.
+
+3. **Documentation before complexity** — XML documentation (Phase 3) is less risky than integration/UI testing and enables DocFX generation. Documenting public APIs improves developer experience immediately.
+
+4. **Validate claims, then expand testing** — Performance benchmarking (Phase 4) validates "sub-second startup" claim before adding complex test infrastructure. Integration and UI automation (Phases 5-6) require significant test environment setup and are deferred.
+
+5. **Advanced practices last** — Memory leak detection (Phase 7) requires specialized tooling and manual analysis. It's a polish feature, not a foundation requirement.
+
+This ordering avoids the "big bang" quality improvement trap where teams try to add all quality practices simultaneously and abandon them due to complexity. Incremental adoption ensures each phase delivers value before the next begins.
 
 ### Research Flags
 
-All implementation work follows well-documented WPF patterns. No phase requires a `/gsd:research-phase` call before implementation begins.
+**Phases likely needing deeper research during planning:**
+- **Phase 5 (Integration Tests):** Requires research on test WSUS environment setup. Options include self-hosted GitHub runner with WSUS role, containerized WSUS (complex), or manual/on-demand testing only. Integration tests have sparse documentation and niche patterns.
+- **Phase 6 (UI Automation):** Requires research on FlaUI selector stability for existing WPF controls. Current XAML may lack AutomationId attributes, requiring UI changes. UI automation has high flakiness potential and requires stable selectors.
 
-**Standard patterns — skip research phase for both phases:**
-- Phase 1: WPF `DynamicResource` behavior, `MergedDictionaries` manipulation, and `TryFindResource` are Microsoft-official APIs with official documentation. The split/migration work is mechanical.
-- Phase 2: Theme file authoring (color selection), swatch grid XAML layout, and `SettingsDialog` extension follow standard WPF patterns. The live preview + Cancel revert pattern is explicitly specified in the research.
-
----
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Static Analysis):** Well-documented, standard .NET 8 approach. SDK analyzers are official Microsoft guidance. EditorConfig configuration is standardized across .NET projects.
+- **Phase 2 (Code Coverage):** Coverlet is mature, well-documented, and already in project. ReportGenerator has standard integration patterns.
+- **Phase 3 (XML Documentation):** DocFX is .NET-standard for documentation generation. XML comments are standard C# feature.
+- **Phase 4 (Performance Benchmarking):** BenchmarkDotNet is industry standard with extensive documentation. Performance profiling patterns are well-established for .NET.
+- **Phase 7 (Memory Leak Detection):** dotMemory and PerfView are standard tools. WPF memory leak patterns (event handlers, data binding) are well-documented.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Native WPF mechanisms verified against Microsoft official docs (updated 2024-10-24). Pack URI + `PublishSingleFile=true` compatibility confirmed. Zero new NuGet packages — no version uncertainty. |
-| Features | HIGH | Feature set derived from Chrome's picker model (documented reference), WCAG 2.1 AA accessibility standards, and direct codebase audit. Anti-features clearly justified with rationale. |
-| Architecture | HIGH | Token/style split pattern verified by multiple authoritative sources. `ThemeService` design follows established WPF singleton patterns. All 4 data flows traced (swatch click, Cancel, Save, startup). |
-| Pitfalls | HIGH | All 10 pitfalls grounded in WPF's documented resource system behavior or direct codebase audit of `MainViewModel.cs`, `MainWindow.xaml`, `DarkTheme.xaml`, and all dialog `.xaml` files. Prevention strategies are specific and verifiable with grep or debug assertions. |
+| Stack | HIGH | All recommended tools are industry standards with official documentation (FlaUI, BenchmarkDotNet, Coverlet, DocFX, .NET SDK Analyzers). Version compatibility verified with .NET 8. |
+| Features | MEDIUM | Table stakes features are well-established industry standards. Competitive features are based on common practices but may vary by organizational maturity. Some features (100% coverage) explicitly marked as anti-patterns. |
+| Architecture | HIGH | Standard .NET 8 WPF MVVM architecture with clear separation of concerns. Quality & Polish Layer is a well-established pattern for adding quality practices without architectural disruption. |
+| Pitfalls | MEDIUM | Pitfalls are based on common WPF/.NET anti-patterns documented in community resources. Memory leaks, async deadlocks, and test brittleness are well-known issues. Prevention strategies are standard best practices. |
 
-**Overall confidence:** HIGH
+**Overall confidence:** MEDIUM
+
+Research is based on official Microsoft documentation (.NET Analyzers, XML Documentation Comments, Performance Improvements), industry-standard tools (FlaUI, BenchmarkDotNet, Coverlet, DocFX), and established patterns (Test Pyramid, Page Object Model, MVVM). Some areas (integration test environment setup, UI automation stability) have MEDIUM confidence due to niche requirements and sparse documentation. The recommended approach is conservative and incremental, reducing risk of over-engineering.
 
 ### Gaps to Address
 
-- **Color palette design for 5 non-default themes** — The research specifies the theme names (Just Black, Slate, Serenity, Rose, Classic Blue) and the required key structure (22 keys) but does not specify exact hex color values. Color selection is a design decision, not a research question. Apply WCAG 2.1 AA contrast ratio (4.5:1 minimum) as the objective constraint. Use the WebAIM contrast checker (https://webaim.org/resources/contrastchecker/) during Phase 2 theme authoring.
+- **Test WSUS Environment:** Integration tests require WSUS installation and SQL Express. Research identified multiple options (self-hosted runner, containerized WSUS, manual testing) but didn't identify a clear best practice. Gap to be addressed during Phase 5 planning via proof-of-concept testing.
 
-- **ThemeChanged event design** — The research identifies that `MainViewModel.cs` brush `ObservableProperty` values must refresh when the theme changes, and that `ThemeService` needs a `ThemeChanged` event for this. The exact event signature and subscription pattern is left to Phase 1 implementation. Options: standard C# `event Action<string> ThemeChanged` on the service, or a messenger pattern via `CommunityToolkit.Mvvm.Messaging` (already in the project). Either approach is valid — resolve during Phase 1 implementation.
+- **FlaUI Selector Stability:** Current WPF XAML may lack AutomationId attributes on controls, making UI automation selectors fragile. Gap to be addressed during Phase 6 planning via UI audit and AutomationId attribute addition.
 
-- **ComboBox/TextBox full ControlTemplate override** — The research recommends an implicit style approach as acceptable mitigation for Phase 2, with full `ControlTemplate` override deferred. If visual review during Phase 2 integration testing shows unacceptable system-color bleed in ComboBox dropdowns across non-default themes, the scope will need to expand. Flag during Phase 2 integration testing before declaring the milestone complete.
+- **Coverage Threshold Targets:** Research recommends 80% line coverage and 70% branch coverage but didn't identify specific targets for different component types (services vs ViewModels vs models). Gap to be addressed during Phase 2 planning via coverage baseline measurement.
 
----
+- **Cold Startup Measurement:** Performance benchmarking must distinguish between cold startup (after reboot) and warm startup (application cached). Research didn't identify standard methodology for WPF cold startup measurement. Gap to be addressed during Phase 4 planning via benchmark scenario definition.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Merged resource dictionaries — WPF .NET (Microsoft Learn, updated 2024-10-24)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-merged-dictionaries?view=netdesktop-8.0) — dictionary swap pattern, pack URI formats, Resource build action requirement
-- [Pack URIs in WPF — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/app-development/pack-uris-in-wpf) — embedded resource URI format for single-file apps
-- [XAML resources overview — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/systems/xaml-resources-overview) — StaticResource vs DynamicResource resolution behavior
-- [Styles and templates — WPF | Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/styles-templates-overview?view=netdesktop-9.0) — BasedOn limitation, style inheritance chain
-- [WPF How To Switching Themes at Runtime — Telerik UI for WPF](https://docs.telerik.com/devtools/wpf/styling-and-appearance/how-to/styling-apperance-themes-runtime) — runtime switching pattern (vendor documentation)
-- [CommunityToolkit.Mvvm IoC documentation — Microsoft Learn](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/ioc) — DI registration pattern
-- [ResourceDictionary and XAML Resource References — Microsoft Learn](https://learn.microsoft.com/en-us/windows/apps/design/style/xaml-resource-dictionary) — general resource dictionary behavior
-- GA-WsusManager codebase direct audit — 283 `StaticResource` refs across 8 XAML files; 15 `Color.FromRgb()` literals in `MainViewModel.cs`; 14 token keys in `DarkTheme.xaml`; complete hardcoded hex location inventory
+- [Microsoft .NET Code Quality Analyzers](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) — Official .NET 8 analyzer documentation
+- [XML Documentation Comments (C# Programming Guide)](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/structured-code-documentation) — Official XML comment guidance
+- [FlaUI GitHub Repository](https://github.com/FlaUI/FlaUI) — Official FlaUI WPF automation documentation
+- [Coverlet Documentation](https://github.com/coverlet-coverage/coverlet) — Official coverage collection documentation
+- [BenchmarkDotNet Documentation](https://benchmarkdotnet.org/) — Official performance benchmarking documentation
+- [DocFX Documentation](https://dotnet.github.io/docfx/) — Official API documentation generator documentation
+- [.NET 8 Performance Improvements](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8#performance-improvements) — Microsoft performance benchmark data
 
 ### Secondary (MEDIUM confidence)
-- [Changing WPF themes dynamically — Marko Devcic](https://www.markodevcic.com/post/Changing_WPF_themes_dynamically/) — DynamicResource requirement, dictionary swap runtime pattern; corroborates official docs
-- [WPF Complete Guide to Themes and Skins — Michael's Coding Spot](https://michaelscodingspot.com/wpf-complete-guide-themes-skins/) — StaticResource vs DynamicResource runtime behavior, SkinResourceDictionary pattern tradeoffs
-- [WPF Merged Dictionary problems and solutions — Michael's Coding Spot](https://michaelscodingspot.com/wpf-merged-dictionary-problemsandsolutions/) — BasedOn/DynamicResource limitation, duplicate key resolution order
-- [WPF: StaticResource vs. DynamicResource — CodeProject](https://www.codeproject.com/Articles/393086/WPF-StaticResource-vs-DynamicResource) — authoritative reference on resolution timing
-- [Color Contrast Accessibility WCAG 2025 Guide — AllAccessible](https://www.allaccessible.org/blog/color-contrast-accessibility-wcag-guide-2025) — WCAG 2.1 AA 4.5:1 contrast requirement
-- [Offering a Dark Mode Doesn't Satisfy WCAG Color Contrast — BOIA](https://www.boia.org/blog/offering-a-dark-mode-doesnt-satisfy-wcag-color-contrast-requirements) — accessibility testing guidance
+- [WPF Performance Best Practices (2025)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/performance/optimizing-wpf-applications) — Memory management, virtualization, rendering patterns
+- [Code Coverage Guidelines (Microsoft Research)](https://www.microsoft.com/en-us/research/publication/code-coverage-guidelines/) — 80% line coverage recommendation
+- [C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions) — Official Microsoft style guide
+- [xUnit Best Practices](https://xunit.net/docs/getting-started/netcore/technical-notes) — Testing framework guidance
+- [Roslyn Analyzer Rules](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-quality-rule-index) — CAxxxx rule reference
 
 ### Tertiary (LOW confidence)
-- [Mastering Dynamic Resources in WPF — Moldstud](https://moldstud.com/articles/p-mastering-dynamic-resources-in-wpf-a-comprehensive-guide-for-developers) — general guidance, performance benchmarks; corroborated by official docs
-- [StaticResource & DynamicResource in WPF — Medium](https://medium.com/@payton9609/staticresource-dynamicresource-in-wpf-c121b1a85574) — describes confirmed WPF behavior; single source
+- [FlaUI WPF UI Automation Tutorial](https://m.blog.csdn.net/LZYself/article/details/157428567) — Community tutorial (third-party blog)
+- [WinAppDriver Integration Best Practices](https://xie.infoq.cn/article/5eb36ba2e71dec2600e786190) — Community best practices (third-party article)
+- [.NET 8 WPF Testing with xUnit](https://m.blog.csdn.net/u012094427/article/details/148428775) — Community testing patterns (third-party blog)
+
+### Additional Research Context
+- 336 existing xUnit tests in codebase (verified via `dotnet test --list-tests`)
+- ~240 XML documentation comments vs ~345 public members (70% documentation coverage)
+- Coverlet collector v6.0.2 already installed in test project
+- No static analysis analyzers currently enabled in .csproj files
+- No .editorconfig in solution root (only generated editorconfig files)
+- No existing integration tests or UI automation tests
+- Existing architecture: MVVM with CommunityToolkit.Mvvm, .NET 8, Serilog logging, Microsoft.Extensions DI
 
 ---
-
-*Research completed: 2026-02-20*
+*Research completed: 2026-02-21*
 *Ready for roadmap: yes*
