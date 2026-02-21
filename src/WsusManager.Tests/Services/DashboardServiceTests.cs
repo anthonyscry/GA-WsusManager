@@ -2,6 +2,7 @@ using Moq;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Models;
 using WsusManager.Core.Services;
+using WsusManager.Core.Services.Interfaces;
 
 namespace WsusManager.Tests.Services;
 
@@ -13,12 +14,13 @@ namespace WsusManager.Tests.Services;
 public class DashboardServiceTests
 {
     private readonly Mock<ILogService> _mockLog = new();
+    private readonly Mock<ISqlService> _mockSql = new();
     private readonly DashboardService _service;
     private readonly AppSettings _settings = new();
 
     public DashboardServiceTests()
     {
-        _service = new DashboardService(_mockLog.Object);
+        _service = new DashboardService(_mockLog.Object, _mockSql.Object);
     }
 
     [Fact]
