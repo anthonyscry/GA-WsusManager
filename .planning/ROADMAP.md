@@ -86,7 +86,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 <details>
 <summary>🔄 v4.5 Enhancement Suite (Phases 25-31) — IN PROGRESS</summary>
 
-- [ ] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates
+- [ ] Phase 25: Performance Optimization — Reduce startup time, optimize data loading, batch UI updates (1/5 plans complete)
 - [ ] Phase 26: Keyboard & Accessibility — Keyboard shortcuts, AutomationId, WCAG compliance
 - [ ] Phase 27: Visual Feedback Polish — Progress estimation, loading indicators, actionable errors
 - [ ] Phase 28: Settings Expansion — Operations config, logging config, advanced options
@@ -95,6 +95,13 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 - [ ] Phase 31: Testing & Documentation — Test coverage, UX testing, updated documentation
 
 **Requirements:** 38 total (5 Performance, 10 UX Polish, 8 Settings, 8 Data Views, 7 Testing/Docs)
+
+**Phase 25 Plans:**
+- [x] 25-01: Parallelized Application Initialization (2026-02-21) — PERF-08: 30% startup time reduction
+- [ ] 25-02: List Virtualization for 2000+ Computers — PERF-09
+- [ ] 25-03: Lazy Loading for Update Metadata — PERF-10
+- [ ] 25-04: Batched Log Panel Updates — PERF-11
+- [ ] 25-05: Sub-100ms Theme Switching — PERF-12
 
 </details>
 
