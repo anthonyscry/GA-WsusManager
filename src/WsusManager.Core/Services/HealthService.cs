@@ -159,7 +159,7 @@ public class HealthService : IHealthService
         catch (Exception ex)
         {
             _logService.Warning("Service check failed for {ServiceName}: {Error}", serviceName, ex.Message);
-            return DiagnosticCheckResult.Fail(displayName, $"Error: {ex.Message}");
+            return DiagnosticCheckResult.Fail(displayName, $"Error: {ex.Message}\n\nTo fix: Check Windows Services, start {displayName} manually");
         }
     }
 
@@ -274,17 +274,17 @@ public class HealthService : IHealthService
 
             // Database missing — not fixable (requires DB restore or WSUS reinstall)
             return DiagnosticCheckResult.Fail(checkName,
-                "SUSDB not found. Restore from backup or reinstall WSUS.");
+                "SUSDB not found.\n\nTo fix: Restore from backup or reinstall WSUS.");
         }
         catch (SqlException ex)
         {
             _logService.Warning("SUSDB check failed (SQL may be offline): {Error}", ex.Message);
-            return DiagnosticCheckResult.Fail(checkName, $"SQL connection failed: {ex.Message}");
+            return DiagnosticCheckResult.Fail(checkName, $"SQL connection failed: {ex.Message}\n\nTo fix: Start SQL Server service, check SQL instance name");
         }
         catch (Exception ex)
         {
             _logService.Warning("SUSDB check error: {Error}", ex.Message);
-            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}");
+            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}\n\nTo fix: Check SQL Server is running and instance name is correct");
         }
     }
 
@@ -298,18 +298,18 @@ public class HealthService : IHealthService
 
             if (!result.Success)
             {
-                return DiagnosticCheckResult.Fail(checkName, $"Check error: {result.Message}");
+                return DiagnosticCheckResult.Fail(checkName, $"Check error: {result.Message}\n\nTo fix: Run as Administrator, check SQL Server is running");
             }
 
             return result.Data
                 ? DiagnosticCheckResult.Pass(checkName, result.Message)
                 : DiagnosticCheckResult.Fail(checkName,
-                    "Login missing. WSUS requires NETWORK SERVICE SQL login.");
+                    "Login missing. WSUS requires NETWORK SERVICE SQL login.\n\nTo fix: Run Diagnostics > Repair Health to recreate login");
         }
         catch (Exception ex)
         {
             _logService.Warning("NETWORK SERVICE login check error: {Error}", ex.Message);
-            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}");
+            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}\n\nTo fix: Check SQL Server permissions, run as Administrator");
         }
     }
 
@@ -352,7 +352,7 @@ public class HealthService : IHealthService
         catch (Exception ex)
         {
             _logService.Warning("Content permissions check error: {Error}", ex.Message);
-            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}");
+            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}\n\nTo fix: Run as Administrator, check folder permissions");
         }
     }
 
@@ -368,19 +368,19 @@ public class HealthService : IHealthService
             {
                 // Connection failure — report as warning (SQL might be starting up)
                 return DiagnosticCheckResult.Warn(checkName,
-                    $"Could not verify (SQL connection failed): {result.Message}");
+                    $"Could not verify (SQL connection failed): {result.Message}\n\nTo fix: Check SQL Server is running");
             }
 
             // Sysadmin check is INFORMATIONAL — Warning if missing, not Fail
             return result.Data
                 ? DiagnosticCheckResult.Pass(checkName, "Current user has sysadmin role.")
                 : DiagnosticCheckResult.Warn(checkName,
-                    "Current user lacks sysadmin role. Database operations (Restore, Deep Cleanup) will fail.");
+                    "Current user lacks sysadmin role. Database operations (Restore, Deep Cleanup) will fail.\n\nTo fix: Add user to sysadmin role in SQL Server Management Studio");
         }
         catch (Exception ex)
         {
             _logService.Warning("Sysadmin check error: {Error}", ex.Message);
-            return DiagnosticCheckResult.Warn(checkName, $"Could not verify: {ex.Message}");
+            return DiagnosticCheckResult.Warn(checkName, $"Could not verify: {ex.Message}\n\nTo fix: Check SQL Server is running");
         }
     }
 
@@ -405,12 +405,12 @@ public class HealthService : IHealthService
         {
             _logService.Warning("SQL connectivity check failed: {Error}", ex.Message);
             return DiagnosticCheckResult.Fail(checkName,
-                $"Cannot connect to {sqlInstance}: {ex.Message}");
+                $"Cannot connect to {sqlInstance}: {ex.Message}\n\nTo fix: 1) Start SQL Server service, 2) Run Diagnostics > Repair Health");
         }
         catch (Exception ex)
         {
             _logService.Warning("SQL connectivity check error: {Error}", ex.Message);
-            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}");
+            return DiagnosticCheckResult.Fail(checkName, $"Error: {ex.Message}\n\nTo fix: Start SQL Server service and check firewall rules");
         }
     }
 

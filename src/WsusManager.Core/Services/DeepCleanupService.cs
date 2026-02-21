@@ -91,10 +91,17 @@ public class DeepCleanupService : IDeepCleanupService
             _logService.Info("Deep cleanup cancelled by user");
             return OperationResult.Fail("Deep cleanup was cancelled.");
         }
+        catch (SqlException ex) when (ex.Message.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+                                       ex.Message.Contains("sysadmin", StringComparison.OrdinalIgnoreCase) ||
+                                       ex.Number == 229 || ex.Number == 262 || ex.Number == 3007)
+        {
+            _logService.Error(ex, "Deep cleanup failed due to SQL permissions");
+            return OperationResult.Fail($"Requires SQL sysadmin permission.\n\nTo fix: Add user to sysadmin role in SQL Server Management Studio", ex);
+        }
         catch (Exception ex)
         {
             _logService.Error(ex, "Deep cleanup pipeline failed");
-            return OperationResult.Fail($"Deep cleanup failed: {ex.Message}", ex);
+            return OperationResult.Fail($"Deep cleanup failed: {ex.Message}\n\nTo fix: Check SQL Server is running, verify sysadmin permissions, check available disk space", ex);
         }
     }
 
@@ -395,7 +402,7 @@ public class DeepCleanupService : IDeepCleanupService
                 }
                 else
                 {
-                    progress.Report($"Shrink blocked after {ShrinkMaxRetries} attempts — skipping.");
+                    progress.Report($"Shrink blocked after {ShrinkMaxRetries} attempts — skipping.\n\nTo fix: Wait for backup to complete, then retry Deep Cleanup");
                 }
             }
         }
