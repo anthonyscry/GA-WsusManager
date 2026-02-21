@@ -148,3 +148,13 @@ tmp/
 
 # FlaUI Test Screenshots
 Tests/Screenshots/
+
+# =========================
+# Benchmark Artifacts
+# =========================
+# BenchmarkDotNet generated reports and artifacts
+**/BenchmarkDotNet.Artifacts/
+*.benchmark.csv
+*.benchmark.r
+*-benchmark.csv
+*-report.csv
