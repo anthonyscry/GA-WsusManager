@@ -930,6 +930,47 @@ public class MainViewModelTests
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // Phase 9: Startup Message Tests
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task InitializeAsync_DoesNotLogWsusNotInstalledMessage_WhenWsusIsInstalled()
+    {
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateHealthyData()); // IsWsusInstalled = true
+
+        await _vm.InitializeAsync();
+
+        Assert.DoesNotContain("WSUS is not installed", _vm.LogOutput);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_LogsWsusNotInstalledMessage_ExactlyOnce_WhenWsusIsAbsent()
+    {
+        var notInstalledData = new DashboardData
+        {
+            IsWsusInstalled = false,
+            ServiceRunningCount = 0,
+            ServiceNames = new[] { "SQL", "WSUS", "IIS" },
+            DatabaseSizeGB = -1,
+            DiskFreeGB = 100,
+            TaskStatus = "Not Found",
+            IsOnline = false
+        };
+
+        _mockDashboard
+            .Setup(d => d.CollectAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(notInstalledData);
+
+        await _vm.InitializeAsync();
+
+        var occurrences = _vm.LogOutput
+            .Split(["WSUS is not installed"], StringSplitOptions.None).Length - 1;
+        Assert.Equal(1, occurrences);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════
 
