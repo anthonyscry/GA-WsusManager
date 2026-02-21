@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Schedule Maintenance Task"
-        Width="520" Height="560"
+        Width="520" Height="600"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource BgDark}">
@@ -11,6 +11,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -31,7 +32,8 @@
             <TextBox x:Name="TxtTaskName" Text="WSUS Monthly Maintenance"
                      Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
                      BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
-                     Margin="0,0,0,10"/>
+                     Margin="0,0,0,10"
+                     TextChanged="Input_Changed"/>
 
             <!-- Schedule Type and Time on same row -->
             <Grid Margin="0,0,0,10">
@@ -57,7 +59,8 @@
                                FontSize="12" Margin="0,0,0,4"/>
                     <TextBox x:Name="TxtTime" Text="02:00"
                              Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                             BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                             BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                             TextChanged="Input_Changed"/>
                 </StackPanel>
             </Grid>
 
@@ -67,7 +70,8 @@
                            FontSize="12" Margin="0,0,0,4"/>
                 <TextBox x:Name="TxtDayOfMonth" Text="15" Width="80" HorizontalAlignment="Left"
                          Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         TextChanged="Input_Changed"/>
             </StackPanel>
 
             <!-- Day of Week (visible when Weekly) -->
@@ -111,17 +115,23 @@
                        FontSize="12" Margin="0,0,0,4"/>
             <PasswordBox x:Name="PwdPassword"
                          Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         PasswordChanged="Input_Changed"/>
         </StackPanel>
 
+        <!-- Validation Text -->
+        <TextBlock x:Name="TxtValidation" Grid.Row="2"
+                   Foreground="#F85149" FontSize="11" Margin="0,4,0,0"
+                   Text="Task name, valid time, and password are required."/>
+
         <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right"
                     Margin="0,16,0,0">
             <Button Content="Cancel" Style="{StaticResource BtnSec}"
                     Padding="20,8" Margin="0,0,8,0"
                     Click="Cancel_Click"/>
-            <Button Content="Create Task" Style="{StaticResource BtnGreen}"
-                    Padding="20,8"
+            <Button x:Name="BtnCreate" Content="Create Task" Style="{StaticResource BtnGreen}"
+                    Padding="20,8" IsEnabled="False"
                     Click="Ok_Click"/>
         </StackPanel>
     </Grid>
