@@ -44,10 +44,12 @@
                 <!-- SETUP Category -->
                 <TextBlock DockPanel.Dock="Top" Text="SETUP" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Install WSUS"
+                        ToolTip="Install WSUS with SQL Server Express"
                         Style="{StaticResource NavBtn}" x:Name="BtnInstall"
                         automation:AutomationProperties.AutomationId="InstallButton"
                         Command="{Binding RunInstallWsusCommand}"/>
                 <Button DockPanel.Dock="Top" Content="Create GPO"
+                        ToolTip="Copy GPO templates for domain deployment"
                         Style="{StaticResource NavBtn}" x:Name="BtnGpo"
                         automation:AutomationProperties.AutomationId="CreateGpoButton"
                         Command="{Binding RunCreateGpoCommand}"/>
@@ -55,6 +57,7 @@
                 <!-- TRANSFER Category -->
                 <TextBlock DockPanel.Dock="Top" Text="TRANSFER" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Export / Import"
+                        ToolTip="Export metadata to USB or import from external media"
                         Style="{StaticResource NavBtn}" x:Name="BtnTransfer"
                         automation:AutomationProperties.AutomationId="TransferButton"
                         Command="{Binding RunTransferCommand}"/>
@@ -62,10 +65,12 @@
                 <!-- MAINTENANCE Category -->
                 <TextBlock DockPanel.Dock="Top" Text="MAINTENANCE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Online Sync"
+                        ToolTip="Synchronize with Microsoft Update servers"
                         Style="{StaticResource NavBtn}" x:Name="BtnSync"
                         automation:AutomationProperties.AutomationId="OnlineSyncButton"
                         Command="{Binding RunOnlineSyncCommand}"/>
                 <Button DockPanel.Dock="Top" Content="Schedule Task"
+                        ToolTip="Create scheduled task for automated operations"
                         Style="{StaticResource NavBtn}" x:Name="BtnSchedule"
                         automation:AutomationProperties.AutomationId="ScheduleTaskButton"
                         Command="{Binding RunScheduleTaskCommand}"/>
@@ -73,6 +78,7 @@
                 <!-- DIAGNOSTICS Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DIAGNOSTICS" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Diagnostics"
+                        ToolTip="Run health checks and auto-repair"
                         x:Name="BtnDiagnostics"
                         automation:AutomationProperties.AutomationId="DiagnosticsButton"
                         Command="{Binding NavigateCommand}" CommandParameter="Diagnostics">
@@ -93,6 +99,7 @@
                 <!-- CLIENT TOOLS Category -->
                 <TextBlock DockPanel.Dock="Top" Text="CLIENT TOOLS" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Client Tools"
+                        ToolTip="Remote client management and diagnostics"
                         x:Name="BtnClientTools"
                         automation:AutomationProperties.AutomationId="ClientToolsButton"
                         Command="{Binding NavigateCommand}" CommandParameter="ClientTools">
@@ -113,6 +120,7 @@
                 <!-- DATABASE Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DATABASE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Database"
+                        ToolTip="Backup, restore, and cleanup operations"
                         x:Name="BtnDatabase"
                         automation:AutomationProperties.AutomationId="DatabaseButton"
                         Command="{Binding NavigateCommand}" CommandParameter="Database">
@@ -306,19 +314,23 @@
                                                Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                                     <WrapPanel>
                                         <Button Content="Diagnostics" Style="{StaticResource QuickActionBtn}"
+                                                ToolTip="Run health checks and auto-repair"
                                                 x:Name="QBtnDiagnostics" Margin="0,0,8,8"
                                                 automation:AutomationProperties.AutomationId="QuickDiagnosticsButton"
                                                 Command="{Binding QuickDiagnosticsCommand}"/>
                                         <Button Content="Deep Cleanup" Style="{StaticResource QuickActionBtn}"
+                                                ToolTip="Remove obsolete updates and optimize database"
                                                 x:Name="QBtnCleanup" Margin="0,0,8,8"
                                                 automation:AutomationProperties.AutomationId="QuickCleanupButton"
                                                 Command="{Binding QuickCleanupCommand}"/>
                                         <Button Content="Online Sync" Style="{StaticResource QuickActionBtn}"
+                                                ToolTip="Synchronize with Microsoft Update servers"
                                                 x:Name="QBtnSync" Margin="0,0,8,8"
                                                 automation:AutomationProperties.AutomationId="QuickSyncButton"
                                                 Command="{Binding QuickSyncCommand}"
                                                 IsEnabled="{Binding IsOnline}"/>
                                         <Button Content="Start Services" Style="{StaticResource QuickActionBtn}"
+                                                ToolTip="Start SQL, WSUS, and IIS services"
                                                 x:Name="QBtnStartServices" Margin="0,0,8,8"
                                                 automation:AutomationProperties.AutomationId="QuickStartServicesButton"
                                                 Command="{Binding QuickStartServicesCommand}"/>
