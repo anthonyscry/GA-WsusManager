@@ -29,7 +29,16 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 
 ### Active
 
-(None — v4.1 shipped. Next milestone requirements TBD via `/gsd:new-milestone`)
+## Current Milestone: v4.2 UX & Client Management
+
+**Goal:** Polish the user experience and add client troubleshooting tools so admins can diagnose and fix stuck WSUS clients directly from the GUI.
+
+**Target features:**
+- Editable settings dialog (currently read-only)
+- Operation progress feedback (progress bars, status indicators)
+- Dialog polish (install, export/import, restore, schedule)
+- Client troubleshooting tools (cancel stuck jobs, force check-in, mass GPUpdate, connectivity testing, diagnostics, error code lookup)
+- Manual offline/Air-Gap mode override (dashboard toggle + settings persistence)
 
 ### Out of Scope
 
@@ -83,4 +92,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-20 after v4.1 milestone*
+*Last updated: 2026-02-20 after v4.2 milestone start*
