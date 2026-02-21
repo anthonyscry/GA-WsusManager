@@ -83,7 +83,12 @@ Plans:
   4. Admin clicks Run Diagnostics and sees WSUS settings, service status, last check-in time, and pending reboot state for the remote host
   5. Admin enters an error code in the error code lookup and sees a description and recommended fix without leaving the application
   6. Remote operations execute via WinRM when the target host has it available — no manual PowerShell invocation required
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — IClientService interface, WinRM executor, error code dictionary, models (CLI-06, CLI-07)
+- [ ] 14-02-PLAN.md — ClientService implementation with all 5 operations + unit tests (CLI-01, CLI-02, CLI-04, CLI-05)
+- [ ] 14-03-PLAN.md — GUI Client Tools panel, ViewModel commands, DI registration (all CLIs)
 
 ### Phase 15: Client Management Advanced
 **Goal**: Admins can run operations across multiple hosts at once and generate ready-to-run PowerShell scripts as a fallback when WinRM is unavailable
