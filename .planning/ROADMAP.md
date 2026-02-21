@@ -39,7 +39,10 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
   1. `dotnet build` succeeds with .NET 8 SDK targeting all projects
   2. CI/CD pipeline completes without errors using .NET 8
   3. Published EXE launches on a clean Windows Server 2019+ machine (no runtime install required)
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Fix net9.0-windows references in ExeValidationTests.cs and build-csharp.yml, verify build and tests pass
 
 ### Phase 9: Launch and UI Verification
 **Goal**: The application presents a correct, fully-functional UI from startup through all navigation panels
@@ -87,7 +90,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 5. WSUS Operations | v4.0 | 8/8 | Complete | 2026-02-19 |
 | 6. Installation and Scheduling | v4.0 | 1/1 | Complete | 2026-02-20 |
 | 7. Polish and Distribution | v4.0 | 7/7 | Complete | 2026-02-20 |
-| 8. Build Compatibility | v4.1 | 0/? | Not started | - |
+| 8. Build Compatibility | v4.1 | 1/1 | Planning | - |
 | 9. Launch and UI Verification | v4.1 | 0/? | Not started | - |
 | 10. Core Operations | v4.1 | 0/? | Not started | - |
 | 11. Stability Hardening | v4.1 | 0/? | Not started | - |
