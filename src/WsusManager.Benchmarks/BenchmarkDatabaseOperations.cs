@@ -23,17 +23,8 @@ namespace WsusManager.Benchmarks;
 [CsvExporter]
 [RPlotExporter]
 [StopOnFirstError]
-[Config(typeof(DatabaseBenchmarkConfig))]
-public sealed class BenchmarkDatabaseOperations
+public class BenchmarkDatabaseOperations
 {
-    private sealed class DatabaseBenchmarkConfig : ManualConfig
-    {
-        public DatabaseBenchmarkConfig()
-        {
-            // Use shorter runtimes for database operations
-            SummaryStyle = BenchmarkDotNet.Reports.SummaryStyle.Default.WithMaxParameterColumnWidth(50);
-        }
-    }
 
     private readonly string _connectionString = "Data Source=localhost\\SQLEXPRESS;Initial Catalog=SUSDB;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=5";
 
