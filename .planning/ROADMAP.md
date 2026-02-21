@@ -53,8 +53,8 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Editable Settings dialog (SET-01, SET-02)
-- [ ] 12-02-PLAN.md — Dashboard mode toggle with override logic (SET-03, SET-04)
+- [x] 12-01-PLAN.md — Editable Settings dialog (SET-01, SET-02)
+- [x] 12-02-PLAN.md — Dashboard mode toggle with override logic (SET-03, SET-04)
 
 ### Phase 13: Operation Feedback & Dialog Polish
 **Goal**: Every operation gives clear visual feedback during execution and completion, and every dialog validates inputs before the user can proceed
