@@ -64,7 +64,15 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 
 ### Active
 
-No active milestone. Use `/gsd:new-milestone` to start next milestone work.
+**Current Milestone: v4.5 Enhancement Suite**
+
+**Goal:** Comprehensive UX, performance, and data management enhancements to improve administrator productivity and system usability.
+
+**Target features:**
+- **Performance:** Startup optimization, operation speed improvements, data loading optimization
+- **UX Polish:** Keyboard shortcuts, accessibility (WCAG 2.1 AA+), visual polish, enhanced feedback
+- **Settings:** Operations config, logging config, window behavior, advanced options
+- **Data Views:** Update/computer filters, search, data export (CSV/Excel)
 
 ### Out of Scope
 
