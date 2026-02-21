@@ -19,11 +19,18 @@ public partial class MainWindow : Window
         DataContext = viewModel;
 
         Loaded += MainWindow_Loaded;
+        Closed += MainWindow_Closed;
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         await _viewModel.InitializeAsync().ConfigureAwait(false);
+    }
+
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        // Cleanup ViewModel resources (timer, CTS, log builder)
+        _viewModel.Dispose();
     }
 
     /// <summary>
