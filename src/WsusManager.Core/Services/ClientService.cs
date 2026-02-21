@@ -24,6 +24,7 @@ public class ClientService : IClientService
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="ClientService"/> class.
     /// Initialises a new <see cref="ClientService"/>.
     /// </summary>
     /// <param name="executor">WinRM executor for remote PowerShell commands.</param>
@@ -90,11 +91,11 @@ Write-Output 'STEP=Done'
         // Parse step markers from output for informative progress
         foreach (var line in result.OutputLines)
         {
-            if (line.Contains("STEP=StopServices"))
+            if (line.Contains("STEP=StopServices", StringComparison.Ordinal))
                 progress.Report("  Stopped wuauserv and bits services.");
-            else if (line.Contains("STEP=ClearCache"))
+            else if (line.Contains("STEP=ClearCache", StringComparison.Ordinal))
                 progress.Report("  Cleared SoftwareDistribution cache.");
-            else if (line.Contains("STEP=RestartServices"))
+            else if (line.Contains("STEP=RestartServices", StringComparison.Ordinal))
                 progress.Report("  Restarted bits and wuauserv services.");
         }
 
@@ -154,15 +155,15 @@ Write-Output 'STEP=Done'
         // Report step completion based on output markers
         foreach (var line in result.OutputLines)
         {
-            if (line.Contains("STEP=GpUpdate"))
+            if (line.Contains("STEP=GpUpdate", StringComparison.Ordinal))
                 progress.Report("[Step 2/4] Group Policy updated.");
-            else if (line.Contains("STEP=ResetAuth"))
+            else if (line.Contains("STEP=ResetAuth", StringComparison.Ordinal))
                 progress.Report("[Step 3/4] Running wuauclt /resetauthorization...");
-            else if (line.Contains("STEP=DetectNow"))
+            else if (line.Contains("STEP=DetectNow", StringComparison.Ordinal))
                 progress.Report("[Step 3/4] Reset WSUS client identity.");
-            else if (line.Contains("STEP=ReportNow"))
+            else if (line.Contains("STEP=ReportNow", StringComparison.Ordinal))
                 progress.Report("[Step 4/4] Running wuauclt /detectnow and /reportnow...");
-            else if (line.Contains("STEP=Done"))
+            else if (line.Contains("STEP=Done", StringComparison.Ordinal))
                 progress.Report("[Step 4/4] Detection and reporting triggered.");
         }
 
@@ -183,8 +184,10 @@ Write-Output 'STEP=Done'
 
         var wsusServer = ExtractHostname(wsusServerUrl);
         if (string.IsNullOrWhiteSpace(wsusServer))
+        {
             return OperationResult<ConnectivityTestResult>.Fail(
                 $"Cannot extract hostname from WSUS server URL: '{wsusServerUrl}'");
+        }
 
         _log.Info("ClientService.TestConnectivityAsync: testing from {Hostname} to {WsusServer}",
             hostname, wsusServer);
@@ -422,13 +425,13 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
 
     /// <summary>
     /// Parses connectivity test output lines into a <see cref="ConnectivityTestResult"/>.
-    /// Expects a line in the format: PORT8530=True;PORT8531=False;LATENCY=5
+    /// Expects a line in the format: PORT8530=True;PORT8531=False;LATENCY=5.
     /// </summary>
     private static ConnectivityTestResult ParseConnectivityOutput(IReadOnlyList<string> lines)
     {
         foreach (var line in lines)
         {
-            if (!line.Contains("PORT8530="))
+            if (!line.Contains("PORT8530=", StringComparison.Ordinal))
                 continue;
 
             var kvp = ParseKeyValueLine(line);
@@ -463,13 +466,13 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
     {
         foreach (var line in lines)
         {
-            if (!line.Contains("WSUS=") && !line.Contains("SVCS="))
+            if (!line.Contains("WSUS=", StringComparison.Ordinal) && !line.Contains("SVCS=", StringComparison.Ordinal))
                 continue;
 
             var kvp = ParseKeyValueLine(line);
 
             // Parse service statuses: "wuauserv=Running,bits=Running,cryptsvc=Stopped"
-            var serviceStatuses = new Dictionary<string, string>();
+            var serviceStatuses = new Dictionary<string, string>(StringComparer.Ordinal);
             if (kvp.TryGetValue("SVCS", out var svcsRaw) && !string.IsNullOrWhiteSpace(svcsRaw))
             {
                 foreach (var svcPair in svcsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries))
@@ -482,8 +485,8 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
 
             // Parse UseWUServer (1 = true)
             bool useWuServer = kvp.TryGetValue("USE", out var useRaw)
-                && (useRaw == "1"
-                    || string.Equals(useRaw, "True", StringComparison.OrdinalIgnoreCase));
+                && (string.Equals(useRaw, "1"
+, StringComparison.Ordinal) || string.Equals(useRaw, "True", StringComparison.OrdinalIgnoreCase));
 
             // Parse pending reboot
             bool reboot = kvp.TryGetValue("REBOOT", out var rebootRaw)
@@ -493,7 +496,7 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
             DateTime? lastCheckIn = null;
             if (kvp.TryGetValue("LASTCHECKIN", out var checkInRaw)
                 && !string.IsNullOrWhiteSpace(checkInRaw)
-                && checkInRaw != "$null")
+                && !string.Equals(checkInRaw, "$null", StringComparison.Ordinal))
             {
                 // Try parsing as FileTime (long integer)
                 if (long.TryParse(checkInRaw, out var fileTime) && fileTime > 0)
@@ -554,7 +557,7 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
     private static string? NullIfEmpty(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        if (value == "$null") return null;
+        if (string.Equals(value, "$null", StringComparison.Ordinal)) return null;
         return value;
     }
 }

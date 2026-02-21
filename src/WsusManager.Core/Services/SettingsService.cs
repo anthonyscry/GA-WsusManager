@@ -27,6 +27,7 @@ public class SettingsService : ISettingsService
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="SettingsService"/> class.
     /// Constructor with explicit path for testing.
     /// </summary>
     public SettingsService(ILogService logService, string settingsPath)
@@ -46,7 +47,7 @@ public class SettingsService : ISettingsService
                 return Current;
             }
 
-            var json = await File.ReadAllTextAsync(_settingsPath);
+            var json = await File.ReadAllTextAsync(_settingsPath).ConfigureAwait(false);
             var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
             Current = settings ?? new AppSettings();
             _logService.Info("Settings loaded from {Path}", _settingsPath);
@@ -71,7 +72,7 @@ public class SettingsService : ISettingsService
             }
 
             var json = JsonSerializer.Serialize(settings, JsonOptions);
-            await File.WriteAllTextAsync(_settingsPath, json);
+            await File.WriteAllTextAsync(_settingsPath, json).ConfigureAwait(false);
             Current = settings;
             _logService.Info("Settings saved to {Path}", _settingsPath);
         }

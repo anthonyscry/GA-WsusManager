@@ -8,13 +8,13 @@ public record InstallOptions
 {
     /// <summary>
     /// Path to the directory containing SQL Express and optional SSMS installers.
-    /// Default: C:\WSUS\SQLDB
+    /// Default: C:\WSUS\SQLDB.
     /// </summary>
     public string InstallerPath { get; init; } = @"C:\WSUS\SQLDB";
 
     /// <summary>
     /// SQL Server SA account username.
-    /// Default: sa
+    /// Default: sa.
     /// </summary>
     public string SaUsername { get; init; } = "sa";
 

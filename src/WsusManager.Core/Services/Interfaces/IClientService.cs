@@ -83,7 +83,7 @@ public interface IClientService
     /// <param name="ct">Cancellation token — stops processing remaining hosts on cancellation.</param>
     /// <returns>
     /// Ok if all hosts succeeded; Fail if any host failed (but all reachable hosts are still processed).
-    /// The message includes a summary: "{passed}/{total} hosts succeeded, {failed} failed."
+    /// The message includes a summary: "{passed}/{total} hosts succeeded, {failed} failed.".
     /// </returns>
     Task<OperationResult> MassForceCheckInAsync(
         IReadOnlyList<string> hostnames,

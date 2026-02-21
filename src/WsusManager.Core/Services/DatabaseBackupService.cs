@@ -52,7 +52,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 1. Sysadmin check — hard block
         progress.Report("Checking SQL sysadmin permissions...");
-        var sysadminResult = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct);
+        var sysadminResult = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct).ConfigureAwait(false);
         if (!sysadminResult.Success || !sysadminResult.Data)
         {
             var msg = "Database backup requires SQL sysadmin permissions. " +
@@ -65,7 +65,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 2. Get current DB size for disk space estimate
         progress.Report("Getting current database size...");
-        var dbSizeGb = await GetDatabaseSizeGbAsync(sqlInstance, ct);
+        var dbSizeGb = await GetDatabaseSizeGbAsync(sqlInstance, ct).ConfigureAwait(false);
         if (dbSizeGb > 0)
         {
             var estimatedBackupGb = dbSizeGb * 0.80; // compressed backup = ~80% of DB size
@@ -90,7 +90,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 4. Execute backup
         // Sanitize path: escape single quotes to prevent SQL injection
-        var safePath = backupPath.Replace("'", "''");
+        var safePath = backupPath.Replace("'", "''", StringComparison.Ordinal);
         var backupSql = $"BACKUP DATABASE {SusDb} TO DISK = N'{safePath}' WITH COMPRESSION, INIT";
 
         progress.Report($"Starting backup to: {backupPath}");
@@ -98,7 +98,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         try
         {
-            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, backupSql, 0, ct);
+            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, backupSql, 0, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -143,7 +143,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 1. Sysadmin check — hard block
         progress.Report("Checking SQL sysadmin permissions...");
-        var sysadminResult = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct);
+        var sysadminResult = await _permissionsService.CheckSqlSysadminAsync(sqlInstance, ct).ConfigureAwait(false);
         if (!sysadminResult.Success || !sysadminResult.Data)
         {
             var msg = "Database restore requires SQL sysadmin permissions. " +
@@ -165,7 +165,7 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 3. Verify backup integrity
         progress.Report("Verifying backup integrity...");
-        var verifyResult = await VerifyBackupAsync(sqlInstance, backupPath, ct);
+        var verifyResult = await VerifyBackupAsync(sqlInstance, backupPath, ct).ConfigureAwait(false);
         if (!verifyResult.Success || !verifyResult.Data)
         {
             var msg = $"Backup verification failed: {verifyResult.Message}";
@@ -176,14 +176,14 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         // 4. Stop WSUS and IIS services (SQL must stay running)
         progress.Report("Stopping WSUS service...");
-        var wsusStop = await _serviceManager.StopServiceAsync("WsusService", ct);
+        var wsusStop = await _serviceManager.StopServiceAsync("WsusService", ct).ConfigureAwait(false);
         if (!wsusStop.Success)
             progress.Report($"[WARN] WsusService stop: {wsusStop.Message} (continuing anyway)");
         else
             progress.Report("[OK] WSUS service stopped.");
 
         progress.Report("Stopping IIS (W3SVC)...");
-        var iisStop = await _serviceManager.StopServiceAsync("W3SVC", ct);
+        var iisStop = await _serviceManager.StopServiceAsync("W3SVC", ct).ConfigureAwait(false);
         if (!iisStop.Success)
             progress.Report($"[WARN] W3SVC stop: {iisStop.Message} (continuing anyway)");
         else
@@ -194,25 +194,25 @@ public class DatabaseBackupService : IDatabaseBackupService
         const string singleUserSql = "ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE";
         try
         {
-            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, singleUserSql, 30, ct);
+            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, singleUserSql, 30, ct).ConfigureAwait(false);
             progress.Report("[OK] Database set to single-user mode.");
         }
         catch (Exception ex)
         {
             _logService.Error(ex, "Failed to set single-user mode");
             // Try to restart services before returning failure
-            await RestartServicesAsync(sqlInstance, progress, ct);
+            await RestartServicesAsync(sqlInstance, progress, ct).ConfigureAwait(false);
             return OperationResult.Fail($"Failed to set database to single-user mode: {ex.Message}", ex);
         }
 
         // 6. Restore database
-        var safePath = backupPath.Replace("'", "''");
+        var safePath = backupPath.Replace("'", "''", StringComparison.Ordinal);
         var restoreSql = $"RESTORE DATABASE {SusDb} FROM DISK = N'{safePath}' WITH REPLACE";
 
         progress.Report("Restoring database... (this may take several minutes)");
         try
         {
-            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, restoreSql, 0, ct);
+            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, restoreSql, 0, ct).ConfigureAwait(false);
             progress.Report("[OK] Database restored.");
         }
         catch (Exception ex)
@@ -222,10 +222,10 @@ public class DatabaseBackupService : IDatabaseBackupService
             try
             {
                 await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb,
-                    "ALTER DATABASE SUSDB SET MULTI_USER", 30, CancellationToken.None);
+                    "ALTER DATABASE SUSDB SET MULTI_USER", 30, CancellationToken.None).ConfigureAwait(false);
             }
             catch { /* best effort */ }
-            await RestartServicesAsync(sqlInstance, progress, CancellationToken.None);
+            await RestartServicesAsync(sqlInstance, progress, CancellationToken.None).ConfigureAwait(false);
             return OperationResult.Fail($"Restore failed: {ex.Message}", ex);
         }
 
@@ -234,7 +234,7 @@ public class DatabaseBackupService : IDatabaseBackupService
         try
         {
             await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb,
-                "ALTER DATABASE SUSDB SET MULTI_USER", 30, ct);
+                "ALTER DATABASE SUSDB SET MULTI_USER", 30, ct).ConfigureAwait(false);
             progress.Report("[OK] Database set to multi-user mode.");
         }
         catch (Exception ex)
@@ -248,14 +248,14 @@ public class DatabaseBackupService : IDatabaseBackupService
         var wsusutilPath = @"C:\Program Files\Update Services\Tools\wsusutil.exe";
         var wsusutilArgs = $"postinstall SQL_INSTANCE_NAME=\"{sqlInstance}\" CONTENT_DIR=\"{contentPath}\"";
 
-        var postinstallResult = await _processRunner.RunAsync(wsusutilPath, wsusutilArgs, progress, ct);
+        var postinstallResult = await _processRunner.RunAsync(wsusutilPath, wsusutilArgs, progress, ct).ConfigureAwait(false);
         if (postinstallResult.Success)
             progress.Report("[OK] wsusutil postinstall completed.");
         else
             progress.Report($"[WARN] wsusutil postinstall exit code {postinstallResult.ExitCode} (check logs).");
 
         // 9. Restart WSUS and IIS services
-        await RestartServicesAsync(sqlInstance, progress, ct);
+        await RestartServicesAsync(sqlInstance, progress, ct).ConfigureAwait(false);
 
         sw.Stop();
         progress.Report($"[OK] Database restore completed in {sw.Elapsed.TotalSeconds:F0}s.");
@@ -275,11 +275,11 @@ public class DatabaseBackupService : IDatabaseBackupService
         {
             _logService.Debug("Verifying backup: {BackupPath}", backupPath);
 
-            var safePath = backupPath.Replace("'", "''");
+            var safePath = backupPath.Replace("'", "''", StringComparison.Ordinal);
             var verifySql = $"RESTORE VERIFYONLY FROM DISK = N'{safePath}' WITH CHECKSUM";
 
             // RESTORE VERIFYONLY returns no rows but throws SqlException on failure
-            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, verifySql, 0, ct);
+            await _sqlService.ExecuteNonQueryAsync(sqlInstance, MasterDb, verifySql, 0, ct).ConfigureAwait(false);
 
             _logService.Debug("Backup verification succeeded: {BackupPath}", backupPath);
             return OperationResult<bool>.Ok(true, "Backup file is valid.");
@@ -300,11 +300,11 @@ public class DatabaseBackupService : IDatabaseBackupService
     private async Task RestartServicesAsync(string sqlInstance, IProgress<string> progress, CancellationToken ct)
     {
         progress.Report("Restarting IIS (W3SVC)...");
-        var iisStart = await _serviceManager.StartServiceAsync("W3SVC", ct);
+        var iisStart = await _serviceManager.StartServiceAsync("W3SVC", ct).ConfigureAwait(false);
         progress.Report(iisStart.Success ? "[OK] IIS started." : $"[WARN] IIS start: {iisStart.Message}");
 
         progress.Report("Restarting WSUS service...");
-        var wsusStart = await _serviceManager.StartServiceAsync("WsusService", ct);
+        var wsusStart = await _serviceManager.StartServiceAsync("WsusService", ct).ConfigureAwait(false);
         progress.Report(wsusStart.Success ? "[OK] WSUS service started." : $"[WARN] WSUS start: {wsusStart.Message}");
     }
 
@@ -318,7 +318,7 @@ public class DatabaseBackupService : IDatabaseBackupService
                 WHERE database_id = DB_ID('SUSDB')
                     AND type = 0";
 
-            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, MasterDb, sql, 10, ct);
+            var sizeGb = await _sqlService.ExecuteScalarAsync<double>(sqlInstance, MasterDb, sql, 10, ct).ConfigureAwait(false);
             return sizeGb;
         }
         catch (Exception ex)

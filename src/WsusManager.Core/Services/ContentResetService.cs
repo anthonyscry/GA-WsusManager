@@ -51,7 +51,7 @@ public class ContentResetService : IContentResetService
                 WsusUtilPath,
                 "reset",
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (result.Success)
             {

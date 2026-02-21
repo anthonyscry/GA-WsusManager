@@ -51,7 +51,7 @@ public class GpoDeploymentService : IGpoDeploymentService
             progress?.Report("Created destination directory.");
 
             // Copy all files recursively
-            var fileCount = await Task.Run(() => CopyDirectory(sourceDir, DefaultDestination, progress), ct);
+            var fileCount = await Task.Run(() => CopyDirectory(sourceDir, DefaultDestination, progress), ct).ConfigureAwait(false);
 
             _logService.Info("GPO deployment complete: {Count} files copied", fileCount);
             progress?.Report($"[OK] Copied {fileCount} files to {DefaultDestination}");

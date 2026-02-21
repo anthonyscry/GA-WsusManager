@@ -117,7 +117,7 @@ public class InstallationService : IInstallationService
                 "powershell.exe",
                 arguments,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (result.Success)
             {

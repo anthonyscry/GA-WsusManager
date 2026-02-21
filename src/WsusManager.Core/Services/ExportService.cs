@@ -60,7 +60,7 @@ public class ExportService : IExportService
         {
             progress.Report("[Full Export] Copying all content...");
             var fullDest = Path.Combine(options.FullExportPath!, "WsusContent");
-            var result = await _robocopyService.CopyAsync(contentSource, fullDest, 0, progress, ct);
+            var result = await _robocopyService.CopyAsync(contentSource, fullDest, 0, progress, ct).ConfigureAwait(false);
             if (!result.Success)
             {
                 progress.Report($"[WARNING] Full export had issues: {result.Message}");
@@ -86,7 +86,7 @@ public class ExportService : IExportService
             progress.Report($"  Archive path: {archivePath}");
 
             var result = await _robocopyService.CopyAsync(
-                contentSource, diffDest, options.ExportDays, progress, ct);
+                contentSource, diffDest, options.ExportDays, progress, ct).ConfigureAwait(false);
             if (!result.Success)
             {
                 progress.Report($"[WARNING] Differential export had issues: {result.Message}");
@@ -101,7 +101,7 @@ public class ExportService : IExportService
         // Optional database backup copy
         if (options.IncludeDatabaseBackup)
         {
-            await CopyDatabaseBackupAsync(options, hasFullPath, hasDiffPath, progress, ct);
+            await CopyDatabaseBackupAsync(options, hasFullPath, hasDiffPath, progress, ct).ConfigureAwait(false);
         }
 
         var finalMsg = anyFailure
@@ -152,7 +152,7 @@ public class ExportService : IExportService
                 progress.Report($"[DB Backup] Copied to: {dest}");
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

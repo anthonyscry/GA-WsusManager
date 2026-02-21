@@ -66,7 +66,7 @@ public class ImportService : IImportService
 
         // Copy content
         var copyResult = await _robocopyService.CopyAsync(
-            options.SourcePath, options.DestinationPath, 0, progress, ct);
+            options.SourcePath, options.DestinationPath, 0, progress, ct).ConfigureAwait(false);
 
         if (!copyResult.Success)
         {
@@ -81,7 +81,7 @@ public class ImportService : IImportService
         {
             progress.Report("");
             progress.Report("Running content reset (wsusutil reset)...");
-            var resetResult = await _contentResetService.ResetContentAsync(progress, ct);
+            var resetResult = await _contentResetService.ResetContentAsync(progress, ct).ConfigureAwait(false);
             if (resetResult.Success)
             {
                 progress.Report("[OK] Content reset completed.");

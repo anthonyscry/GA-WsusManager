@@ -109,7 +109,7 @@ public class PermissionsService : IPermissionsService
             var nsResult = await _processRunner.RunAsync(
                 "icacls",
                 $"\"{contentPath}\" /grant \"NETWORK SERVICE:(OI)(CI)F\" /T",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (!nsResult.Success)
             {
@@ -125,7 +125,7 @@ public class PermissionsService : IPermissionsService
             var iisResult = await _processRunner.RunAsync(
                 "icacls",
                 $"\"{contentPath}\" /grant \"IIS_IUSRS:(OI)(CI)F\" /T",
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (!iisResult.Success)
             {
@@ -155,13 +155,13 @@ public class PermissionsService : IPermissionsService
 
             var connStr = BuildConnectionString(sqlInstance, "master");
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT IS_SRVROLEMEMBER('sysadmin')";
             cmd.CommandTimeout = SqlCommandTimeoutSeconds;
 
-            var result = await cmd.ExecuteScalarAsync(ct);
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             bool isSysadmin = result != null && result != DBNull.Value && Convert.ToInt32(result) == 1;
 
             _logService.Debug("SQL sysadmin check: {IsSysadmin}", isSysadmin);
@@ -192,14 +192,14 @@ public class PermissionsService : IPermissionsService
 
             var connStr = BuildConnectionString(sqlInstance, "master");
             using var conn = new SqlConnection(connStr);
-            await conn.OpenAsync(ct);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT name FROM sys.server_principals " +
                               "WHERE name = 'NT AUTHORITY\\NETWORK SERVICE'";
             cmd.CommandTimeout = SqlCommandTimeoutSeconds;
 
-            var result = await cmd.ExecuteScalarAsync(ct);
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             bool loginExists = result != null && result != DBNull.Value;
 
             _logService.Debug("NETWORK SERVICE SQL login exists: {LoginExists}", loginExists);

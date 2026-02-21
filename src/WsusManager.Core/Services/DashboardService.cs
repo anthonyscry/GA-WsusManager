@@ -37,7 +37,7 @@ public class DashboardService : IDashboardService
 
         try
         {
-            await Task.WhenAll(serviceTask, dbTask, diskTask, taskTask, connectTask);
+            await Task.WhenAll(serviceTask, dbTask, diskTask, taskTask, connectTask).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -64,7 +64,7 @@ public class DashboardService : IDashboardService
                     using var sc = new ServiceController(name);
                     _ = sc.Status; // Force query to verify service exists
 
-                    if (name == "WsusService")
+                    if (string.Equals(name, "WsusService", StringComparison.Ordinal))
                         wsusFound = true;
 
                     if (sc.Status == ServiceControllerStatus.Running)
@@ -73,7 +73,7 @@ public class DashboardService : IDashboardService
                 catch (InvalidOperationException)
                 {
                     // Service not installed
-                    if (name == "WsusService")
+                    if (string.Equals(name, "WsusService", StringComparison.Ordinal))
                         wsusFound = false;
                 }
             }
@@ -203,7 +203,7 @@ public class DashboardService : IDashboardService
         try
         {
             using var ping = new Ping();
-            var reply = await ping.SendPingAsync("8.8.8.8", ConnectivityTimeoutMs);
+            var reply = await ping.SendPingAsync("8.8.8.8", ConnectivityTimeoutMs).ConfigureAwait(false);
             data.IsOnline = reply.Status == IPStatus.Success;
         }
         catch

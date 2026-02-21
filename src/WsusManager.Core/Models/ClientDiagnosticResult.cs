@@ -29,7 +29,7 @@ public record ClientDiagnosticResult
     /// (e.g., "wuauserv", "bits", "cryptsvc", "msiserver"). Value is the
     /// service status string (Running, Stopped, etc.).
     /// </summary>
-    public Dictionary<string, string> ServiceStatuses { get; init; } = new();
+    public Dictionary<string, string> ServiceStatuses { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// UTC timestamp of the client's last successful check-in with the WSUS server.

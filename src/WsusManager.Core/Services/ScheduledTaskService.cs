@@ -52,7 +52,7 @@ public class ScheduledTaskService : IScheduledTaskService
                 "schtasks.exe",
                 $"/Delete /TN \"{options.TaskName}\" /F",
                 progress: null,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             // Step 2: Build the task action command
             var taskAction = $"powershell.exe -ExecutionPolicy Bypass " +
@@ -68,7 +68,7 @@ public class ScheduledTaskService : IScheduledTaskService
             progress?.Report($"Username: {options.Username}");
             progress?.Report("Running schtasks /Create...");
 
-            var result = await _processRunner.RunAsync("schtasks.exe", args, progress, ct);
+            var result = await _processRunner.RunAsync("schtasks.exe", args, progress, ct).ConfigureAwait(false);
 
             if (result.Success)
             {
@@ -105,7 +105,7 @@ public class ScheduledTaskService : IScheduledTaskService
                 "schtasks.exe",
                 $"/Query /TN \"{taskName}\" /FO CSV /NH",
                 progress: null,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -145,7 +145,7 @@ public class ScheduledTaskService : IScheduledTaskService
                 "schtasks.exe",
                 $"/Delete /TN \"{taskName}\" /F",
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (result.Success)
             {
