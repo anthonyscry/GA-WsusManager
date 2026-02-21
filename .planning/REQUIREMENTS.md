@@ -62,32 +62,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SET-01 | TBD | Pending |
-| SET-02 | TBD | Pending |
-| SET-03 | TBD | Pending |
-| SET-04 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| UX-04 | TBD | Pending |
-| DLG-01 | TBD | Pending |
-| DLG-02 | TBD | Pending |
-| DLG-03 | TBD | Pending |
-| DLG-04 | TBD | Pending |
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| CLI-03 | TBD | Pending |
-| CLI-04 | TBD | Pending |
-| CLI-05 | TBD | Pending |
-| CLI-06 | TBD | Pending |
-| CLI-07 | TBD | Pending |
-| CLI-08 | TBD | Pending |
+| SET-01 | Phase 12 | Pending |
+| SET-02 | Phase 12 | Pending |
+| SET-03 | Phase 12 | Pending |
+| SET-04 | Phase 12 | Pending |
+| UX-01 | Phase 13 | Pending |
+| UX-02 | Phase 13 | Pending |
+| UX-03 | Phase 13 | Pending |
+| UX-04 | Phase 13 | Pending |
+| DLG-01 | Phase 13 | Pending |
+| DLG-02 | Phase 13 | Pending |
+| DLG-03 | Phase 13 | Pending |
+| DLG-04 | Phase 13 | Pending |
+| CLI-01 | Phase 14 | Pending |
+| CLI-02 | Phase 14 | Pending |
+| CLI-03 | Phase 15 | Pending |
+| CLI-04 | Phase 14 | Pending |
+| CLI-05 | Phase 14 | Pending |
+| CLI-06 | Phase 14 | Pending |
+| CLI-07 | Phase 14 | Pending |
+| CLI-08 | Phase 15 | Pending |
 
 **Coverage:**
 - v4.2 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation — all 20 requirements mapped*
