@@ -127,6 +127,9 @@ public static class Program
         // Phase 16: Theme Infrastructure
         builder.Services.AddSingleton<IThemeService, ThemeService>();
 
+        // Phase 27: Visual Feedback Polish
+        builder.Services.AddSingleton<IBenchmarkTimingService, BenchmarkTimingService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 
