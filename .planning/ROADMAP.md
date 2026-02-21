@@ -6,6 +6,7 @@
 - ✅ **v4.1 Bug Fixes & Polish** — Phases 8-11 (shipped 2026-02-20)
 - ✅ **v4.2 UX & Client Management** — Phases 12-15 (shipped 2026-02-21)
 - ✅ **v4.3 Themes** — Phases 16-17 (shipped 2026-02-21)
+- 🔄 **v4.4 Quality & Polish** — Phases 18-24 (in progress)
 
 ## Phases
 
@@ -58,6 +59,21 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 
 </details>
 
+<details>
+<summary>🔄 v4.4 Quality & Polish (Phases 18-24) — IN PROGRESS</summary>
+
+- [ ] Phase 18: Test Coverage & Reporting — Measure and report test coverage with HTML artifacts
+- [ ] Phase 19: Static Analysis & Code Quality — Zero compiler warnings with Roslyn analyzers
+- [ ] Phase 20: XML Documentation & API Reference — Complete XML docs for all public APIs
+- [ ] Phase 21: Code Refactoring & Async Audit — Reduce complexity and fix async patterns
+- [ ] Phase 22: Performance Benchmarking — Baseline and benchmark critical operations
+- [ ] Phase 23: Memory Leak Detection — Detect and fix memory leaks before release
+- [ ] Phase 24: Documentation Generation — User and developer documentation
+
+**Requirements:** 29 total (6 Test Coverage, 8 Code Quality, 7 Performance, 6 Documentation)
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans | Status | Completed |
@@ -79,3 +95,162 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
 | 17. Theme Content and Picker | v4.3 | 1/1 | Complete | 2026-02-21 |
+| 18. Test Coverage & Reporting | v4.4 | 0/3 | Not started | - |
+| 19. Static Analysis & Code Quality | v4.4 | 0/3 | Not started | - |
+| 20. XML Documentation & API Reference | v4.4 | 0/2 | Not started | - |
+| 21. Code Refactoring & Async Audit | v4.4 | 0/2 | Not started | - |
+| 22. Performance Benchmarking | v4.4 | 0/3 | Not started | - |
+| 23. Memory Leak Detection | v4.4 | 0/1 | Not started | - |
+| 24. Documentation Generation | v4.4 | 0/4 | Not started | - |
+
+---
+
+## v4.4 Phase Details
+
+### Phase 18: Test Coverage & Reporting
+
+**Goal:** Measure and visualize test coverage across the codebase with transparent reporting
+
+**Depends on:** Nothing
+
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06
+
+**Success Criteria** (what must be TRUE):
+1. Developer can run `dotnet test` and generate HTML coverage report showing line/branch coverage
+2. CI/CD pipeline produces coverage HTML artifact accessible from GitHub Actions run
+3. Coverage report includes both line coverage percentage and branch coverage analysis
+4. Edge cases (null inputs, empty collections, boundary values) are explicitly tested
+5. All exception handling paths have corresponding test coverage
+
+**Plans:** TBD
+
+---
+
+### Phase 19: Static Analysis & Code Quality
+
+**Goal:** Establish compiler-level quality gates with zero warnings and consistent code style
+
+**Depends on:** Nothing
+
+**Requirements:** QUAL-01, QUAL-02, QUAL-03, QUAL-06
+
+**Success Criteria** (what must be TRUE):
+1. `dotnet build --configuration Release` completes with zero warnings
+2. All developers see consistent code style formatting regardless of editor
+3. Roslyn analyzers catch code quality issues at compile time
+4. CI/CD pipeline fails if static analysis warnings are present
+5. New code automatically follows configured style rules
+
+**Plans:** TBD
+
+---
+
+### Phase 20: XML Documentation & API Reference
+
+**Goal:** Complete XML documentation for all public APIs with exception documentation
+
+**Depends on:** Nothing
+
+**Requirements:** QUAL-04, QUAL-05
+
+**Success Criteria** (what must be TRUE):
+1. IntelliSense shows descriptive summaries for all public APIs
+2. All public methods document thrown exceptions with `<exception>` tags
+3. API reference documentation website can be generated from XML comments
+4. Public API parameters are documented with `<param>` tags
+5. Return values are documented with `<returns>` tags
+
+**Plans:** TBD
+
+---
+
+### Phase 21: Code Refactoring & Async Audit
+
+**Goal:** Reduce code complexity and eliminate async anti-patterns that cause deadlocks
+
+**Depends on:** Phase 19 (static analysis identifies complex methods)
+
+**Requirements:** QUAL-07, QUAL-08, PERF-07
+
+**Success Criteria** (what must be TRUE):
+1. No methods have cyclomatic complexity >10
+2. Duplicated code patterns are extracted into reusable helpers
+3. No async operations use `.Result` or `.Wait()` on UI thread
+4. All async operations propagate `CancellationToken` properly
+5. Application remains responsive during long-running operations
+
+**Plans:** TBD
+
+---
+
+### Phase 22: Performance Benchmarking
+
+**Goal:** Establish performance baselines and detect regressions in critical operations
+
+**Depends on:** Nothing
+
+**Requirements:** PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
+
+**Success Criteria** (what must be TRUE):
+1. Startup time is measured and documented (cold start <2s, warm start <500ms)
+2. CI/CD pipeline displays startup benchmark in build output
+3. Database operations have baseline performance metrics
+4. WinRM operations have baseline performance metrics
+5. Performance regressions are detected before release
+
+**Plans:** TBD
+
+---
+
+### Phase 23: Memory Leak Detection
+
+**Goal:** Detect and fix memory leaks to ensure long-running stability
+
+**Depends on:** Phase 21 (async audit reduces leak risk)
+
+**Requirements:** PERF-06
+
+**Success Criteria** (what must be TRUE):
+1. Application memory usage remains stable during extended operation
+2. Event handlers are properly unsubscribed in `Unloaded` events
+3. Data-bound collections use `ObservableCollection` to prevent leaks
+4. Long-lived publishers use weak event patterns
+5. Memory profiling shows no growing object counts over time
+
+**Plans:** TBD
+
+---
+
+### Phase 24: Documentation Generation
+
+**Goal:** Comprehensive user and developer documentation for onboarding and contribution
+
+**Depends on:** Phase 20 (XML docs required for API documentation)
+
+**Requirements:** DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06
+
+**Success Criteria** (what must be TRUE):
+1. New users can install and run application from README instructions
+2. Contributors can build, test, and submit changes following CONTRIBUTING.md
+3. API documentation website browsable with generated HTML
+4. CI/CD pipeline is documented with workflow explanations
+5. Release process is documented with versioning and publish steps
+6. Architecture decisions are documented for maintainability
+
+**Plans:** TBD
+
+---
+
+## Requirement Traceability (v4.4)
+
+| Category | Requirements | Phase | Coverage |
+|----------|--------------|-------|----------|
+| Test Coverage | TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06 | 18 | 6/6 |
+| Code Quality | QUAL-01, QUAL-02, QUAL-03, QUAL-06 | 19 | 4/4 |
+| Code Quality | QUAL-04, QUAL-05 | 20 | 2/2 |
+| Code Quality | QUAL-07, QUAL-08 | 21 | 2/2 |
+| Performance | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05 | 22 | 5/5 |
+| Performance | PERF-06 | 23 | 1/1 |
+| Performance | PERF-07 | 21 | 1/1 |
+| Documentation | DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06 | 24 | 6/6 |
+| **Total** | **29 requirements** | **7 phases** | **29/29 (100%)** |
