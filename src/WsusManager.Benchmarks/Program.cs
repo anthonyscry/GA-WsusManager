@@ -3,7 +3,7 @@ using BenchmarkDotNet.Running;
 namespace WsusManager.Benchmarks;
 
 /// <summary>
-/// Benchmark entry point - run all benchmarks in this assembly
+/// Benchmark entry point - run all benchmarks in this assembly.
 /// </summary>
 public class Program
 {
