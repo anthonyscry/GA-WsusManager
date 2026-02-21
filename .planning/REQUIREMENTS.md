@@ -14,7 +14,7 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 - [x] **TEST-03**: Coverage report generates as HTML artifact in CI/CD pipeline
 - [ ] **TEST-04**: Integration tests verify end-to-end workflows (run manually/on-demand)
 - [ ] **TEST-05**: Edge case testing covers null inputs, empty collections, boundary values
-- [ ] **TEST-06**: Exception path testing verifies all caught exceptions are tested
+- [x] **TEST-06**: Exception path testing verifies all caught exceptions are tested
 
 ### Code Quality
 
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-03 | Phase 18 | Complete |
 | TEST-04 | Phase 18 | Pending |
 | TEST-05 | Phase 18 | Pending |
-| TEST-06 | Phase 18 | Pending |
+| TEST-06 | Phase 18 | Complete |
 | QUAL-01 | Phase 19 | Pending |
 | QUAL-02 | Phase 19 | Pending |
 | QUAL-03 | Phase 19 | Pending |
