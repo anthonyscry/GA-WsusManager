@@ -41,10 +41,12 @@ public class ClientServiceTests
 
     /// <summary>
     /// Captures progress messages reported during an operation.
+    /// Uses a thread-safe collection because Progress&lt;T&gt; can post callbacks on the thread pool
+    /// when there is no SynchronizationContext (e.g., in xUnit tests).
     /// </summary>
-    private static (List<string> Messages, IProgress<string> Progress) CreateProgressCapture()
+    private static (System.Collections.Concurrent.ConcurrentBag<string> Messages, IProgress<string> Progress) CreateProgressCapture()
     {
-        var messages = new List<string>();
+        var messages = new System.Collections.Concurrent.ConcurrentBag<string>();
         var progress = new Progress<string>(m => messages.Add(m));
         return (messages, progress);
     }
@@ -401,5 +403,151 @@ public class ClientServiceTests
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
         Assert.Equal("0x80072EE2", result.Data.Code);
+    }
+
+    // -------------------------------------------------------------------------
+    // MassForceCheckInAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MassForceCheckIn_AllSucceed_Returns_True_And_Mentions_All_Hosts()
+    {
+        // Arrange: WinRM available for all 3 hosts, all remote commands succeed
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Test-WSMan")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuccessResult());
+
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Invoke-Command")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuccessResult("STEP=GpUpdate\nSTEP=ResetAuth\nSTEP=DetectNow\nSTEP=ReportNow\nSTEP=Done"));
+
+        var hostnames = new List<string> { "host01", "host02", "host03" };
+        var (messages, progress) = CreateProgressCapture();
+        var service = CreateService();
+
+        // Act
+        var result = await service.MassForceCheckInAsync(hostnames, progress);
+
+        // Assert
+        Assert.True(result.Success);
+        // Summary should mention 3/3 succeeded
+        Assert.Contains("3/3", result.Message, StringComparison.OrdinalIgnoreCase);
+        // Progress messages should include per-host markers
+        Assert.True(messages.Any(m => m.Contains("host01")),
+            "Expected progress message mentioning host01");
+        Assert.True(messages.Any(m => m.Contains("host02")),
+            "Expected progress message mentioning host02");
+        Assert.True(messages.Any(m => m.Contains("host03")),
+            "Expected progress message mentioning host03");
+    }
+
+    [Fact]
+    public async Task MassForceCheckIn_OneHostFails_Returns_False_Shows_PassFail_Count()
+    {
+        // Arrange: WinRM available on host1 (success), host2 WinRM unavailable (fail)
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Test-WSMan") && a.Contains("host-ok")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuccessResult());
+
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Test-WSMan") && a.Contains("host-fail")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WinRmFailResult());
+
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Invoke-Command")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuccessResult("STEP=Done"));
+
+        var hostnames = new List<string> { "host-ok", "host-fail" };
+        var (messages, progress) = CreateProgressCapture();
+        var service = CreateService();
+
+        // Act
+        var result = await service.MassForceCheckInAsync(hostnames, progress);
+
+        // Assert
+        Assert.False(result.Success);
+        // Summary should show 1 passed, 1 failed
+        Assert.Contains("1/2", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("1 failed", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task MassForceCheckIn_EmptyList_Returns_Failure_With_Descriptive_Message()
+    {
+        // Arrange: empty list — no mock setup needed, validation fires first
+        var service = CreateService();
+        var (_, progress) = CreateProgressCapture();
+
+        // Act
+        var result = await service.MassForceCheckInAsync([], progress);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("hostname", result.Message, StringComparison.OrdinalIgnoreCase);
+
+        // No process should have been launched
+        _mockRunner.Verify(r => r.RunAsync(
+            It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task MassForceCheckIn_WhitespaceOnlyEntries_TreatedAsEmpty()
+    {
+        // Arrange: list with only whitespace/empty entries — treated as empty
+        var service = CreateService();
+        var (_, progress) = CreateProgressCapture();
+
+        // Act: whitespace-only entries should be filtered out, leaving an empty valid list
+        var result = await service.MassForceCheckInAsync(["   ", "", "\t"], progress);
+
+        // Assert: same behaviour as empty list
+        Assert.False(result.Success);
+        Assert.Contains("hostname", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task MassForceCheckIn_Cancellation_StopsProcessingRemainingHosts()
+    {
+        // Arrange: use CancellationTokenSource cancelled after first host
+        using var cts = new CancellationTokenSource();
+
+        int callCount = 0;
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Test-WSMan")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                // Cancel after the first Test-WSMan call
+                if (callCount >= 1) cts.Cancel();
+                return SuccessResult();
+            });
+
+        _mockRunner
+            .Setup(r => r.RunAsync("powershell.exe",
+                It.Is<string>(a => a.Contains("Invoke-Command")),
+                It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuccessResult("STEP=Done"));
+
+        var hostnames = new List<string> { "host01", "host02", "host03" };
+        var (messages, progress) = CreateProgressCapture();
+        var service = CreateService();
+
+        // Act: should throw OperationCanceledException from the ct.ThrowIfCancellationRequested()
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            service.MassForceCheckInAsync(hostnames, progress, cts.Token));
     }
 }

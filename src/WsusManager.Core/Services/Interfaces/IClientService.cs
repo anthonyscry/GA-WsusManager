@@ -72,4 +72,21 @@ public interface IClientService
     /// <param name="errorCode">Hex code (e.g., "0x80244010") or decimal string.</param>
     /// <returns>Operation result with error info, or a failed result if unknown.</returns>
     OperationResult<WsusErrorInfo> LookupErrorCode(string errorCode);
+
+    /// <summary>
+    /// Runs ForceCheckInAsync sequentially across multiple hosts, reporting per-host
+    /// pass/fail results. Processes are run one at a time (not parallel) to avoid
+    /// overloading WinRM connections.
+    /// </summary>
+    /// <param name="hostnames">List of target hostnames or IP addresses.</param>
+    /// <param name="progress">Progress reporter for real-time per-host output lines.</param>
+    /// <param name="ct">Cancellation token — stops processing remaining hosts on cancellation.</param>
+    /// <returns>
+    /// Ok if all hosts succeeded; Fail if any host failed (but all reachable hosts are still processed).
+    /// The message includes a summary: "{passed}/{total} hosts succeeded, {failed} failed."
+    /// </returns>
+    Task<OperationResult> MassForceCheckInAsync(
+        IReadOnlyList<string> hostnames,
+        IProgress<string> progress,
+        CancellationToken ct = default);
 }
