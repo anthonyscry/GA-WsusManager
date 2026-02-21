@@ -34,7 +34,7 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 - [x] **PERF-03**: BenchmarkDotNet project measures critical operation performance
 - [x] **PERF-04**: Database operation baselines established (cleanup, restore, queries)
 - [x] **PERF-05**: WinRM operation baselines established (client checks, GPUpdate)
-- [ ] **PERF-06**: Memory leak detection performed before release (event handlers, bindings) *Plan complete*
+- [x] **PERF-06**: Memory leak detection performed before release (event handlers, bindings) *Complete*
 - [ ] **PERF-07**: Async/await patterns audited for deadlocks (no .Result/.Wait() on UI thread)
 
 ### Documentation
@@ -101,7 +101,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-03 | Phase 22 | Complete |
 | PERF-04 | Phase 22 | Complete |
 | PERF-05 | Phase 22 | Complete |
-| PERF-06 | Phase 23 | Plan complete |
+| PERF-06 | Phase 23 | Complete |
 | PERF-07 | Phase 21 | Pending |
 | DOC-01 | Phase 24 | Pending |
 | DOC-02 | Phase 24 | Pending |
