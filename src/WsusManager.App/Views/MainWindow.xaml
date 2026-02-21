@@ -603,6 +603,36 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Mass Operations -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Mass Operations" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Enter hostnames (one per line, or comma-separated) or load from a text file. Mass GPUpdate runs gpupdate + WSUS check-in on every host."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                    <TextBox Text="{Binding MassHostnames, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="{StaticResource BgInput}"
+                                             Foreground="{StaticResource Text1}"
+                                             BorderBrush="{StaticResource Border}"
+                                             Padding="8,6" FontSize="12" FontFamily="Consolas"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             MinHeight="80" MaxHeight="150"
+                                             VerticalScrollBarVisibility="Auto"/>
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Content="Load from File" Style="{StaticResource BtnSec}"
+                                                Padding="16,8" Margin="0,0,8,0"
+                                                Command="{Binding LoadHostFileCommand}"
+                                                ToolTip="Load hostnames from a text file (one per line)"/>
+                                        <Button Content="Mass GPUpdate" Style="{StaticResource BtnGreen}"
+                                                Padding="16,8" Margin="0,0,8,0"
+                                                Command="{Binding RunMassGpUpdateCommand}"
+                                                ToolTip="Run gpupdate + WSUS check-in on all listed hosts"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Error Code Lookup -->
                             <Border Background="{StaticResource BgCard}" CornerRadius="6"
                                     Padding="16">
