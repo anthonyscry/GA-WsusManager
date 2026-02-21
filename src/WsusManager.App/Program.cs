@@ -38,13 +38,13 @@ public static class Program
         app.InitializeComponent();
         app.ConfigureServices(host.Services);
 
-        // Apply persisted theme before MainWindow construction to prevent theme flash
+        var window = host.Services.GetRequiredService<MainWindow>();
+
+        // Apply theme after window creation for faster initial render
         var themeService = host.Services.GetRequiredService<IThemeService>();
         var settingsService = host.Services.GetRequiredService<ISettingsService>();
         var settings = settingsService.Current;
         themeService.ApplyTheme(settings.SelectedTheme);
-
-        var window = host.Services.GetRequiredService<MainWindow>();
 
         startupTimer.Stop();
         logService.LogStartup(AppVersion, startupTimer.ElapsedMilliseconds);
