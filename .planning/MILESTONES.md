@@ -65,3 +65,13 @@
 
 ---
 
+
+## v4.4 Quality & Polish (Shipped: 2026-02-21)
+
+**Phases completed:** 9 phases, 22 plans, 7 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
