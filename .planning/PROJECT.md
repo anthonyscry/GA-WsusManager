@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A production-ready C#/.NET 9 WPF application for managing WSUS servers with SQL Server Express on Windows Server 2019+. Delivers full feature parity with the PowerShell v3.8.12 in a single-file EXE with zero threading bugs, sub-second startup, and native async operations. Built for GA-ASI IT administrators managing critical WSUS infrastructure, including air-gapped networks.
+A production-ready C#/.NET 8 WPF application for managing WSUS servers with SQL Server Express on Windows Server 2019+. Delivers full feature parity with the PowerShell v3.8.12 in a single-file EXE with zero threading bugs, sub-second startup, and native async operations. Built for GA-ASI IT administrators managing critical WSUS infrastructure, including air-gapped networks.
 
 ## Core Value
 
@@ -23,7 +23,15 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 
 ### Active
 
-(None — v4.0 shipped. Next milestone requirements TBD via `/gsd:new-milestone`)
+## Current Milestone: v4.1 Bug Fixes & Polish
+
+**Goal:** Get the v4.0 C# rewrite launching, looking right, and with core operations working reliably on a real WSUS server.
+
+**Target features:**
+- .NET 8 SDK compatibility (retarget from .NET 9)
+- App launches and UI renders correctly (dark theme, dashboard, all panels)
+- Core operations execute successfully on real WSUS server (health check, diagnostics, sync, cleanup, backup/restore)
+- Bug fixes for any crashes, UI glitches, or operation failures discovered during testing
 
 ### Out of Scope
 
@@ -39,7 +47,7 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ### Current State
 - **Version:** v4.0 shipped 2026-02-20
 - **Codebase:** 12,674 LOC C# across 88 .cs + 8 .xaml files
-- **Tech stack:** C#/.NET 9, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
+- **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
 - **Tests:** 257 xUnit tests (257 on WSL, ~271 on Windows CI with WPF)
 - **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
@@ -59,7 +67,7 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 | Full C# rewrite (not incremental port) | PowerShell had fundamental threading/deployment limitations | ✓ Good — eliminated 12+ anti-patterns |
 | Start fresh (ignore C# POC) | Clean architecture with modern patterns | ✓ Good — cleaner DI and MVVM |
 | Single-file EXE distribution | Simplifies deployment on production servers | ✓ Good — no Scripts/Modules folders |
-| .NET 9 self-contained | No runtime installation required | ✓ Good — works on clean Windows Server |
+| .NET 8 self-contained | No runtime installation required, .NET 8 LTS available on dev machines | ✓ Good — works on clean Windows Server |
 | Drop Server 2016 support | Allows targeting modern .NET runtime | ✓ Good — simplified targeting |
 | CommunityToolkit.Mvvm for MVVM | Source generators, less boilerplate | ✓ Good — clean ViewModel pattern |
 | Runtime-load WSUS API assembly | Ships with WSUS role, not NuGet | ✓ Good — no compile-time dependency |
@@ -77,4 +85,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-20 after v4.0 milestone*
+*Last updated: 2026-02-20 after v4.1 milestone start*
