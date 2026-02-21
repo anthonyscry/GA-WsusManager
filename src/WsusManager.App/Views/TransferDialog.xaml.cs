@@ -10,6 +10,8 @@ namespace WsusManager.App.Views;
 /// </summary>
 public partial class TransferDialog : Window
 {
+    private KeyEventHandler? _escHandler;
+
     /// <summary>True when Export is selected, false for Import.</summary>
     public bool IsExportMode => RbExport.IsChecked == true;
 
@@ -24,11 +26,25 @@ public partial class TransferDialog : Window
         InitializeComponent();
 
         // ESC key closes dialog (GUI-04)
-        KeyDown += (s, e) =>
+        // Store handler reference for cleanup to prevent memory leak
+        _escHandler = (s, e) =>
         {
             if (e.Key == Key.Escape)
                 Close();
         };
+        KeyDown += _escHandler;
+        Closed += Dialog_Closed;
+    }
+
+    private void Dialog_Closed(object? sender, EventArgs e)
+    {
+        // Cleanup event handlers to prevent memory leaks
+        if (_escHandler != null)
+        {
+            KeyDown -= _escHandler;
+            _escHandler = null;
+        }
+        Closed -= Dialog_Closed;
     }
 
     private void Input_Changed(object sender, RoutedEventArgs e) => ValidateInputs();

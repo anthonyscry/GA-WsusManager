@@ -9,6 +9,8 @@ namespace WsusManager.App.Views;
 /// </summary>
 public partial class SyncProfileDialog : Window
 {
+    private KeyEventHandler? _escHandler;
+
     /// <summary>
     /// The profile selected by the user. Only valid when DialogResult is true.
     /// </summary>
@@ -19,11 +21,25 @@ public partial class SyncProfileDialog : Window
         InitializeComponent();
 
         // ESC key closes dialog (GUI-04)
-        KeyDown += (s, e) =>
+        // Store handler reference for cleanup to prevent memory leak
+        _escHandler = (s, e) =>
         {
             if (e.Key == Key.Escape)
                 Close();
         };
+        KeyDown += _escHandler;
+        Closed += Dialog_Closed;
+    }
+
+    private void Dialog_Closed(object? sender, EventArgs e)
+    {
+        // Cleanup event handlers to prevent memory leaks
+        if (_escHandler != null)
+        {
+            KeyDown -= _escHandler;
+            _escHandler = null;
+        }
+        Closed -= Dialog_Closed;
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)

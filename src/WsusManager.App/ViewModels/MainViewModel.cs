@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -19,7 +20,7 @@ namespace WsusManager.App.ViewModels;
 /// server mode detection, WSUS installation detection, and settings persistence.
 /// All long-running operations must go through RunOperationAsync.
 /// </summary>
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly ILogService _logService;
     private readonly ISettingsService _settingsService;
@@ -38,10 +39,13 @@ public partial class MainViewModel : ObservableObject
     private readonly IClientService _clientService;
     private readonly IScriptGeneratorService _scriptGeneratorService;
     private readonly IThemeService _themeService;
+    private readonly StringBuilder _logBuilder = new();
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
+    private EventHandler? _refreshTimerHandler;
     private AppSettings _settings = new();
     private bool _isInitialized;
+    private bool _disposed;
 
     /// <summary>
     /// Maximum number of updates to auto-approve per sync run (safety threshold).
@@ -335,16 +339,36 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Appends a line to the log output panel.
+    /// Appends a line to the log output panel using StringBuilder to prevent
+    /// unbounded string growth. Trims to last 1000 lines when exceeding 100KB.
     /// </summary>
     public void AppendLog(string line)
     {
-        LogOutput += line + Environment.NewLine;
+        _logBuilder.AppendLine(line);
+
+        // Trim to last 1000 lines to prevent unbounded growth (~100KB limit)
+        if (_logBuilder.Length > 100_000)
+        {
+            var fullText = _logBuilder.ToString();
+            var lines = fullText.Split('\n');
+            if (lines.Length > 1000)
+            {
+                _logBuilder.Clear();
+                var start = lines.Length - 1000;
+                for (int i = start; i < lines.Length; i++)
+                {
+                    _logBuilder.AppendLine(lines[i]);
+                }
+            }
+        }
+
+        LogOutput = _logBuilder.ToString();
     }
 
     [RelayCommand]
     private void ClearLog()
     {
+        _logBuilder.Clear();
         LogOutput = string.Empty;
     }
 
@@ -1362,18 +1386,67 @@ public partial class MainViewModel : ObservableObject
             _settings.RefreshIntervalSeconds > 0 ? _settings.RefreshIntervalSeconds : 30);
 
         _refreshTimer = new DispatcherTimer { Interval = interval };
-        _refreshTimer.Tick += async (_, _) => await RefreshDashboard().ConfigureAwait(false);
+
+        // Store handler reference for unsubscription (memory leak prevention)
+        _refreshTimerHandler = async (_, _) =>
+        {
+            try
+            {
+                await RefreshDashboard().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logService.Error(ex, "Dashboard refresh failed");
+            }
+        };
+
+        _refreshTimer.Tick += _refreshTimerHandler;
         _refreshTimer.Start();
 
         _logService.Debug("Dashboard auto-refresh started ({Interval}s interval)", interval.TotalSeconds);
     }
 
     /// <summary>
-    /// Stops the auto-refresh timer. Called during cleanup/dispose.
+    /// Stops the auto-refresh timer and removes event handler subscription.
+    /// Called during cleanup/dispose and when refresh interval changes.
     /// </summary>
     public void StopRefreshTimer()
     {
-        _refreshTimer?.Stop();
-        _refreshTimer = null;
+        if (_refreshTimer != null)
+        {
+            _refreshTimer.Stop();
+            // Important: Remove event handler to prevent memory leak
+            if (_refreshTimerHandler != null)
+            {
+                _refreshTimer.Tick -= _refreshTimerHandler;
+                _refreshTimerHandler = null;
+            }
+            _refreshTimer = null;
+        }
+    }
+
+    /// <summary>
+    /// Disposes of managed resources: stops refresh timer, cancels running operations,
+    /// and clears the log builder. Called from MainWindow.Closed event.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        // Stop and cleanup timer (includes handler unsubscription)
+        StopRefreshTimer();
+
+        // Cancel any running operation
+        if (_operationCts is { IsCancellationRequested: false })
+        {
+            _operationCts.Cancel();
+            _operationCts.Dispose();
+        }
+
+        // Clear log builder to release memory
+        _logBuilder.Clear();
+
+        GC.SuppressFinalize(this);
     }
 }

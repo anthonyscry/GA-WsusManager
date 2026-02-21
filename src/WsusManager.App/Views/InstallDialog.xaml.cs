@@ -11,6 +11,8 @@ namespace WsusManager.App.Views;
 /// </summary>
 public partial class InstallDialog : Window
 {
+    private KeyEventHandler? _escHandler;
+
     /// <summary>
     /// The install options collected from the dialog. Only valid when DialogResult is true.
     /// </summary>
@@ -21,14 +23,28 @@ public partial class InstallDialog : Window
         InitializeComponent();
 
         // ESC key closes dialog (GUI-04)
-        KeyDown += (s, e) =>
+        // Store handler reference for cleanup to prevent memory leak
+        _escHandler = (s, e) =>
         {
             if (e.Key == Key.Escape)
                 Close();
         };
+        KeyDown += _escHandler;
+        Closed += Dialog_Closed;
 
         // Set initial validation state
         ValidateInputs();
+    }
+
+    private void Dialog_Closed(object? sender, EventArgs e)
+    {
+        // Cleanup event handlers to prevent memory leaks
+        if (_escHandler != null)
+        {
+            KeyDown -= _escHandler;
+            _escHandler = null;
+        }
+        Closed -= Dialog_Closed;
     }
 
     private void Input_Changed(object sender, RoutedEventArgs e) => ValidateInputs();

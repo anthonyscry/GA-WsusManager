@@ -38,6 +38,15 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
     }
 
+    protected override void OnExit(ExitEventArgs e)
+    {
+        // Unsubscribe static event handlers to prevent memory leaks
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+        AppDomain.CurrentDomain.UnhandledException -= OnAppDomainUnhandledException;
+
+        base.OnExit(e);
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         _logger?.LogError(e.Exception, "Unhandled UI thread exception");
