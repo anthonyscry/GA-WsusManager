@@ -51,7 +51,7 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
 ### v4.3 Themes (Phases 16-17)
 
 - [x] **Phase 16: Theme Infrastructure** — Split styles/tokens, migrate StaticResource to DynamicResource, implement ThemeService (2026-02-21)
-- [ ] **Phase 17: Theme Content and Picker** — 5 additional theme files, Settings Appearance section with live-preview swatch picker (1 plan)
+- [x] **Phase 17: Theme Content and Picker** — 5 additional theme files, Settings Appearance section with live-preview swatch picker (1 plan) (completed 2026-02-21)
 
 ## Phase Details
 
@@ -102,4 +102,4 @@ Plans:
 | 14. Client Management Core | v4.2 | 3/3 | Complete | 2026-02-21 |
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
-| 17. Theme Content and Picker | v4.3 | 0/1 | Planned | - |
+| 17. Theme Content and Picker | 1/1 | Complete   | 2026-02-21 | - |

@@ -17,18 +17,18 @@ Requirements for the Themes milestone. Each maps to roadmap phases.
 
 ### Theme Content
 
-- [ ] **THEME-01**: App ships 6 built-in color themes: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
-- [ ] **THEME-02**: Every theme file defines all required resource keys (no missing keys)
-- [ ] **THEME-03**: All 6 themes meet WCAG 2.1 AA contrast ratio (4.5:1 for text)
+- [x] **THEME-01**: App ships 6 built-in color themes: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
+- [x] **THEME-02**: Every theme file defines all required resource keys (no missing keys)
+- [x] **THEME-03**: All 6 themes meet WCAG 2.1 AA contrast ratio (4.5:1 for text)
 
 ### Theme Picker
 
-- [ ] **PICK-01**: User can select a theme from the Settings dialog Appearance section
-- [ ] **PICK-02**: Theme picker shows color swatches with theme names for each option
-- [ ] **PICK-03**: Currently active theme is visually indicated in the picker
-- [ ] **PICK-04**: Theme applies live when user clicks a swatch (preview before Save)
-- [ ] **PICK-05**: Clicking Cancel reverts to the theme active when Settings was opened
-- [ ] **PICK-06**: Selected theme persists to settings.json and restores on app startup
+- [x] **PICK-01**: User can select a theme from the Settings dialog Appearance section
+- [x] **PICK-02**: Theme picker shows color swatches with theme names for each option
+- [x] **PICK-03**: Currently active theme is visually indicated in the picker
+- [x] **PICK-04**: Theme applies live when user clicks a swatch (preview before Save)
+- [x] **PICK-05**: Clicking Cancel reverts to the theme active when Settings was opened
+- [x] **PICK-06**: Selected theme persists to settings.json and restores on app startup
 
 ## Future Requirements
 
@@ -62,15 +62,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 16 | Complete |
 | INFRA-04 | Phase 16 | Complete |
 | INFRA-05 | Phase 16 | Complete |
-| THEME-01 | Phase 17 | Pending |
-| THEME-02 | Phase 17 | Pending |
-| THEME-03 | Phase 17 | Pending |
-| PICK-01 | Phase 17 | Pending |
-| PICK-02 | Phase 17 | Pending |
-| PICK-03 | Phase 17 | Pending |
-| PICK-04 | Phase 17 | Pending |
-| PICK-05 | Phase 17 | Pending |
-| PICK-06 | Phase 17 | Pending |
+| THEME-01 | Phase 17 | Complete |
+| THEME-02 | Phase 17 | Complete |
+| THEME-03 | Phase 17 | Complete |
+| PICK-01 | Phase 17 | Complete |
+| PICK-02 | Phase 17 | Complete |
+| PICK-03 | Phase 17 | Complete |
+| PICK-04 | Phase 17 | Complete |
+| PICK-05 | Phase 17 | Complete |
+| PICK-06 | Phase 17 | Complete |
 
 **Coverage:**
 - v4.3 requirements: 14 total
