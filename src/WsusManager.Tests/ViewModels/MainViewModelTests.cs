@@ -971,6 +971,87 @@ public class MainViewModelTests
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // Phase 13: Operation Feedback — Progress Bar, Step Text, Banner
+    // ═══════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task RunOperationAsync_ProgressBar_Visible_During_Operation()
+    {
+        bool wasVisibleDuringOp = false;
+
+        await _vm.RunOperationAsync("FeedbackTest", async (progress, ct) =>
+        {
+            wasVisibleDuringOp = _vm.IsProgressBarVisible;
+            await Task.CompletedTask;
+            return true;
+        });
+
+        Assert.True(wasVisibleDuringOp, "IsProgressBarVisible should be true during operation");
+        Assert.False(_vm.IsProgressBarVisible, "IsProgressBarVisible should be false after operation");
+    }
+
+    [Fact]
+    public async Task RunOperationAsync_StatusBanner_Shows_Success_On_Completion()
+    {
+        await _vm.RunOperationAsync("MyOp", async (progress, ct) =>
+        {
+            await Task.CompletedTask;
+            return true;
+        });
+
+        Assert.Contains("completed successfully", _vm.StatusBannerText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("MyOp", _vm.StatusBannerText);
+        // Green color: #3FB950
+        Assert.Equal(Color(0x3F, 0xB9, 0x50), _vm.StatusBannerColor.Color);
+    }
+
+    [Fact]
+    public async Task RunOperationAsync_StatusBanner_Shows_Failure_On_False_Return()
+    {
+        await _vm.RunOperationAsync("FailOp", async (progress, ct) =>
+        {
+            await Task.CompletedTask;
+            return false;
+        });
+
+        Assert.Contains("failed", _vm.StatusBannerText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("FailOp", _vm.StatusBannerText);
+        // Red color: #F85149
+        Assert.Equal(Color(0xF8, 0x51, 0x49), _vm.StatusBannerColor.Color);
+    }
+
+    [Fact]
+    public async Task RunOperationAsync_StepText_Updated_From_Step_Progress_Lines()
+    {
+        string capturedStepText = "";
+
+        await _vm.RunOperationAsync("StepTest", async (progress, ct) =>
+        {
+            progress.Report("[Step 3/6]: Rebuilding indexes");
+            // Allow Progress<T> callback to fire on the UI thread
+            await Task.Delay(50, ct);
+            capturedStepText = _vm.OperationStepText;
+            return true;
+        });
+
+        Assert.Contains("[Step 3/6]", capturedStepText);
+    }
+
+    [Fact]
+    public async Task RunOperationAsync_ProgressBar_And_StepText_Cleared_After_Operation()
+    {
+        await _vm.RunOperationAsync("CleanupTest", async (progress, ct) =>
+        {
+            progress.Report("[Step 1/3]: Starting");
+            await Task.CompletedTask;
+            return true;
+        });
+
+        Assert.False(_vm.IsProgressBarVisible, "IsProgressBarVisible should be false after completion");
+        Assert.Equal(string.Empty, _vm.OperationStepText, "OperationStepText should be empty after completion");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════
 
