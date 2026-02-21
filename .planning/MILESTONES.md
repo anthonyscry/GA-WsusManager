@@ -35,7 +35,6 @@
 
 ---
 
-
 ## v4.2 UX & Client Management (Shipped: 2026-02-21)
 
 **Phases completed:** 4 phases (12-15), 9 plans
@@ -55,23 +54,59 @@
 
 ---
 
-
 ## v4.3 Themes (Shipped: 2026-02-21)
 
-**Phases completed:** 2 phases, 2 plans, 4 tasks
+**Phases completed:** 2 phases (16-17), 2 plans
+**Timeline:** 2026-02-21 (same day)
+**Codebase:** ~21,000 LOC C# across 100+ files
+**Tests:** 336 xUnit tests
+**Git range:** TBD
 
 **Key accomplishments:**
-- (none recorded)
+1. Theme infrastructure — split styles/tokens, migrated StaticResource to DynamicResource, implemented ThemeService
+2. 6 built-in dark-family themes (Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue)
+3. Theme picker UI in Settings with live preview swatches
+4. Cancel-to-revert behavior and JSON persistence for theme selection
+5. WCAG 2.1 AA compliant color contrast across all themes
 
 ---
-
 
 ## v4.4 Quality & Polish (Shipped: 2026-02-21)
 
-**Phases completed:** 9 phases, 22 plans, 7 tasks
+**Phases completed:** 7 phases (18-24), 20 plans
+**Timeline:** 2026-02-21 (1 day)
+**Codebase:** ~21,000 LOC C# across 100+ files
+**Tests:** 455 xUnit tests (up from 336)
+**Coverage:** 84.27% line / 62.19% branch
+**Git range:** TBD
 
 **Key accomplishments:**
-- (none recorded)
+1. Test Coverage & Reporting — Coverlet infrastructure, 455 tests, 84% line / 62% branch coverage
+2. Static Analysis — Zero compiler warnings, Roslyn analyzers, .editorconfig
+3. XML Documentation — DocFX API reference (87 HTML pages)
+4. Code Refactoring — Consolidated database size query to ISqlService
+5. Performance Benchmarking — BenchmarkDotNet with operation baselines
+6. Memory Leak Detection — StringBuilder, timer cleanup, IDisposable patterns
+7. Documentation Generation — README, CONTRIBUTING, CI/CD, releases, architecture
 
 ---
 
+## v4.5 Enhancement Suite (In Progress: 2026-02-21)
+
+**Phases planned:** 7 phases (25-31), 31 plans
+**Timeline:** TBD
+**Codebase:** ~21,000 LOC C# across 100+ files
+**Tests:** 455 xUnit tests (baseline)
+**Focus:** UX polish, performance optimization, settings expansion, data filtering/export
+
+**Target features:**
+1. Performance — 30% startup reduction, list virtualization, lazy loading, batched updates, fast theme switching
+2. Keyboard & Accessibility — Global shortcuts, full keyboard navigation, AutomationId, WCAG 2.1 AA compliance
+3. Visual Feedback — Progress estimation, loading indicators, actionable errors, consistent banners, tooltips
+4. Settings — Operation profiles, logging config, retention policy, window state, refresh interval, WinRM settings, reset
+5. Data Filtering — Status filters, classification filters, real-time search
+6. Data Export — CSV export for computers/updates with Excel compatibility
+7. Testing & Documentation — Benchmarks, UI tests, settings tests, filtering tests, export validation, docs updates
+
+---
+*Last updated: 2026-02-21*
