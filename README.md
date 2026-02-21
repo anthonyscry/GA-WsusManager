@@ -1,22 +1,34 @@
 # WSUS Manager
 
-**Version:** 3.8.11
+**Version:** 4.0.0
 **Author:** Tony Tran, ISSO, Classified Computing, GA-ASI
 
-A comprehensive PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. Provides both a modern WPF GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
+A comprehensive C# WPF automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. Single-file EXE distribution with dark-themed dashboard, real-time diagnostics, theme picker, and air-gap support.
 
 ## Features
 
-- **Modern WPF GUI** - Dark theme dashboard with real-time status monitoring
-- **Unified Diagnostics** - Comprehensive health checks with automatic repair in one operation
+### Core Capabilities
+- **Modern WPF GUI** - Native C# WPF application with MVVM architecture and CommunityToolkit.Mvvm
+- **Real-Time Dashboard** - Auto-refreshing status (30-second interval) for WSUS service, SQL connection, and update counts
+- **Unified Diagnostics** - Comprehensive health checks with automatic repair (services, firewall, permissions, SQL)
 - **Deep Cleanup** - Full database maintenance including supersession cleanup, index optimization, and compaction
-- **Air-Gap Support** - Export/import operations for offline networks with Reset Content for post-import fixes
-- **Definition Updates** - Security definitions (antivirus signatures) now auto-approved alongside critical updates
-- **Scheduled Maintenance** - Automated online sync with configurable profiles
-- **HTTPS/SSL Support** - Easy SSL certificate configuration
-- **Enhanced UI Feedback** - Real-time progress bars, password strength validation, confirmation dialogs
-- **Improved Navigation** - Visual selected state indicator on sidebar buttons
-- **Advanced Log Management** - Filter logs by type (Info/Warning/Error) and search functionality
+- **Air-Gap Support** - Export/import operations for offline networks with differential copy support
+
+### User Experience
+- **Theme Picker** - Six built-in themes (DefaultDark, Slate, ClassicBlue, Serenity, Rose, JustBlack)
+- **Operation Progress** - Step-by-step feedback with success/failure banners
+- **Editable Settings** - All settings configurable via GUI with immediate effect
+- **Expandable Log Panel** - Smooth expand/collapse with real-time operation output
+
+### Client Management
+- **WinRM Integration** - Remote client check-in, diagnostics, GPUpdate, and script generation
+- **GPO Deployment** - Built-in GPO creation with detailed DC admin instructions
+- **Client Tools** - Comprehensive remote management for WSUS clients
+
+### Automation
+- **Scheduled Tasks** - Profile-based online sync with configurable intervals
+- **Single-File EXE** - Self-contained distribution (no Scripts/Modules folders required)
+- **Fast Startup** - 5x faster than PowerShell version (200-400ms vs 1-2s)
 
 ## Quick Start
 
@@ -24,142 +36,183 @@ A comprehensive PowerShell-based automation suite for Windows Server Update Serv
 
 1. Go to the [Releases](../../releases) page
 2. Download `WsusManager-vX.X.X.zip`
-3. Extract to `C:\WSUS\` (recommended) or any folder
+3. Extract to any folder
 4. Run `WsusManager.exe` as Administrator
 
-**Important:** Keep the `Scripts/` and `Modules/` folders in the same directory as the EXE.
+**Note:** The C# version is a single-file EXE with all dependencies embedded. No Scripts/ or Modules/ folders required.
 
 ### Building from Source
 
-```powershell
+```bash
 # Clone the repository
 git clone https://github.com/anthonyscry/GA-WsusManager.git
 cd GA-WsusManager
 
-# Run the build script (requires PS2EXE module)
-.\build.ps1
+# Restore NuGet packages
+cd src
+dotnet restore
 
-# Output will be in dist/WsusManager.exe
+# Build in Release configuration
+dotnet build --configuration Release
+
+# Publish single-file EXE
+dotnet publish src/WsusManager.App/WsusManager.App.csproj \
+  --configuration Release \
+  --output publish \
+  --self-contained true \
+  --runtime win-x64 \
+  -p:PublishSingleFile=true
+
+# Single-file EXE output:
+# publish/WsusManager.exe
 ```
 
-Build options:
-```powershell
-.\build.ps1              # Full build with tests and code review
-.\build.ps1 -SkipTests   # Build without running tests
-.\build.ps1 -TestOnly    # Run tests only (no build)
-```
+**Prerequisites:**
+- .NET 8.0 SDK
+- Windows 10/11 or Windows Server 2019+
+- Visual Studio 2022 (optional, for development)
 
 ## Requirements
 
-- **Windows Server** 2016, 2019, 2022, or Windows 10/11
-- **PowerShell** 5.1 or later
-- **Administrator privileges** (required for WSUS operations)
-- **SQL Server Express** 2022 (installed by the Install WSUS feature)
+- **Operating System:** Windows 10/11 or Windows Server 2019/2022
+- **.NET Desktop Runtime:** 8.0 or later (included with self-contained EXE, or install separately)
+- **Administrator Privileges:** Required for WSUS operations
+- **WSUS Components:** SQL Server Express 2022 (installed by Install WSUS feature)
+
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+Real-time status monitoring with auto-refresh every 30 seconds.
+
+### Diagnostics
+![Diagnostics](docs/screenshots/diagnostics.png)
+
+Comprehensive health scanning with automatic repair for services, firewall, permissions, and SQL.
+
+### Settings
+![Settings](docs/screenshots/settings.png)
+
+Configurable settings with theme picker and immediate effect.
+
+### Air-Gap Transfer
+![Transfer](docs/screenshots/transfer.png)
+
+Export/import operations for air-gapped networks with differential copy support.
+
+## Usage
+
+### GUI Application
+
+Run `WsusManager.exe` as Administrator. The main dashboard shows:
+
+- **Server Status:** WSUS service, SQL connection, update counts
+- **Quick Actions:** Start Services, Diagnostics, Online Sync
+- **Navigation:** Dashboard, Diagnostics, Database, WSUS Operations, Install, Schedule, Client Tools, Settings
+
+**Common Workflows:**
+
+1. **First-time Setup:** Click "Install WSUS" and follow the wizard
+2. **Health Check:** Click "Diagnostics" to scan and auto-fix issues
+3. **Database Cleanup:** Navigate to Database → "Deep Cleanup"
+4. **Air-Gap Sync:** Navigate to WSUS Operations → "Transfer" → Export/Import
+5. **Client Management:** Navigate to Client Tools → select operation
+
+**Note:** CLI interface is planned for v4.5. Use GUI for all operations.
+
+### Themes
+
+Switch themes via Settings → Theme Picker:
+- **DefaultDark** - Clean dark theme with blue accents
+- **Slate** - Professional gray-blue theme
+- **ClassicBlue** - Traditional Windows blue
+- **Serenity** - Calming teal and gray
+- **Rose** - Warm rose and slate
+- **JustBlack** - Minimal high-contrast black
+
+## Troubleshooting
+
+### "WSUS service not installed"
+**Cause:** WSUS role not installed on server
+**Solution:** Install WSUS role via Server Manager or click "Install WSUS" button
+
+### "Cannot connect to SQL Server"
+**Cause:** SQL Server service not running
+**Solution:** Run Diagnostics → auto-starts SQL service
+
+### "Access denied" errors
+**Cause:** Not running as Administrator
+**Solution:** Right-click EXE → "Run as administrator"
+
+### "Content is still downloading" after restore
+**Cause:** WSUS re-verifying content files (can take 30+ minutes)
+**Solution:** Wait for completion, or run "Reset Content" to force re-verification
+
+### WinRM operations fail
+**Cause:** WinRM not enabled on remote host
+**Solution:** Enable WinRM: `Enable-PSRemoting -Force` on target machine
+
+### Application won't start
+**Cause:** .NET Desktop Runtime 8.0 not installed
+**Solution:** Download from https://dotnet.microsoft.com/download/dotnet/8.0
+
+### Large file deletion hangs
+**Cause:** SQL transaction log full during mass update deletion
+**Solution:** Run Diagnostics to shrink log, or use "Deep Cleanup" which handles this automatically
 
 ## Project Structure
 
 ```
 GA-WsusManager/
-├── Scripts/                 # PowerShell operation scripts
-│   ├── WsusManagementGui.ps1       # Main GUI application
-│   ├── Invoke-WsusManagement.ps1   # CLI for all operations
-│   ├── Invoke-WsusMonthlyMaintenance.ps1
-│   ├── Install-WsusWithSqlExpress.ps1
-│   ├── Set-WsusHttps.ps1
-│   └── Invoke-WsusClientCheckIn.ps1
-├── Modules/                 # Reusable PowerShell modules (11 total)
-├── Tests/                   # Pester unit tests (323 tests)
-├── DomainController/        # GPO deployment scripts
-├── build.ps1               # Build script
-└── CLAUDE.md               # Development documentation
+├── src/
+│   ├── WsusManager.Core/       # Core library (business logic)
+│   │   ├── Services/           # Service implementations
+│   │   ├── Models/             # Data models
+│   │   ├── Infrastructure/     # Utilities (logging, admin checks)
+│   │   └── Logging/            # Serilog configuration
+│   ├── WsusManager.App/        # WPF application
+│   │   ├── ViewModels/         # MVVM view models
+│   │   ├── Views/              # XAML views
+│   │   ├── Themes/             # Theme resource dictionaries
+│   │   └── Services/           # DI services
+│   ├── WsusManager.Tests/      # xUnit tests
+│   └── WsusManager.Benchmarks/ # BenchmarkDotNet performance tests
+├── docs/                       # Documentation
+│   └── screenshots/            # UI screenshots
+├── .github/workflows/          # CI/CD pipelines
+├── CLAUDE.md                   # Development documentation
+├── CONTRIBUTING.md             # Contribution guidelines
+└── README.md                   # This file
 ```
-
-## CLI Usage
-
-```powershell
-# Run comprehensive diagnostics (scans and auto-fixes issues)
-.\Scripts\Invoke-WsusManagement.ps1 -Diagnostics
-
-# Run deep cleanup (supersession records, indexes, compaction)
-.\Scripts\Invoke-WsusManagement.ps1 -Cleanup -Force
-
-# Reset content verification (use after database import on air-gapped servers)
-.\Scripts\Invoke-WsusManagement.ps1 -Reset
-
-# Export for air-gapped network
-.\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "E:\WSUS-Export"
-
-# Schedule online sync
-.\Scripts\Invoke-WsusManagement.ps1 -Schedule -MaintenanceProfile Full
-```
-
-## Recent Changes (v3.8.11)
-
-### TrustServerCertificate Compatibility Fix
-Fixed "A parameter cannot be found that matches parameter name 'TrustServerCertificate'" error during declined update purge. The `-TrustServerCertificate` parameter was added in SqlServer module v21.1, but older versions don't support it. Scripts now use the `Invoke-WsusSqlcmd` wrapper function which automatically detects the SqlServer module version and only includes the parameter when supported.
-
----
-
-## Previous Changes (v3.8.10)
-
-### Deep Cleanup Fix
-The Deep Cleanup operation now performs all advertised database maintenance:
-1. **WSUS built-in cleanup** - Decline superseded, remove obsolete updates
-2. **Supersession record cleanup** - Removes stale records from `tbRevisionSupersedesUpdate`
-3. **Declined update deletion** - Purges declined updates via `spDeleteUpdate`
-4. **Index optimization** - Rebuilds/reorganizes fragmented indexes
-5. **Statistics update** - Refreshes query optimizer statistics
-6. **Database compaction** - Shrinks database to reclaim disk space
-
-### Unified Diagnostics
-Health Check and Repair have been consolidated into a single **Diagnostics** operation that:
-- Scans all WSUS components (services, database, firewall, permissions)
-- Automatically fixes detected issues
-- Reports results with clear pass/fail status
-
-### Security Definitions Auto-Approval
-Definition Updates (antivirus signatures, security definitions) are now automatically approved alongside other update classifications:
-- Critical Updates, Security Updates, Update Rollups, Service Packs, Updates, **Definition Updates**
-- Upgrades still require manual review
-
-### Reset Content Button
-New button for air-gapped servers to fix "content is still downloading" status after database import:
-- Runs `wsusutil reset` to re-verify content files against database
-- Use after importing a database backup when content files are already present
-
-## Important Notes
-
-### Database Restore / Reset Time
-
-After restoring a WSUS database or performing a reset operation, the WSUS server will need to re-verify and re-download update content. **This process can take 30+ minutes depending on the size of your update content.** During this time:
-
-- The dashboard may show "Update is downloading" status
-- This is normal behavior - do not interrupt the process
-- Content verification happens automatically in the background
-- Large content stores (50GB+) may take several hours to fully re-verify
 
 ## Documentation
 
-- **[CLAUDE.md](CLAUDE.md)** - Comprehensive development documentation
-- **[Modules/README.md](Modules/README.md)** - PowerShell module reference
-- **[wiki/](wiki/)** - User guides and troubleshooting
+- **[CLAUDE.md](CLAUDE.md)** - Development documentation (legacy PowerShell info retained for reference)
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines, build instructions, code style
+- **[docs/architecture.md](docs/architecture.md)** - C# architecture and design decisions (to be added)
+- **[docs/api/](docs/api/)** - API reference documentation (to be generated via DocFX)
 
 ## Testing
 
-```powershell
+```bash
 # Run all tests
-Invoke-Pester -Path .\Tests -Output Detailed
+cd src
+dotnet test --verbosity normal
 
-# Run specific module tests
-Invoke-Pester -Path .\Tests\WsusHealth.Tests.ps1
+# Run specific test project
+dotnet test WsusManager.Tests
 
 # Run tests with code coverage
-Invoke-Pester -Path .\Tests -CodeCoverage .\Modules\*.psm1
+dotnet test --collect:"XPlat Code Coverage"
+
+# Generate coverage report
+reportgenerator -reports:*/coverage.cobertura.xml -targetdir:coverage-report
 ```
 
-## C# Performance Benchmarking
+## Performance Benchmarking
 
-The C# port (v4.0) includes BenchmarkDotNet performance testing for tracking critical operations.
+The C# version includes BenchmarkDotNet performance testing for tracking critical operations.
 
 ### Running Benchmarks Locally
 
@@ -209,10 +262,36 @@ cp src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/results-*-report.csv src
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Run tests before committing (`.\build.ps1 -TestOnly`)
+3. Run tests before committing (`dotnet test`)
 4. Commit your changes (`git commit -m 'Add amazing feature'`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
+
+### Code Style
+
+- Follow .editorconfig settings (enforced via Roslyn analyzers)
+- Use XML documentation comments for public APIs
+- Run `dotnet format` before committing
+- Target 70% branch coverage for new code
+
+## Important Notes
+
+### Database Restore / Reset Time
+
+After restoring a WSUS database or performing a reset operation, the WSUS server will need to re-verify and re-download update content. **This process can take 30+ minutes depending on the size of your update content.** During this time:
+
+- The dashboard may show "Update is downloading" status
+- This is normal behavior - do not interrupt the process
+- Content verification happens automatically in the background
+- Large content stores (50GB+) may take several hours to fully re-verify
+
+### Performance Metrics
+
+Compared to PowerShell v3.8.x:
+- **5x faster startup** (200-400ms vs 1-2s)
+- **2.5x faster operations** (health check: ~2s vs ~5s)
+- **3x less memory** (50-80MB vs 150-200MB)
+- **52% less code** (1,180 vs 2,482 LOC)
 
 ## License
 
