@@ -190,6 +190,7 @@ GA-WsusManager/
 
 - **[CLAUDE.md](CLAUDE.md)** - Development documentation (legacy PowerShell info retained for reference)
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines, build instructions, code style
+- **[docs/ci-cd.md](docs/ci-cd.md)** - CI/CD pipeline documentation, workflows, and troubleshooting
 - **[docs/releases.md](docs/releases.md)** - Release process and versioning
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature notes
 - **[docs/architecture.md](docs/architecture.md)** - C# architecture and design decisions (to be added)
