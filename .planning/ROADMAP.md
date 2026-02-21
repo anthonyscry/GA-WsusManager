@@ -66,7 +66,11 @@ Plans:
   3. When an operation completes, a clear success or failure banner with a result summary appears — the admin knows at a glance whether it worked
   4. The log panel scrolls to the latest output automatically during operations so the admin never has to scroll manually
   5. Install, Transfer, and Schedule dialogs disable their primary action button when required inputs are missing or invalid, with visible validation feedback
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Operation feedback: progress bar, step tracking, success/failure banner (UX-01, UX-02, UX-03, UX-04)
+- [ ] 13-02-PLAN.md — Dialog validation: Install, Transfer, Schedule real-time input validation (DLG-01, DLG-02, DLG-03, DLG-04)
 
 ### Phase 14: Client Management Core
 **Goal**: Admins can perform single-host client troubleshooting operations (cancel stuck jobs, force check-in, test connectivity, run diagnostics, look up error codes) directly from the GUI using WinRM
