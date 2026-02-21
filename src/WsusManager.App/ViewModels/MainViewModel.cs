@@ -40,6 +40,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IScriptGeneratorService _scriptGeneratorService;
     private readonly IThemeService _themeService;
     private readonly StringBuilder _logBuilder = new();
+    private readonly Queue<string> _logBatchQueue = new();
+    private DispatcherTimer? _logBatchTimer;
+    private const int LogBatchSize = 50;  // Lines per batch
+    private const int LogBatchIntervalMs = 100;  // Flush interval
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private EventHandler? _refreshTimerHandler;
@@ -1450,6 +1454,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        // Stop and cleanup log batch timer
+        _logBatchTimer?.Stop();
+        _logBatchTimer = null;
 
         // Stop and cleanup timer (includes handler unsubscription)
         StopRefreshTimer();
