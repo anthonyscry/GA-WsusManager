@@ -19,11 +19,11 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 ### Code Quality
 
 - [ ] **QUAL-01**: Zero compiler warnings in Release build configuration
-- [ ] **QUAL-02**: Roslyn analyzers enabled and configured via Directory.Build.props
+- [x] **QUAL-02**: Roslyn analyzers enabled and configured via Directory.Build.props
 - [ ] **QUAL-03**: .editorconfig defines consistent code style across solution
 - [ ] **QUAL-04**: All public APIs have XML documentation comments (`<summary>`, `<param>`, `<returns>`)
 - [ ] **QUAL-05**: All public APIs that throw exceptions have `<exception>` tags
-- [ ] **QUAL-06**: Static analysis warnings treated as errors in CI/CD pipeline
+- [x] **QUAL-06**: Static analysis warnings treated as errors in CI/CD pipeline
 - [ ] **QUAL-07**: Complex methods (cyclomatic complexity >10) refactored into smaller units
 - [ ] **QUAL-08**: Code duplication identified and reduced across service layer
 
@@ -89,11 +89,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-05 | Phase 18 | Pending |
 | TEST-06 | Phase 18 | Complete |
 | QUAL-01 | Phase 19 | Pending |
-| QUAL-02 | Phase 19 | Pending |
+| QUAL-02 | Phase 19 | Complete |
 | QUAL-03 | Phase 19 | Pending |
 | QUAL-04 | Phase 20 | Pending |
 | QUAL-05 | Phase 20 | Pending |
-| QUAL-06 | Phase 19 | Pending |
+| QUAL-06 | Phase 19 | Complete |
 | QUAL-07 | Phase 21 | Pending |
 | QUAL-08 | Phase 21 | Pending |
 | PERF-01 | Phase 22 | Pending |
