@@ -89,14 +89,35 @@ Analyzer configuration is in [Directory.Build.props](src/Directory.Build.props) 
 - **Suggestion** - Style preference, auto-fix available
 - **None** - Disabled rule
 
-### Incremental Adoption (Phase 1a)
+### Incremental Adoption (Phase 19)
 
-We are incrementally adopting analyzer rules to avoid warning fatigue. Currently:
+We are incrementally adopting analyzer rules to avoid warning fatigue.
 
-- Enabled as **Warning**: CA2007 (ConfigureAwait), MA0004 (task timeout), MA0006 (string.Equals), MA0074 (task continuation)
-- Disabled: Documentation rules (Phase 20), some StyleCop rules (team preferences)
+**Phase 1a (Current):** Critical rules as warnings
+- CA2007: ConfigureAwait on awaited task (async/await UI safety)
+- MA0004: Use Task.ConfigureAwait(false) when sync context not needed
+- MA0074: Use StringComparison parameter for string operations
+- MA0006: Use string.Equals instead of == operator
+- CA1001: Types owning disposable fields should be disposable
+- CA1716: Don't use reserved language keywords for member names
+- CA1806: Check TryParse return values
+
+**Phase 1b (Future):** After fixing current warnings, elevate CA2007 to error.
+
+**Baseline (2026-02-21):** 716 warnings (down from 8946 with full StyleCop)
 
 See [.editorconfig](src/.editorconfig) for the full rule configuration.
+
+### Common Analyzer Rules
+
+| Rule ID | Description | Severity | Action |
+|---------|-------------|----------|--------|
+| CA2007 | ConfigureAwait on awaited task | Warning | Add `.ConfigureAwait(false)` for library code |
+| MA0004 | Use ConfigureAwait(false) | Warning | Library code should not capture sync context |
+| MA0074 | Use StringComparison | Warning | Add StringComparison.Ordinal/InvariantCulture |
+| MA0006 | Use string.Equals | Warning | Replace `==` with `string.Equals()` |
+| SA1101 | Prefix local calls with this | None | Style preference (disabled) |
+| SA1600 | Elements should be documented | None | XML docs (Phase 20) |
 
 ## Commit Messages
 

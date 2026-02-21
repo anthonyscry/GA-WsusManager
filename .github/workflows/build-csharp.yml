@@ -48,7 +48,14 @@ jobs:
           dotnet restore src/WsusManager.Tests/WsusManager.Tests.csproj
 
       - name: Build
-        run: dotnet build src/WsusManager.App/WsusManager.App.csproj --configuration Release --no-restore
+        run: |
+          dotnet build src/WsusManager.App/WsusManager.App.csproj --configuration Release --no-restore
+
+      - name: Static Analysis Gate (Phase 19)
+        run: |
+          # Build with warnings-as-errors for critical rules
+          dotnet build src/WsusManager.sln --configuration Release --no-incremental --warnaserror | tee build.log
+          # Note: Phase 1a uses warnings for CA2007 - will elevate to error in Phase 1b after fixes
 
       - name: Run tests
         run: |
