@@ -321,6 +321,62 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
     }
 
     /// <inheritdoc />
+    public async Task<OperationResult> MassForceCheckInAsync(
+        IReadOnlyList<string> hostnames,
+        IProgress<string> progress,
+        CancellationToken ct = default)
+    {
+        // Validate input
+        var validHosts = hostnames
+            .Select(h => h.Trim())
+            .Where(h => !string.IsNullOrWhiteSpace(h))
+            .ToList();
+
+        if (validHosts.Count == 0)
+            return OperationResult.Fail("No hostnames provided. Enter at least one hostname to run Mass GPUpdate.");
+
+        var total = validHosts.Count;
+        var passed = 0;
+        var failed = 0;
+
+        progress.Report($"Processing {total} host(s)...");
+        _log.Info("ClientService.MassForceCheckInAsync: starting on {Count} host(s)", total);
+
+        for (int i = 0; i < validHosts.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var hostname = validHosts[i];
+            progress.Report($"");
+            progress.Report($"[Host {i + 1}/{total}] {hostname}...");
+
+            var result = await ForceCheckInAsync(hostname, progress, ct).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                passed++;
+                progress.Report($"[Host {i + 1}/{total}] {hostname} — PASSED");
+            }
+            else
+            {
+                failed++;
+                progress.Report($"[Host {i + 1}/{total}] {hostname} — FAILED: {result.Message}");
+            }
+        }
+
+        var summary = $"[OK] Mass GPUpdate complete: {passed}/{total} hosts succeeded, {failed} failed.";
+        progress.Report($"");
+        progress.Report(summary);
+
+        _log.Info("ClientService.MassForceCheckInAsync: complete — {Passed}/{Total} succeeded, {Failed} failed",
+            passed, total, failed);
+
+        return failed == 0
+            ? OperationResult.Ok(summary)
+            : OperationResult.Fail(summary);
+    }
+
+    /// <inheritdoc />
     public OperationResult<WsusErrorInfo> LookupErrorCode(string errorCode)
     {
         var info = WsusErrorCodes.Lookup(errorCode);
