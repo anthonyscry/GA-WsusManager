@@ -305,4 +305,41 @@
         <Setter Property="Width" Value="10"/>
     </Style>
 
+    <!-- ═══════════════════════════════════════════════════════════════
+         VIRTUALIZED LIST STYLES (Phase 25: Performance)
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- VirtualizedListBox: Base style for large lists (2000+ items)
+         Enables UI virtualization so only visible items are rendered.
+         Use for Phase 29 Data Filtering panels. -->
+    <Style x:Key="VirtualizedListBox" TargetType="ListBox">
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+        <Setter Property="Background" Value="{DynamicResource CardBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimary}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
+    <!-- VirtualizedListView: Extends VirtualizedListBox for column headers
+         Use when displaying tabular data with GridView columns. -->
+    <Style x:Key="VirtualizedListView" TargetType="ListView" BasedOn="{StaticResource VirtualizedListBox}">
+        <Setter Property="GridView.ColumnHeaderContainerStyle">
+            <Setter.Value>
+                <Style TargetType="GridViewColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource NavBackground}" />
+                    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="Padding" Value="8,6" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimary}" />
+                    <Setter Property="BorderThickness" Value="0,0,0,1" />
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>
