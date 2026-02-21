@@ -52,15 +52,8 @@ public class ClientService : IClientService
         progress.Report($"Cancelling stuck Windows Update jobs on {hostname}...");
 
         // Check WinRM availability first
-        progress.Report("[Step 1/3] Checking WinRM connectivity...");
-        if (!await _executor.TestWinRmAsync(hostname, ct).ConfigureAwait(false))
-        {
-            var msg = BuildWinRmUnavailableMessage(hostname);
-            progress.Report(msg);
-            _log.Warning("ClientService.CancelStuckJobsAsync: WinRM unavailable on {Hostname}", hostname);
-            return OperationResult.Fail(msg);
-        }
-        progress.Report("[OK] WinRM is available.");
+        if (!await EnsureWinRmAvailableAsync(hostname, "CancelStuckJobsAsync", progress, ct).ConfigureAwait(false))
+            return OperationResult.Fail(BuildWinRmUnavailableMessage(hostname));
 
         // Single round-trip script block: stop, clear, restart
         const string scriptBlock = @"
@@ -75,19 +68,12 @@ Start-Service bits, wuauserv -ErrorAction Stop
 Write-Output 'STEP=Done'
 ";
 
-        progress.Report("[Step 2/3] Stopping services and clearing SoftwareDistribution cache...");
-        var result = await _executor.ExecuteRemoteAsync(hostname, scriptBlock, progress, ct)
-            .ConfigureAwait(false);
+        progress.Report("[Step] Stopping services and clearing SoftwareDistribution cache...");
+        var result = await ExecuteRemoteScriptAsync(hostname, scriptBlock, "Cancel stuck jobs", progress, ct).ConfigureAwait(false);
+        if (result == null)
+            return OperationResult.Fail($"Operation failed on {hostname}.");
 
-        if (!result.Success)
-        {
-            var msg = $"Operation failed on {hostname}: {result.Output}";
-            _log.Warning("ClientService.CancelStuckJobsAsync: failed on {Hostname}: {Output}",
-                hostname, result.Output);
-            return OperationResult.Fail(msg);
-        }
-
-        progress.Report("[Step 3/3] Verifying services restarted...");
+        progress.Report("[Step] Verifying services restarted...");
         // Parse step markers from output for informative progress
         foreach (var line in result.OutputLines)
         {
@@ -116,16 +102,9 @@ Write-Output 'STEP=Done'
         _log.Info("ClientService.ForceCheckInAsync: starting on {Hostname}", hostname);
         progress.Report($"Forcing WSUS check-in on {hostname}...");
 
-        // Step 1/4: Check WinRM
-        progress.Report($"[Step 1/4] Checking WinRM connectivity to {hostname}...");
-        if (!await _executor.TestWinRmAsync(hostname, ct).ConfigureAwait(false))
-        {
-            var msg = BuildWinRmUnavailableMessage(hostname);
-            progress.Report(msg);
-            _log.Warning("ClientService.ForceCheckInAsync: WinRM unavailable on {Hostname}", hostname);
-            return OperationResult.Fail(msg);
-        }
-        progress.Report("[OK] WinRM is available.");
+        // Check WinRM availability first
+        if (!await EnsureWinRmAvailableAsync(hostname, "ForceCheckInAsync", progress, ct).ConfigureAwait(false))
+            return OperationResult.Fail(BuildWinRmUnavailableMessage(hostname));
 
         // Single round-trip script block: 4 steps
         const string scriptBlock = @"
@@ -140,31 +119,24 @@ wuauclt /reportnow
 Write-Output 'STEP=Done'
 ";
 
-        progress.Report($"[Step 2/4] Running gpupdate /force on {hostname}...");
-        var result = await _executor.ExecuteRemoteAsync(hostname, scriptBlock, null, ct)
-            .ConfigureAwait(false);
-
-        if (!result.Success)
-        {
-            var msg = $"Force check-in failed on {hostname}: {result.Output}";
-            _log.Warning("ClientService.ForceCheckInAsync: failed on {Hostname}: {Output}",
-                hostname, result.Output);
-            return OperationResult.Fail(msg);
-        }
+        progress.Report("[Step] Running gpupdate /force on {hostname}...");
+        var result = await ExecuteRemoteScriptAsync(hostname, scriptBlock, "Force check-in", null, ct).ConfigureAwait(false);
+        if (result == null)
+            return OperationResult.Fail($"Force check-in failed on {hostname}.");
 
         // Report step completion based on output markers
         foreach (var line in result.OutputLines)
         {
             if (line.Contains("STEP=GpUpdate", StringComparison.Ordinal))
-                progress.Report("[Step 2/4] Group Policy updated.");
+                progress.Report("[Step] Group Policy updated.");
             else if (line.Contains("STEP=ResetAuth", StringComparison.Ordinal))
-                progress.Report("[Step 3/4] Running wuauclt /resetauthorization...");
+                progress.Report("[Step] Running wuauclt /resetauthorization...");
             else if (line.Contains("STEP=DetectNow", StringComparison.Ordinal))
-                progress.Report("[Step 3/4] Reset WSUS client identity.");
+                progress.Report("[Step] Reset WSUS client identity.");
             else if (line.Contains("STEP=ReportNow", StringComparison.Ordinal))
-                progress.Report("[Step 4/4] Running wuauclt /detectnow and /reportnow...");
+                progress.Report("[Step] Running wuauclt /detectnow and /reportnow...");
             else if (line.Contains("STEP=Done", StringComparison.Ordinal))
-                progress.Report("[Step 4/4] Detection and reporting triggered.");
+                progress.Report("[Step] Detection and reporting triggered.");
         }
 
         progress.Report($"[OK] Force check-in completed on {hostname}. Detection and reporting may take several minutes to complete.");
@@ -194,15 +166,8 @@ Write-Output 'STEP=Done'
         progress.Report($"Testing connectivity from {hostname} to WSUS server {wsusServer}...");
 
         // Check WinRM first
-        progress.Report($"[Step 1/2] Checking WinRM connectivity to {hostname}...");
-        if (!await _executor.TestWinRmAsync(hostname, ct).ConfigureAwait(false))
-        {
-            var msg = BuildWinRmUnavailableMessage(hostname);
-            progress.Report(msg);
-            _log.Warning("ClientService.TestConnectivityAsync: WinRM unavailable on {Hostname}", hostname);
-            return OperationResult<ConnectivityTestResult>.Fail(msg);
-        }
-        progress.Report("[OK] WinRM is available.");
+        if (!await EnsureWinRmAvailableAsync(hostname, "TestConnectivityAsync", progress, ct).ConfigureAwait(false))
+            return OperationResult<ConnectivityTestResult>.Fail(BuildWinRmUnavailableMessage(hostname));
 
         // Test TCP ports 8530 and 8531 from the remote host
         var scriptBlock = $@"
@@ -212,17 +177,10 @@ $r8531 = Test-NetConnection -ComputerName $server -Port 8531 -WarningAction Sile
 ""PORT8530=$($r8530.TcpTestSucceeded);PORT8531=$($r8531.TcpTestSucceeded);LATENCY=$($r8530.PingReplyDetails.RoundtripTime)""
 ";
 
-        progress.Report($"[Step 2/2] Testing TCP ports 8530 and 8531 from {hostname} to {wsusServer}...");
-        var result = await _executor.ExecuteRemoteAsync(hostname, scriptBlock, null, ct)
-            .ConfigureAwait(false);
-
-        if (!result.Success)
-        {
-            var msg = $"Connectivity test failed on {hostname}: {result.Output}";
-            _log.Warning("ClientService.TestConnectivityAsync: failed on {Hostname}: {Output}",
-                hostname, result.Output);
-            return OperationResult<ConnectivityTestResult>.Fail(msg);
-        }
+        progress.Report("[Step] Testing TCP ports 8530 and 8531 from {hostname} to {wsusServer}...");
+        var result = await ExecuteRemoteScriptAsync(hostname, scriptBlock, "Connectivity test", null, ct).ConfigureAwait(false);
+        if (result == null)
+            return OperationResult<ConnectivityTestResult>.Fail($"Connectivity test failed on {hostname}.");
 
         // Parse the KEY=VALUE output line
         var connectivityResult = ParseConnectivityOutput(result.OutputLines);
@@ -260,15 +218,8 @@ $r8531 = Test-NetConnection -ComputerName $server -Port 8531 -WarningAction Sile
         progress.Report($"Running WSUS diagnostics on {hostname}...");
 
         // Check WinRM first
-        progress.Report($"[Step 1/2] Checking WinRM connectivity to {hostname}...");
-        if (!await _executor.TestWinRmAsync(hostname, ct).ConfigureAwait(false))
-        {
-            var msg = BuildWinRmUnavailableMessage(hostname);
-            progress.Report(msg);
-            _log.Warning("ClientService.RunDiagnosticsAsync: WinRM unavailable on {Hostname}", hostname);
-            return OperationResult<ClientDiagnosticResult>.Fail(msg);
-        }
-        progress.Report("[OK] WinRM is available.");
+        if (!await EnsureWinRmAvailableAsync(hostname, "RunDiagnosticsAsync", progress, ct).ConfigureAwait(false))
+            return OperationResult<ClientDiagnosticResult>.Fail(BuildWinRmUnavailableMessage(hostname));
 
         // Gather all diagnostics in a single round trip
         const string scriptBlock = @"
@@ -281,17 +232,10 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
 ""WSUS=$($wu.WUServer);STATUS=$($wu.WUStatusServer);USE=$($au.UseWUServer);SVCS=$($svcs -join ',');REBOOT=$reboot;LASTCHECKIN=$lastReport;AGENT=$agent""
 ";
 
-        progress.Report($"[Step 2/2] Gathering WSUS registry settings, service status, and agent info from {hostname}...");
-        var result = await _executor.ExecuteRemoteAsync(hostname, scriptBlock, null, ct)
-            .ConfigureAwait(false);
-
-        if (!result.Success)
-        {
-            var msg = $"Diagnostics failed on {hostname}: {result.Output}";
-            _log.Warning("ClientService.RunDiagnosticsAsync: failed on {Hostname}: {Output}",
-                hostname, result.Output);
-            return OperationResult<ClientDiagnosticResult>.Fail(msg);
-        }
+        progress.Report("[Step] Gathering WSUS registry settings, service status, and agent info from {hostname}...");
+        var result = await ExecuteRemoteScriptAsync(hostname, scriptBlock, "Diagnostics", null, ct).ConfigureAwait(false);
+        if (result == null)
+            return OperationResult<ClientDiagnosticResult>.Fail($"Diagnostics failed on {hostname}.");
 
         // Parse output into ClientDiagnosticResult
         var diagnostics = ParseDiagnosticsOutput(result.OutputLines);
@@ -401,6 +345,65 @@ $agent = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Wind
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Checks WinRM connectivity and returns a failure result if unavailable.
+    /// Reports progress and logs warnings on failure.
+    /// </summary>
+    /// <param name="hostname">Target hostname to check.</param>
+    /// <param name="operationName">Name of the operation for logging.</param>
+    /// <param name="progress">Progress reporter for status messages.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if WinRM is available, false if unavailable (with progress reported).</returns>
+    private async Task<bool> EnsureWinRmAvailableAsync(
+        string hostname,
+        string operationName,
+        IProgress<string> progress,
+        CancellationToken ct)
+    {
+        progress.Report($"[Step] Checking WinRM connectivity to {hostname}...");
+        if (!await _executor.TestWinRmAsync(hostname, ct).ConfigureAwait(false))
+        {
+            var msg = BuildWinRmUnavailableMessage(hostname);
+            progress.Report(msg);
+            _log.Warning("{Operation}: WinRM unavailable on {Hostname}", operationName, hostname);
+            return false;
+        }
+        progress.Report("[OK] WinRM is available.");
+        return true;
+    }
+
+    /// <summary>
+    /// Executes a remote PowerShell script block with error handling.
+    /// Returns failure result if execution fails, with progress reporting and logging.
+    /// </summary>
+    /// <param name="hostname">Target hostname.</param>
+    /// <param name="scriptBlock">PowerShell script to execute.</param>
+    /// <param name="operationName">Name of the operation for error messages.</param>
+    /// <param name="progress">Progress reporter (optional, can be null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>ProcessResult if successful, null if failed (with progress reported).</returns>
+    private async Task<ProcessResult?> ExecuteRemoteScriptAsync(
+        string hostname,
+        string scriptBlock,
+        string operationName,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        var result = await _executor.ExecuteRemoteAsync(hostname, scriptBlock, progress, ct)
+            .ConfigureAwait(false);
+
+        if (!result.Success)
+        {
+            var msg = $"{operationName} failed on {hostname}: {result.Output}";
+            _log.Warning("{Operation}: failed on {Hostname}: {Output}",
+                operationName, hostname, result.Output);
+            progress?.Report(msg);
+            return null;
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Extracts the hostname component from a URL string.
