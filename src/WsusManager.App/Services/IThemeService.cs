@@ -23,6 +23,12 @@ public interface IThemeService
     void ApplyTheme(string themeName);
 
     /// <summary>
+    /// Pre-loads all theme ResourceDictionaries into memory to enable instant theme switching.
+    /// Call this during application startup to avoid first-swap delay.
+    /// </summary>
+    void PreloadThemes();
+
+    /// <summary>
     /// Returns the list of available theme names.
     /// </summary>
     IReadOnlyList<string> AvailableThemes { get; }

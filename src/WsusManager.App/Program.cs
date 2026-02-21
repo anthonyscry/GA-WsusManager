@@ -44,6 +44,10 @@ public static class Program
         var themeService = host.Services.GetRequiredService<IThemeService>();
         var settingsService = host.Services.GetRequiredService<ISettingsService>();
         var settings = settingsService.Current;
+
+        // Pre-load all theme resources to enable instant switching (<100ms)
+        themeService.PreloadThemes();
+
         themeService.ApplyTheme(settings.SelectedTheme);
 
         startupTimer.Stop();
