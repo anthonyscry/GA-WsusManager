@@ -44,6 +44,13 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ WCAG 2.1 AA compliant color contrast across all themes — v4.3
 - ✓ 336 xUnit tests passing — v4.3
 
+- ✓ Coverlet coverage infrastructure with branch analysis — v4.4
+- ✓ 70% branch coverage quality gate with CI enforcement — v4.4
+- ✓ ReportGenerator HTML coverage artifacts in CI/CD — v4.4
+- ✓ 46+ edge case tests for null inputs, empty collections, boundaries — v4.4
+- ✓ 31+ exception path tests for SQL, Windows services, WinRM — v4.4
+- ✓ 455 xUnit tests passing (+119 from v4.3) — v4.4
+
 ### Active
 
 **Current Milestone: v4.4 Quality & Polish**
@@ -51,7 +58,7 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 **Goal:** Comprehensive quality improvements across testing, code quality, performance, and documentation
 
 **Target features:**
-- Integration tests for end-to-end workflows
+- Static analysis with Roslyn analyzers and warning fixes
 - Increased unit test coverage with edge case handling
 - UI automation tests for critical user paths
 - Static analysis with Roslyn analyzers and warning fixes
@@ -82,11 +89,12 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.4 (planning)
+- **Version:** v4.4 (in progress — Phase 18/24 complete)
 - **Codebase:** ~21,000 LOC C#/XAML across 97 .cs files + 8 .xaml files
-- **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
-- **Tests:** 336 xUnit tests
-- **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
+- **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq + Coverlet
+- **Tests:** 455 xUnit tests (+119 from Phase 18 edge/exception tests)
+- **Coverage:** 84.27% line / 62.19% branch (baseline established, 70% threshold enforced)
+- **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, coverage reports, publish, release
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 - **Themes:** 6 built-in dark-family themes with runtime switching
 
@@ -116,6 +124,7 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 | Sequential WinRM for mass operations | Prevent network saturation on large batches | ✓ Good — reliable for 50+ hosts |
 | Verbatim strings for PS script templates | Avoids C# interpolation conflicts with PowerShell $() | ✓ Good — clean separation |
 | WinRM pre-check before every remote op | Fail fast with clear message and Script Generator guidance | ✓ Good — better UX than timeout |
+| 70% branch coverage quality gate (Phase 18) | Balances quality with practicality; line coverage alone misses critical paths | ✓ Good — revealed 7 NullReference bugs during test development |
 
 ## Constraints
 
@@ -127,4 +136,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-21 after v4.4 milestone kickoff*
+*Last updated: 2026-02-21 after Phase 18 (Test Coverage & Reporting)*
