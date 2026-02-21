@@ -157,6 +157,54 @@ Invoke-Pester -Path .\Tests\WsusHealth.Tests.ps1
 Invoke-Pester -Path .\Tests -CodeCoverage .\Modules\*.psm1
 ```
 
+## C# Performance Benchmarking
+
+The C# port (v4.0) includes BenchmarkDotNet performance testing for tracking critical operations.
+
+### Running Benchmarks Locally
+
+```bash
+# Run all benchmarks (requires Windows)
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release
+
+# Run specific benchmark category
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release --filter "*Startup*"
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release --filter "*Database*"
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release --filter "*WinRM*"
+```
+
+### Benchmark Results
+
+Results are generated in `src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/`:
+- `results.html` - Interactive HTML report with charts
+- `results.csv` - Raw timing data for regression detection
+
+### CI/CD Benchmarks
+
+BenchmarkDotNet runs are triggered manually via GitHub Actions:
+1. Navigate to **Actions** → **Build C# WSUS Manager**
+2. Click **Run workflow**
+3. Select branch and click **Run workflow**
+4. Download `benchmark-results` artifact when complete
+
+### Performance Regressions
+
+Builds fail if performance degrades >10% from baseline. Baselines are stored in `src/WsusManager.Benchmarks/baselines/`:
+- `startup-baseline.csv` - Cold/warm startup times
+- `database-baseline.csv` - Query and connection times
+- `winrm-baseline.csv` - WinRM operation times
+
+### Updating Baselines
+
+If performance legitimately changes (e.g., new features), update baselines:
+```bash
+# Run benchmarks
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release
+
+# Copy new results to baselines
+cp src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/results-*-report.csv src/WsusManager.Benchmarks/baselines/
+```
+
 ## Contributing
 
 1. Fork the repository
