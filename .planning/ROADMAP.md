@@ -122,7 +122,12 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 4. Edge cases (null inputs, empty collections, boundary values) are explicitly tested
 5. All exception handling paths have corresponding test coverage
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+**Plan List:**
+- [ ] 18-01-PLAN.md — Coverage infrastructure (Coverlet config, ReportGenerator, CI integration)
+- [ ] 18-02-PLAN.md — Edge case testing (null inputs, empty collections, boundary values)
+- [ ] 18-03-PLAN.md — Exception path testing (SqlException, IOException, WinRM exceptions)
 
 ---
 
