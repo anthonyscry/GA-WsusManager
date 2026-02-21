@@ -131,6 +131,11 @@ coverage/
 *.coverage
 *.coveragexml
 
+# Coverage reports
+CoverageReport/
+src/coverage/
+**/coverage.cobertura.xml
+
 # Playwright
 node_modules/
 /test-results/
