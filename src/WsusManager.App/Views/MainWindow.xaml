@@ -138,6 +138,45 @@
                     </Button.Style>
                 </Button>
 
+                <!-- DATA Category -->
+                <TextBlock DockPanel.Dock="Top" Text="DATA" Style="{StaticResource CategoryLabel}"/>
+                <Button DockPanel.Dock="Top" Content="Computers"
+                        ToolTip="View and filter computer list"
+                        x:Name="BtnComputers"
+                        automation:AutomationProperties.AutomationId="ComputersButton"
+                        Command="{Binding NavigateCommand}" CommandParameter="Computers">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentPanel}" Value="Computers">
+                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button DockPanel.Dock="Top" Content="Updates"
+                        ToolTip="View and filter update list"
+                        x:Name="BtnUpdates"
+                        automation:AutomationProperties.AutomationId="UpdatesButton"
+                        Command="{Binding NavigateCommand}" CommandParameter="Updates">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentPanel}" Value="Updates">
+                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <!-- Bottom utility buttons -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,8">
                     <Separator Background="{DynamicResource BorderPrimary}" Margin="15,4"/>
@@ -782,19 +821,316 @@
                     </ScrollViewer>
                 </Border>
 
-                <!-- ═══════════════════════════════════════════════════════
-                     PHASE 29: Data Filtering - Add virtualized lists here
+                <!-- Computers Panel (Phase 29) -->
+                <Border x:Name="ComputersPanel"
+                        automation:AutomationProperties.AutomationId="ComputersPanel"
+                        Visibility="{Binding IsComputersPanelVisible}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
 
-                     Example pattern for large computer/update lists (2000+ items):
-                     <ListBox VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling"
-                              ItemsSource="{Binding FilteredComputers}"
-                              ItemTemplate="{StaticResource ComputerItemTemplate}"
-                              Style="{StaticResource VirtualizedListBox}" />
+                            <!-- Filter Row -->
+                            <StackPanel Style="{StaticResource FilterRow}">
+                                <!-- Status Filter -->
+                                <TextBlock Text="Status:"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"/>
+                                <ComboBox Style="{StaticResource FilterComboBox}"
+                                          SelectedItem="{Binding ComputerStatusFilter}"
+                                          Width="120">
+                                    <ComboBoxItem Content="All"/>
+                                    <ComboBoxItem Content="Online"/>
+                                    <ComboBoxItem Content="Offline"/>
+                                    <ComboBoxItem Content="Error"/>
+                                </ComboBox>
 
-                     Use styles from SharedStyles.xaml: VirtualizedListBox, VirtualizedListView
-                     Data models: ComputerInfo, UpdateInfo (defined in MainViewModel.cs)
-                ═══════════════════════════════════════════════════════ -->
+                                <!-- Search Box -->
+                                <TextBox Style="{StaticResource FilterSearchBox}"
+                                         Text="{Binding ComputerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         automation:AutomationProperties.AutomationId="ComputerSearchTextBox"
+                                         Margin="12,0,0,0">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Escape" Command="{Binding ClearComputerFiltersCommand}"/>
+                                    </TextBox.InputBindings>
+                                </TextBox>
+
+                                <!-- Clear Filters Button -->
+                                <Button Content="Clear Filters"
+                                        Style="{StaticResource ClearFiltersButton}"
+                                        Command="{Binding ClearComputerFiltersCommand}"
+                                        Visibility="{Binding ShowClearComputerFilters, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        automation:AutomationProperties.AutomationId="ClearComputerFiltersButton"/>
+                            </StackPanel>
+
+                            <!-- Filter Count Text -->
+                            <TextBlock Text="{Binding ComputerFilterCountText}"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="11"
+                                       Margin="0,0,0,12"/>
+
+                            <!-- Computers ListBox (virtualized) -->
+                            <Border Background="{DynamicResource InputBackground}"
+                                    BorderBrush="{DynamicResource BorderPrimary}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    MinHeight="300">
+                                <ListBox x:Name="ComputersListBox"
+                                         ItemsSource="{Binding FilteredComputers}"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         automation:AutomationProperties.AutomationId="ComputersListBox">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="8,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="120"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Hostname}"
+                                                           Foreground="{DynamicResource TextPrimary}"
+                                                           FontSize="12"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding IpAddress}"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           FontSize="12"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Status}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Online">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource StatusSuccess}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource StatusError}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource StatusWarning}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Grid.Column="3" Text="{Binding LastSync, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           FontSize="12"/>
+                                                <TextBlock Grid.Column="4" Text="{Binding PendingUpdates, StringFormat='{}{0} pending'}"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           FontSize="12"/>
+                                                <TextBlock Grid.Column="5" Text="{Binding OsVersion}"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+
+                                    <!-- Empty State -->
+                                    <ListBox.Style>
+                                        <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding FilteredComputers.Count}" Value="0">
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBox">
+                                                                <TextBlock Text="No items match your current filters"
+                                                                           Style="{StaticResource EmptyStateText}"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListBox.Style>
+                                </ListBox>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Updates Panel (Phase 29) -->
+                <Border x:Name="UpdatesPanel"
+                        automation:AutomationProperties.AutomationId="UpdatesPanel"
+                        Visibility="{Binding IsUpdatesPanelVisible}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Filter Row -->
+                            <StackPanel Style="{StaticResource FilterRow}">
+                                <!-- Approval Filter -->
+                                <TextBlock Text="Approval:"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"/>
+                                <ComboBox Style="{StaticResource FilterComboBox}"
+                                          SelectedItem="{Binding UpdateApprovalFilter}"
+                                          Width="140">
+                                    <ComboBoxItem Content="All"/>
+                                    <ComboBoxItem Content="Approved"/>
+                                    <ComboBoxItem Content="Not Approved"/>
+                                    <ComboBoxItem Content="Declined"/>
+                                </ComboBox>
+
+                                <!-- Classification Filter -->
+                                <TextBlock Text="Class:"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="12,0,6,0"/>
+                                <ComboBox Style="{StaticResource FilterComboBox}"
+                                          SelectedItem="{Binding UpdateClassificationFilter}"
+                                          Width="120">
+                                    <ComboBoxItem Content="All"/>
+                                    <ComboBoxItem Content="Critical"/>
+                                    <ComboBoxItem Content="Security"/>
+                                    <ComboBoxItem Content="Definition"/>
+                                    <ComboBoxItem Content="Updates"/>
+                                </ComboBox>
+
+                                <!-- Search Box -->
+                                <TextBox Style="{StaticResource FilterSearchBox}"
+                                         Text="{Binding UpdateSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         automation:AutomationProperties.AutomationId="UpdateSearchTextBox"
+                                         Margin="12,0,0,0">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Escape" Command="{Binding ClearUpdateFiltersCommand}"/>
+                                    </TextBox.InputBindings>
+                                </TextBox>
+
+                                <!-- Clear Filters Button -->
+                                <Button Content="Clear Filters"
+                                        Style="{StaticResource ClearFiltersButton}"
+                                        Command="{Binding ClearUpdateFiltersCommand}"
+                                        Visibility="{Binding ShowClearUpdateFilters, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        automation:AutomationProperties.AutomationId="ClearUpdateFiltersButton"/>
+                            </StackPanel>
+
+                            <!-- Filter Count Text -->
+                            <TextBlock Text="{Binding UpdateFilterCountText}"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="11"
+                                       Margin="0,0,0,12"/>
+
+                            <!-- Updates ListView (virtualized) -->
+                            <Border Background="{DynamicResource InputBackground}"
+                                    BorderBrush="{DynamicResource BorderPrimary}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    MinHeight="300">
+                                <ListView x:Name="UpdatesListView"
+                                          ItemsSource="{Binding FilteredUpdates}"
+                                          VirtualizingPanel.IsVirtualizing="True"
+                                          VirtualizingPanel.VirtualizationMode="Recycling"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          automation:AutomationProperties.AutomationId="UpdatesListView">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="KB Article" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding KbArticle, StringFormat='{}KB{0}'}"
+                                                                   Foreground="{DynamicResource TextPrimary}"
+                                                                   FontSize="12"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Title" Width="400">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   Foreground="{DynamicResource TextPrimary}"
+                                                                   FontSize="12"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Title}"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Classification" Width="120">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Classification}"
+                                                                   Foreground="{DynamicResource TextSecondary}"
+                                                                   FontSize="12"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Status" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock>
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="FontSize" Value="12"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsApproved}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource StatusSuccess}"/>
+                                                                            <Setter Property="Text" Value="Approved"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding IsDeclined}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource StatusError}"/>
+                                                                            <Setter Property="Text" Value="Declined"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding IsApproved}" Value="False">
+                                                                            <DataTrigger Binding="{Binding IsDeclined}" Value="False">
+                                                                                <Setter Property="Text" Value="Not Approved"/>
+                                                                            </DataTrigger>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Date" Width="100">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding ApprovalDate, StringFormat='{}{0:yyyy-MM-dd}'}"
+                                                                   Foreground="{DynamicResource TextSecondary}"
+                                                                   FontSize="12"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+
+                                    <!-- Empty State -->
+                                    <ListView.Style>
+                                        <Style TargetType="ListView" BasedOn="{StaticResource {x:Type ListView}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding FilteredUpdates.Count}" Value="0">
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListView">
+                                                                <TextBlock Text="No items match your current filters"
+                                                                           Style="{StaticResource EmptyStateText}"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListView.Style>
+                                </ListView>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
 
                 <!-- Generic Operation Panel (placeholder for other panels) -->
                 <Border x:Name="OperationPanel"

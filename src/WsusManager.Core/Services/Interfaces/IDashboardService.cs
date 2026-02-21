@@ -42,4 +42,18 @@ public interface IDashboardService
     /// modify update metadata (e.g., approval changes, cleanup operations).
     /// </summary>
     void InvalidateUpdateCache();
+
+    /// <summary>
+    /// Gets a list of all computers from the WSUS server.
+    /// </summary>
+    /// <param name="ct">Cancellation token for async operation.</param>
+    /// <returns>Collection of computer information with hostname, IP, status, last sync, pending updates, and OS version.</returns>
+    Task<IReadOnlyList<ComputerInfo>> GetComputersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a list of all updates from the WSUS database.
+    /// </summary>
+    /// <param name="ct">Cancellation token for async operation.</param>
+    /// <returns>Collection of update information with ID, title, KB article, classification, approval date, and approval status.</returns>
+    Task<IReadOnlyList<UpdateInfo>> GetUpdatesAsync(CancellationToken ct = default);
 }
