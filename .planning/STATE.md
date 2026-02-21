@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** v4.4 Quality & Polish — Phase 19 complete (verified)
+**Current focus:** v4.4 Quality & Polish — Phase 23 planning complete
 
 ## Current Position
 
-**Phase:** Phase 22 - Performance Benchmarking
-**Plan:** Complete (3/3 plans) — All benchmark infrastructure operational
-**Status:** Phase 22 complete, pending real baseline capture on Windows
-**Last activity:** 2026-02-21 — Phase 22 Plan 03 completed (WinRM benchmarks, CI integration, regression detection)
+**Phase:** Phase 23 - Memory Leak Detection
+**Plan:** Complete (1/1 plan) — Comprehensive leak detection and prevention plan
+**Status:** Ready for implementation
+**Last activity:** 2026-02-21 — Phase 23 Plan 01 completed (StringBuilder logs, timer cleanup, IDisposable, dialog cleanup)
 
 ```
 v4.4 Progress: [███░░░░░░░░] 3/7 phases (43%)
@@ -28,6 +28,9 @@ Phase 22: [████████████] Complete — BenchmarkDotNet in
   ├─ 22-01: [████████████] Complete — BenchmarkDotNet infrastructure, startup benchmarks
   ├─ 22-02: [████████████] Complete — Database operation benchmarks, mock baselines
   └─ 22-03: [████████████] Complete — WinRM benchmarks, CI workflow, regression detection
+Phase 23: [████░░░░░░░] Planned — Memory leak detection and prevention
+  ├─ 23-01: [██████████░░] Ready — StringBuilder logs, timer cleanup, IDisposable, dialog cleanup
+  └─ Implementation: ~6 hours estimated effort
 ```
 
 ## v4.4 Milestone Summary
@@ -63,5 +66,13 @@ Phase 22: [████████████] Complete — BenchmarkDotNet in
 - Plan 01: BenchmarkDotNet Infrastructure - Benchmark project created, startup benchmarks implemented, baselines directory structured
 - Requirements satisfied: PERF-01, PERF-02
 - Commits: 26a6fe0 (infrastructure), 543450f (startup benchmarks), 75fcacd (gitignore), d78e9c2 (baselines)
+
+**Phase 23 Planned:**
+- Plan 01: Memory Leak Detection and Prevention - Comprehensive plan for leak detection and fixes
+  - Key findings: LogOutput string accumulation (Priority 1), DispatcherTimer handler never removed, no IDisposable cleanup
+  - Solutions: StringBuilder for logs with trimming, timer handler unsubscription, IDisposable pattern for MainViewModel, dialog event handler cleanup
+  - Testing: Manual dotMemory profiling with 5 test scenarios (dashboard refresh, window open/close, dialogs, long-running, log accumulation)
+  - Estimated effort: ~6 hours
+  - Requirements to satisfy: PERF-06
 
 ## v4.3 Milestone Summary
