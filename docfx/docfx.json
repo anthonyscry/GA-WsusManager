@@ -1,0 +1,60 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [
+            "src/WsusManager.Core/WsusManager.Core.csproj",
+            "src/WsusManager.App/WsusManager.App.csproj"
+          ],
+          "exclude": [
+            "**/bin/**",
+            "**/obj/**",
+            "**/Tests/**"
+          ]
+        }
+      ],
+      "dest": "docfx/api",
+      "filter": "docfx/filterConfig.yml"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "docfx/api/**.yml",
+          "docfx/api/index.md"
+        ]
+      },
+      {
+        "files": [
+          "docs/articles/**/*.md",
+          "docs/toc.yml"
+        ]
+      }
+    ],
+    "dest": "docs/api",
+    "globalMetadata": {
+      "_appName": "WSUS Manager API Reference",
+      "_appTitle": "WSUS Manager",
+      "_enableSearch": true,
+      "_gitUrl": "https://github.com/anthonyscry/GA-WsusManager",
+      "_gitContribute": {
+        "branch": "main"
+      }
+    },
+    "overwrite": [
+      {
+        "files": [
+          "docfx/overwrite/*.md"
+        ],
+        "exclude": [
+          "docfx/overwrite/README.md"
+        ]
+      }
+    ],
+    "xref": [
+      "https://learn.microsoft.com/en-us/dotnet/api/xrefmap.yml"
+    ]
+  }
+}
