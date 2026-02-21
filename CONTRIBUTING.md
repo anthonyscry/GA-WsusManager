@@ -312,6 +312,46 @@ docs(readme): update build instructions
 - [ ] Documentation updated (if applicable)
 - [ ] Commit messages follow conventional format
 
+## Release Process
+
+WSUS Manager uses semantic versioning and automated releases.
+
+### Quick Summary
+
+1. Update version in `src/Directory.Build.props`
+2. Update `CHANGELOG.md` with release notes
+3. Commit and push to main branch
+4. Create git tag: `git tag v4.4.0 && git push origin v4.4.0`
+5. GitHub Actions creates release automatically via `.github/workflows/build-csharp.yml`
+6. Download release from GitHub Releases page
+
+### Version Format
+
+- **Major:** Breaking changes (e.g., 4.0 → 5.0)
+- **Minor:** New features (e.g., 4.4 → 4.5)
+- **Patch:** Bug fixes (e.g., 4.4.0 → 4.4.1)
+
+### Release Notes Template
+
+```markdown
+## WSUS Manager v{version}
+
+### Added
+- New feature 1
+- New feature 2
+
+### Fixed
+- Bug fix 1
+- Bug fix 2
+
+### Changed
+- Modification 1
+
+### Technical
+- Code quality improvements
+- Test coverage updates
+```
+
 ## Project Structure
 
 ```
@@ -514,21 +554,6 @@ public async Task<MyResult> ExecuteAsync(MyRequest request, CancellationToken ca
     // ...
 }
 ```
-
-## Release Process
-
-WSUS Manager uses semantic versioning and automated releases. For detailed release procedures, see:
-- **[docs/releases.md](docs/releases.md)** - Complete release workflow (versioning, changelog, publish steps)
-
-**Quick summary:**
-1. Update version in `src/Directory.Build.props`
-2. Update `CHANGELOG.md` with release notes
-3. Commit and push to main branch
-4. Create git tag: `git tag v4.4.0 && git push origin v4.4.0`
-5. GitHub Actions creates release automatically
-6. Approve prerelease and publish
-
-For full details, including pre-release checklist and rollback procedures, refer to `docs/releases.md`.
 
 ## Getting Help
 
