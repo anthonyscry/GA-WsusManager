@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 17 — Theme Content and Picker
-Plan: Not yet planned
-Status: Ready for planning
-Last activity: 2026-02-21 — Phase 16 complete (theme infrastructure, all 5 INFRA requirements satisfied)
+Plan: 17-01-PLAN.md (5 tasks: theme files, ThemeService registration, Settings UI, ViewModel wiring, tests)
+Status: Planned, ready for execution
+Last activity: 2026-02-21 — Phase 17 planned
 
 ```
 v4.3 Progress: [█████░░░░░] 1/2 phases
