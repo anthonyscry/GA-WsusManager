@@ -60,7 +60,7 @@ public class WsusServerService : IWsusServerService
                 {
                     _logService.Warning("WSUS API not found at {Path}", WsusApiDllPath);
                     return OperationResult.Fail(
-                        $"WSUS API not found at {WsusApiDllPath}. Is the WSUS role installed?");
+                        $"WSUS API not found at {WsusApiDllPath}.\n\nTo fix: Install WSUS Server role, verify WSUS is installed");
                 }
 
                 _wsusAssembly = Assembly.LoadFrom(WsusApiDllPath);
@@ -90,7 +90,7 @@ public class WsusServerService : IWsusServerService
             {
                 var inner = ex.InnerException ?? ex;
                 _logService.Error(inner, "Failed to connect to WSUS server");
-                return OperationResult.Fail($"Failed to connect to WSUS: {inner.Message}", inner);
+                return OperationResult.Fail($"Failed to connect to WSUS: {inner.Message}\n\nTo fix: Start WSUS Server service, run Diagnostics", inner);
             }
         }, ct).ConfigureAwait(false);
     }
@@ -170,7 +170,7 @@ public class WsusServerService : IWsusServerService
                     await Task.Delay(SyncPollIntervalMs, ct).ConfigureAwait(false);
                 }
 
-                return OperationResult.Fail("Synchronization timed out after 60 minutes.");
+                return OperationResult.Fail("Synchronization timed out after 60 minutes.\n\nTo fix: Check network connectivity, try Quick Sync instead of Full Sync");
             }
             catch (OperationCanceledException)
             {
@@ -190,7 +190,7 @@ public class WsusServerService : IWsusServerService
             {
                 var inner = ex.InnerException ?? ex;
                 _logService.Error(inner, "Synchronization failed");
-                return OperationResult.Fail($"Synchronization failed: {inner.Message}", inner);
+                return OperationResult.Fail($"Synchronization failed: {inner.Message}\n\nTo fix: Restart WSUS Server service, run Diagnostics, check network connectivity", inner);
             }
         }, ct).ConfigureAwait(false);
     }
