@@ -30,10 +30,10 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 ### Performance
 
 - [ ] **PERF-01**: Startup time measured and documented (cold start < 2s, warm start < 500ms)
-- [ ] **PERF-02**: Startup benchmark added to CI/CD pipeline output
-- [ ] **PERF-03**: BenchmarkDotNet project measures critical operation performance
-- [ ] **PERF-04**: Database operation baselines established (cleanup, restore, queries)
-- [ ] **PERF-05**: WinRM operation baselines established (client checks, GPUpdate)
+- [x] **PERF-02**: Startup benchmark added to CI/CD pipeline output
+- [x] **PERF-03**: BenchmarkDotNet project measures critical operation performance
+- [x] **PERF-04**: Database operation baselines established (cleanup, restore, queries)
+- [x] **PERF-05**: WinRM operation baselines established (client checks, GPUpdate)
 - [ ] **PERF-06**: Memory leak detection performed before release (event handlers, bindings)
 - [ ] **PERF-07**: Async/await patterns audited for deadlocks (no .Result/.Wait() on UI thread)
 
@@ -97,10 +97,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-07 | Phase 21 | Pending |
 | QUAL-08 | Phase 21 | Pending |
 | PERF-01 | Phase 22 | Pending |
-| PERF-02 | Phase 22 | Pending |
-| PERF-03 | Phase 22 | Pending |
-| PERF-04 | Phase 22 | Pending |
-| PERF-05 | Phase 22 | Pending |
+| PERF-02 | Phase 22 | Complete |
+| PERF-03 | Phase 22 | Complete |
+| PERF-04 | Phase 22 | Complete |
+| PERF-05 | Phase 22 | Complete |
 | PERF-06 | Phase 23 | Pending |
 | PERF-07 | Phase 21 | Pending |
 | DOC-01 | Phase 24 | Pending |
