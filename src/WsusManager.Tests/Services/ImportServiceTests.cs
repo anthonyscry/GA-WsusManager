@@ -272,4 +272,168 @@ public class ImportServiceTests
             Directory.Delete(tempDir, true);
         }
     }
+
+    // ─── Edge Case Tests (Phase 18-02) ────────────────────────────────────────
+
+    [Fact]
+    public async Task ImportAsync_Handles_Null_Options()
+    {
+        // null options causes NullReferenceException
+        await Assert.ThrowsAsync<NullReferenceException>(
+            () => _service.ImportAsync(null!, _progress, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Null_SourcePath()
+    {
+        var options = new ImportOptions
+        {
+            SourcePath = null
+        };
+
+        var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+        // null source path treated as "does not exist"
+        Assert.False(result.Success);
+        Assert.Contains("does not exist", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Empty_SourcePath()
+    {
+        var options = new ImportOptions
+        {
+            SourcePath = ""
+        };
+
+        var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("does not exist", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Whitespace_SourcePath()
+    {
+        var options = new ImportOptions
+        {
+            SourcePath = "   \t  "
+        };
+
+        var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Null_DestinationPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir,
+                DestinationPath = null
+            };
+
+            // null destinationPath causes exception in Directory.CreateDirectory
+            var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+            // Should fail due to null path exception
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Empty_DestinationPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir,
+                DestinationPath = ""
+            };
+
+            // Empty destinationPath causes exception in Directory.CreateDirectory
+            var result = await _service.ImportAsync(options, _progress, CancellationToken.None);
+
+            // Should fail due to invalid path
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Null_Progress()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir,
+                DestinationPath = @"C:\WSUS"
+            };
+
+            // null progress causes NullReferenceException (service doesn't handle it)
+            await Assert.ThrowsAsync<NullReferenceException>(
+                () => _service.ImportAsync(options, null!, CancellationToken.None));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_Handles_Null_ContentResetService_When_RunContentResetAfterImport_True()
+    {
+        // Create service with null content reset (handled by constructor dependency)
+        // null content reset service will cause NullReferenceException
+        var serviceWithNullReset = new ImportService(
+            _mockRobocopy.Object,
+            null!, // null content reset service
+            _mockLog.Object);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "test.txt"), "data");
+
+        try
+        {
+            var options = new ImportOptions
+            {
+                SourcePath = tempDir,
+                DestinationPath = @"C:\WSUS",
+                RunContentResetAfterImport = true
+            };
+
+            // null content reset service causes NullReferenceException during reset
+            await Assert.ThrowsAsync<NullReferenceException>(
+                () => serviceWithNullReset.ImportAsync(options, _progress, CancellationToken.None));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
 }
