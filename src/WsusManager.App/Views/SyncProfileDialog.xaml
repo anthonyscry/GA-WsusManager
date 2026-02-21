@@ -5,7 +5,7 @@
         Width="480" Height="360"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}">
+        Background="{DynamicResource PrimaryBackground}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -17,39 +17,39 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="Select Sync Profile" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource Text1}"/>
+                       Foreground="{DynamicResource TextPrimary}"/>
             <TextBlock Text="Choose how the Online Sync operation should run."
-                       Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+                       Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,4,0,0"/>
         </StackPanel>
 
         <!-- Profile Options -->
         <StackPanel Grid.Row="1">
             <RadioButton x:Name="RbFullSync" IsChecked="True" Margin="0,0,0,12"
-                         Foreground="{StaticResource Text1}" FontSize="13">
+                         Foreground="{DynamicResource TextPrimary}" FontSize="13">
                 <StackPanel>
-                    <TextBlock Text="Full Sync" FontWeight="SemiBold" Foreground="{StaticResource Text1}"/>
+                    <TextBlock Text="Full Sync" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="Synchronize, decline superseded/expired updates, auto-approve, monitor downloads."
-                               Foreground="{StaticResource Text2}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap"
                                Margin="0,2,0,0"/>
                 </StackPanel>
             </RadioButton>
 
             <RadioButton x:Name="RbQuickSync" Margin="0,0,0,12"
-                         Foreground="{StaticResource Text1}" FontSize="13">
+                         Foreground="{DynamicResource TextPrimary}" FontSize="13">
                 <StackPanel>
-                    <TextBlock Text="Quick Sync" FontWeight="SemiBold" Foreground="{StaticResource Text1}"/>
+                    <TextBlock Text="Quick Sync" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="Synchronize and auto-approve updates (skip decline step)."
-                               Foreground="{StaticResource Text2}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap"
                                Margin="0,2,0,0"/>
                 </StackPanel>
             </RadioButton>
 
             <RadioButton x:Name="RbSyncOnly" Margin="0,0,0,12"
-                         Foreground="{StaticResource Text1}" FontSize="13">
+                         Foreground="{DynamicResource TextPrimary}" FontSize="13">
                 <StackPanel>
-                    <TextBlock Text="Sync Only" FontWeight="SemiBold" Foreground="{StaticResource Text1}"/>
+                    <TextBlock Text="Sync Only" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="Synchronize metadata only. No approval changes."
-                               Foreground="{StaticResource Text2}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap"
                                Margin="0,2,0,0"/>
                 </StackPanel>
             </RadioButton>

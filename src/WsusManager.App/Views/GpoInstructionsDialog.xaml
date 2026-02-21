@@ -5,7 +5,7 @@
         Width="480" Height="380"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}">
+        Background="{DynamicResource PrimaryBackground}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -17,17 +17,17 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="GPO Files Deployed" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource Green}"/>
+                       Foreground="{DynamicResource StatusSuccess}"/>
             <TextBlock Text="Follow the steps below to apply the GPO on your Domain Controller."
-                       Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+                       Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,4,0,0"/>
         </StackPanel>
 
         <!-- Instructions (selectable/copyable) -->
         <TextBox x:Name="TxtInstructions" Grid.Row="1"
                  IsReadOnly="True" TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto"
-                 Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                 BorderBrush="{StaticResource Border}" Padding="8" FontSize="12"
+                 Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                 BorderBrush="{DynamicResource BorderPrimary}" Padding="8" FontSize="12"
                  FontFamily="Consolas"/>
 
         <!-- Buttons -->

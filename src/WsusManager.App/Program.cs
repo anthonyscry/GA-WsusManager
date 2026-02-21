@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using WsusManager.App.Services;
 using WsusManager.App.Views;
 using WsusManager.App.ViewModels;
 using WsusManager.Core.Infrastructure;
@@ -36,6 +37,12 @@ public static class Program
         var app = new App();
         app.InitializeComponent();
         app.ConfigureServices(host.Services);
+
+        // Apply persisted theme before MainWindow construction to prevent theme flash
+        var themeService = host.Services.GetRequiredService<IThemeService>();
+        var settingsService = host.Services.GetRequiredService<ISettingsService>();
+        var settings = settingsService.Current;
+        themeService.ApplyTheme(settings.SelectedTheme);
 
         var window = host.Services.GetRequiredService<MainWindow>();
 
@@ -112,6 +119,9 @@ public static class Program
 
         // Phase 15: Script Generator
         builder.Services.AddSingleton<IScriptGeneratorService, ScriptGeneratorService>();
+
+        // Phase 16: Theme Infrastructure
+        builder.Services.AddSingleton<IThemeService, ThemeService>();
 
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();

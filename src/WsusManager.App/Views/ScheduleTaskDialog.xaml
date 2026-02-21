@@ -5,7 +5,7 @@
         Width="520" Height="600"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{StaticResource BgDark}">
+        Background="{DynamicResource PrimaryBackground}">
 
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -18,20 +18,20 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock Text="Schedule Task" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource Text1}"/>
+                       Foreground="{DynamicResource TextPrimary}"/>
             <TextBlock Text="Create a Windows scheduled task for automated WSUS maintenance."
-                       Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+                       Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,4,0,0"/>
         </StackPanel>
 
         <!-- Fields -->
         <StackPanel Grid.Row="1">
 
             <!-- Task Name -->
-            <TextBlock Text="Task Name" Foreground="{StaticResource Text2}"
+            <TextBlock Text="Task Name" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtTaskName" Text="WSUS Monthly Maintenance"
-                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                      Margin="0,0,0,10"
                      TextChanged="Input_Changed"/>
 
@@ -43,10 +43,10 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Schedule" Foreground="{StaticResource Text2}"
+                    <TextBlock Text="Schedule" Foreground="{DynamicResource TextSecondary}"
                                FontSize="12" Margin="0,0,0,4"/>
                     <ComboBox x:Name="CmbScheduleType" SelectedIndex="0"
-                              Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                              Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                               FontSize="12" Padding="4"
                               SelectionChanged="ScheduleType_Changed">
                         <ComboBoxItem Content="Monthly"/>
@@ -55,31 +55,31 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Time (HH:mm)" Foreground="{StaticResource Text2}"
+                    <TextBlock Text="Time (HH:mm)" Foreground="{DynamicResource TextSecondary}"
                                FontSize="12" Margin="0,0,0,4"/>
                     <TextBox x:Name="TxtTime" Text="02:00"
-                             Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                             BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                             Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                             BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                              TextChanged="Input_Changed"/>
                 </StackPanel>
             </Grid>
 
             <!-- Day of Month (visible when Monthly) -->
             <StackPanel x:Name="DayOfMonthPanel" Margin="0,0,0,10">
-                <TextBlock Text="Day of Month (1-31)" Foreground="{StaticResource Text2}"
+                <TextBlock Text="Day of Month (1-31)" Foreground="{DynamicResource TextSecondary}"
                            FontSize="12" Margin="0,0,0,4"/>
                 <TextBox x:Name="TxtDayOfMonth" Text="15" Width="80" HorizontalAlignment="Left"
-                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                          TextChanged="Input_Changed"/>
             </StackPanel>
 
             <!-- Day of Week (visible when Weekly) -->
             <StackPanel x:Name="DayOfWeekPanel" Visibility="Collapsed" Margin="0,0,0,10">
-                <TextBlock Text="Day of Week" Foreground="{StaticResource Text2}"
+                <TextBlock Text="Day of Week" Foreground="{DynamicResource TextSecondary}"
                            FontSize="12" Margin="0,0,0,4"/>
                 <ComboBox x:Name="CmbDayOfWeek" SelectedIndex="6"
-                          Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                          Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                           FontSize="12" Padding="4">
                     <ComboBoxItem Content="Sunday"/>
                     <ComboBoxItem Content="Monday"/>
@@ -92,10 +92,10 @@
             </StackPanel>
 
             <!-- Maintenance Profile -->
-            <TextBlock Text="Maintenance Profile" Foreground="{StaticResource Text2}"
+            <TextBlock Text="Maintenance Profile" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <ComboBox x:Name="CmbProfile" SelectedIndex="0"
-                      Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
+                      Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                       FontSize="12" Padding="4" Margin="0,0,0,10">
                 <ComboBoxItem Content="Full"/>
                 <ComboBoxItem Content="Quick"/>
@@ -103,25 +103,25 @@
             </ComboBox>
 
             <!-- Username -->
-            <TextBlock Text="Username" Foreground="{StaticResource Text2}"
+            <TextBlock Text="Username" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtUsername" Text=".\dod_admin"
-                     Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                     BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                      Margin="0,0,0,10"/>
 
             <!-- Password -->
-            <TextBlock Text="Password" Foreground="{StaticResource Text2}"
+            <TextBlock Text="Password" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <PasswordBox x:Name="PwdPassword"
-                         Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                          PasswordChanged="Input_Changed"/>
         </StackPanel>
 
         <!-- Validation Text -->
         <TextBlock x:Name="TxtValidation" Grid.Row="2"
-                   Foreground="#F85149" FontSize="11" Margin="0,4,0,0"
+                   Foreground="{DynamicResource StatusError}" FontSize="11" Margin="0,4,0,0"
                    Text="Task name, valid time, and password are required."/>
 
         <!-- Buttons -->
