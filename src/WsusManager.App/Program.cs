@@ -106,6 +106,10 @@ public static class Program
         builder.Services.AddSingleton<IScheduledTaskService, ScheduledTaskService>();
         builder.Services.AddSingleton<IGpoDeploymentService, GpoDeploymentService>();
 
+        // Phase 14: Client Management
+        builder.Services.AddSingleton<WinRmExecutor>();
+        builder.Services.AddSingleton<IClientService, ClientService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 

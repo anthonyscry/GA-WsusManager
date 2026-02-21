@@ -34,6 +34,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IInstallationService _installationService;
     private readonly IScheduledTaskService _scheduledTaskService;
     private readonly IGpoDeploymentService _gpoDeploymentService;
+    private readonly IClientService _clientService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -58,7 +59,8 @@ public partial class MainViewModel : ObservableObject
         IImportService importService,
         IInstallationService installationService,
         IScheduledTaskService scheduledTaskService,
-        IGpoDeploymentService gpoDeploymentService)
+        IGpoDeploymentService gpoDeploymentService,
+        IClientService clientService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -74,6 +76,7 @@ public partial class MainViewModel : ObservableObject
         _installationService = installationService;
         _scheduledTaskService = scheduledTaskService;
         _gpoDeploymentService = gpoDeploymentService;
+        _clientService = clientService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -101,8 +104,11 @@ public partial class MainViewModel : ObservableObject
     public Visibility IsDatabasePanelVisible =>
         CurrentPanel == "Database" ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility IsClientToolsPanelVisible =>
+        CurrentPanel == "ClientTools" ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility IsOperationPanelVisible =>
-        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics" && CurrentPanel != "Database"
+        CurrentPanel != "Dashboard" && CurrentPanel != "Diagnostics" && CurrentPanel != "Database" && CurrentPanel != "ClientTools"
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -132,12 +138,14 @@ public partial class MainViewModel : ObservableObject
             "Help" => "Help",
             "About" => "About",
             "GPO" => "Create GPO",
+            "ClientTools" => "Client Tools",
             _ => panel
         };
 
         OnPropertyChanged(nameof(IsDashboardVisible));
         OnPropertyChanged(nameof(IsDiagnosticsPanelVisible));
         OnPropertyChanged(nameof(IsDatabasePanelVisible));
+        OnPropertyChanged(nameof(IsClientToolsPanelVisible));
         OnPropertyChanged(nameof(IsOperationPanelVisible));
     }
 
@@ -820,6 +828,111 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // CLIENT MANAGEMENT (Phase 14)
+    // ═══════════════════════════════════════════════════════════════
+
+    [ObservableProperty]
+    private string _clientHostname = string.Empty;
+
+    [ObservableProperty]
+    private string _errorCodeInput = string.Empty;
+
+    [ObservableProperty]
+    private string _errorCodeResult = string.Empty;
+
+    /// <summary>
+    /// CanExecute helper for remote client operations — requires a hostname and no operation running.
+    /// </summary>
+    private bool CanExecuteClientOperation() =>
+        !IsOperationRunning && !string.IsNullOrWhiteSpace(ClientHostname);
+
+    /// <summary>
+    /// Called automatically by CommunityToolkit.Mvvm when ClientHostname changes.
+    /// Re-evaluates CanExecute for all client operation commands.
+    /// </summary>
+    partial void OnClientHostnameChanged(string value)
+    {
+        RunClientCancelStuckJobsCommand.NotifyCanExecuteChanged();
+        RunClientForceCheckInCommand.NotifyCanExecuteChanged();
+        RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
+        RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
+    private async Task RunClientCancelStuckJobs()
+    {
+        Navigate("ClientTools");
+
+        await RunOperationAsync("Cancel Stuck Jobs", async (progress, ct) =>
+        {
+            var result = await _clientService.CancelStuckJobsAsync(
+                ClientHostname.Trim(), progress, ct);
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
+    private async Task RunClientForceCheckIn()
+    {
+        Navigate("ClientTools");
+
+        await RunOperationAsync("Force Check-In", async (progress, ct) =>
+        {
+            var result = await _clientService.ForceCheckInAsync(
+                ClientHostname.Trim(), progress, ct);
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
+    private async Task RunClientTestConnectivity()
+    {
+        Navigate("ClientTools");
+
+        await RunOperationAsync("Test Connectivity", async (progress, ct) =>
+        {
+            var wsusUrl = $"http://{_settings.SqlInstance.Split('\\')[0]}:8530";
+            var result = await _clientService.TestConnectivityAsync(
+                ClientHostname.Trim(), wsusUrl, progress, ct);
+            return result.Success;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
+    private async Task RunClientDiagnostics()
+    {
+        Navigate("ClientTools");
+
+        await RunOperationAsync("Client Diagnostics", async (progress, ct) =>
+        {
+            var result = await _clientService.RunDiagnosticsAsync(
+                ClientHostname.Trim(), progress, ct);
+            return result.Success;
+        });
+    }
+
+    /// <summary>
+    /// Looks up a WSUS/Windows Update error code locally. Instant — no remote call.
+    /// Does not go through RunOperationAsync because it is synchronous and near-instant.
+    /// </summary>
+    [RelayCommand]
+    private void LookupErrorCode()
+    {
+        var input = ErrorCodeInput.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            ErrorCodeResult = "Enter an error code to look up.";
+            return;
+        }
+
+        var result = _clientService.LookupErrorCode(input);
+
+        ErrorCodeResult = result.Success && result.Data is not null
+            ? $"Code: {result.Data.Code}\nDescription: {result.Data.Description}\n\nRecommended Fix:\n{result.Data.RecommendedFix}"
+            : "Error code not recognized. Check the Microsoft documentation or Windows Event Log for details.";
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // DASHBOARD REFRESH
     // ═══════════════════════════════════════════════════════════════
 
@@ -954,6 +1067,11 @@ public partial class MainViewModel : ObservableObject
         // Phase 12: Mode Override + Settings
         ToggleModeCommand.NotifyCanExecuteChanged();
         OpenSettingsCommand.NotifyCanExecuteChanged();
+        // Phase 14: Client Management
+        RunClientCancelStuckJobsCommand.NotifyCanExecuteChanged();
+        RunClientForceCheckInCommand.NotifyCanExecuteChanged();
+        RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
+        RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
