@@ -53,29 +53,29 @@ None — v4.1 is focused on making v4.0 work correctly.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMPAT-01 | TBD | Pending |
-| COMPAT-02 | TBD | Pending |
-| COMPAT-03 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| UI-04 | TBD | Pending |
-| UI-05 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| OPS-03 | TBD | Pending |
-| OPS-04 | TBD | Pending |
-| OPS-05 | TBD | Pending |
-| OPS-06 | TBD | Pending |
-| STAB-01 | TBD | Pending |
-| STAB-02 | TBD | Pending |
-| STAB-03 | TBD | Pending |
+| COMPAT-01 | Phase 8 | Pending |
+| COMPAT-02 | Phase 8 | Pending |
+| COMPAT-03 | Phase 8 | Pending |
+| UI-01 | Phase 9 | Pending |
+| UI-02 | Phase 9 | Pending |
+| UI-03 | Phase 9 | Pending |
+| UI-04 | Phase 9 | Pending |
+| UI-05 | Phase 9 | Pending |
+| OPS-01 | Phase 10 | Pending |
+| OPS-02 | Phase 10 | Pending |
+| OPS-03 | Phase 10 | Pending |
+| OPS-04 | Phase 10 | Pending |
+| OPS-05 | Phase 10 | Pending |
+| OPS-06 | Phase 10 | Pending |
+| STAB-01 | Phase 11 | Pending |
+| STAB-02 | Phase 11 | Pending |
+| STAB-03 | Phase 11 | Pending |
 
 **Coverage:**
 - v4.1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0 (100% coverage)
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 — traceability populated after roadmap creation*
