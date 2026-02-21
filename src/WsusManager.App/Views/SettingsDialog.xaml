@@ -1,11 +1,13 @@
 <Window x:Class="WsusManager.App.Views.SettingsDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="Settings — WSUS Manager"
         Width="520" Height="620"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="{DynamicResource PrimaryBackground}">
+        Background="{DynamicResource PrimaryBackground}"
+        automation:AutomationProperties.AutomationId="SettingsDialog">
 
     <Grid Margin="24" KeyboardNavigation.TabNavigation="Continue">
         <Grid.RowDefinitions>
@@ -30,6 +32,7 @@
             <TextBlock Text="Server Mode" Foreground="{DynamicResource TextSecondary}"
                        FontSize="12" Margin="0,0,0,4"/>
             <ComboBox x:Name="CboServerMode"
+                      automation:AutomationProperties.AutomationId="ServerModeComboBox"
                       Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                       BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                       KeyboardNavigation.DirectionalNavigation="Cycle">
@@ -58,6 +61,7 @@
                        Foreground="{DynamicResource TextSecondary}" FontSize="12"
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
             <TextBox x:Name="TxtRefreshInterval" Grid.Row="0" Grid.Column="1"
+                     automation:AutomationProperties.AutomationId="RefreshIntervalTextBox"
                      Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                      Margin="0,0,0,12"/>
@@ -67,6 +71,7 @@
                        Foreground="{DynamicResource TextSecondary}" FontSize="12"
                        VerticalAlignment="Center" Margin="0,0,0,12"/>
             <TextBox x:Name="TxtContentPath" Grid.Row="1" Grid.Column="1"
+                     automation:AutomationProperties.AutomationId="ContentPathTextBox"
                      Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
                      Margin="0,0,0,12"/>
@@ -76,6 +81,7 @@
                        Foreground="{DynamicResource TextSecondary}" FontSize="12"
                        VerticalAlignment="Center"/>
             <TextBox x:Name="TxtSqlInstance" Grid.Row="2" Grid.Column="1"
+                     automation:AutomationProperties.AutomationId="SqlInstanceTextBox"
                      Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"/>
         </Grid>
@@ -86,7 +92,8 @@
                        FontSize="12" Margin="0,0,0,8"/>
 
             <!-- Theme Swatch Grid (3x2 layout) -->
-            <UniformGrid x:Name="ThemeSwatchGrid" Rows="2" Columns="3">
+            <UniformGrid x:Name="ThemeSwatchGrid" Rows="2" Columns="3"
+                         automation:AutomationProperties.AutomationId="ThemeSwatchGrid">
                 <!-- Theme swatches will be generated dynamically in code-behind -->
             </UniformGrid>
 
@@ -102,9 +109,11 @@
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right"
                     Margin="0,12,0,0">
             <Button Content="Cancel" Style="{StaticResource BtnSec}"
+                    automation:AutomationProperties.AutomationId="CancelSettingsButton"
                     Padding="20,8" Margin="0,0,8,0"
                     Click="BtnCancel_Click"/>
             <Button Content="Save" Style="{StaticResource BtnGreen}"
+                    automation:AutomationProperties.AutomationId="SaveSettingsButton"
                     Padding="20,8" IsDefault="True"
                     Click="BtnSave_Click"/>
         </StackPanel>
