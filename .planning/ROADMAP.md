@@ -95,7 +95,7 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
 | 17. Theme Content and Picker | v4.3 | 1/1 | Complete | 2026-02-21 |
-| 18. Test Coverage & Reporting | 3/3 | Complete   | 2026-02-21 | - |
+| 18. Test Coverage & Reporting | 3/3 | Complete    | 2026-02-21 | - |
 | 19. Static Analysis & Code Quality | v4.4 | 0/3 | Not started | - |
 | 20. XML Documentation & API Reference | v4.4 | 0/2 | Not started | - |
 | 21. Code Refactoring & Async Audit | v4.4 | 0/2 | Not started | - |
@@ -125,9 +125,9 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 **Plans:** 3/3 plans complete
 
 **Plan List:**
-- [ ] 18-01-PLAN.md — Coverage infrastructure (Coverlet config, ReportGenerator, CI integration)
-- [ ] 18-02-PLAN.md — Edge case testing (null inputs, empty collections, boundary values)
-- [ ] 18-03-PLAN.md — Exception path testing (SqlException, IOException, WinRM exceptions)
+- [x] 18-01-PLAN.md — Coverage infrastructure (Coverlet config, ReportGenerator, CI integration)
+- [x] 18-02-PLAN.md — Edge case testing (null inputs, empty collections, boundary values)
+- [x] 18-03-PLAN.md — Exception path testing (SqlException, IOException, WinRM exceptions)
 
 ---
 
