@@ -45,10 +45,10 @@ Requirements for v4.5 Enhancement Suite milestone. Each maps to roadmap phases.
 - [ ] **DAT-02**: Dashboard updates panel supports filtering by approval status (Approved/Not Approved/Declined)
 - [ ] **DAT-03**: Dashboard updates panel supports filtering by classification (Critical/Security/Definition)
 - [ ] **DAT-04**: Search box filters visible items in real-time as user types
-- [ ] **DAT-05**: User can export computer list to CSV with selected columns
-- [ ] **DAT-06**: User can export update list to CSV with metadata (KB, Classification, Approved)
-- [ ] **DAT-07**: Data export includes UTF-8 BOM for Excel compatibility
-- [ ] **DAT-08**: Export dialog shows export progress and destination location
+- [ ] **DAT-05**: User can export computer list to CSV with selected columns (Phase 30: Planned)
+- [ ] **DAT-06**: User can export update list to CSV with metadata (KB, Classification, Approved) (Phase 30: Planned)
+- [ ] **DAT-07**: Data export includes UTF-8 BOM for Excel compatibility (Phase 30: Planned)
+- [ ] **DAT-08**: Export dialog shows export progress and destination location (Phase 30: Planned)
 
 ## v2 Requirements
 
@@ -116,10 +116,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DAT-02 | Phase 29 | Pending |
 | DAT-03 | Phase 29 | Pending |
 | DAT-04 | Phase 29 | Pending |
-| DAT-05 | Phase 30 | Pending |
-| DAT-06 | Phase 30 | Pending |
-| DAT-07 | Phase 30 | Pending |
-| DAT-08 | Phase 30 | Pending |
+| DAT-05 | Phase 30 | Planned |
+| DAT-06 | Phase 30 | Planned |
+| DAT-07 | Phase 30 | Planned |
+| DAT-08 | Phase 30 | Planned |
 
 **Coverage:**
 - v4.5 requirements: 38 total

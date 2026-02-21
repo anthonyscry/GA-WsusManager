@@ -138,7 +138,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 27. Visual Feedback Polish | v4.5 | 0/5 | Not started | - |
 | 28. Settings Expansion | v4.5 | 7/7 | Complete | 2026-02-21 |
 | 29. Data Filtering | v4.5 | 3/3 | Complete | 2026-02-21 |
-| 30. Data Export | v4.5 | 0/3 | Not started | - |
+| 30. Data Export | v4.5 | 3/3 | Planned | 2026-02-21 |
 | 31. Testing & Documentation | v4.5 | 0/4 | Not started | - |
 
 ---
@@ -278,12 +278,15 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 **Requirements:** DAT-05, DAT-06, DAT-07, DAT-08
 
 **Success Criteria** (what must be TRUE):
-1. "Export Computers" button in Client Tools panel exports filtered computer list to CSV
+1. "Export Computers" button in Computers panel exports filtered computer list to CSV
 2. "Export Updates" button in Updates panel exports filtered update list to CSV
 3. CSV exports include UTF-8 BOM for proper Excel character encoding
-4. Export dialog shows progress bar and opens destination folder on completion
+4. Export operation shows progress and opens destination folder on completion
 
-**Plans:** TBD
+**Plans:** 3/3 planned
+- [ ] 30-01-PLAN.md — CSV Export Service (2026-02-21) (DAT-05, DAT-06, DAT-07)
+- [ ] 30-02-PLAN.md — Export Button UI (2026-02-21) (DAT-05, DAT-06)
+- [ ] 30-03-PLAN.md — Export Progress Dialog (2026-02-21) (DAT-08)
 
 ---
 
