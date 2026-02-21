@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 14 of 15 (Client Management Core)
-Plan: 2 of 3 in current phase
-Status: Phase 14 in progress — plan 02 complete (ClientService with 5 operations, 14 unit tests)
-Last activity: 2026-02-21 — Phase 14 plan 02 complete (ClientService, ClientServiceTests)
+Plan: 3 of 3 in current phase — PHASE COMPLETE
+Status: Phase 14 complete — all 3 plans done (WinRmExecutor, ClientService, GUI wiring)
+Last activity: 2026-02-21 — Phase 14 plan 03 complete (Client Tools GUI panel + DI wiring)
 
 Progress: [████████████░░░░░░░░] 68% (14/18 phases in progress)
 
@@ -39,6 +39,7 @@ Progress: [████████████░░░░░░░░] 68% (14
 | Phase 13-operation-feedback-and-dialog-polish P01 | 9 | 2 tasks | 4 files |
 | Phase 14-client-management-core P01 | 3 | 2 tasks | 4 files |
 | Phase 14-client-management-core P02 | 3 | 2 tasks | 2 files |
+| Phase 14-client-management-core P03 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,8 @@ Progress: [████████████░░░░░░░░] 68% (14
 - [14-01]: WsusErrorCodes keyed by uppercase hex without 0x prefix — Lookup() normalizes all formats (0x prefix, plain hex, signed/unsigned decimal)
 - [Phase 14-client-management-core]: Single-round-trip WinRM script blocks used for all remote operations — one Invoke-Command per op minimizes latency and failure points
 - [Phase 14-client-management-core]: KEY=VALUE;KEY=VALUE structured output for remote data — simpler parsing than multi-line, handles PowerShell string interpolation naturally
+- [Phase 14-client-management-core]: Navigate(ClientTools) called before RunOperationAsync in client commands — no dialog needed, just navigate
+- [Phase 14-client-management-core]: LookupErrorCode is synchronous and bypasses RunOperationAsync — sets ErrorCodeResult directly, local dictionary only
 
 ### Pending Todos
 
@@ -74,5 +77,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 14-02-PLAN.md — ClientService with 5 operations, 14 unit tests. Next: Phase 14 plan 03 (ClientManagementViewModel + GUI panel).
+Stopped at: Completed 14-03-PLAN.md — Client Tools GUI panel wired, all Phase 14 operations accessible. Phase 14 complete. Next: Phase 15.
 Resume file: None
