@@ -37,17 +37,43 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ Script Generator producing self-contained PowerShell fallback scripts — v4.2
 - ✓ 336 xUnit tests passing — v4.2
 
+### Validated
+
+- ✓ Single-file EXE distribution (no Scripts/Modules folders) — v4.0
+- ✓ Sub-second application startup — v4.0
+- ✓ Native async operations (no threading hacks) — v4.0
+- ✓ Modernized dark theme UI — v4.0
+- ✓ Type-safe compiled code — v4.0
+- ✓ All PowerShell module functionality ported — v4.0
+- ✓ 257 xUnit tests covering all services and ViewModel logic — v4.0
+- ✓ 62 v1 requirements implemented and verified — v4.0
+
+- ✓ .NET 8 SDK compatibility (retarget from .NET 9) — v4.1
+- ✓ App launches and UI renders correctly with active nav highlighting — v4.1
+- ✓ 5 critical operation bugs fixed (sync, cleanup, health check) — v4.1
+- ✓ Button CanExecute refresh for proper visual disabling — v4.1
+- ✓ 263 xUnit tests passing — v4.1
+
+- ✓ Editable settings dialog with JSON persistence and immediate effect — v4.2
+- ✓ Dashboard mode toggle with manual Online/Air-Gap override — v4.2
+- ✓ Operation progress bar, step tracking, success/failure banners — v4.2
+- ✓ Real-time dialog validation (Install, Transfer, Schedule) — v4.2
+- ✓ WinRM client management: cancel stuck jobs, force check-in, test connectivity, diagnostics — v4.2
+- ✓ Error code lookup (20 common WSUS/WU codes) — v4.2
+- ✓ Mass GPUpdate across multiple hosts — v4.2
+- ✓ Script Generator producing self-contained PowerShell fallback scripts — v4.2
+- ✓ 336 xUnit tests passing — v4.2
+
+- ✓ Theme infrastructure with runtime color-scheme swapping — v4.3
+- ✓ 6 built-in dark-family themes (Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue) — v4.3
+- ✓ Theme picker UI in Settings with live preview swatches — v4.3
+- ✓ Cancel-to-revert behavior and JSON persistence for theme selection — v4.3
+- ✓ WCAG 2.1 AA compliant color contrast across all themes — v4.3
+- ✓ 336 xUnit tests passing — v4.3
+
 ### Active
 
-## Current Milestone: v4.3 Themes
-
-**Goal:** Add a built-in theming system with 6 color schemes (current dark default + 5 Chrome-inspired themes) and a live-preview theme picker in Settings.
-
-**Target features:**
-- Theming infrastructure using WPF dynamic resource dictionaries
-- 6 built-in color themes: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
-- Theme picker section in Settings dialog with live preview
-- Immediate theme application with JSON persistence
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -64,12 +90,13 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.2 shipped 2026-02-21
-- **Codebase:** ~21,000 LOC C# across 97 .cs + 8 .xaml files
+- **Version:** v4.3 shipped 2026-02-21
+- **Codebase:** ~7,662 LOC C#/XAML
 - **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
 - **Tests:** 336 xUnit tests
 - **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
+- **Themes:** 6 built-in dark-family themes with runtime switching
 
 ### Technical Environment
 - Windows Server 2019/2022 with WSUS role installed
@@ -108,4 +135,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-20 after v4.3 milestone started*
+*Last updated: 2026-02-21 after v4.3 milestone*
