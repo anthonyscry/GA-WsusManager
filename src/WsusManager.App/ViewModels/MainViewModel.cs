@@ -841,10 +841,23 @@ public partial class MainViewModel : ObservableObject
     private string _errorCodeResult = string.Empty;
 
     /// <summary>
+    /// Hostnames for mass GPUpdate. Can be comma, semicolon, or newline separated.
+    /// Bound to the multi-line TextBox in the Mass Operations card.
+    /// </summary>
+    [ObservableProperty]
+    private string _massHostnames = string.Empty;
+
+    /// <summary>
     /// CanExecute helper for remote client operations — requires a hostname and no operation running.
     /// </summary>
     private bool CanExecuteClientOperation() =>
         !IsOperationRunning && !string.IsNullOrWhiteSpace(ClientHostname);
+
+    /// <summary>
+    /// CanExecute helper for mass operations — requires hostnames entered and no operation running.
+    /// </summary>
+    private bool CanExecuteMassOperation() =>
+        !IsOperationRunning && !string.IsNullOrWhiteSpace(MassHostnames);
 
     /// <summary>
     /// Called automatically by CommunityToolkit.Mvvm when ClientHostname changes.
@@ -856,6 +869,15 @@ public partial class MainViewModel : ObservableObject
         RunClientForceCheckInCommand.NotifyCanExecuteChanged();
         RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
         RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Called automatically by CommunityToolkit.Mvvm when MassHostnames changes.
+    /// Re-evaluates CanExecute for RunMassGpUpdateCommand.
+    /// </summary>
+    partial void OnMassHostnamesChanged(string value)
+    {
+        RunMassGpUpdateCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteClientOperation))]
@@ -907,6 +929,60 @@ public partial class MainViewModel : ObservableObject
         {
             var result = await _clientService.RunDiagnosticsAsync(
                 ClientHostname.Trim(), progress, ct);
+            return result.Success;
+        });
+    }
+
+    /// <summary>
+    /// Opens a file picker and loads hostnames from a text file (one per line) into
+    /// the MassHostnames property. Always available — no CanExecute restriction.
+    /// </summary>
+    [RelayCommand]
+    private void LoadHostFile()
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Load Hostnames from File",
+                Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+                DefaultExt = ".txt"
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            var lines = File.ReadAllLines(dialog.FileName);
+            MassHostnames = string.Join(Environment.NewLine, lines);
+
+            var count = lines.Count(l => !string.IsNullOrWhiteSpace(l));
+            var filename = System.IO.Path.GetFileName(dialog.FileName);
+            AppendLog($"Loaded {count} hostname(s) from {filename}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[ERROR] Failed to load host file: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Parses MassHostnames and runs ForceCheckIn on each host sequentially
+    /// via MassForceCheckInAsync.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanExecuteMassOperation))]
+    private async Task RunMassGpUpdate()
+    {
+        // Parse hostnames: split on commas, semicolons, and newlines
+        var hostnames = MassHostnames
+            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(h => h.Trim())
+            .Where(h => !string.IsNullOrWhiteSpace(h))
+            .ToList();
+
+        Navigate("ClientTools");
+
+        await RunOperationAsync("Mass GPUpdate", async (progress, ct) =>
+        {
+            var result = await _clientService.MassForceCheckInAsync(hostnames, progress, ct);
             return result.Success;
         });
     }
@@ -1072,6 +1148,8 @@ public partial class MainViewModel : ObservableObject
         RunClientForceCheckInCommand.NotifyCanExecuteChanged();
         RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
         RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
+        // Phase 15: Mass Operations
+        RunMassGpUpdateCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
