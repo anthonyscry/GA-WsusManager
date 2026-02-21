@@ -1,0 +1,21 @@
+<Project>
+  <!-- Configure specific analyzer rules for Phase 19: Static Analysis & Code Quality -->
+
+  <!-- Microsoft.CodeAnalysis.NetAnalyzers version pin -->
+  <ItemGroup>
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Elevated to error after cleanup (Phase 19 Step 4) -->
+  <PropertyGroup>
+    <!-- Async/await critical rules (elevate to error in Step 4) -->
+    <WarningsAsErrors>CA2007</WarningsAsErrors>
+
+    <!-- Null check critical rules (elevate to error after fixes) -->
+    <!-- CA1062: Validate arguments of public methods -->
+    <!-- CA1060: Move pinvokes to NativeMethods class -->
+  </PropertyGroup>
+</Project>

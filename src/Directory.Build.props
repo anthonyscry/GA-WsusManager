@@ -13,6 +13,25 @@
     <Authors>Tony Tran</Authors>
   </PropertyGroup>
 
+  <!-- Static Analysis Configuration (Phase 19) -->
+  <PropertyGroup>
+    <!-- Enable .NET SDK built-in analyzers -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- Style rule severity -->
+    <DotNetSortSystemDirectivesFirst>true</DotNetSortSystemDirectivesFirst>
+
+    <!-- Naming convention severity -->
+    <NamingRuleSeverity>Warning</NamingRuleSeverity>
+
+    <!-- XML documentation for Phase 20 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>  <!-- Missing XML comments - enforce in Phase 20 -->
+  </PropertyGroup>
+
   <!-- Code Coverage Quality Gates -->
   <PropertyGroup>
     <CollectCoverage>true</CollectCoverage>
@@ -20,4 +39,22 @@
     <ThresholdType>branch</ThresholdType>
     <ThresholdStat>minimum</ThresholdStat>
   </PropertyGroup>
+
+  <!-- Roslyn Analyzer Packages (Phase 19) -->
+  <ItemGroup>
+    <!-- Roslynator: Refactoring suggestions and additional rules -->
+    <PackageReference Include="Roslynator.Analyzers" Version="4.12.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
+    <!-- Meziantou.Analyzer: Security and best practices -->
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.1">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
+    <!-- StyleCop.Analyzers: Style and naming conventions -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>
