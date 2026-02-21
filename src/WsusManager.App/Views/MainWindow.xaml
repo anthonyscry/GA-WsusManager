@@ -193,6 +193,12 @@
                     <!-- Connection Status Indicator -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal"
                                 VerticalAlignment="Center">
+                        <!-- Loading Spinner (shown during operations - Phase 27) -->
+                        <ProgressBar Width="16" Height="16"
+                                     IsIndeterminate="True"
+                                     Visibility="{Binding ProgressBarVisibility}"
+                                     Margin="0,0,8,0"
+                                     VerticalAlignment="Center"/>
                         <Ellipse Width="8" Height="8"
                                  Fill="{Binding ConnectionDotColor}"
                                  Margin="0,0,6,0"/>
