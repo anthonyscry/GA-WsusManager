@@ -18,7 +18,7 @@ Requirements for v4.5 Enhancement Suite milestone. Each maps to roadmap phases.
 ### UX Polish
 
 - [x] **UX-01**: All operations have keyboard shortcuts (F1=Help, F5=Refresh, Ctrl+S=Settings, Ctrl+Q=Quit)
-- [ ] **UX-02**: Navigation supports arrow keys and Tab for keyboard-only operation
+- [x] **UX-02**: Navigation supports arrow keys and Tab for keyboard-only operation
 - [ ] **UX-03**: All interactive elements have AutomationId for UI automation testing
 - [ ] **UX-04**: Application passes WCAG 2.1 AA contrast verification for all themes
 - [ ] **UX-05**: Dialog windows center on owner window or screen if no owner
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-11 | Phase 25 | Complete |
 | PERF-12 | Phase 25 | Complete |
 | UX-01 | Phase 26 | Complete |
-| UX-02 | Phase 26 | Pending |
+| UX-02 | Phase 26 | Complete |
 | UX-03 | Phase 26 | Pending |
 | UX-04 | Phase 26 | Pending |
 | UX-05 | Phase 26 | Pending |
