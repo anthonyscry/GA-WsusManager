@@ -74,6 +74,25 @@
                     </Button.Style>
                 </Button>
 
+                <!-- CLIENT TOOLS Category -->
+                <TextBlock DockPanel.Dock="Top" Text="CLIENT TOOLS" Style="{StaticResource CategoryLabel}"/>
+                <Button DockPanel.Dock="Top" Content="Client Tools"
+                        x:Name="BtnClientTools"
+                        Command="{Binding NavigateCommand}" CommandParameter="ClientTools">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentPanel}" Value="ClientTools">
+                                    <Setter Property="Background" Value="#21262D"/>
+                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <!-- DATABASE Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DATABASE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Database"
@@ -517,6 +536,108 @@
                                             Padding="16,8" HorizontalAlignment="Left"
                                             Command="{Binding RestoreDatabaseCommand}"
                                             IsEnabled="{Binding IsWsusInstalled}"/>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Client Tools Panel -->
+                <Border x:Name="ClientToolsPanel"
+                        Visibility="{Binding IsClientToolsPanelVisible}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                        <StackPanel>
+
+                            <!-- Target Host -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Target Host" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Enter the hostname of the client machine to manage. Operations use WinRM (Windows Remote Management)."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Hostname:"
+                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClientHostname, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="{StaticResource BgInput}"
+                                                 Foreground="{StaticResource Text1}"
+                                                 BorderBrush="{StaticResource Border}"
+                                                 Padding="8,6" FontSize="13"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Remote Operations -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Remote Operations" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                                    <WrapPanel>
+                                        <Button Content="Cancel Stuck Jobs" Style="{StaticResource BtnSec}"
+                                                Padding="16,8" Margin="0,0,8,8"
+                                                Command="{Binding RunClientCancelStuckJobsCommand}"
+                                                ToolTip="Stop WU services, clear cache, restart — fixes stuck update jobs"/>
+                                        <Button Content="Force Check-In" Style="{StaticResource BtnSec}"
+                                                Padding="16,8" Margin="0,0,8,8"
+                                                Command="{Binding RunClientForceCheckInCommand}"
+                                                ToolTip="Run gpupdate, resetauthorization, detectnow, reportnow"/>
+                                        <Button Content="Test Connectivity" Style="{StaticResource BtnSec}"
+                                                Padding="16,8" Margin="0,0,8,8"
+                                                Command="{Binding RunClientTestConnectivityCommand}"
+                                                ToolTip="Test TCP connection from client to WSUS server on ports 8530/8531"/>
+                                        <Button Content="Run Diagnostics" Style="{StaticResource BtnGreen}"
+                                                Padding="16,8" Margin="0,0,8,8"
+                                                Command="{Binding RunClientDiagnosticsCommand}"
+                                                ToolTip="Gather WSUS settings, service status, last check-in, reboot state"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Error Code Lookup -->
+                            <Border Background="{StaticResource BgCard}" CornerRadius="6"
+                                    Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Error Code Lookup" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Enter a WSUS or Windows Update error code (e.g., 0x80072EE2) to see its description and recommended fix."
+                                               Foreground="{StaticResource Text2}" FontSize="12"
+                                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="200"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Error Code:"
+                                                   Foreground="{StaticResource Text2}" FontSize="13"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ErrorCodeInput, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="{StaticResource BgInput}"
+                                                 Foreground="{StaticResource Text1}"
+                                                 BorderBrush="{StaticResource Border}"
+                                                 Padding="8,6" FontSize="13"/>
+                                        <Button Grid.Column="2" Content="Lookup" Style="{StaticResource BtnSec}"
+                                                Padding="16,6" Margin="8,0,0,0"
+                                                Command="{Binding LookupErrorCodeCommand}"/>
+                                    </Grid>
+                                    <TextBox Text="{Binding ErrorCodeResult, Mode=OneWay}"
+                                             Background="{StaticResource BgDark}"
+                                             Foreground="{StaticResource Text1}"
+                                             BorderThickness="0"
+                                             FontFamily="Consolas" FontSize="12"
+                                             IsReadOnly="True" TextWrapping="Wrap"
+                                             Padding="8" MinHeight="60"/>
                                 </StackPanel>
                             </Border>
 
