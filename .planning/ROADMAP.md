@@ -99,7 +99,7 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 | 19. Static Analysis & Code Quality | 5/5 | Complete   | 2026-02-21 | - |
 | 20. XML Documentation & API Reference | v4.4 | 0/2 | Not started | - |
 | 21. Code Refactoring & Async Audit | v4.4 | 0/2 | Not started | - |
-| 22. Performance Benchmarking | v4.4 | 0/3 | Not started | - |
+| 22. Performance Benchmarking | v4.4 | 3/3 | Ready      | - |
 | 23. Memory Leak Detection | v4.4 | 0/1 | Not started | - |
 | 24. Documentation Generation | v4.4 | 0/4 | Not started | - |
 
@@ -208,7 +208,12 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 4. WinRM operations have baseline performance metrics
 5. Performance regressions are detected before release
 
-**Plans:** TBD
+**Plans:** 3/3 plans ready
+
+**Plan List:**
+- [x] 22-01-PLAN.md — Benchmark infrastructure project (BenchmarkDotNet, startup benchmarks, baseline capture)
+- [x] 22-02-PLAN.md — Database operations benchmarking (queries, connections, mock benchmarks for CI)
+- [x] 22-03-PLAN.md — WinRM benchmarks and CI/CD integration (manual trigger, regression detection, 10% threshold)
 
 ---
 
