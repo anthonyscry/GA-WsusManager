@@ -44,9 +44,18 @@ degrades more than 10% from baseline, the build fails.
 - Status: Requires Windows execution for accurate measurements
 
 ### Database (Plan 22-02)
+
+**Mock Benchmarks (CI-compatible):**
+- LinqProjectionAndFiltering: 3.581 us mean (baseline 2026-02-21)
+- InMemoryDataProcessing: TBD
+- StringProcessing: TBD
+
+**Real Database Operations (requires WSUS):**
 - Simple query: <10ms (target)
 - Connection overhead: <50ms (target)
 - Status: Requires SQL Server for accurate measurements
+
+**Note:** Due to net8.0-windows target framework compatibility issues with BenchmarkDotNet, full benchmarks must be run on Windows with SQL Server installed.
 
 ### WinRM (Plan 22-03)
 - Connectivity check: <2s (target)
