@@ -707,6 +707,20 @@
                     </ScrollViewer>
                 </Border>
 
+                <!-- ═══════════════════════════════════════════════════════
+                     PHASE 29: Data Filtering - Add virtualized lists here
+
+                     Example pattern for large computer/update lists (2000+ items):
+                     <ListBox VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ItemsSource="{Binding FilteredComputers}"
+                              ItemTemplate="{StaticResource ComputerItemTemplate}"
+                              Style="{StaticResource VirtualizedListBox}" />
+
+                     Use styles from SharedStyles.xaml: VirtualizedListBox, VirtualizedListView
+                     Data models: ComputerInfo, UpdateInfo (defined in MainViewModel.cs)
+                ═══════════════════════════════════════════════════════ -->
+
                 <!-- Generic Operation Panel (placeholder for other panels) -->
                 <Border x:Name="OperationPanel"
                         Visibility="{Binding IsOperationPanelVisible}">
