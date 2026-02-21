@@ -95,11 +95,11 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 16. Theme Infrastructure | v4.3 | 1/1 | Complete | 2026-02-21 |
 | 17. Theme Content and Picker | v4.3 | 1/1 | Complete | 2026-02-21 |
-| 18. Test Coverage & Reporting | 3/3 | Complete    | 2026-02-21 | - |
-| 19. Static Analysis & Code Quality | 5/5 | Complete   | 2026-02-21 | - |
+| 18. Test Coverage & Reporting | v4.4 | 3/3 | Complete    | 2026-02-21 |
+| 19. Static Analysis & Code Quality | v4.4 | 5/5 | Complete   | 2026-02-21 |
 | 20. XML Documentation & API Reference | v4.4 | 0/2 | Not started | - |
 | 21. Code Refactoring & Async Audit | v4.4 | 0/2 | Not started | - |
-| 22. Performance Benchmarking | v4.4 | 3/3 | Ready      | - |
+| 22. Performance Benchmarking | v4.4 | 1/3 | In Progress | 2026-02-21 |
 | 23. Memory Leak Detection | v4.4 | 0/1 | Not started | - |
 | 24. Documentation Generation | v4.4 | 0/4 | Not started | - |
 
@@ -212,8 +212,8 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 
 **Plan List:**
 - [x] 22-01-PLAN.md — Benchmark infrastructure project (BenchmarkDotNet, startup benchmarks, baseline capture)
-- [x] 22-02-PLAN.md — Database operations benchmarking (queries, connections, mock benchmarks for CI)
-- [x] 22-03-PLAN.md — WinRM benchmarks and CI/CD integration (manual trigger, regression detection, 10% threshold)
+- [ ] 22-02-PLAN.md — Database operations benchmarking (queries, connections, mock benchmarks for CI)
+- [ ] 22-03-PLAN.md — WinRM benchmarks and CI/CD integration (manual trigger, regression detection, 10% threshold)
 
 ---
 
