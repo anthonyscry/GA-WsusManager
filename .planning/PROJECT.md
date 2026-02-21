@@ -37,33 +37,6 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ Script Generator producing self-contained PowerShell fallback scripts — v4.2
 - ✓ 336 xUnit tests passing — v4.2
 
-### Validated
-
-- ✓ Single-file EXE distribution (no Scripts/Modules folders) — v4.0
-- ✓ Sub-second application startup — v4.0
-- ✓ Native async operations (no threading hacks) — v4.0
-- ✓ Modernized dark theme UI — v4.0
-- ✓ Type-safe compiled code — v4.0
-- ✓ All PowerShell module functionality ported — v4.0
-- ✓ 257 xUnit tests covering all services and ViewModel logic — v4.0
-- ✓ 62 v1 requirements implemented and verified — v4.0
-
-- ✓ .NET 8 SDK compatibility (retarget from .NET 9) — v4.1
-- ✓ App launches and UI renders correctly with active nav highlighting — v4.1
-- ✓ 5 critical operation bugs fixed (sync, cleanup, health check) — v4.1
-- ✓ Button CanExecute refresh for proper visual disabling — v4.1
-- ✓ 263 xUnit tests passing — v4.1
-
-- ✓ Editable settings dialog with JSON persistence and immediate effect — v4.2
-- ✓ Dashboard mode toggle with manual Online/Air-Gap override — v4.2
-- ✓ Operation progress bar, step tracking, success/failure banners — v4.2
-- ✓ Real-time dialog validation (Install, Transfer, Schedule) — v4.2
-- ✓ WinRM client management: cancel stuck jobs, force check-in, test connectivity, diagnostics — v4.2
-- ✓ Error code lookup (20 common WSUS/WU codes) — v4.2
-- ✓ Mass GPUpdate across multiple hosts — v4.2
-- ✓ Script Generator producing self-contained PowerShell fallback scripts — v4.2
-- ✓ 336 xUnit tests passing — v4.2
-
 - ✓ Theme infrastructure with runtime color-scheme swapping — v4.3
 - ✓ 6 built-in dark-family themes (Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue) — v4.3
 - ✓ Theme picker UI in Settings with live preview swatches — v4.3
@@ -73,7 +46,26 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 
 ### Active
 
-(None — planning next milestone)
+**Current Milestone: v4.4 Quality & Polish**
+
+**Goal:** Comprehensive quality improvements across testing, code quality, performance, and documentation
+
+**Target features:**
+- Integration tests for end-to-end workflows
+- Increased unit test coverage with edge case handling
+- UI automation tests for critical user paths
+- Static analysis with Roslyn analyzers and warning fixes
+- Code refactoring to reduce complexity and duplication
+- Complete XML documentation comments
+- Async/disposal pattern audit and fixes
+- Startup time optimization and benchmarking
+- Memory leak detection and resolution
+- Database and WinRM operation speed improvements
+- UI responsiveness enhancements
+- Updated user documentation (README, getting started)
+- Developer documentation (architecture, design decisions)
+- API documentation (XML docs)
+- CI/CD pipeline documentation
 
 ### Out of Scope
 
@@ -90,8 +82,8 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.3 shipped 2026-02-21
-- **Codebase:** ~7,662 LOC C#/XAML
+- **Version:** v4.4 (planning)
+- **Codebase:** ~21,000 LOC C#/XAML across 97 .cs files + 8 .xaml files
 - **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq
 - **Tests:** 336 xUnit tests
 - **CI/CD:** GitHub Actions `build-csharp.yml` — build, test, publish, release
@@ -135,4 +127,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-21 after v4.3 milestone*
+*Last updated: 2026-02-21 after v4.4 milestone kickoff*
