@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -337,6 +338,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _operationCts?.Dispose();
             _operationCts = null;
 
+            // Ensure final batch is displayed
+            FlushLogBatch();
+
             // Notify all operation commands to re-evaluate CanExecute (re-enables buttons after operation)
             NotifyCommandCanExecuteChanged();
         }
@@ -344,11 +348,66 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// Appends a line to the log output panel using StringBuilder to prevent
-    /// unbounded string growth. Trims to last 1000 lines when exceeding 100KB.
+    /// unbounded string growth. Uses batching to reduce PropertyChanged notifications.
+    /// Lines are queued and flushed in batches of 50 or every 100ms.
     /// </summary>
     public void AppendLog(string line)
     {
-        _logBuilder.AppendLine(line);
+        // Add to batch queue
+        lock (_logBatchQueue)
+        {
+            _logBatchQueue.Enqueue(line);
+
+            // If batch size reached, flush immediately
+            if (_logBatchQueue.Count >= LogBatchSize)
+            {
+                FlushLogBatch();
+            }
+            else if (_logBatchTimer == null)
+            {
+                // Start timer on first queued item
+                StartLogBatchTimer();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Starts the batch timer that flushes queued log lines at a fixed interval.
+    /// </summary>
+    private void StartLogBatchTimer()
+    {
+        _logBatchTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(LogBatchIntervalMs)
+        };
+        _logBatchTimer.Tick += (s, e) =>
+        {
+            FlushLogBatch();
+            _logBatchTimer?.Stop();
+        };
+        _logBatchTimer.Start();
+        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => { }));
+    }
+
+    /// <summary>
+    /// Flushes queued log lines to the StringBuilder and updates the UI.
+    /// Trims to last 1000 lines when exceeding 100KB to prevent unbounded growth.
+    /// </summary>
+    private void FlushLogBatch()
+    {
+        string[] batch;
+        lock (_logBatchQueue)
+        {
+            if (_logBatchQueue.Count == 0) return;
+            batch = _logBatchQueue.ToArray();
+            _logBatchQueue.Clear();
+        }
+
+        // Add all lines to StringBuilder
+        foreach (var line in batch)
+        {
+            _logBuilder.AppendLine(line);
+        }
 
         // Trim to last 1000 lines to prevent unbounded growth (~100KB limit)
         if (_logBuilder.Length > 100_000)
@@ -366,6 +425,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             }
         }
 
+        // Single UI update for entire batch
         LogOutput = _logBuilder.ToString();
     }
 
