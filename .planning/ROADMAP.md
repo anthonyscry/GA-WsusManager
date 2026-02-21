@@ -50,7 +50,11 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
   2. After saving, changed settings write to settings.json and take effect immediately without restarting the application
   3. Admin clicks the Air-Gap/Online toggle on the dashboard and the mode switches instantly
   4. Manual mode override bypasses network detection — the app stays in the manually chosen mode across dashboard refreshes
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Editable Settings dialog (SET-01, SET-02)
+- [ ] 12-02-PLAN.md — Dashboard mode toggle with override logic (SET-03, SET-04)
 
 ### Phase 13: Operation Feedback & Dialog Polish
 **Goal**: Every operation gives clear visual feedback during execution and completion, and every dialog validates inputs before the user can proceed
@@ -102,7 +106,7 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 | 9. Launch and UI Verification | v4.1 | 1/1 | Complete | 2026-02-20 |
 | 10. Core Operations | v4.1 | 1/1 | Complete | 2026-02-20 |
 | 11. Stability Hardening | v4.1 | 1/1 | Complete | 2026-02-20 |
-| 12. Settings & Mode Override | v4.2 | 0/TBD | Not started | - |
+| 12. Settings & Mode Override | v4.2 | 0/2 | Not started | - |
 | 13. Operation Feedback & Dialog Polish | v4.2 | 0/TBD | Not started | - |
 | 14. Client Management Core | v4.2 | 0/TBD | Not started | - |
 | 15. Client Management Advanced | v4.2 | 0/TBD | Not started | - |
