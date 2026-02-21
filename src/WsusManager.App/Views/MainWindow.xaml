@@ -157,6 +157,10 @@
                                  Margin="0,0,6,0"/>
                         <TextBlock Text="{Binding ConnectionStatusText}"
                                    Foreground="{StaticResource Text2}" FontSize="12"/>
+                        <TextBlock Text="{Binding ModeOverrideIndicator}"
+                                   Foreground="{StaticResource Text3}" FontSize="11"
+                                   Margin="4,0,0,0"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -261,6 +265,12 @@
                                         <Button Content="Start Services" Style="{StaticResource QuickActionBtn}"
                                                 x:Name="QBtnStartServices" Margin="0,0,8,8"
                                                 Command="{Binding QuickStartServicesCommand}"/>
+                                        <Button x:Name="QBtnToggleMode"
+                                                Style="{StaticResource QuickActionBtn}"
+                                                Content="{Binding ToggleModeText}"
+                                                Margin="0,0,8,8"
+                                                Command="{Binding ToggleModeCommand}"
+                                                ToolTip="Manually override Online/Air-Gap mode. Bypasses automatic network detection."/>
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>
@@ -300,8 +310,13 @@
 
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Server Mode"
                                                    Foreground="{StaticResource Text2}" FontSize="12"/>
-                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ServerModeText}"
-                                                   Foreground="{StaticResource Text1}" FontSize="12"/>
+                                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                            <TextBlock Text="{Binding ServerModeText}"
+                                                       Foreground="{StaticResource Text1}" FontSize="12"/>
+                                            <TextBlock Text="{Binding ModeOverrideIndicator}"
+                                                       Foreground="{StaticResource Text3}" FontSize="11"
+                                                       Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
                             </Border>
