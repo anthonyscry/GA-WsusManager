@@ -9,9 +9,9 @@ Requirements for bug fix and polish release. Each maps to roadmap phases.
 
 ### Compatibility
 
-- [ ] **COMPAT-01**: App builds and runs with .NET 8 SDK
-- [ ] **COMPAT-02**: CI/CD pipeline builds with .NET 8 targeting
-- [ ] **COMPAT-03**: Published single-file EXE works on Windows Server 2019+
+- [x] **COMPAT-01**: App builds and runs with .NET 8 SDK
+- [x] **COMPAT-02**: CI/CD pipeline builds with .NET 8 targeting
+- [x] **COMPAT-03**: Published single-file EXE works on Windows Server 2019+
 
 ### UI Verification
 
@@ -53,9 +53,9 @@ None — v4.1 is focused on making v4.0 work correctly.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMPAT-01 | Phase 8 | Pending |
-| COMPAT-02 | Phase 8 | Pending |
-| COMPAT-03 | Phase 8 | Pending |
+| COMPAT-01 | Phase 8 | Complete |
+| COMPAT-02 | Phase 8 | Complete |
+| COMPAT-03 | Phase 8 | Complete |
 | UI-01 | Phase 9 | Pending |
 | UI-02 | Phase 9 | Pending |
 | UI-03 | Phase 9 | Pending |
