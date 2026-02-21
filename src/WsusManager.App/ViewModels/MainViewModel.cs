@@ -428,17 +428,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (success)
             {
                 StatusMessage = $"{operationName} completed successfully.";
-                StatusBannerText = $"{operationName} completed successfully.";
+                StatusBannerText = $"✓ {operationName} completed successfully.";
                 StatusBannerColor = GetThemeBrush("StatusSuccess", Color.FromRgb(0x3F, 0xB9, 0x50));
-                AppendLog($"=== {operationName} completed ===");
+                AppendLog($"=== ✓ {operationName} completed ===");
                 _logService.Info("Operation completed: {Operation}", operationName);
             }
             else
             {
                 StatusMessage = $"{operationName} failed.";
-                StatusBannerText = $"{operationName} failed.";
+                StatusBannerText = $"✗ {operationName} failed.";
                 StatusBannerColor = GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
-                AppendLog($"=== {operationName} FAILED ===");
+                AppendLog($"=== ✗ {operationName} FAILED ===");
                 _logService.Warning("Operation failed: {Operation}", operationName);
             }
 
@@ -447,19 +447,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException)
         {
             StatusMessage = $"{operationName} cancelled.";
-            StatusBannerText = $"{operationName} cancelled.";
+            StatusBannerText = $"⚠ {operationName} cancelled.";
             StatusBannerColor = GetThemeBrush("StatusWarning", Color.FromRgb(0xD2, 0x99, 0x22));
-            AppendLog($"=== {operationName} CANCELLED ===");
+            AppendLog($"=== ⚠ {operationName} CANCELLED ===");
             _logService.Info("Operation cancelled: {Operation}", operationName);
             return false;
         }
         catch (Exception ex)
         {
             StatusMessage = $"{operationName} failed with error.";
-            StatusBannerText = $"{operationName} failed.";
+            StatusBannerText = $"✗ {operationName} failed.";
             StatusBannerColor = GetThemeBrush("StatusError", Color.FromRgb(0xF8, 0x51, 0x49));
             AppendLog($"[ERROR] {ex.Message}");
-            AppendLog($"=== {operationName} FAILED ===");
+            AppendLog($"=== ✗ {operationName} FAILED ===");
             _logService.Error(ex, "Operation error: {Operation}", operationName);
             return false;
         }
