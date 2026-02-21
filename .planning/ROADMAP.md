@@ -126,7 +126,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 22. Performance Benchmarking | v4.4 | 3/3 | Complete | 2026-02-21 |
 | 23. Memory Leak Detection | v4.4 | 1/1 | Complete | 2026-02-21 |
 | 24. Documentation Generation | v4.4 | 6/6 | Complete | 2026-02-21 |
-| 25. Performance Optimization | v4.5 | 0/5 | Not started | - |
+| 25. Performance Optimization | v4.5 | 1/5 | In progress | 2026-02-21 |
 | 26. Keyboard & Accessibility | v4.5 | 0/4 | Not started | - |
 | 27. Visual Feedback Polish | v4.5 | 0/4 | Not started | - |
 | 28. Settings Expansion | v4.5 | 0/4 | Not started | - |
@@ -136,7 +136,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 
 ---
 
-**Total:** 31 phases, 93 plans — 62 complete, 31 pending
+**Total:** 31 phases, 93 plans — 63 complete, 30 pending
 
 ## v4.5 Phase Details
 
@@ -159,7 +159,7 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 - [ ] 25-01-PLAN.md — Parallelize initialization for faster startup (PERF-08)
 - [ ] 25-02-PLAN.md — Batch log panel updates to reduce UI overhead (PERF-11)
 - [ ] 25-03-PLAN.md — Lazy load update metadata (PERF-10)
-- [ ] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12)
+- [x] 25-04-PLAN.md — Pre-load themes for instant switching (PERF-12) ✅
 - [ ] 25-05-PLAN.md — Enable list virtualization for large datasets (PERF-09)
 
 ---
