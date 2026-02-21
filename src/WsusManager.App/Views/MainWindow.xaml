@@ -202,6 +202,11 @@
                                    Foreground="{DynamicResource TextMuted}" FontSize="11"
                                    Margin="4,0,0,0"
                                    VerticalAlignment="Center"/>
+                        <!-- Estimated Time Remaining (Phase 27) -->
+                        <TextBlock Text="{Binding EstimatedTimeRemaining}"
+                                   Foreground="{DynamicResource TextMuted}" FontSize="11"
+                                   Margin="12,0,0,0"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Grid>
             </Border>

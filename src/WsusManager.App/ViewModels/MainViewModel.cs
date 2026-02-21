@@ -41,6 +41,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IClientService _clientService;
     private readonly IScriptGeneratorService _scriptGeneratorService;
     private readonly IThemeService _themeService;
+    private readonly IBenchmarkTimingService _benchmarkTimingService;
     private readonly StringBuilder _logBuilder = new();
     private readonly Queue<string> _logBatchQueue = new();
     private DispatcherTimer? _logBatchTimer;
@@ -70,6 +71,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
         return new SolidColorBrush(fallback);
     }
 
+    /// <summary>
+    /// Formats a TimeSpan into a human-readable string for time estimates.
+    /// Returns "2m 15s" format for durations >= 1 minute.
+    /// Returns "45s" format for durations less than 1 minute.
+    /// Returns "10s" format for durations less than 10 seconds.
+    /// </summary>
+    private static string FormatTimeSpan(TimeSpan ts)
+    {
+        if (ts.TotalMinutes >= 1)
+        {
+            var minutes = (int)ts.TotalMinutes;
+            var seconds = ts.Seconds;
+            return seconds > 0 ? $"{minutes}m {seconds}s" : $"{minutes}m";
+        }
+        return $"{(int)ts.TotalSeconds}s";
+    }
+
     public MainViewModel(
         ILogService logService,
         ISettingsService settingsService,
@@ -87,7 +105,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IGpoDeploymentService gpoDeploymentService,
         IClientService clientService,
         IScriptGeneratorService scriptGeneratorService,
-        IThemeService themeService)
+        IThemeService themeService,
+        IBenchmarkTimingService benchmarkTimingService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -106,6 +125,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _clientService = clientService;
         _scriptGeneratorService = scriptGeneratorService;
         _themeService = themeService;
+        _benchmarkTimingService = benchmarkTimingService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -279,6 +299,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _operationStepText = string.Empty;
 
     /// <summary>
+    /// Estimated time remaining for the current operation. Displays format like "Est. 2m 15s remaining"
+    /// or "Working..." when no benchmark data is available. Empty when no operation is running.
+    /// Updated at operation start and after each progress step.
+    /// </summary>
+    [ObservableProperty]
+    private string _estimatedTimeRemaining = string.Empty;
+
+    /// <summary>
     /// Text shown in the colored result banner after an operation completes.
     /// Set to "{operationName} completed successfully.", "{operationName} failed.", or "{operationName} cancelled."
     /// Cleared when the next operation starts.
@@ -346,6 +374,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // Clear previous banner and step text when new operation starts
         StatusBannerText = string.Empty;
         OperationStepText = string.Empty;
+        EstimatedTimeRemaining = string.Empty;
+
+        // Look up estimated time from benchmark data
+        TimeSpan estimatedDuration;
+        if (_benchmarkTimingService.TryGetAverageDuration(operationName, out estimatedDuration))
+        {
+            EstimatedTimeRemaining = $"Est. {FormatTimeSpan(estimatedDuration)} remaining";
+        }
+        else
+        {
+            EstimatedTimeRemaining = "Working...";
+        }
 
         // Notify all operation commands to re-evaluate CanExecute (disables buttons during operation)
         NotifyCommandCanExecuteChanged();
@@ -362,7 +402,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             // Parse "[Step N/M]" prefix to update step text in the log header
             if (line.StartsWith("[Step ", StringComparison.OrdinalIgnoreCase))
+            {
                 OperationStepText = line;
+
+                // Recalculate remaining time based on progress
+                var match = System.Text.RegularExpressions.Regex.Match(line, @"\[Step (\d+)/(\d+)\]");
+                if (match.Success && _benchmarkTimingService.TryGetAverageDuration(operationName, out var estimatedDuration))
+                {
+                    if (int.TryParse(match.Groups[1].Value, out int currentStep) &&
+                        int.TryParse(match.Groups[2].Value, out int totalSteps) &&
+                        totalSteps > 0)
+                    {
+                        var remainingFraction = 1.0 - ((double)currentStep / totalSteps);
+                        var remaining = estimatedDuration * remainingFraction;
+                        EstimatedTimeRemaining = $"Est. {FormatTimeSpan(remaining)} remaining";
+                    }
+                }
+            }
         });
 
         try
@@ -412,6 +468,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             IsOperationRunning = false;
             CurrentOperationName = string.Empty;
             OperationStepText = string.Empty;
+            EstimatedTimeRemaining = string.Empty;
             _operationCts?.Dispose();
             _operationCts = null;
 
