@@ -101,7 +101,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Mass GPUpdate across multiple hosts (CLI-03)
+- [x] 15-01-PLAN.md — Mass GPUpdate across multiple hosts (CLI-03)
 - [ ] 15-02-PLAN.md — Script Generator fallback for WinRM-unavailable hosts (CLI-08)
 
 ## Progress

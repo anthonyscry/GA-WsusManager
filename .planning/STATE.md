@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** Phase 14 — Client Management Core (v4.2)
+**Current focus:** Phase 15 — Client Management Advanced (v4.2)
 
 ## Current Position
 
-Phase: 14 of 15 (Client Management Core)
-Plan: 3 of 3 in current phase — PHASE COMPLETE
-Status: Phase 14 complete — all 3 plans done (WinRmExecutor, ClientService, GUI wiring)
-Last activity: 2026-02-21 — Phase 14 plan 03 complete (Client Tools GUI panel + DI wiring)
+Phase: 15 of 15 (Client Management Advanced)
+Plan: 1 of 2 in current phase — plan 01 complete
+Status: Phase 15 in progress — plan 01 done (Mass GPUpdate batch operations)
+Last activity: 2026-02-21 — Phase 15 plan 01 complete (MassForceCheckInAsync + Mass Operations UI card)
 
-Progress: [████████████░░░░░░░░] 68% (14/18 phases in progress)
+Progress: [████████████████░░░░] 72% (15/18 phases in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34
+- Total plans completed: 35
 - Average duration: ~15 min
-- Total execution time: ~8.5 hours
+- Total execution time: ~8.6 hours
 
 **By Phase:**
 
@@ -29,7 +29,7 @@ Progress: [████████████░░░░░░░░] 68% (14
 |-------|-------|----------|
 | v4.0 (1-7) | 32 | ~14 min |
 | v4.1 (8-11) | 4 | ~18 min |
-| v4.2 (12-15) | 2 | ~5 min |
+| v4.2 (12-15) | 3 | ~4 min |
 
 **Recent Trend:**
 - Last 4 plans (v4.1): stable
@@ -40,6 +40,7 @@ Progress: [████████████░░░░░░░░] 68% (14
 | Phase 14-client-management-core P01 | 3 | 2 tasks | 4 files |
 | Phase 14-client-management-core P02 | 3 | 2 tasks | 2 files |
 | Phase 14-client-management-core P03 | 2 | 2 tasks | 3 files |
+| Phase 15-client-management-advanced P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,11 @@ Progress: [████████████░░░░░░░░] 68% (14
 - [Phase 14-client-management-core]: KEY=VALUE;KEY=VALUE structured output for remote data — simpler parsing than multi-line, handles PowerShell string interpolation naturally
 - [Phase 14-client-management-core]: Navigate(ClientTools) called before RunOperationAsync in client commands — no dialog needed, just navigate
 - [Phase 14-client-management-core]: LookupErrorCode is synchronous and bypasses RunOperationAsync — sets ErrorCodeResult directly, local dictionary only
+- [15-01]: MassForceCheckInAsync iterates hosts sequentially (not parallel) — WinRM connections can saturate network on simultaneous large batches
+- [15-01]: MassForceCheckInAsync returns Fail if any host failed but still processes all — partial-success pattern gives max feedback to admin
+- [15-01]: Parse MassHostnames in ViewModel (not service) — service receives clean IReadOnlyList<string>; ViewModel handles user input formatting
+- [15-01]: LoadHostFile has no CanExecute restriction — file loading always available, consistent with single-host hostname field
+- [15-01]: ConcurrentBag replaces List in CreateProgressCapture test helper — Progress<T> posts callbacks to threadpool in xUnit (no SyncCtx), causing collection-modified race
 
 ### Pending Todos
 
@@ -77,5 +83,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 14-03-PLAN.md — Client Tools GUI panel wired, all Phase 14 operations accessible. Phase 14 complete. Next: Phase 15.
+Stopped at: Completed 15-01-PLAN.md — Mass GPUpdate service + UI card, all 282 tests pass. Phase 15 plan 01 complete. Next: Phase 15 plan 02 (Script Generator).
 Resume file: None
