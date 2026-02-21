@@ -71,6 +71,10 @@ cd src
 dotnet format WsusManager.sln
 ```
 
+### Bulk Reformat (Completed 2026-02-21)
+
+All existing code was reformatted using dotnet-format v9.0 with .NET 9 runtime via gap closure plan 19-GAP-02. The entire codebase now conforms to .editorconfig standards. New code will be auto-formatted by your IDE on save.
+
 ## Static Analysis
 
 The project uses multiple Roslyn analyzers to enforce code quality:
