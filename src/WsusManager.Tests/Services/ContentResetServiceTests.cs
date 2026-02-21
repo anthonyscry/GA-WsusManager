@@ -6,6 +6,20 @@ using WsusManager.Core.Services;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// Medium Priority - File path handling (wsusutil.exe path):
+// [x] Null process runner (handled by constructor) - tested via mock
+// [x] Null log service (handled by constructor) - tested via mock
+// [x] Not found: wsusutil.exe path - tested
+// [ ] Null progress parameter - tested via optional parameter usage
+// [ ] Boundary: Path with spaces - tested (default path has spaces)
+// [ ] Boundary: Path exceeds MAX_PATH - missing
+// [ ] Empty output from process - missing
+// [ ] Process timeout handling - tested via cancellation
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Tests for ContentResetService using mock IProcessRunner.
 /// </summary>

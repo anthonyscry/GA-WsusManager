@@ -7,6 +7,23 @@ using WsusManager.Core.Services.Interfaces;
 
 namespace WsusManager.Tests.Services;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// High Priority - External data handlers (file paths, SQL inputs):
+// [ ] Null input: BackupAsync(null, @"C:\backup.bak", ...) - missing
+// [ ] Null input: BackupAsync(@"localhost\SQLEXPRESS", null, ...) - missing
+// [ ] Null input: RestoreAsync(null, @"C:\backup.bak", ...) - missing
+// [ ] Null input: RestoreAsync(@"localhost\SQLEXPRESS", null, ...) - missing
+// [ ] Null input: RestoreAsync(@"localhost\SQLEXPRESS", @"C:\backup.bak", null, ...) - missing
+// [ ] Null input: VerifyBackupAsync(null, @"C:\backup.bak", ...) - missing
+// [ ] Null input: VerifyBackupAsync(@"localhost\SQLEXPRESS", null, ...) - missing
+// [ ] Empty string: BackupAsync("", @"C:\backup.bak", ...) - missing
+// [ ] Empty string: sqlInstance with only whitespace - missing
+// [ ] Boundary: Very long path strings (>260 chars MAX_PATH) - missing
+// [ ] Boundary: Invalid characters in path - missing
+// ────────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Tests for DatabaseBackupService. All external dependencies are mocked.
 /// SQL operations use ISqlService mock. Service manager and process runner are mocked.

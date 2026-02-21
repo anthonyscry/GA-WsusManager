@@ -2,6 +2,20 @@ using WsusManager.Core.Models;
 
 namespace WsusManager.Tests.Foundation;
 
+// ────────────────────────────────────────────────────────────────────────────────
+// EDGE CASE AUDIT (Phase 18-02):
+// ────────────────────────────────────────────────────────────────────────────────
+// Foundation type - used throughout application:
+// [x] Null message: Ok(null) - tested (default message)
+// [x] Null exception: Fail("msg", null) - tested
+// [ ] Empty message: Ok(""), Fail("") - missing
+// [ ] Whitespace message: "   ", "\t\n" - missing
+// [ ] Very long message (>1000 chars) - missing
+// [ ] Null data in generic: Ok<T>(null, ...) - missing
+// [ ] Boundary: Success flag with null/empty/whitespace combinations - missing
+// [ ] Theory with multiple boundary values - missing (0, -1, int.MaxValue for error codes)
+// ────────────────────────────────────────────────────────────────────────────────
+
 public class OperationResultTests
 {
     [Fact]
