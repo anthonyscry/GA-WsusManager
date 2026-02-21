@@ -561,10 +561,6 @@ For full details, including pre-release checklist and rollback procedures, refer
 | Analyzer warnings blocking build | Run `dotnet format` or fix manually |
 | EXE won't start | Ensure running as Administrator on Windows 10/11 x64
 
-## Questions?
-
-- Open an issue for bugs or feature requests
-- Start a discussion for questions
-- Check existing documentation in `docs/` and `wiki/`
+---
 
 Thank you for contributing!
