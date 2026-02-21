@@ -1,59 +1,54 @@
-# Performance Baselines
+# Benchmark Baselines
 
-This directory contains baseline performance measurements for WSUS Manager.
-
-## How to Capture Baselines
-
-Run the benchmarks on a Windows machine or in CI:
-
-```bash
-# Build the app in Release mode
-dotnet build src/WsusManager.App/WsusManager.App.csproj --configuration Release
-
-# Run benchmarks (respond with "*" to select all)
-cd src/WsusManager.Benchmarks
-dotnet run -c Release
-```
+This directory contains baseline measurements for performance regression detection.
 
 ## Baseline Files
 
-Place captured baseline files here:
+- `startup-baseline.csv` - Cold/warm startup time measurements
+- `database-baseline.csv` - Database operation performance (queries, connections, etc.)
+- `winrm-baseline.csv` - WinRM operation measurements
 
-- `startup-baseline.html` - Visual HTML report from BenchmarkDotNet
-- `startup-baseline.csv` - Raw measurement data for programmatic comparison
+## Capturing Baselines
 
-## Baseline Data Format
+To capture new baselines on Windows (required for WinRM and database benchmarks):
 
-When benchmarks run successfully, capture:
+```powershell
+# Run all benchmarks
+dotnet run --project src/WsusManager.Benchmarks/WsusManager.Benchmarks.csproj -c Release
 
-| Metric | ColdStartup | WarmStartup |
-|--------|-------------|-------------|
-| Mean (ms) | TBD | TBD |
-| StdDev (ms) | TBD | TBD |
-| Min (ms) | TBD | TBD |
-| Max (ms) | TBD | TBD |
-| Allocated MB | TBD | TBD |
+# Copy results to baselines
+cp src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/results-BenchmarkStartup-report.csv src/WsusManager.Benchmarks/baselines/startup-baseline.csv
+cp src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/results-BenchmarkDatabaseOperations-report.csv src/WsusManager.Benchmarks/baselines/database-baseline.csv
+cp src/WsusManager.Benchmarks/BenchmarkDotNet.Artifacts/results-BenchmarkWinRMOperations-report.csv src/WsusManager.Benchmarks/baselines/winrm-baseline.csv
+```
 
-## Benchmark Configuration
+## Updating Baselines
 
-- **BenchmarkDotNet Version:** 0.14.0
-- **Target Framework:** .NET 8.0
-- **Warmup Count:** 3 iterations
-- **Iteration Count:** 10 iterations
-- **Job:** SimpleJob with RuntimeMoniker.Net80
+When performance legitimately changes (e.g., new features, optimizations):
 
-## Hardware Info for Baseline
+1. Run benchmarks on a Windows machine with WSUS installed
+2. Review the HTML report for unexpected regressions
+3. Copy new CSV results to this directory
+4. Commit the updated baseline files
 
-Capture this information when recording baselines:
+## Regression Detection
 
-- **CPU:** [To be filled]
-- **.NET SDK:** [To be filled]
-- **OS:** Windows 10/11 or Server
-- **Runtime:** .NET 8.0.x
+The CI pipeline runs `detect-regression.ps1` with a 10% threshold. If any benchmark
+degrades more than 10% from baseline, the build fails.
 
-## Notes
+## Current Baseline Status
 
-- Baselines should be captured on a quiet system (no heavy background tasks)
-- Run multiple times and verify consistency before committing
-- Update this README when baselines change
-- Significant regressions (>10%) should be investigated before release
+### Startup (Plan 22-01)
+- Cold startup: <2 seconds (target)
+- Warm startup: <500ms (target)
+- Status: Requires Windows execution for accurate measurements
+
+### Database (Plan 22-02)
+- Simple query: <10ms (target)
+- Connection overhead: <50ms (target)
+- Status: Requires SQL Server for accurate measurements
+
+### WinRM (Plan 22-03)
+- Connectivity check: <2s (target)
+- Mock operations: <100us (target)
+- Status: Requires WinRM for real operations, mock benchmarks work anywhere
