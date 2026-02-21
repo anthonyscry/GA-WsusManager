@@ -1,0 +1,149 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.ScheduleType
+  commentId: T:WsusManager.Core.Models.ScheduleType
+  id: ScheduleType
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.ScheduleType.Daily
+  - WsusManager.Core.Models.ScheduleType.Monthly
+  - WsusManager.Core.Models.ScheduleType.Weekly
+  langs:
+  - csharp
+  - vb
+  name: ScheduleType
+  nameWithType: ScheduleType
+  fullName: WsusManager.Core.Models.ScheduleType
+  type: Enum
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduleType.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ScheduleType
+    path: src/WsusManager.Core/Models/ScheduleType.cs
+    startLine: 5
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Schedule frequency for a Windows scheduled task.
+  example: []
+  syntax:
+    content: public enum ScheduleType
+    content.vb: Public Enum ScheduleType
+- uid: WsusManager.Core.Models.ScheduleType.Monthly
+  commentId: F:WsusManager.Core.Models.ScheduleType.Monthly
+  id: Monthly
+  parent: WsusManager.Core.Models.ScheduleType
+  langs:
+  - csharp
+  - vb
+  name: Monthly
+  nameWithType: ScheduleType.Monthly
+  fullName: WsusManager.Core.Models.ScheduleType.Monthly
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduleType.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Monthly
+    path: src/WsusManager.Core/Models/ScheduleType.cs
+    startLine: 7
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Monthly = 0
+    return:
+      type: WsusManager.Core.Models.ScheduleType
+- uid: WsusManager.Core.Models.ScheduleType.Weekly
+  commentId: F:WsusManager.Core.Models.ScheduleType.Weekly
+  id: Weekly
+  parent: WsusManager.Core.Models.ScheduleType
+  langs:
+  - csharp
+  - vb
+  name: Weekly
+  nameWithType: ScheduleType.Weekly
+  fullName: WsusManager.Core.Models.ScheduleType.Weekly
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduleType.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Weekly
+    path: src/WsusManager.Core/Models/ScheduleType.cs
+    startLine: 8
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Weekly = 1
+    return:
+      type: WsusManager.Core.Models.ScheduleType
+- uid: WsusManager.Core.Models.ScheduleType.Daily
+  commentId: F:WsusManager.Core.Models.ScheduleType.Daily
+  id: Daily
+  parent: WsusManager.Core.Models.ScheduleType
+  langs:
+  - csharp
+  - vb
+  name: Daily
+  nameWithType: ScheduleType.Daily
+  fullName: WsusManager.Core.Models.ScheduleType.Daily
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ScheduleType.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Daily
+    path: src/WsusManager.Core/Models/ScheduleType.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Daily = 2
+    return:
+      type: WsusManager.Core.Models.ScheduleType
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: WsusManager.Core.Models.ScheduleType
+  commentId: T:WsusManager.Core.Models.ScheduleType
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.ScheduleType.html
+  name: ScheduleType
+  nameWithType: ScheduleType
+  fullName: WsusManager.Core.Models.ScheduleType

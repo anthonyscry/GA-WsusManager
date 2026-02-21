@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>WSUS Manager API Reference | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="WSUS Manager API Reference | WSUS Manager ">
+    
+    
+      <link rel="shortcut icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../styles/docfx.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="">
+    
+    <meta property="docfx:rel" content="../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../index.html">
+                <img id="logo" class="svg" src="../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+        <div class="article row grid">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="">
+<h1 id="wsus-manager-api-reference">WSUS Manager API Reference</h1>
+
+<p>Welcome to the WSUS Manager API documentation. This site provides comprehensive reference documentation for all public APIs in WsusManager.Core and WsusManager.App.</p>
+<h2 id="getting-started">Getting Started</h2>
+<ul>
+<li><strong><a href="xref:WsusManager.Core">WsusManager.Core</a></strong> - Core library with business logic, services, and models</li>
+<li><strong><a href="xref:WsusManager.App">WsusManager.App</a></strong> - WPF application with ViewModels and Views</li>
+</ul>
+<h2 id="key-namespaces">Key Namespaces</h2>
+<h3 id="wsusmanagercoreservices">WsusManager.Core.Services</h3>
+<p>Service interfaces and implementations for WSUS operations:</p>
+<ul>
+<li><strong><a href="xref:WsusManager.Core.Services.IHealthService">IHealthService</a></strong> - Health check and diagnostics</li>
+<li><strong><a href="xref:WsusManager.Core.Services.ISqlService">ISqlService</a></strong> - SQL Server operations (cleanup, restore)</li>
+<li><strong><a href="xref:WsusManager.Core.Services.ISyncService">ISyncService</a></strong> - WSUS synchronization operations</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IWindowsServiceManager">IWindowsServiceManager</a></strong> - Windows service management</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IFirewallService">IFirewallService</a></strong> - Firewall rule management</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IClientService">IClientService</a></strong> - WinRM client operations</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IDatabaseBackupService">IDatabaseBackupService</a></strong> - Database backup and restore</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IDeepCleanupService">IDeepCleanupService</a></strong> - Deep database cleanup and optimization</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IExportService">IExportService</a></strong> - Export operations for air-gap transfers</li>
+<li><strong><a href="xref:WsusManager.Core.Services.IImportService">IImportService</a></strong> - Import operations for air-gap transfers</li>
+</ul>
+<h3 id="wsusmanagercoremodels">WsusManager.Core.Models</h3>
+<p>Data models for WSUS entities:</p>
+<ul>
+<li><strong><a href="xref:WsusManager.Core.Models.OperationResult">OperationResult</a></strong> - Standard operation result</li>
+<li><strong><a href="xref:WsusManager.Core.Models.ProcessResult">ProcessResult</a></strong> - Process execution result</li>
+<li><strong><a href="xref:WsusManager.Core.Models.DashboardData">DashboardData</a></strong> - Dashboard information</li>
+<li><strong><a href="xref:WsusManager.Core.Models.AppSettings">AppSettings</a></strong> - Application settings</li>
+<li><strong><a href="xref:WsusManager.Core.Models.DiagnosticCheckResult">DiagnosticCheckResult</a></strong> - Individual diagnostic check result</li>
+<li><strong><a href="xref:WsusManager.Core.Models.DiagnosticReport">DiagnosticReport</a></strong> - Complete diagnostic report</li>
+<li><strong><a href="xref:WsusManager.Core.Models.ExportOptions">ExportOptions</a></strong> - Export operation options</li>
+<li><strong><a href="xref:WsusManager.Core.Models.ImportOptions">ImportOptions</a></strong> - Import operation options</li>
+<li><strong><a href="xref:WsusManager.Core.Models.SyncProfile">SyncProfile</a></strong> - Sync configuration profiles</li>
+<li><strong><a href="xref:WsusManager.Core.Models.SyncResult">SyncResult</a></strong> - Synchronization result</li>
+</ul>
+<h3 id="wsusmanagerappviewmodels">WsusManager.App.ViewModels</h3>
+<p>MVVM view models for UI logic:</p>
+<ul>
+<li><strong><a href="xref:WsusManager.App.ViewModels.MainViewModel">MainViewModel</a></strong> - Main application view model</li>
+<li><strong><a href="xref:WsusManager.App.ViewModels.SettingsViewModel">SettingsViewModel</a></strong> - Settings dialog view model</li>
+<li><strong><a href="xref:WsusManager.App.ViewModels.DiagnosticsViewModel">DiagnosticsViewModel</a></strong> - Diagnostics panel view model</li>
+</ul>
+<h2 id="architecture">Architecture</h2>
+<p>WSUS Manager follows the MVVM pattern with CommunityToolkit.Mvvm:</p>
+<ol>
+<li><strong>Models</strong> (WsusManager.Core) - Business entities</li>
+<li><strong>Services</strong> (WsusManager.Core) - Business logic and external operations</li>
+<li><strong>ViewModels</strong> (WsusManager.App) - UI state and commands</li>
+<li><strong>Views</strong> (WsusManager.App) - XAML UI definition</li>
+</ol>
+<h2 id="version">Version</h2>
+<p>Current API documentation is for <strong>WSUS Manager v4.4.0</strong>.</p>
+<h2 id="license">License</h2>
+<p>This project is proprietary software developed for GA-ASI internal use.</p>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/docfx/api/index.md/#L1" class="contribution-link">Edit this page</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../styles/docfx.js"></script>
+    <script type="text/javascript" src="../styles/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,194 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  id: WsusManager.Core.Services
+  children:
+  - WsusManager.Core.Services.ClientService
+  - WsusManager.Core.Services.ContentResetService
+  - WsusManager.Core.Services.DashboardService
+  - WsusManager.Core.Services.DatabaseBackupService
+  - WsusManager.Core.Services.DeepCleanupService
+  - WsusManager.Core.Services.ExportService
+  - WsusManager.Core.Services.FirewallService
+  - WsusManager.Core.Services.GpoDeploymentService
+  - WsusManager.Core.Services.HealthService
+  - WsusManager.Core.Services.ImportService
+  - WsusManager.Core.Services.InstallationService
+  - WsusManager.Core.Services.PermissionsService
+  - WsusManager.Core.Services.RobocopyService
+  - WsusManager.Core.Services.ScheduledTaskService
+  - WsusManager.Core.Services.ScriptGeneratorService
+  - WsusManager.Core.Services.SettingsService
+  - WsusManager.Core.Services.SqlService
+  - WsusManager.Core.Services.SyncService
+  - WsusManager.Core.Services.WinRmExecutor
+  - WsusManager.Core.Services.WindowsServiceManager
+  - WsusManager.Core.Services.WsusServerService
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  type: Namespace
+  assemblies:
+  - WsusManager.Core
+references:
+- uid: WsusManager.Core.Services.ClientService
+  commentId: T:WsusManager.Core.Services.ClientService
+  href: WsusManager.Core.Services.ClientService.html
+  name: ClientService
+  nameWithType: ClientService
+  fullName: WsusManager.Core.Services.ClientService
+- uid: WsusManager.Core.Services.ContentResetService
+  commentId: T:WsusManager.Core.Services.ContentResetService
+  href: WsusManager.Core.Services.ContentResetService.html
+  name: ContentResetService
+  nameWithType: ContentResetService
+  fullName: WsusManager.Core.Services.ContentResetService
+- uid: WsusManager.Core.Services.DashboardService
+  commentId: T:WsusManager.Core.Services.DashboardService
+  href: WsusManager.Core.Services.DashboardService.html
+  name: DashboardService
+  nameWithType: DashboardService
+  fullName: WsusManager.Core.Services.DashboardService
+- uid: WsusManager.Core.Services.DatabaseBackupService
+  commentId: T:WsusManager.Core.Services.DatabaseBackupService
+  href: WsusManager.Core.Services.DatabaseBackupService.html
+  name: DatabaseBackupService
+  nameWithType: DatabaseBackupService
+  fullName: WsusManager.Core.Services.DatabaseBackupService
+- uid: WsusManager.Core.Services.DeepCleanupService
+  commentId: T:WsusManager.Core.Services.DeepCleanupService
+  href: WsusManager.Core.Services.DeepCleanupService.html
+  name: DeepCleanupService
+  nameWithType: DeepCleanupService
+  fullName: WsusManager.Core.Services.DeepCleanupService
+- uid: WsusManager.Core.Services.ExportService
+  commentId: T:WsusManager.Core.Services.ExportService
+  href: WsusManager.Core.Services.ExportService.html
+  name: ExportService
+  nameWithType: ExportService
+  fullName: WsusManager.Core.Services.ExportService
+- uid: WsusManager.Core.Services.FirewallService
+  commentId: T:WsusManager.Core.Services.FirewallService
+  href: WsusManager.Core.Services.FirewallService.html
+  name: FirewallService
+  nameWithType: FirewallService
+  fullName: WsusManager.Core.Services.FirewallService
+- uid: WsusManager.Core.Services.GpoDeploymentService
+  commentId: T:WsusManager.Core.Services.GpoDeploymentService
+  href: WsusManager.Core.Services.GpoDeploymentService.html
+  name: GpoDeploymentService
+  nameWithType: GpoDeploymentService
+  fullName: WsusManager.Core.Services.GpoDeploymentService
+- uid: WsusManager.Core.Services.HealthService
+  commentId: T:WsusManager.Core.Services.HealthService
+  href: WsusManager.Core.Services.HealthService.html
+  name: HealthService
+  nameWithType: HealthService
+  fullName: WsusManager.Core.Services.HealthService
+- uid: WsusManager.Core.Services.ImportService
+  commentId: T:WsusManager.Core.Services.ImportService
+  href: WsusManager.Core.Services.ImportService.html
+  name: ImportService
+  nameWithType: ImportService
+  fullName: WsusManager.Core.Services.ImportService
+- uid: WsusManager.Core.Services.InstallationService
+  commentId: T:WsusManager.Core.Services.InstallationService
+  href: WsusManager.Core.Services.InstallationService.html
+  name: InstallationService
+  nameWithType: InstallationService
+  fullName: WsusManager.Core.Services.InstallationService
+- uid: WsusManager.Core.Services.PermissionsService
+  commentId: T:WsusManager.Core.Services.PermissionsService
+  href: WsusManager.Core.Services.PermissionsService.html
+  name: PermissionsService
+  nameWithType: PermissionsService
+  fullName: WsusManager.Core.Services.PermissionsService
+- uid: WsusManager.Core.Services.RobocopyService
+  commentId: T:WsusManager.Core.Services.RobocopyService
+  href: WsusManager.Core.Services.RobocopyService.html
+  name: RobocopyService
+  nameWithType: RobocopyService
+  fullName: WsusManager.Core.Services.RobocopyService
+- uid: WsusManager.Core.Services.ScheduledTaskService
+  commentId: T:WsusManager.Core.Services.ScheduledTaskService
+  href: WsusManager.Core.Services.ScheduledTaskService.html
+  name: ScheduledTaskService
+  nameWithType: ScheduledTaskService
+  fullName: WsusManager.Core.Services.ScheduledTaskService
+- uid: WsusManager.Core.Services.ScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.ScriptGeneratorService
+  href: WsusManager.Core.Services.ScriptGeneratorService.html
+  name: ScriptGeneratorService
+  nameWithType: ScriptGeneratorService
+  fullName: WsusManager.Core.Services.ScriptGeneratorService
+- uid: WsusManager.Core.Services.SettingsService
+  commentId: T:WsusManager.Core.Services.SettingsService
+  href: WsusManager.Core.Services.SettingsService.html
+  name: SettingsService
+  nameWithType: SettingsService
+  fullName: WsusManager.Core.Services.SettingsService
+- uid: WsusManager.Core.Services.SqlService
+  commentId: T:WsusManager.Core.Services.SqlService
+  href: WsusManager.Core.Services.SqlService.html
+  name: SqlService
+  nameWithType: SqlService
+  fullName: WsusManager.Core.Services.SqlService
+- uid: WsusManager.Core.Services.SyncService
+  commentId: T:WsusManager.Core.Services.SyncService
+  href: WsusManager.Core.Services.SyncService.html
+  name: SyncService
+  nameWithType: SyncService
+  fullName: WsusManager.Core.Services.SyncService
+- uid: WsusManager.Core.Services.WindowsServiceManager
+  commentId: T:WsusManager.Core.Services.WindowsServiceManager
+  href: WsusManager.Core.Services.WindowsServiceManager.html
+  name: WindowsServiceManager
+  nameWithType: WindowsServiceManager
+  fullName: WsusManager.Core.Services.WindowsServiceManager
+- uid: WsusManager.Core.Services.WinRmExecutor
+  commentId: T:WsusManager.Core.Services.WinRmExecutor
+  parent: WsusManager.Core.Services
+  href: WsusManager.Core.Services.WinRmExecutor.html
+  name: WinRmExecutor
+  nameWithType: WinRmExecutor
+  fullName: WsusManager.Core.Services.WinRmExecutor
+- uid: WsusManager.Core.Services.WsusServerService
+  commentId: T:WsusManager.Core.Services.WsusServerService
+  href: WsusManager.Core.Services.WsusServerService.html
+  name: WsusServerService
+  nameWithType: WsusServerService
+  fullName: WsusManager.Core.Services.WsusServerService
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  href: WsusManager.html
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html

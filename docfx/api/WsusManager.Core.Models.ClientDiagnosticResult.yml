@@ -1,0 +1,854 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.ClientDiagnosticResult
+  commentId: T:WsusManager.Core.Models.ClientDiagnosticResult
+  id: ClientDiagnosticResult
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+  - WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+  - WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+  - WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+  - WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion
+  - WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+  - WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+  langs:
+  - csharp
+  - vb
+  name: ClientDiagnosticResult
+  nameWithType: ClientDiagnosticResult
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ClientDiagnosticResult
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 6
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Snapshot of WSUS client configuration and state on a remote host, gathered
+
+    from the Windows Update registry hive, service control manager, and WMI.
+  example: []
+  syntax:
+    content: 'public record ClientDiagnosticResult : IEquatable<ClientDiagnosticResult>'
+    content.vb: Public Class ClientDiagnosticResult Implements IEquatable(Of ClientDiagnosticResult)
+  inheritance:
+  - System.Object
+  implements:
+  - System.IEquatable{WsusManager.Core.Models.ClientDiagnosticResult}
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+  id: WsusServerUrl
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: WsusServerUrl
+  nameWithType: ClientDiagnosticResult.WsusServerUrl
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: WsusServerUrl
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 12
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Configured WSUS server URL from HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\WUServer.
+
+    Null if the registry key is absent or WUServer is not set.
+  example: []
+  syntax:
+    content: public string? WsusServerUrl { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property WsusServerUrl As String
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+  id: WsusStatusServerUrl
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: WsusStatusServerUrl
+  nameWithType: ClientDiagnosticResult.WsusStatusServerUrl
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: WsusStatusServerUrl
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 18
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Configured WSUS status server URL from WUStatusServer registry value.
+
+    Usually matches WsusServerUrl; may differ in some GPO deployments.
+  example: []
+  syntax:
+    content: public string? WsusStatusServerUrl { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property WsusStatusServerUrl As String
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+  id: UseWUServer
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: UseWUServer
+  nameWithType: ClientDiagnosticResult.UseWUServer
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: UseWUServer
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 24
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Whether UseWUServer policy is enabled (1 = true). When false the client
+
+    ignores WsusServerUrl and contacts Windows Update directly.
+  example: []
+  syntax:
+    content: public bool UseWUServer { get; init; }
+    parameters: []
+    return:
+      type: System.Boolean
+    content.vb: Public Property UseWUServer As Boolean
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+  id: ServiceStatuses
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: ServiceStatuses
+  nameWithType: ClientDiagnosticResult.ServiceStatuses
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ServiceStatuses
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 31
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Current state of Windows Update-related services keyed by service name
+
+    (e.g., "wuauserv", "bits", "cryptsvc", "msiserver"). Value is the
+
+    service status string (Running, Stopped, etc.).
+  example: []
+  syntax:
+    content: public Dictionary<string, string> ServiceStatuses { get; init; }
+    parameters: []
+    return:
+      type: System.Collections.Generic.Dictionary{System.String,System.String}
+    content.vb: Public Property ServiceStatuses As Dictionary(Of String, String)
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+  id: LastCheckInTime
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: LastCheckInTime
+  nameWithType: ClientDiagnosticResult.LastCheckInTime
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: LastCheckInTime
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 37
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    UTC timestamp of the client's last successful check-in with the WSUS server.
+
+    Null if the client has never checked in or if the value could not be read.
+  example: []
+  syntax:
+    content: public DateTime? LastCheckInTime { get; init; }
+    parameters: []
+    return:
+      type: System.Nullable{System.DateTime}
+    content.vb: Public Property LastCheckInTime As Date?
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+  id: PendingRebootRequired
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: PendingRebootRequired
+  nameWithType: ClientDiagnosticResult.PendingRebootRequired
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: PendingRebootRequired
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 43
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    True if the host has a pending reboot required to complete update installation.
+
+    Detected via the RebootRequired registry key or CBS session state.
+  example: []
+  syntax:
+    content: public bool PendingRebootRequired { get; init; }
+    parameters: []
+    return:
+      type: System.Boolean
+    content.vb: Public Property PendingRebootRequired As Boolean
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired*
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion
+  commentId: P:WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion
+  id: WindowsUpdateAgentVersion
+  parent: WsusManager.Core.Models.ClientDiagnosticResult
+  langs:
+  - csharp
+  - vb
+  name: WindowsUpdateAgentVersion
+  nameWithType: ClientDiagnosticResult.WindowsUpdateAgentVersion
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: WindowsUpdateAgentVersion
+    path: src/WsusManager.Core/Models/ClientDiagnosticResult.cs
+    startLine: 49
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Windows Update Agent version string from the wuaueng.dll file version.
+
+    Example: "10.0.19041.1949".
+  example: []
+  syntax:
+    content: public string? WindowsUpdateAgentVersion { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property WindowsUpdateAgentVersion As String
+  overload: WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion*
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: System.IEquatable{WsusManager.Core.Models.ClientDiagnosticResult}
+  commentId: T:System.IEquatable{WsusManager.Core.Models.ClientDiagnosticResult}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<ClientDiagnosticResult>
+  nameWithType: IEquatable<ClientDiagnosticResult>
+  fullName: System.IEquatable<WsusManager.Core.Models.ClientDiagnosticResult>
+  nameWithType.vb: IEquatable(Of ClientDiagnosticResult)
+  fullName.vb: System.IEquatable(Of WsusManager.Core.Models.ClientDiagnosticResult)
+  name.vb: IEquatable(Of ClientDiagnosticResult)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: WsusManager.Core.Models.ClientDiagnosticResult
+    name: ClientDiagnosticResult
+    href: WsusManager.Core.Models.ClientDiagnosticResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.ClientDiagnosticResult
+    name: ClientDiagnosticResult
+    href: WsusManager.Core.Models.ClientDiagnosticResult.html
+  - name: )
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_WsusServerUrl
+  name: WsusServerUrl
+  nameWithType: ClientDiagnosticResult.WsusServerUrl
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WsusServerUrl
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_WsusStatusServerUrl
+  name: WsusStatusServerUrl
+  nameWithType: ClientDiagnosticResult.WsusStatusServerUrl
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WsusStatusServerUrl
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_UseWUServer
+  name: UseWUServer
+  nameWithType: ClientDiagnosticResult.UseWUServer
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.UseWUServer
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_ServiceStatuses
+  name: ServiceStatuses
+  nameWithType: ClientDiagnosticResult.ServiceStatuses
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.ServiceStatuses
+- uid: System.Collections.Generic.Dictionary{System.String,System.String}
+  commentId: T:System.Collections.Generic.Dictionary{System.String,System.String}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.Dictionary`2
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  name: Dictionary<string, string>
+  nameWithType: Dictionary<string, string>
+  fullName: System.Collections.Generic.Dictionary<string, string>
+  nameWithType.vb: Dictionary(Of String, String)
+  fullName.vb: System.Collections.Generic.Dictionary(Of String, String)
+  name.vb: Dictionary(Of String, String)
+  spec.csharp:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Collections.Generic.Dictionary`2
+  commentId: T:System.Collections.Generic.Dictionary`2
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  name: Dictionary<TKey, TValue>
+  nameWithType: Dictionary<TKey, TValue>
+  fullName: System.Collections.Generic.Dictionary<TKey, TValue>
+  nameWithType.vb: Dictionary(Of TKey, TValue)
+  fullName.vb: System.Collections.Generic.Dictionary(Of TKey, TValue)
+  name.vb: Dictionary(Of TKey, TValue)
+  spec.csharp:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: <
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_LastCheckInTime
+  name: LastCheckInTime
+  nameWithType: ClientDiagnosticResult.LastCheckInTime
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.LastCheckInTime
+- uid: System.Nullable{System.DateTime}
+  commentId: T:System.Nullable{System.DateTime}
+  parent: System
+  definition: System.Nullable`1
+  href: https://learn.microsoft.com/dotnet/api/system.datetime
+  name: DateTime?
+  nameWithType: DateTime?
+  fullName: System.DateTime?
+  nameWithType.vb: Date?
+  fullName.vb: Date?
+  name.vb: Date?
+  spec.csharp:
+  - uid: System.DateTime
+    name: DateTime
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.datetime
+  - name: '?'
+  spec.vb:
+  - uid: System.DateTime
+    name: Date
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.datetime
+  - name: '?'
+- uid: System.Nullable`1
+  commentId: T:System.Nullable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  name: Nullable<T>
+  nameWithType: Nullable<T>
+  fullName: System.Nullable<T>
+  nameWithType.vb: Nullable(Of T)
+  fullName.vb: System.Nullable(Of T)
+  name.vb: Nullable(Of T)
+  spec.csharp:
+  - uid: System.Nullable`1
+    name: Nullable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Nullable`1
+    name: Nullable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_PendingRebootRequired
+  name: PendingRebootRequired
+  nameWithType: ClientDiagnosticResult.PendingRebootRequired
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.PendingRebootRequired
+- uid: WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion*
+  commentId: Overload:WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion
+  href: WsusManager.Core.Models.ClientDiagnosticResult.html#WsusManager_Core_Models_ClientDiagnosticResult_WindowsUpdateAgentVersion
+  name: WindowsUpdateAgentVersion
+  nameWithType: ClientDiagnosticResult.WindowsUpdateAgentVersion
+  fullName: WsusManager.Core.Models.ClientDiagnosticResult.WindowsUpdateAgentVersion

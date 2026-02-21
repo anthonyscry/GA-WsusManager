@@ -1,0 +1,529 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService
+  commentId: T:WsusManager.Core.Services.Interfaces.IPermissionsService
+  id: IPermissionsService
+  parent: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync(System.String,System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync(System.String,System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync(System.String,System.Threading.CancellationToken)
+  - WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: IPermissionsService
+  nameWithType: IPermissionsService
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService
+  type: Interface
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: IPermissionsService
+    path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Checks and repairs WSUS content directory permissions and SQL login permissions.
+
+    Content path checks verify NETWORK SERVICE and IIS_IUSRS ACLs.
+
+    SQL checks query server role membership and login existence.
+  example: []
+  syntax:
+    content: public interface IPermissionsService
+    content.vb: Public Interface IPermissionsService
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync(System.String,System.Threading.CancellationToken)
+  id: CheckContentPermissionsAsync(System.String,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IPermissionsService
+  langs:
+  - csharp
+  - vb
+  name: CheckContentPermissionsAsync(string, CancellationToken)
+  nameWithType: IPermissionsService.CheckContentPermissionsAsync(string, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CheckContentPermissionsAsync
+    path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+    startLine: 15
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Checks whether the WSUS content directory has the required ACL entries.
+
+    Verifies NETWORK SERVICE and IIS_IUSRS have Full Control.
+  example: []
+  syntax:
+    content: Task<OperationResult<bool>> CheckContentPermissionsAsync(string contentPath, CancellationToken ct = default)
+    parameters:
+    - id: contentPath
+      type: System.String
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+    content.vb: Function CheckContentPermissionsAsync(contentPath As String, ct As CancellationToken = Nothing) As Task(Of OperationResult(Of Boolean))
+  overload: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync*
+  nameWithType.vb: IPermissionsService.CheckContentPermissionsAsync(String, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync(String, System.Threading.CancellationToken)
+  name.vb: CheckContentPermissionsAsync(String, CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  id: RepairContentPermissionsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IPermissionsService
+  langs:
+  - csharp
+  - vb
+  name: RepairContentPermissionsAsync(string, IProgress<string>?, CancellationToken)
+  nameWithType: IPermissionsService.RepairContentPermissionsAsync(string, IProgress<string>?, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync(string, System.IProgress<string>?, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: RepairContentPermissionsAsync
+    path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+    startLine: 21
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Repairs content directory permissions by granting Full Control to
+
+    NETWORK SERVICE and IIS_IUSRS via icacls.
+  example: []
+  syntax:
+    content: Task<OperationResult> RepairContentPermissionsAsync(string contentPath, IProgress<string>? progress = null, CancellationToken ct = default)
+    parameters:
+    - id: contentPath
+      type: System.String
+    - id: progress
+      type: System.IProgress{System.String}
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+    content.vb: Function RepairContentPermissionsAsync(contentPath As String, progress As IProgress(Of String) = Nothing, ct As CancellationToken = Nothing) As Task(Of OperationResult)
+  overload: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync*
+  nameWithType.vb: IPermissionsService.RepairContentPermissionsAsync(String, IProgress(Of String), CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync(String, System.IProgress(Of String), System.Threading.CancellationToken)
+  name.vb: RepairContentPermissionsAsync(String, IProgress(Of String), CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync(System.String,System.Threading.CancellationToken)
+  id: CheckSqlSysadminAsync(System.String,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IPermissionsService
+  langs:
+  - csharp
+  - vb
+  name: CheckSqlSysadminAsync(string, CancellationToken)
+  nameWithType: IPermissionsService.CheckSqlSysadminAsync(string, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CheckSqlSysadminAsync
+    path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+    startLine: 27
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Checks whether the current user running this process is a SQL sysadmin.
+
+    Queries: SELECT IS_SRVROLEMEMBER('sysadmin') — returns 1 if yes.
+  example: []
+  syntax:
+    content: Task<OperationResult<bool>> CheckSqlSysadminAsync(string sqlInstance, CancellationToken ct = default)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+    content.vb: Function CheckSqlSysadminAsync(sqlInstance As String, ct As CancellationToken = Nothing) As Task(Of OperationResult(Of Boolean))
+  overload: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync*
+  nameWithType.vb: IPermissionsService.CheckSqlSysadminAsync(String, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync(String, System.Threading.CancellationToken)
+  name.vb: CheckSqlSysadminAsync(String, CancellationToken)
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync(System.String,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync(System.String,System.Threading.CancellationToken)
+  id: CheckNetworkServiceLoginAsync(System.String,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.IPermissionsService
+  langs:
+  - csharp
+  - vb
+  name: CheckNetworkServiceLoginAsync(string, CancellationToken)
+  nameWithType: IPermissionsService.CheckNetworkServiceLoginAsync(string, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync(string, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CheckNetworkServiceLoginAsync
+    path: src/WsusManager.Core/Services/Interfaces/IPermissionsService.cs
+    startLine: 33
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services.Interfaces
+  summary: >-
+    Checks whether NETWORK SERVICE has a SQL Server login.
+
+    Queries sys.server_principals for NT AUTHORITY\NETWORK SERVICE.
+  example: []
+  syntax:
+    content: Task<OperationResult<bool>> CheckNetworkServiceLoginAsync(string sqlInstance, CancellationToken ct = default)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+    - id: ct
+      type: System.Threading.CancellationToken
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+    content.vb: Function CheckNetworkServiceLoginAsync(sqlInstance As String, ct As CancellationToken = Nothing) As Task(Of OperationResult(Of Boolean))
+  overload: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync*
+  nameWithType.vb: IPermissionsService.CheckNetworkServiceLoginAsync(String, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync(String, System.Threading.CancellationToken)
+  name.vb: CheckNetworkServiceLoginAsync(String, CancellationToken)
+references:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html#WsusManager_Core_Services_Interfaces_IPermissionsService_CheckContentPermissionsAsync_System_String_System_Threading_CancellationToken_
+  name: CheckContentPermissionsAsync
+  nameWithType: IPermissionsService.CheckContentPermissionsAsync
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckContentPermissionsAsync
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{System.Boolean}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<bool>>
+  nameWithType: Task<OperationResult<bool>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<bool>>
+  nameWithType.vb: Task(Of OperationResult(Of Boolean))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of Boolean))
+  name.vb: Task(Of OperationResult(Of Boolean))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html#WsusManager_Core_Services_Interfaces_IPermissionsService_RepairContentPermissionsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_
+  name: RepairContentPermissionsAsync
+  nameWithType: IPermissionsService.RepairContentPermissionsAsync
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.RepairContentPermissionsAsync
+- uid: System.IProgress{System.String}
+  commentId: T:System.IProgress{System.String}
+  parent: System
+  definition: System.IProgress`1
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<string>
+  nameWithType: IProgress<string>
+  fullName: System.IProgress<string>
+  nameWithType.vb: IProgress(Of String)
+  fullName.vb: System.IProgress(Of String)
+  name.vb: IProgress(Of String)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: )
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult>
+  nameWithType: Task<OperationResult>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult>
+  nameWithType.vb: Task(Of OperationResult)
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult)
+  name.vb: Task(Of OperationResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult.html
+  - name: )
+- uid: System.IProgress`1
+  commentId: T:System.IProgress`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  name: IProgress<T>
+  nameWithType: IProgress<T>
+  fullName: System.IProgress<T>
+  nameWithType.vb: IProgress(Of T)
+  fullName.vb: System.IProgress(Of T)
+  name.vb: IProgress(Of T)
+  spec.csharp:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IProgress`1
+    name: IProgress
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iprogress-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html#WsusManager_Core_Services_Interfaces_IPermissionsService_CheckSqlSysadminAsync_System_String_System_Threading_CancellationToken_
+  name: CheckSqlSysadminAsync
+  nameWithType: IPermissionsService.CheckSqlSysadminAsync
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckSqlSysadminAsync
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync*
+  commentId: Overload:WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html#WsusManager_Core_Services_Interfaces_IPermissionsService_CheckNetworkServiceLoginAsync_System_String_System_Threading_CancellationToken_
+  name: CheckNetworkServiceLoginAsync
+  nameWithType: IPermissionsService.CheckNetworkServiceLoginAsync
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService.CheckNetworkServiceLoginAsync

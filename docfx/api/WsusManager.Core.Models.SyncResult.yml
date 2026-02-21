@@ -1,0 +1,638 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.SyncResult
+  commentId: T:WsusManager.Core.Models.SyncResult
+  id: SyncResult
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.SyncResult.#ctor(System.String,System.Int32,System.Int32,System.Nullable{System.DateTime})
+  - WsusManager.Core.Models.SyncResult.NewUpdates
+  - WsusManager.Core.Models.SyncResult.Result
+  - WsusManager.Core.Models.SyncResult.RevisedUpdates
+  - WsusManager.Core.Models.SyncResult.StartTime
+  langs:
+  - csharp
+  - vb
+  name: SyncResult
+  nameWithType: SyncResult
+  fullName: WsusManager.Core.Models.SyncResult
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: SyncResult
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 5
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Result of a WSUS synchronization operation.
+  example: []
+  syntax:
+    content: 'public record SyncResult : IEquatable<SyncResult>'
+    content.vb: Public Class SyncResult Implements IEquatable(Of SyncResult)
+  inheritance:
+  - System.Object
+  implements:
+  - System.IEquatable{WsusManager.Core.Models.SyncResult}
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Models.SyncResult.#ctor(System.String,System.Int32,System.Int32,System.Nullable{System.DateTime})
+  commentId: M:WsusManager.Core.Models.SyncResult.#ctor(System.String,System.Int32,System.Int32,System.Nullable{System.DateTime})
+  id: '#ctor(System.String,System.Int32,System.Int32,System.Nullable{System.DateTime})'
+  parent: WsusManager.Core.Models.SyncResult
+  langs:
+  - csharp
+  - vb
+  name: SyncResult(string, int, int, DateTime?)
+  nameWithType: SyncResult.SyncResult(string, int, int, DateTime?)
+  fullName: WsusManager.Core.Models.SyncResult.SyncResult(string, int, int, System.DateTime?)
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 5
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Result of a WSUS synchronization operation.
+  example: []
+  syntax:
+    content: public SyncResult(string Result, int NewUpdates, int RevisedUpdates, DateTime? StartTime)
+    parameters:
+    - id: Result
+      type: System.String
+    - id: NewUpdates
+      type: System.Int32
+    - id: RevisedUpdates
+      type: System.Int32
+    - id: StartTime
+      type: System.Nullable{System.DateTime}
+    content.vb: Public Sub New(Result As String, NewUpdates As Integer, RevisedUpdates As Integer, StartTime As Date?)
+  overload: WsusManager.Core.Models.SyncResult.#ctor*
+  nameWithType.vb: SyncResult.New(String, Integer, Integer, Date?)
+  fullName.vb: WsusManager.Core.Models.SyncResult.New(String, Integer, Integer, Date?)
+  name.vb: New(String, Integer, Integer, Date?)
+- uid: WsusManager.Core.Models.SyncResult.Result
+  commentId: P:WsusManager.Core.Models.SyncResult.Result
+  id: Result
+  parent: WsusManager.Core.Models.SyncResult
+  langs:
+  - csharp
+  - vb
+  name: Result
+  nameWithType: SyncResult.Result
+  fullName: WsusManager.Core.Models.SyncResult.Result
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Result
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 6
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: public string Result { get; init; }
+    parameters: []
+    return:
+      type: System.String
+    content.vb: Public Property Result As String
+  overload: WsusManager.Core.Models.SyncResult.Result*
+- uid: WsusManager.Core.Models.SyncResult.NewUpdates
+  commentId: P:WsusManager.Core.Models.SyncResult.NewUpdates
+  id: NewUpdates
+  parent: WsusManager.Core.Models.SyncResult
+  langs:
+  - csharp
+  - vb
+  name: NewUpdates
+  nameWithType: SyncResult.NewUpdates
+  fullName: WsusManager.Core.Models.SyncResult.NewUpdates
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: NewUpdates
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 7
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: public int NewUpdates { get; init; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: Public Property NewUpdates As Integer
+  overload: WsusManager.Core.Models.SyncResult.NewUpdates*
+- uid: WsusManager.Core.Models.SyncResult.RevisedUpdates
+  commentId: P:WsusManager.Core.Models.SyncResult.RevisedUpdates
+  id: RevisedUpdates
+  parent: WsusManager.Core.Models.SyncResult
+  langs:
+  - csharp
+  - vb
+  name: RevisedUpdates
+  nameWithType: SyncResult.RevisedUpdates
+  fullName: WsusManager.Core.Models.SyncResult.RevisedUpdates
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: RevisedUpdates
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 8
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: public int RevisedUpdates { get; init; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: Public Property RevisedUpdates As Integer
+  overload: WsusManager.Core.Models.SyncResult.RevisedUpdates*
+- uid: WsusManager.Core.Models.SyncResult.StartTime
+  commentId: P:WsusManager.Core.Models.SyncResult.StartTime
+  id: StartTime
+  parent: WsusManager.Core.Models.SyncResult
+  langs:
+  - csharp
+  - vb
+  name: StartTime
+  nameWithType: SyncResult.StartTime
+  fullName: WsusManager.Core.Models.SyncResult.StartTime
+  type: Property
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: StartTime
+    path: src/WsusManager.Core/Models/SyncResult.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: public DateTime? StartTime { get; init; }
+    parameters: []
+    return:
+      type: System.Nullable{System.DateTime}
+    content.vb: Public Property StartTime As Date?
+  overload: WsusManager.Core.Models.SyncResult.StartTime*
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: System.IEquatable{WsusManager.Core.Models.SyncResult}
+  commentId: T:System.IEquatable{WsusManager.Core.Models.SyncResult}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<SyncResult>
+  nameWithType: IEquatable<SyncResult>
+  fullName: System.IEquatable<WsusManager.Core.Models.SyncResult>
+  nameWithType.vb: IEquatable(Of SyncResult)
+  fullName.vb: System.IEquatable(Of WsusManager.Core.Models.SyncResult)
+  name.vb: IEquatable(Of SyncResult)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: WsusManager.Core.Models.SyncResult
+    name: SyncResult
+    href: WsusManager.Core.Models.SyncResult.html
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.SyncResult
+    name: SyncResult
+    href: WsusManager.Core.Models.SyncResult.html
+  - name: )
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.SyncResult.#ctor*
+  commentId: Overload:WsusManager.Core.Models.SyncResult.#ctor
+  href: WsusManager.Core.Models.SyncResult.html#WsusManager_Core_Models_SyncResult__ctor_System_String_System_Int32_System_Int32_System_Nullable_System_DateTime__
+  name: SyncResult
+  nameWithType: SyncResult.SyncResult
+  fullName: WsusManager.Core.Models.SyncResult.SyncResult
+  nameWithType.vb: SyncResult.New
+  fullName.vb: WsusManager.Core.Models.SyncResult.New
+  name.vb: New
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: System.Nullable{System.DateTime}
+  commentId: T:System.Nullable{System.DateTime}
+  parent: System
+  definition: System.Nullable`1
+  href: https://learn.microsoft.com/dotnet/api/system.datetime
+  name: DateTime?
+  nameWithType: DateTime?
+  fullName: System.DateTime?
+  nameWithType.vb: Date?
+  fullName.vb: Date?
+  name.vb: Date?
+  spec.csharp:
+  - uid: System.DateTime
+    name: DateTime
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.datetime
+  - name: '?'
+  spec.vb:
+  - uid: System.DateTime
+    name: Date
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.datetime
+  - name: '?'
+- uid: System.Nullable`1
+  commentId: T:System.Nullable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  name: Nullable<T>
+  nameWithType: Nullable<T>
+  fullName: System.Nullable<T>
+  nameWithType.vb: Nullable(Of T)
+  fullName.vb: System.Nullable(Of T)
+  name.vb: Nullable(Of T)
+  spec.csharp:
+  - uid: System.Nullable`1
+    name: Nullable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Nullable`1
+    name: Nullable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.nullable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: WsusManager.Core.Models.SyncResult.Result*
+  commentId: Overload:WsusManager.Core.Models.SyncResult.Result
+  href: WsusManager.Core.Models.SyncResult.html#WsusManager_Core_Models_SyncResult_Result
+  name: Result
+  nameWithType: SyncResult.Result
+  fullName: WsusManager.Core.Models.SyncResult.Result
+- uid: WsusManager.Core.Models.SyncResult.NewUpdates*
+  commentId: Overload:WsusManager.Core.Models.SyncResult.NewUpdates
+  href: WsusManager.Core.Models.SyncResult.html#WsusManager_Core_Models_SyncResult_NewUpdates
+  name: NewUpdates
+  nameWithType: SyncResult.NewUpdates
+  fullName: WsusManager.Core.Models.SyncResult.NewUpdates
+- uid: WsusManager.Core.Models.SyncResult.RevisedUpdates*
+  commentId: Overload:WsusManager.Core.Models.SyncResult.RevisedUpdates
+  href: WsusManager.Core.Models.SyncResult.html#WsusManager_Core_Models_SyncResult_RevisedUpdates
+  name: RevisedUpdates
+  nameWithType: SyncResult.RevisedUpdates
+  fullName: WsusManager.Core.Models.SyncResult.RevisedUpdates
+- uid: WsusManager.Core.Models.SyncResult.StartTime*
+  commentId: Overload:WsusManager.Core.Models.SyncResult.StartTime
+  href: WsusManager.Core.Models.SyncResult.html#WsusManager_Core_Models_SyncResult_StartTime
+  name: StartTime
+  nameWithType: SyncResult.StartTime
+  fullName: WsusManager.Core.Models.SyncResult.StartTime

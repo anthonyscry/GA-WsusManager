@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Namespace WsusManager.Core.Services | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Namespace WsusManager.Core.Services | WSUS Manager ">
+    
+    
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Services">
+
+  <h1 id="WsusManager_Core_Services" data-uid="WsusManager.Core.Services" class="text-break">Namespace WsusManager.Core.Services</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+    <h3 id="classes">
+Classes
+</h3>
+      <h4><a class="xref" href="WsusManager.Core.Services.ClientService.html">ClientService</a></h4>
+      <section><p>Implements remote WSUS client management operations via WinRM.
+All remote operations check WinRM availability before executing and
+return clear failure messages when the target is unreachable.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.ContentResetService.html">ContentResetService</a></h4>
+      <section><p>Runs wsusutil.exe reset via IProcessRunner to re-verify content files.
+The wsusutil executable is located at C:\Program Files\Update Services\Tools\wsusutil.exe.
+Output is streamed to the progress reporter. No timeout is applied.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.DashboardService.html">DashboardService</a></h4>
+      <section><p>Collects dashboard data from the local system: Windows services,
+SQL database size, disk space, scheduled task status, and internet connectivity.
+All queries use async patterns and timeouts to avoid blocking the UI.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.DatabaseBackupService.html">DatabaseBackupService</a></h4>
+      <section><p>Implements database backup and restore operations for the WSUS SUSDB.
+Backup uses SQL BACKUP DATABASE with compression.
+Restore uses the full workflow: verify, stop services, single-user, restore,
+multi-user, wsusutil postinstall, restart services.
+Both operations require SQL sysadmin permissions.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.DeepCleanupService.html">DeepCleanupService</a></h4>
+      <section><p>Implements the 6-step WSUS deep cleanup pipeline.
+Matches the PowerShell WsusDatabase.psm1 implementation exactly,
+including SQL batch sizes, retry logic, and progress format.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.ExportService.html">ExportService</a></h4>
+      <section><p>Exports WSUS content to external media using robocopy.
+Supports full and differential export modes.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.FirewallService.html">FirewallService</a></h4>
+      <section><p>Firewall rule management via netsh advfirewall commands.
+Checks for and creates inbound rules on WSUS ports 8530 (HTTP) and 8531 (HTTPS).</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.GpoDeploymentService.html">GpoDeploymentService</a></h4>
+      <section><p>Copies GPO deployment files from the application's DomainController/ directory
+to C:\WSUS\WSUS GPO\ and returns structured instruction text for the DC admin.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.HealthService.html">HealthService</a></h4>
+      <section><p>Orchestrates the full 12-check diagnostics pipeline matching the PowerShell
+Invoke-WsusDiagnostics check list. Auto-repair is always on (matches GUI behavior).
+Each check streams its result to the progress reporter as it completes.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.ImportService.html">ImportService</a></h4>
+      <section><p>Imports WSUS content from external media to the local WSUS content directory.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.InstallationService.html">InstallationService</a></h4>
+      <section><p>Validates installation prerequisites and launches the legacy
+Install-WsusWithSqlExpress.ps1 script via IProcessRunner in non-interactive mode.
+This is the only operation that deliberately shells out to PowerShell --
+the install script is complex and re-implementing in C# provides no benefit.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.PermissionsService.html">PermissionsService</a></h4>
+      <section><p>Checks and repairs WSUS content directory permissions and SQL login permissions.
+Content permissions use System.Security.AccessControl for checking and icacls for repair.
+SQL checks use Microsoft.Data.SqlClient with integrated security (Integrated Security=True).</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.RobocopyService.html">RobocopyService</a></h4>
+      <section><p>Runs robocopy.exe with standardized WSUS options for content transfer.
+Mirrors the PowerShell Invoke-WsusRobocopy function exactly.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.ScheduledTaskService.html">ScheduledTaskService</a></h4>
+      <section><p>Creates, queries, and deletes Windows scheduled tasks using schtasks.exe via IProcessRunner.
+Uses schtasks.exe instead of COM TaskScheduler API -- simpler, no NuGet dependency,
+and works reliably on Server 2019.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.ScriptGeneratorService.html">ScriptGeneratorService</a></h4>
+      <section><p>Generates self-contained PowerShell scripts for WSUS client operations.
+Each generated script:</p>
+<ul>
+<li>Requires administrator privileges (#Requires -RunAsAdministrator)</li>
+<li>Is fully self-contained with no module imports or external dependencies</li>
+<li>Uses Write-Host with colours for readable output</li>
+<li>Ends with a &quot;Press Enter&quot; pause so the admin can read results.</li>
+</ul>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.SettingsService.html">SettingsService</a></h4>
+      <section><p>Settings service that persists application settings to JSON at
+%APPDATA%\WsusManager\settings.json.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.SqlService.html">SqlService</a></h4>
+      <section><p>Centralized SQL execution service for WSUS database operations.
+All connection strings use Integrated Security and TrustServerCertificate.
+Operations with commandTimeoutSeconds = 0 run with unlimited timeout —
+required for maintenance queries (index rebuild, shrink, batch deletes).</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.SyncService.html">SyncService</a></h4>
+      <section><p>Orchestrates Online Sync workflows by composing IWsusServerService operations
+according to the selected sync profile.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.WinRmExecutor.html">WinRmExecutor</a></h4>
+      <section><p>Executes PowerShell commands on remote hosts using WinRM (Invoke-Command).
+Delegates to <a class="xref" href="WsusManager.Core.Infrastructure.IProcessRunner.html">IProcessRunner</a> to invoke powershell.exe.</p>
+<p><b>WinRM availability note:</b> WinRM is not guaranteed to be enabled on target
+hosts, especially in locked-down environments. Every method returns a graceful error
+result if the connection fails rather than throwing. Callers should direct users to
+the Script Generator (Phase 15) when WinRM is unavailable.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.WindowsServiceManager.html">WindowsServiceManager</a></h4>
+      <section><p>Manages Windows services for WSUS using System.ServiceProcess.ServiceController.
+Service dependency order for start: SQL(1) -&gt; IIS(2) -&gt; WSUS(3).
+Service dependency order for stop: WSUS(1) -&gt; IIS(2) -&gt; SQL(3).
+Retry logic: 3 attempts with 5-second delays for service start failures.</p>
+</section>
+      <h4><a class="xref" href="WsusManager.Core.Services.WsusServerService.html">WsusServerService</a></h4>
+      <section><p>Connects to the local WSUS server via the Microsoft.UpdateServices.Administration
+managed API loaded at runtime. All WSUS API calls are blocking, so they are wrapped
+in Task.Run to keep the UI responsive.</p>
+</section>
+
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

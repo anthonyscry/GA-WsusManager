@@ -1,0 +1,176 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.CheckStatus
+  commentId: T:WsusManager.Core.Models.CheckStatus
+  id: CheckStatus
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.CheckStatus.Fail
+  - WsusManager.Core.Models.CheckStatus.Pass
+  - WsusManager.Core.Models.CheckStatus.Skipped
+  - WsusManager.Core.Models.CheckStatus.Warning
+  langs:
+  - csharp
+  - vb
+  name: CheckStatus
+  nameWithType: CheckStatus
+  fullName: WsusManager.Core.Models.CheckStatus
+  type: Enum
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: CheckStatus
+    path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+    startLine: 5
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: Status of a single diagnostic check.
+  example: []
+  syntax:
+    content: public enum CheckStatus
+    content.vb: Public Enum CheckStatus
+- uid: WsusManager.Core.Models.CheckStatus.Pass
+  commentId: F:WsusManager.Core.Models.CheckStatus.Pass
+  id: Pass
+  parent: WsusManager.Core.Models.CheckStatus
+  langs:
+  - csharp
+  - vb
+  name: Pass
+  nameWithType: CheckStatus.Pass
+  fullName: WsusManager.Core.Models.CheckStatus.Pass
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Pass
+    path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+    startLine: 7
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Pass = 0
+    return:
+      type: WsusManager.Core.Models.CheckStatus
+- uid: WsusManager.Core.Models.CheckStatus.Fail
+  commentId: F:WsusManager.Core.Models.CheckStatus.Fail
+  id: Fail
+  parent: WsusManager.Core.Models.CheckStatus
+  langs:
+  - csharp
+  - vb
+  name: Fail
+  nameWithType: CheckStatus.Fail
+  fullName: WsusManager.Core.Models.CheckStatus.Fail
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Fail
+    path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+    startLine: 8
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Fail = 1
+    return:
+      type: WsusManager.Core.Models.CheckStatus
+- uid: WsusManager.Core.Models.CheckStatus.Warning
+  commentId: F:WsusManager.Core.Models.CheckStatus.Warning
+  id: Warning
+  parent: WsusManager.Core.Models.CheckStatus
+  langs:
+  - csharp
+  - vb
+  name: Warning
+  nameWithType: CheckStatus.Warning
+  fullName: WsusManager.Core.Models.CheckStatus.Warning
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Warning
+    path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+    startLine: 9
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Warning = 2
+    return:
+      type: WsusManager.Core.Models.CheckStatus
+- uid: WsusManager.Core.Models.CheckStatus.Skipped
+  commentId: F:WsusManager.Core.Models.CheckStatus.Skipped
+  id: Skipped
+  parent: WsusManager.Core.Models.CheckStatus
+  langs:
+  - csharp
+  - vb
+  name: Skipped
+  nameWithType: CheckStatus.Skipped
+  fullName: WsusManager.Core.Models.CheckStatus.Skipped
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: Skipped
+    path: src/WsusManager.Core/Models/DiagnosticCheckResult.cs
+    startLine: 10
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  syntax:
+    content: Skipped = 3
+    return:
+      type: WsusManager.Core.Models.CheckStatus
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: WsusManager.Core.Models.CheckStatus
+  commentId: T:WsusManager.Core.Models.CheckStatus
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.CheckStatus.html
+  name: CheckStatus
+  nameWithType: CheckStatus
+  fullName: WsusManager.Core.Models.CheckStatus

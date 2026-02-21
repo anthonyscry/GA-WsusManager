@@ -1,0 +1,1446 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.SqlService
+  commentId: T:WsusManager.Core.Services.SqlService
+  id: SqlService
+  parent: WsusManager.Core.Services
+  children:
+  - WsusManager.Core.Services.SqlService.#ctor(WsusManager.Core.Logging.ILogService)
+  - WsusManager.Core.Services.SqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  - WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  - WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  - WsusManager.Core.Services.SqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  langs:
+  - csharp
+  - vb
+  name: SqlService
+  nameWithType: SqlService
+  fullName: WsusManager.Core.Services.SqlService
+  type: Class
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: SqlService
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 13
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Centralized SQL execution service for WSUS database operations.
+
+    All connection strings use Integrated Security and TrustServerCertificate.
+
+    Operations with commandTimeoutSeconds = 0 run with unlimited timeout —
+
+    required for maintenance queries (index rebuild, shrink, batch deletes).
+  example: []
+  syntax:
+    content: 'public class SqlService : ISqlService'
+    content.vb: Public Class SqlService Implements ISqlService
+  inheritance:
+  - System.Object
+  implements:
+  - WsusManager.Core.Services.Interfaces.ISqlService
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.MemberwiseClone
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+- uid: WsusManager.Core.Services.SqlService.#ctor(WsusManager.Core.Logging.ILogService)
+  commentId: M:WsusManager.Core.Services.SqlService.#ctor(WsusManager.Core.Logging.ILogService)
+  id: '#ctor(WsusManager.Core.Logging.ILogService)'
+  parent: WsusManager.Core.Services.SqlService
+  langs:
+  - csharp
+  - vb
+  name: SqlService(ILogService)
+  nameWithType: SqlService.SqlService(ILogService)
+  fullName: WsusManager.Core.Services.SqlService.SqlService(WsusManager.Core.Logging.ILogService)
+  type: Constructor
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: .ctor
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 17
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  syntax:
+    content: public SqlService(ILogService logService)
+    parameters:
+    - id: logService
+      type: WsusManager.Core.Logging.ILogService
+    content.vb: Public Sub New(logService As ILogService)
+  overload: WsusManager.Core.Services.SqlService.#ctor*
+  nameWithType.vb: SqlService.New(ILogService)
+  fullName.vb: WsusManager.Core.Services.SqlService.New(WsusManager.Core.Logging.ILogService)
+  name.vb: New(ILogService)
+- uid: WsusManager.Core.Services.SqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  commentId: M:WsusManager.Core.Services.SqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  id: BuildConnectionString(System.String,System.String,System.Int32)
+  parent: WsusManager.Core.Services.SqlService
+  langs:
+  - csharp
+  - vb
+  name: BuildConnectionString(string, string, int)
+  nameWithType: SqlService.BuildConnectionString(string, string, int)
+  fullName: WsusManager.Core.Services.SqlService.BuildConnectionString(string, string, int)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: BuildConnectionString
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 23
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Builds a connection string for the given SQL instance and database.
+
+    Always includes Integrated Security=True and TrustServerCertificate=True.
+  example: []
+  syntax:
+    content: public string BuildConnectionString(string sqlInstance, string database, int connectTimeoutSeconds = 5)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance.
+    - id: database
+      type: System.String
+      description: Database name.
+    - id: connectTimeoutSeconds
+      type: System.Int32
+      description: Connection timeout (default 5s).
+    return:
+      type: System.String
+      description: ADO.NET connection string.
+    content.vb: Public Function BuildConnectionString(sqlInstance As String, database As String, connectTimeoutSeconds As Integer = 5) As String
+  overload: WsusManager.Core.Services.SqlService.BuildConnectionString*
+  implements:
+  - WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  nameWithType.vb: SqlService.BuildConnectionString(String, String, Integer)
+  fullName.vb: WsusManager.Core.Services.SqlService.BuildConnectionString(String, String, Integer)
+  name.vb: BuildConnectionString(String, String, Integer)
+- uid: WsusManager.Core.Services.SqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.SqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  id: ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.SqlService
+  langs:
+  - csharp
+  - vb
+  name: ExecuteScalarAsync<T>(string, string, string, int, CancellationToken)
+  nameWithType: SqlService.ExecuteScalarAsync<T>(string, string, string, int, CancellationToken)
+  fullName: WsusManager.Core.Services.SqlService.ExecuteScalarAsync<T>(string, string, string, int, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ExecuteScalarAsync
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 29
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: Executes a scalar SQL query and returns the first column of the first row.
+  example: []
+  syntax:
+    content: public Task<T?> ExecuteScalarAsync<T>(string sqlInstance, string database, string query, int commandTimeoutSeconds = 0, CancellationToken ct = default)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance (e.g., "localhost\SQLEXPRESS").
+    - id: database
+      type: System.String
+      description: Database name (e.g., "SUSDB" or "master").
+    - id: query
+      type: System.String
+      description: SQL query to execute.
+    - id: commandTimeoutSeconds
+      type: System.Int32
+      description: 0 = unlimited (default); use for maintenance queries.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    typeParameters:
+    - id: T
+      description: Return type of the scalar value.
+    return:
+      type: System.Threading.Tasks.Task{{T}}
+      description: The scalar result, or default(T) if result is null/DBNull.
+    content.vb: Public Function ExecuteScalarAsync(Of T)(sqlInstance As String, database As String, query As String, commandTimeoutSeconds As Integer = 0, ct As CancellationToken = Nothing) As Task(Of T)
+  overload: WsusManager.Core.Services.SqlService.ExecuteScalarAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  nameWithType.vb: SqlService.ExecuteScalarAsync(Of T)(String, String, String, Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.SqlService.ExecuteScalarAsync(Of T)(String, String, String, Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteScalarAsync(Of T)(String, String, String, Integer, CancellationToken)
+- uid: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  id: ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.SqlService
+  langs:
+  - csharp
+  - vb
+  name: ExecuteNonQueryAsync(string, string, string, int, CancellationToken)
+  nameWithType: SqlService.ExecuteNonQueryAsync(string, string, string, int, CancellationToken)
+  fullName: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync(string, string, string, int, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ExecuteNonQueryAsync
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 67
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: Executes a SQL non-query (INSERT, UPDATE, DELETE, DDL) and returns the row count.
+  example: []
+  syntax:
+    content: public Task<int> ExecuteNonQueryAsync(string sqlInstance, string database, string query, int commandTimeoutSeconds = 0, CancellationToken ct = default)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance.
+    - id: database
+      type: System.String
+      description: Database name.
+    - id: query
+      type: System.String
+      description: SQL statement to execute.
+    - id: commandTimeoutSeconds
+      type: System.Int32
+      description: 0 = unlimited (default); use for maintenance queries.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    return:
+      type: System.Threading.Tasks.Task{System.Int32}
+      description: Number of rows affected.
+    content.vb: Public Function ExecuteNonQueryAsync(sqlInstance As String, database As String, query As String, commandTimeoutSeconds As Integer = 0, ct As CancellationToken = Nothing) As Task(Of Integer)
+  overload: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  nameWithType.vb: SqlService.ExecuteNonQueryAsync(String, String, String, Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync(String, String, String, Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteNonQueryAsync(String, String, String, Integer, CancellationToken)
+- uid: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  id: ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.SqlService
+  langs:
+  - csharp
+  - vb
+  name: ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  nameWithType: SqlService.ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  fullName: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync<T>(string, string, string, System.Func<System.Data.IDataReader, T>, int, System.Threading.CancellationToken)
+  type: Method
+  source:
+    remote:
+      path: src/WsusManager.Core/Services/SqlService.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: ExecuteReaderFirstAsync
+    path: src/WsusManager.Core/Services/SqlService.cs
+    startLine: 100
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Services
+  summary: >-
+    Executes a SQL query and maps the first row via a reader delegate.
+
+    Returns a failed OperationResult if no rows are returned.
+  example: []
+  syntax:
+    content: public Task<OperationResult<T>> ExecuteReaderFirstAsync<T>(string sqlInstance, string database, string query, Func<IDataReader, T> mapper, int commandTimeoutSeconds = 0, CancellationToken ct = default)
+    parameters:
+    - id: sqlInstance
+      type: System.String
+      description: SQL Server instance.
+    - id: database
+      type: System.String
+      description: Database name.
+    - id: query
+      type: System.String
+      description: SQL SELECT query.
+    - id: mapper
+      type: System.Func{System.Data.IDataReader,{T}}
+      description: Function to convert a row to T.
+    - id: commandTimeoutSeconds
+      type: System.Int32
+      description: 0 = unlimited.
+    - id: ct
+      type: System.Threading.CancellationToken
+      description: Cancellation token.
+    typeParameters:
+    - id: T
+      description: Return type from the reader mapper.
+    return:
+      type: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{{T}}}
+      description: OperationResult with mapped data if successful.
+    content.vb: Public Function ExecuteReaderFirstAsync(Of T)(sqlInstance As String, database As String, query As String, mapper As Func(Of IDataReader, T), commandTimeoutSeconds As Integer = 0, ct As CancellationToken = Nothing) As Task(Of OperationResult(Of T))
+  overload: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync*
+  implements:
+  - WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,{T}},System.Int32,System.Threading.CancellationToken)
+  nameWithType.vb: SqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, System.Func(Of System.Data.IDataReader, T), Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+references:
+- uid: WsusManager.Core.Services
+  commentId: N:WsusManager.Core.Services
+  href: WsusManager.html
+  name: WsusManager.Core.Services
+  nameWithType: WsusManager.Core.Services
+  fullName: WsusManager.Core.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: WsusManager.Core.Services.Interfaces.ISqlService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISqlService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html
+  name: ISqlService
+  nameWithType: ISqlService
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.MemberwiseClone
+  commentId: M:System.Object.MemberwiseClone
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  name: MemberwiseClone()
+  nameWithType: object.MemberwiseClone()
+  fullName: object.MemberwiseClone()
+  nameWithType.vb: Object.MemberwiseClone()
+  fullName.vb: Object.MemberwiseClone()
+  spec.csharp:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.MemberwiseClone
+    name: MemberwiseClone
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+- uid: WsusManager.Core.Services.SqlService.#ctor*
+  commentId: Overload:WsusManager.Core.Services.SqlService.#ctor
+  href: WsusManager.Core.Services.SqlService.html#WsusManager_Core_Services_SqlService__ctor_WsusManager_Core_Logging_ILogService_
+  name: SqlService
+  nameWithType: SqlService.SqlService
+  fullName: WsusManager.Core.Services.SqlService.SqlService
+  nameWithType.vb: SqlService.New
+  fullName.vb: WsusManager.Core.Services.SqlService.New
+  name.vb: New
+- uid: WsusManager.Core.Logging.ILogService
+  commentId: T:WsusManager.Core.Logging.ILogService
+  parent: WsusManager.Core.Logging
+  href: WsusManager.Core.Logging.ILogService.html
+  name: ILogService
+  nameWithType: ILogService
+  fullName: WsusManager.Core.Logging.ILogService
+- uid: WsusManager.Core.Logging
+  commentId: N:WsusManager.Core.Logging
+  href: WsusManager.html
+  name: WsusManager.Core.Logging
+  nameWithType: WsusManager.Core.Logging
+  fullName: WsusManager.Core.Logging
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Logging
+    name: Logging
+    href: WsusManager.Core.Logging.html
+- uid: WsusManager.Core.Services.SqlService.BuildConnectionString*
+  commentId: Overload:WsusManager.Core.Services.SqlService.BuildConnectionString
+  href: WsusManager.Core.Services.SqlService.html#WsusManager_Core_Services_SqlService_BuildConnectionString_System_String_System_String_System_Int32_
+  name: BuildConnectionString
+  nameWithType: SqlService.BuildConnectionString
+  fullName: WsusManager.Core.Services.SqlService.BuildConnectionString
+- uid: WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(System.String,System.String,System.Int32)
+  parent: WsusManager.Core.Services.Interfaces.ISqlService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_BuildConnectionString_System_String_System_String_System_Int32_
+  name: BuildConnectionString(string, string, int)
+  nameWithType: ISqlService.BuildConnectionString(string, string, int)
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(string, string, int)
+  nameWithType.vb: ISqlService.BuildConnectionString(String, String, Integer)
+  fullName.vb: WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(String, String, Integer)
+  name.vb: BuildConnectionString(String, String, Integer)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(System.String,System.String,System.Int32)
+    name: BuildConnectionString
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_BuildConnectionString_System_String_System_String_System_Int32_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.BuildConnectionString(System.String,System.String,System.Int32)
+    name: BuildConnectionString
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_BuildConnectionString_System_String_System_String_System_Int32_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: WsusManager.Core.Services.SqlService.ExecuteScalarAsync*
+  commentId: Overload:WsusManager.Core.Services.SqlService.ExecuteScalarAsync
+  href: WsusManager.Core.Services.SqlService.html#WsusManager_Core_Services_SqlService_ExecuteScalarAsync__1_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  name: ExecuteScalarAsync
+  nameWithType: SqlService.ExecuteScalarAsync
+  fullName: WsusManager.Core.Services.SqlService.ExecuteScalarAsync
+- uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.ISqlService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteScalarAsync__1_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  name: ExecuteScalarAsync<T>(string, string, string, int, CancellationToken)
+  nameWithType: ISqlService.ExecuteScalarAsync<T>(string, string, string, int, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync<T>(string, string, string, int, System.Threading.CancellationToken)
+  nameWithType.vb: ISqlService.ExecuteScalarAsync(Of T)(String, String, String, Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync(Of T)(String, String, String, Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteScalarAsync(Of T)(String, String, String, Integer, CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+    name: ExecuteScalarAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteScalarAsync__1_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  - name: <
+  - name: T
+  - name: '>'
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteScalarAsync``1(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+    name: ExecuteScalarAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteScalarAsync__1_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.CancellationToken
+  commentId: T:System.Threading.CancellationToken
+  parent: System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  name: CancellationToken
+  nameWithType: CancellationToken
+  fullName: System.Threading.CancellationToken
+- uid: System.Threading.Tasks.Task{{T}}
+  commentId: T:System.Threading.Tasks.Task{``0}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<T>
+  nameWithType: Task<T>
+  fullName: System.Threading.Tasks.Task<T>
+  nameWithType.vb: Task(Of T)
+  fullName.vb: System.Threading.Tasks.Task(Of T)
+  name.vb: Task(Of T)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Threading
+  commentId: N:System.Threading
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading
+  nameWithType: System.Threading
+  fullName: System.Threading
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+- uid: System.Threading.Tasks.Task`1
+  commentId: T:System.Threading.Tasks.Task`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<TResult>
+  nameWithType: Task<TResult>
+  fullName: System.Threading.Tasks.Task<TResult>
+  nameWithType.vb: Task(Of TResult)
+  fullName.vb: System.Threading.Tasks.Task(Of TResult)
+  name.vb: Task(Of TResult)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TResult
+  - name: )
+- uid: System.Threading.Tasks
+  commentId: N:System.Threading.Tasks
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Threading.Tasks
+  nameWithType: System.Threading.Tasks
+  fullName: System.Threading.Tasks
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Threading
+    name: Threading
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading
+  - name: .
+  - uid: System.Threading.Tasks
+    name: Tasks
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks
+- uid: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync*
+  commentId: Overload:WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync
+  href: WsusManager.Core.Services.SqlService.html#WsusManager_Core_Services_SqlService_ExecuteNonQueryAsync_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  name: ExecuteNonQueryAsync
+  nameWithType: SqlService.ExecuteNonQueryAsync
+  fullName: WsusManager.Core.Services.SqlService.ExecuteNonQueryAsync
+- uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.ISqlService
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteNonQueryAsync_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  name: ExecuteNonQueryAsync(string, string, string, int, CancellationToken)
+  nameWithType: ISqlService.ExecuteNonQueryAsync(string, string, string, int, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(string, string, string, int, System.Threading.CancellationToken)
+  nameWithType.vb: ISqlService.ExecuteNonQueryAsync(String, String, String, Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(String, String, String, Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteNonQueryAsync(String, String, String, Integer, CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+    name: ExecuteNonQueryAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteNonQueryAsync_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteNonQueryAsync(System.String,System.String,System.String,System.Int32,System.Threading.CancellationToken)
+    name: ExecuteNonQueryAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteNonQueryAsync_System_String_System_String_System_String_System_Int32_System_Threading_CancellationToken_
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Threading.Tasks.Task{System.Int32}
+  commentId: T:System.Threading.Tasks.Task{System.Int32}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<int>
+  nameWithType: Task<int>
+  fullName: System.Threading.Tasks.Task<int>
+  nameWithType.vb: Task(Of Integer)
+  fullName.vb: System.Threading.Tasks.Task(Of Integer)
+  name.vb: Task(Of Integer)
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync*
+  commentId: Overload:WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync
+  href: WsusManager.Core.Services.SqlService.html#WsusManager_Core_Services_SqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  name: ExecuteReaderFirstAsync
+  nameWithType: SqlService.ExecuteReaderFirstAsync
+  fullName: WsusManager.Core.Services.SqlService.ExecuteReaderFirstAsync
+- uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,{T}},System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  parent: WsusManager.Core.Services.Interfaces.ISqlService
+  definition: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  name: ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  nameWithType: ISqlService.ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync<T>(string, string, string, System.Func<System.Data.IDataReader, T>, int, System.Threading.CancellationToken)
+  nameWithType.vb: ISqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, System.Func(Of System.Data.IDataReader, T), Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+    name: ExecuteReaderFirstAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  - name: <
+  - name: T
+  - name: '>'
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: <
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+    name: ExecuteReaderFirstAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Func{System.Data.IDataReader,{T}}
+  commentId: T:System.Func{System.Data.IDataReader,``0}
+  parent: System
+  definition: System.Func`2
+  href: https://learn.microsoft.com/dotnet/api/system.func-2
+  name: Func<IDataReader, T>
+  nameWithType: Func<IDataReader, T>
+  fullName: System.Func<System.Data.IDataReader, T>
+  nameWithType.vb: Func(Of IDataReader, T)
+  fullName.vb: System.Func(Of System.Data.IDataReader, T)
+  name.vb: Func(Of IDataReader, T)
+  spec.csharp:
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: <
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{{T}}}
+  commentId: T:System.Threading.Tasks.Task{WsusManager.Core.Models.OperationResult{``0}}
+  parent: System.Threading.Tasks
+  definition: System.Threading.Tasks.Task`1
+  href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  name: Task<OperationResult<T>>
+  nameWithType: Task<OperationResult<T>>
+  fullName: System.Threading.Tasks.Task<WsusManager.Core.Models.OperationResult<T>>
+  nameWithType.vb: Task(Of OperationResult(Of T))
+  fullName.vb: System.Threading.Tasks.Task(Of WsusManager.Core.Models.OperationResult(Of T))
+  name.vb: Task(Of OperationResult(Of T))
+  spec.csharp:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: <
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.Threading.Tasks.Task`1
+    name: Task
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult
+    href: WsusManager.Core.Models.OperationResult-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  commentId: M:WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+  isExternal: true
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  name: ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  nameWithType: ISqlService.ExecuteReaderFirstAsync<T>(string, string, string, Func<IDataReader, T>, int, CancellationToken)
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync<T>(string, string, string, System.Func<System.Data.IDataReader, T>, int, System.Threading.CancellationToken)
+  nameWithType.vb: ISqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+  fullName.vb: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync(Of T)(String, String, String, System.Func(Of System.Data.IDataReader, T), Integer, System.Threading.CancellationToken)
+  name.vb: ExecuteReaderFirstAsync(Of T)(String, String, String, Func(Of IDataReader, T), Integer, CancellationToken)
+  spec.csharp:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+    name: ExecuteReaderFirstAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  - name: <
+  - name: T
+  - name: '>'
+  - name: (
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: string
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: <
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+  spec.vb:
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService.ExecuteReaderFirstAsync``1(System.String,System.String,System.String,System.Func{System.Data.IDataReader,``0},System.Int32,System.Threading.CancellationToken)
+    name: ExecuteReaderFirstAsync
+    href: WsusManager.Core.Services.Interfaces.ISqlService.html#WsusManager_Core_Services_Interfaces_ISqlService_ExecuteReaderFirstAsync__1_System_String_System_String_System_String_System_Func_System_Data_IDataReader___0__System_Int32_System_Threading_CancellationToken_
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: (
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.String
+    name: String
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.string
+  - name: ','
+  - name: " "
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Data.IDataReader
+    name: IDataReader
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.data.idatareader
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Threading.CancellationToken
+    name: CancellationToken
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken
+  - name: )
+- uid: System.Func`2
+  commentId: T:System.Func`2
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.func-2
+  name: Func<T, TResult>
+  nameWithType: Func<T, TResult>
+  fullName: System.Func<T, TResult>
+  nameWithType.vb: Func(Of T, TResult)
+  fullName.vb: System.Func(Of T, TResult)
+  name.vb: Func(Of T, TResult)
+  spec.csharp:
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: TResult
+  - name: '>'
+  spec.vb:
+  - uid: System.Func`2
+    name: Func
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.func-2
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: TResult
+  - name: )

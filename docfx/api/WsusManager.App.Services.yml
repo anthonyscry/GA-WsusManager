@@ -1,0 +1,69 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.App.Services
+  commentId: N:WsusManager.App.Services
+  id: WsusManager.App.Services
+  children:
+  - WsusManager.App.Services.IThemeService
+  - WsusManager.App.Services.ThemeInfo
+  - WsusManager.App.Services.ThemeService
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.App.Services
+  nameWithType: WsusManager.App.Services
+  fullName: WsusManager.App.Services
+  type: Namespace
+  assemblies:
+  - WsusManager.App
+references:
+- uid: WsusManager.App.Services.ThemeInfo
+  commentId: T:WsusManager.App.Services.ThemeInfo
+  parent: WsusManager.App.Services
+  href: WsusManager.App.Services.ThemeInfo.html
+  name: ThemeInfo
+  nameWithType: ThemeInfo
+  fullName: WsusManager.App.Services.ThemeInfo
+- uid: WsusManager.App.Services.IThemeService
+  commentId: T:WsusManager.App.Services.IThemeService
+  parent: WsusManager.App.Services
+  href: WsusManager.App.Services.IThemeService.html
+  name: IThemeService
+  nameWithType: IThemeService
+  fullName: WsusManager.App.Services.IThemeService
+- uid: WsusManager.App.Services.ThemeService
+  commentId: T:WsusManager.App.Services.ThemeService
+  href: WsusManager.App.Services.ThemeService.html
+  name: ThemeService
+  nameWithType: ThemeService
+  fullName: WsusManager.App.Services.ThemeService
+- uid: WsusManager.App.Services
+  commentId: N:WsusManager.App.Services
+  href: WsusManager.html
+  name: WsusManager.App.Services
+  nameWithType: WsusManager.App.Services
+  fullName: WsusManager.App.Services
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.Services
+    name: Services
+    href: WsusManager.App.Services.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.App
+    name: App
+    href: WsusManager.App.html
+  - name: .
+  - uid: WsusManager.App.Services
+    name: Services
+    href: WsusManager.App.Services.html

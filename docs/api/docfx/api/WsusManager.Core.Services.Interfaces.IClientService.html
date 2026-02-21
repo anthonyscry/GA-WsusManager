@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Interface IClientService | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Interface IClientService | WSUS Manager ">
+    
+    <meta name="description" content="Provides client machine management operations for WSUS-managed endpoints. All remote operations use WinRM (Invoke-Command) to execute PowerShell on the target host. If WinRM is unavailable, callers should direct users to the Script Generator in Phase 15.">
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Services.Interfaces.IClientService">
+
+
+
+  <h1 id="WsusManager_Core_Services_Interfaces_IClientService" data-uid="WsusManager.Core.Services.Interfaces.IClientService" class="text-break">Interface IClientService</h1>
+  <div class="markdown level0 summary"><p>Provides client machine management operations for WSUS-managed endpoints.
+All remote operations use WinRM (Invoke-Command) to execute PowerShell on the target host.
+If WinRM is unavailable, callers should direct users to the Script Generator in Phase 15.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="WsusManager.html">WsusManager</a>.<a class="xref" href="WsusManager.Core.html">Core</a>.<a class="xref" href="WsusManager.Core.Services.html">Services</a>.<a class="xref" href="WsusManager.Core.Services.Interfaces.html">Interfaces</a></h6>
+  <h6><strong>Assembly</strong>: WsusManager.Core.dll</h6>
+  <h5 id="WsusManager_Core_Services_Interfaces_IClientService_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IClientService</code></pre>
+  </div>
+  <h3 id="methods">Methods
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_CancelStuckJobsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(System.String%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L20">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_CancelStuckJobsAsync_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_CancelStuckJobsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.CancelStuckJobsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)">CancelStuckJobsAsync(string, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Cancels stuck Windows Update background jobs on the remote host by stopping
+wuauserv, clearing the job queue, and restarting the service.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&gt; CancelStuckJobsAsync(string hostname, IProgress&lt;string&gt; progress, CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">hostname</span></td>
+        <td><p>Target computer name or IP address.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time output lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token — stops the operation on cancellation.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult.html">OperationResult</a>&gt;</td>
+        <td><p>Operation result indicating success or failure with detail.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_ForceCheckInAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(System.String%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L33">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_ForceCheckInAsync_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_ForceCheckInAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.ForceCheckInAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)">ForceCheckInAsync(string, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Forces the Windows Update client on the remote host to check in with the
+configured WSUS server immediately (wuauclt /detectnow + usoclient StartScan).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&gt; ForceCheckInAsync(string hostname, IProgress&lt;string&gt; progress, CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">hostname</span></td>
+        <td><p>Target computer name or IP address.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time output lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token — stops the operation on cancellation.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult.html">OperationResult</a>&gt;</td>
+        <td><p>Operation result indicating success or failure with detail.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_LookupErrorCode_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(System.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L74">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_LookupErrorCode_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_LookupErrorCode_System_String_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.LookupErrorCode(System.String)">LookupErrorCode(string)</h4>
+  <div class="markdown level1 summary"><p>Looks up a WSUS/Windows Update error code and returns a human-readable
+description with a recommended fix. This is a local dictionary lookup —
+no remote call is made.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">OperationResult&lt;WsusErrorInfo&gt; LookupErrorCode(string errorCode)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">errorCode</span></td>
+        <td><p>Hex code (e.g., &quot;0x80244010&quot;) or decimal string.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="WsusManager.Core.Models.OperationResult-1.html">OperationResult</a>&lt;<a class="xref" href="WsusManager.Core.Models.WsusErrorInfo.html">WsusErrorInfo</a>&gt;</td>
+        <td><p>Operation result with error info, or a failed result if unknown.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_MassForceCheckInAsync_System_Collections_Generic_IReadOnlyList_System_String__System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList%7BSystem.String%7D%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L88">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_MassForceCheckInAsync_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_MassForceCheckInAsync_System_Collections_Generic_IReadOnlyList_System_String__System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.MassForceCheckInAsync(System.Collections.Generic.IReadOnlyList{System.String},System.IProgress{System.String},System.Threading.CancellationToken)">MassForceCheckInAsync(IReadOnlyList&lt;string&gt;, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Runs ForceCheckInAsync sequentially across multiple hosts, reporting per-host
+pass/fail results. Processes are run one at a time (not parallel) to avoid
+overloading WinRM connections.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&gt; MassForceCheckInAsync(IReadOnlyList&lt;string&gt; hostnames, IProgress&lt;string&gt; progress, CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">hostnames</span></td>
+        <td><p>List of target hostnames or IP addresses.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time per-host output lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token — stops processing remaining hosts on cancellation.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult.html">OperationResult</a>&gt;</td>
+        <td><p>Ok if all hosts succeeded; Fail if any host failed (but all reachable hosts are still processed).
+The message includes a summary: &quot;{passed}/{total} hosts succeeded, {failed} failed.&quot;.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_RunDiagnosticsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(System.String%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L62">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_RunDiagnosticsAsync_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_RunDiagnosticsAsync_System_String_System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.RunDiagnosticsAsync(System.String,System.IProgress{System.String},System.Threading.CancellationToken)">RunDiagnosticsAsync(string, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Runs a comprehensive diagnostics pass on the remote host: reads WSUS registry
+settings, checks service states, last check-in time, pending reboot flag,
+and Windows Update Agent version.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&lt;ClientDiagnosticResult&gt;&gt; RunDiagnosticsAsync(string hostname, IProgress&lt;string&gt; progress, CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">hostname</span></td>
+        <td><p>Target computer name or IP address.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time output lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token — stops the operation on cancellation.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult-1.html">OperationResult</a>&lt;<a class="xref" href="WsusManager.Core.Models.ClientDiagnosticResult.html">ClientDiagnosticResult</a>&gt;&gt;</td>
+        <td><p>Operation result with full diagnostic snapshot from the remote host.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService_TestConnectivityAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(System.String%2CSystem.String%2CSystem.IProgress%7BSystem.String%7D%2CSystem.Threading.CancellationToken)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L47">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Services_Interfaces_IClientService_TestConnectivityAsync_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync*"></a>
+  <h4 id="WsusManager_Core_Services_Interfaces_IClientService_TestConnectivityAsync_System_String_System_String_System_IProgress_System_String__System_Threading_CancellationToken_" data-uid="WsusManager.Core.Services.Interfaces.IClientService.TestConnectivityAsync(System.String,System.String,System.IProgress{System.String},System.Threading.CancellationToken)">TestConnectivityAsync(string, string, IProgress&lt;string&gt;, CancellationToken)</h4>
+  <div class="markdown level1 summary"><p>Tests whether the remote host can reach the WSUS server on ports 8530 and 8531,
+measuring round-trip latency.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task&lt;OperationResult&lt;ConnectivityTestResult&gt;&gt; TestConnectivityAsync(string hostname, string wsusServerUrl, IProgress&lt;string&gt; progress, CancellationToken ct = default)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">hostname</span></td>
+        <td><p>Target computer name or IP address.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">wsusServerUrl</span></td>
+        <td><p>WSUS server URL (e.g., http://wsus-server:8530).</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iprogress-1">IProgress</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</td>
+        <td><span class="parametername">progress</span></td>
+        <td><p>Progress reporter for real-time output lines.</p>
+</td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></td>
+        <td><span class="parametername">ct</span></td>
+        <td><p>Cancellation token — stops the operation on cancellation.</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+  <h5 class="returns">Returns</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="WsusManager.Core.Models.OperationResult-1.html">OperationResult</a>&lt;<a class="xref" href="WsusManager.Core.Models.ConnectivityTestResult.html">ConnectivityTestResult</a>&gt;&gt;</td>
+        <td><p>Operation result with connectivity details (port reachability, latency).</p>
+</td>
+      </tr>
+    </tbody>
+  </table>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Services_Interfaces_IClientService.md&amp;value=---%0Auid%3A%20WsusManager.Core.Services.Interfaces.IClientService%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A" class="contribution-link">Edit this page</a>
+                  </li>
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Services/Interfaces/IClientService.cs/#L10" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,214 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  id: WsusManager.Core.Services.Interfaces
+  children:
+  - WsusManager.Core.Services.Interfaces.IClientService
+  - WsusManager.Core.Services.Interfaces.IContentResetService
+  - WsusManager.Core.Services.Interfaces.IDashboardService
+  - WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  - WsusManager.Core.Services.Interfaces.IDeepCleanupService
+  - WsusManager.Core.Services.Interfaces.IExportService
+  - WsusManager.Core.Services.Interfaces.IFirewallService
+  - WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  - WsusManager.Core.Services.Interfaces.IHealthService
+  - WsusManager.Core.Services.Interfaces.IImportService
+  - WsusManager.Core.Services.Interfaces.IInstallationService
+  - WsusManager.Core.Services.Interfaces.IPermissionsService
+  - WsusManager.Core.Services.Interfaces.IRobocopyService
+  - WsusManager.Core.Services.Interfaces.IScheduledTaskService
+  - WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  - WsusManager.Core.Services.Interfaces.ISettingsService
+  - WsusManager.Core.Services.Interfaces.ISqlService
+  - WsusManager.Core.Services.Interfaces.ISyncService
+  - WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+  - WsusManager.Core.Services.Interfaces.IWsusServerService
+  langs:
+  - csharp
+  - vb
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  type: Namespace
+  assemblies:
+  - WsusManager.Core
+references:
+- uid: WsusManager.Core.Services.Interfaces.IClientService
+  commentId: T:WsusManager.Core.Services.Interfaces.IClientService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IClientService.html
+  name: IClientService
+  nameWithType: IClientService
+  fullName: WsusManager.Core.Services.Interfaces.IClientService
+- uid: WsusManager.Core.Services.Interfaces.IContentResetService
+  commentId: T:WsusManager.Core.Services.Interfaces.IContentResetService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IContentResetService.html
+  name: IContentResetService
+  nameWithType: IContentResetService
+  fullName: WsusManager.Core.Services.Interfaces.IContentResetService
+- uid: WsusManager.Core.Services.Interfaces.IDashboardService
+  commentId: T:WsusManager.Core.Services.Interfaces.IDashboardService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IDashboardService.html
+  name: IDashboardService
+  nameWithType: IDashboardService
+  fullName: WsusManager.Core.Services.Interfaces.IDashboardService
+- uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  commentId: T:WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html
+  name: IDatabaseBackupService
+  nameWithType: IDatabaseBackupService
+  fullName: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+- uid: WsusManager.Core.Services.Interfaces.IDeepCleanupService
+  commentId: T:WsusManager.Core.Services.Interfaces.IDeepCleanupService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IDeepCleanupService.html
+  name: IDeepCleanupService
+  nameWithType: IDeepCleanupService
+  fullName: WsusManager.Core.Services.Interfaces.IDeepCleanupService
+- uid: WsusManager.Core.Services.Interfaces.IExportService
+  commentId: T:WsusManager.Core.Services.Interfaces.IExportService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IExportService.html
+  name: IExportService
+  nameWithType: IExportService
+  fullName: WsusManager.Core.Services.Interfaces.IExportService
+- uid: WsusManager.Core.Services.Interfaces.IFirewallService
+  commentId: T:WsusManager.Core.Services.Interfaces.IFirewallService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IFirewallService.html
+  name: IFirewallService
+  nameWithType: IFirewallService
+  fullName: WsusManager.Core.Services.Interfaces.IFirewallService
+- uid: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  commentId: T:WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IGpoDeploymentService.html
+  name: IGpoDeploymentService
+  nameWithType: IGpoDeploymentService
+  fullName: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+- uid: WsusManager.Core.Services.Interfaces.IHealthService
+  commentId: T:WsusManager.Core.Services.Interfaces.IHealthService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IHealthService.html
+  name: IHealthService
+  nameWithType: IHealthService
+  fullName: WsusManager.Core.Services.Interfaces.IHealthService
+- uid: WsusManager.Core.Services.Interfaces.IImportService
+  commentId: T:WsusManager.Core.Services.Interfaces.IImportService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IImportService.html
+  name: IImportService
+  nameWithType: IImportService
+  fullName: WsusManager.Core.Services.Interfaces.IImportService
+- uid: WsusManager.Core.Services.Interfaces.IInstallationService
+  commentId: T:WsusManager.Core.Services.Interfaces.IInstallationService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IInstallationService.html
+  name: IInstallationService
+  nameWithType: IInstallationService
+  fullName: WsusManager.Core.Services.Interfaces.IInstallationService
+- uid: WsusManager.Core.Services.Interfaces.IPermissionsService
+  commentId: T:WsusManager.Core.Services.Interfaces.IPermissionsService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IPermissionsService.html
+  name: IPermissionsService
+  nameWithType: IPermissionsService
+  fullName: WsusManager.Core.Services.Interfaces.IPermissionsService
+- uid: WsusManager.Core.Services.Interfaces.IRobocopyService
+  commentId: T:WsusManager.Core.Services.Interfaces.IRobocopyService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IRobocopyService.html
+  name: IRobocopyService
+  nameWithType: IRobocopyService
+  fullName: WsusManager.Core.Services.Interfaces.IRobocopyService
+- uid: WsusManager.Core.Services.Interfaces.IScheduledTaskService
+  commentId: T:WsusManager.Core.Services.Interfaces.IScheduledTaskService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IScheduledTaskService.html
+  name: IScheduledTaskService
+  nameWithType: IScheduledTaskService
+  fullName: WsusManager.Core.Services.Interfaces.IScheduledTaskService
+- uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  commentId: T:WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html
+  name: IScriptGeneratorService
+  nameWithType: IScriptGeneratorService
+  fullName: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+- uid: WsusManager.Core.Services.Interfaces.ISettingsService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISettingsService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.ISettingsService.html
+  name: ISettingsService
+  nameWithType: ISettingsService
+  fullName: WsusManager.Core.Services.Interfaces.ISettingsService
+- uid: WsusManager.Core.Services.Interfaces.ISqlService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISqlService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.ISqlService.html
+  name: ISqlService
+  nameWithType: ISqlService
+  fullName: WsusManager.Core.Services.Interfaces.ISqlService
+- uid: WsusManager.Core.Services.Interfaces.ISyncService
+  commentId: T:WsusManager.Core.Services.Interfaces.ISyncService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.ISyncService.html
+  name: ISyncService
+  nameWithType: ISyncService
+  fullName: WsusManager.Core.Services.Interfaces.ISyncService
+- uid: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+  commentId: T:WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IWindowsServiceManager.html
+  name: IWindowsServiceManager
+  nameWithType: IWindowsServiceManager
+  fullName: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+- uid: WsusManager.Core.Services.Interfaces.IWsusServerService
+  commentId: T:WsusManager.Core.Services.Interfaces.IWsusServerService
+  parent: WsusManager.Core.Services.Interfaces
+  href: WsusManager.Core.Services.Interfaces.IWsusServerService.html
+  name: IWsusServerService
+  nameWithType: IWsusServerService
+  fullName: WsusManager.Core.Services.Interfaces.IWsusServerService
+- uid: WsusManager.Core.Services.Interfaces
+  commentId: N:WsusManager.Core.Services.Interfaces
+  href: WsusManager.html
+  name: WsusManager.Core.Services.Interfaces
+  nameWithType: WsusManager.Core.Services.Interfaces
+  fullName: WsusManager.Core.Services.Interfaces
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Services
+    name: Services
+    href: WsusManager.Core.Services.html
+  - name: .
+  - uid: WsusManager.Core.Services.Interfaces
+    name: Interfaces
+    href: WsusManager.Core.Services.Interfaces.html

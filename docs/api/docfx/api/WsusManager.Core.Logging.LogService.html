@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<!--[if IE]><![endif]-->
+<html>
+
+  <head>
+    <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+      <title>Class LogService | WSUS Manager </title>
+      <meta name="viewport" content="width=device-width">
+      <meta name="title" content="Class LogService | WSUS Manager ">
+    
+    <meta name="description" content="Serilog-based structured logging service. Writes daily rolling log files to C:\WSUS\Logs\WsusManager-{Date}.log with detailed structured entries suitable for remote troubleshooting on air-gapped servers.">
+      <link rel="shortcut icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../styles/docfx.vendor.min.css">
+      <link rel="stylesheet" href="../../styles/docfx.css">
+      <link rel="stylesheet" href="../../styles/main.css">
+      <meta property="docfx:navrel" content="">
+      <meta property="docfx:tocrel" content="toc.html">
+    
+    <meta property="docfx:rel" content="../../">
+    
+  </head>
+  <body data-spy="scroll" data-target="#affix" data-offset="120">
+    <div id="wrapper">
+      <header>
+
+        <nav id="autocollapse" class="navbar navbar-inverse ng-scope" role="navigation">
+          <div class="container">
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+
+              <a class="navbar-brand" href="../../index.html">
+                <img id="logo" class="svg" src="../../logo.svg" alt="WSUS Manager API Reference">
+              </a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar">
+              <form class="navbar-form navbar-right" role="search" id="search">
+                <div class="form-group">
+                  <input type="text" class="form-control" id="search-query" placeholder="Search" autocomplete="off">
+                </div>
+              </form>
+            </div>
+          </div>
+        </nav>
+
+        <div class="subnav navbar navbar-default">
+          <div class="container hide-when-search" id="breadcrumb">
+            <ul class="breadcrumb">
+              <li></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      <div class="container body-content">
+
+        <div id="search-results">
+          <div class="search-list">Search Results for <span></span></div>
+          <div class="sr-items">
+            <p><i class="glyphicon glyphicon-refresh index-loading"></i></p>
+          </div>
+          <ul id="pagination" data-first=First data-prev=Previous data-next=Next data-last=Last></ul>
+        </div>
+      </div>
+      <div role="main" class="container body-content hide-when-search">
+
+        <div class="sidenav hide-when-search">
+          <a class="btn toc-toggle collapse" data-toggle="collapse" href="#sidetoggle" aria-expanded="false" aria-controls="sidetoggle">Show / Hide Table of Contents</a>
+          <div class="sidetoggle collapse" id="sidetoggle">
+            <div id="sidetoc"></div>
+          </div>
+        </div>
+        <div class="article row grid-right">
+          <div class="col-md-10">
+            <article class="content wrap" id="_content" data-uid="WsusManager.Core.Logging.LogService">
+
+
+
+  <h1 id="WsusManager_Core_Logging_LogService" data-uid="WsusManager.Core.Logging.LogService" class="text-break">Class LogService</h1>
+  <div class="markdown level0 summary"><p>Serilog-based structured logging service. Writes daily rolling log files
+to C:\WSUS\Logs\WsusManager-{Date}.log with detailed structured entries
+suitable for remote troubleshooting on air-gapped servers.</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">LogService</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="WsusManager.Core.Logging.ILogService.html">ILogService</a></div>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <div class="inheritedMembers">
+    <h5>Inherited Members</h5>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="WsusManager.html">WsusManager</a>.<a class="xref" href="WsusManager.Core.html">Core</a>.<a class="xref" href="WsusManager.Core.Logging.html">Logging</a></h6>
+  <h6><strong>Assembly</strong>: WsusManager.Core.dll</h6>
+  <h5 id="WsusManager_Core_Logging_LogService_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class LogService : ILogService, IDisposable</code></pre>
+  </div>
+  <h3 id="constructors">Constructors
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService__ctor.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.%23ctor%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L19">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService__ctor_" data-uid="WsusManager.Core.Logging.LogService.#ctor*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService__ctor" data-uid="WsusManager.Core.Logging.LogService.#ctor">LogService()</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public LogService()</code></pre>
+  </div>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService__ctor_System_String_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.%23ctor(System.String)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L24">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService__ctor_" data-uid="WsusManager.Core.Logging.LogService.#ctor*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService__ctor_System_String_" data-uid="WsusManager.Core.Logging.LogService.#ctor(System.String)">LogService(string)</h4>
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public LogService(string logDirectory)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">logDirectory</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="methods">Methods
+</h3>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Debug_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Debug(System.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L65">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Debug_" data-uid="WsusManager.Core.Logging.LogService.Debug*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Debug_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Debug(System.String,System.Object[])">Debug(string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs a debug-level message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Debug(string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Dispose.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Dispose%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L94">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Dispose_" data-uid="WsusManager.Core.Logging.LogService.Dispose*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Dispose" data-uid="WsusManager.Core.Logging.LogService.Dispose">Dispose()</h4>
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Error_System_Exception_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Error(System.Exception%2CSystem.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L62">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Error_" data-uid="WsusManager.Core.Logging.LogService.Error*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Error_System_Exception_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Error(System.Exception,System.String,System.Object[])">Error(Exception, string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs an error with an associated exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Error(Exception exception, string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></td>
+        <td><span class="parametername">exception</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Error_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Error(System.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L59">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Error_" data-uid="WsusManager.Core.Logging.LogService.Error*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Error_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Error(System.String,System.Object[])">Error(string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs an error message with optional exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Error(string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Fatal_System_Exception_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Fatal(System.Exception%2CSystem.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L71">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Fatal_" data-uid="WsusManager.Core.Logging.LogService.Fatal*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Fatal_System_Exception_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Fatal(System.Exception,System.String,System.Object[])">Fatal(Exception, string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs a fatal error with an associated exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Fatal(Exception exception, string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></td>
+        <td><span class="parametername">exception</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Fatal_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Fatal(System.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L68">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Fatal_" data-uid="WsusManager.Core.Logging.LogService.Fatal*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Fatal_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Fatal(System.String,System.Object[])">Fatal(string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs a fatal error (application cannot continue).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Fatal(string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Flush.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Flush%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L88">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Flush_" data-uid="WsusManager.Core.Logging.LogService.Flush*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Flush" data-uid="WsusManager.Core.Logging.LogService.Flush">Flush()</h4>
+  <div class="markdown level1 summary"><p>Ensures all buffered log entries are written to disk.
+Call during application shutdown.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Flush()</code></pre>
+  </div>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Info_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Info(System.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L53">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Info_" data-uid="WsusManager.Core.Logging.LogService.Info*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Info_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Info(System.String,System.Object[])">Info(string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs an informational message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Info(string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_LogStartup_System_String_System_Int64_.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.LogStartup(System.String%2CSystem.Int64)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L74">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_LogStartup_" data-uid="WsusManager.Core.Logging.LogService.LogStartup*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_LogStartup_System_String_System_Int64_" data-uid="WsusManager.Core.Logging.LogService.LogStartup(System.String,System.Int64)">LogStartup(string, long)</h4>
+  <div class="markdown level1 summary"><p>Logs application startup information: version, OS, CLR, startup duration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void LogStartup(string version, long startupMs)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">version</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></td>
+        <td><span class="parametername">startupMs</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <span class="small pull-right mobile-hide">
+    <span class="divider">|</span>
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService_Warning_System_String_System_Object___.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService.Warning(System.String%2CSystem.Object%5B%5D)%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">Edit this page</a>
+  </span>
+  <span class="small pull-right mobile-hide">
+    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L56">View Source</a>
+  </span>
+  <a id="WsusManager_Core_Logging_LogService_Warning_" data-uid="WsusManager.Core.Logging.LogService.Warning*"></a>
+  <h4 id="WsusManager_Core_Logging_LogService_Warning_System_String_System_Object___" data-uid="WsusManager.Core.Logging.LogService.Warning(System.String,System.Object[])">Warning(string, params object[])</h4>
+  <div class="markdown level1 summary"><p>Logs a warning message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+  <h5 class="declaration">Declaration</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Warning(string messageTemplate, params object[] propertyValues)</code></pre>
+  </div>
+  <h5 class="parameters">Parameters</h5>
+  <table class="table table-bordered table-condensed">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></td>
+        <td><span class="parametername">messageTemplate</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</td>
+        <td><span class="parametername">propertyValues</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 id="implements">Implements</h3>
+  <div>
+      <a class="xref" href="WsusManager.Core.Logging.ILogService.html">ILogService</a>
+  </div>
+  <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a>
+  </div>
+
+</article>
+          </div>
+
+          <div class="hidden-sm col-md-2" role="complementary">
+            <div class="sideaffix">
+              <div class="contribution">
+                <ul class="nav">
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/new/main/apiSpec/new?filename=WsusManager_Core_Logging_LogService.md&amp;value=---%0Auid%3A%20WsusManager.Core.Logging.LogService%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A" class="contribution-link">Edit this page</a>
+                  </li>
+                  <li>
+                    <a href="https://github.com/anthonyscry/GA-WsusManager2/blob/main/src/WsusManager.Core/Logging/LogService.cs/#L11" class="contribution-link">View Source</a>
+                  </li>
+                </ul>
+              </div>
+              <nav class="bs-docs-sidebar hidden-print hidden-xs hidden-sm affix" id="affix">
+                <h5>In this article</h5>
+                <div></div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="grad-bottom"></div>
+        <div class="footer">
+          <div class="container">
+            <span class="pull-right">
+              <a href="#top">Back to top</a>
+            </span>
+      
+      <span>Generated by <strong>DocFX</strong></span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="text/javascript" src="../../styles/docfx.vendor.min.js"></script>
+    <script type="text/javascript" src="../../styles/docfx.js"></script>
+    <script type="text/javascript" src="../../styles/main.js"></script>
+  </body>
+</html>

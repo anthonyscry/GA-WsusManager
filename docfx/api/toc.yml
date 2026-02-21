@@ -1,0 +1,273 @@
+### YamlMime:TableOfContent
+items:
+- uid: WsusManager.App
+  name: WsusManager.App
+  type: Namespace
+  items:
+  - uid: WsusManager.App.App
+    name: App
+    type: Class
+  - uid: WsusManager.App.Program
+    name: Program
+    type: Class
+- uid: WsusManager.App.Services
+  name: WsusManager.App.Services
+  type: Namespace
+  items:
+  - uid: WsusManager.App.Services.IThemeService
+    name: IThemeService
+    type: Interface
+  - uid: WsusManager.App.Services.ThemeInfo
+    name: ThemeInfo
+    type: Class
+  - uid: WsusManager.App.Services.ThemeService
+    name: ThemeService
+    type: Class
+- uid: WsusManager.App.ViewModels
+  name: WsusManager.App.ViewModels
+  type: Namespace
+  items:
+  - uid: WsusManager.App.ViewModels.MainViewModel
+    name: MainViewModel
+    type: Class
+- uid: WsusManager.App.Views
+  name: WsusManager.App.Views
+  type: Namespace
+  items:
+  - uid: WsusManager.App.Views.GpoInstructionsDialog
+    name: GpoInstructionsDialog
+    type: Class
+  - uid: WsusManager.App.Views.InstallDialog
+    name: InstallDialog
+    type: Class
+  - uid: WsusManager.App.Views.MainWindow
+    name: MainWindow
+    type: Class
+  - uid: WsusManager.App.Views.ScheduleTaskDialog
+    name: ScheduleTaskDialog
+    type: Class
+  - uid: WsusManager.App.Views.SettingsDialog
+    name: SettingsDialog
+    type: Class
+  - uid: WsusManager.App.Views.SyncProfileDialog
+    name: SyncProfileDialog
+    type: Class
+  - uid: WsusManager.App.Views.TransferDialog
+    name: TransferDialog
+    type: Class
+- uid: WsusManager.Core.Infrastructure
+  name: WsusManager.Core.Infrastructure
+  type: Namespace
+  items:
+  - uid: WsusManager.Core.Infrastructure.IProcessRunner
+    name: IProcessRunner
+    type: Interface
+  - uid: WsusManager.Core.Infrastructure.ProcessRunner
+    name: ProcessRunner
+    type: Class
+- uid: WsusManager.Core.Logging
+  name: WsusManager.Core.Logging
+  type: Namespace
+  items:
+  - uid: WsusManager.Core.Logging.ILogService
+    name: ILogService
+    type: Interface
+  - uid: WsusManager.Core.Logging.LogService
+    name: LogService
+    type: Class
+- uid: WsusManager.Core.Models
+  name: WsusManager.Core.Models
+  type: Namespace
+  items:
+  - uid: WsusManager.Core.Models.AppSettings
+    name: AppSettings
+    type: Class
+  - uid: WsusManager.Core.Models.CheckStatus
+    name: CheckStatus
+    type: Enum
+  - uid: WsusManager.Core.Models.ClientDiagnosticResult
+    name: ClientDiagnosticResult
+    type: Class
+  - uid: WsusManager.Core.Models.ConnectivityTestResult
+    name: ConnectivityTestResult
+    type: Class
+  - uid: WsusManager.Core.Models.DashboardData
+    name: DashboardData
+    type: Class
+  - uid: WsusManager.Core.Models.DiagnosticCheckResult
+    name: DiagnosticCheckResult
+    type: Class
+  - uid: WsusManager.Core.Models.DiagnosticReport
+    name: DiagnosticReport
+    type: Class
+  - uid: WsusManager.Core.Models.ExportOptions
+    name: ExportOptions
+    type: Class
+  - uid: WsusManager.Core.Models.ImportOptions
+    name: ImportOptions
+    type: Class
+  - uid: WsusManager.Core.Models.InstallOptions
+    name: InstallOptions
+    type: Class
+  - uid: WsusManager.Core.Models.OperationResult
+    name: OperationResult
+    type: Class
+  - uid: WsusManager.Core.Models.OperationResult`1
+    name: OperationResult<T>
+    type: Class
+  - uid: WsusManager.Core.Models.ProcessResult
+    name: ProcessResult
+    type: Class
+  - uid: WsusManager.Core.Models.ScheduleType
+    name: ScheduleType
+    type: Enum
+  - uid: WsusManager.Core.Models.ScheduledTaskOptions
+    name: ScheduledTaskOptions
+    type: Class
+  - uid: WsusManager.Core.Models.ServiceStatusInfo
+    name: ServiceStatusInfo
+    type: Class
+  - uid: WsusManager.Core.Models.SyncProfile
+    name: SyncProfile
+    type: Enum
+  - uid: WsusManager.Core.Models.SyncResult
+    name: SyncResult
+    type: Class
+  - uid: WsusManager.Core.Models.WsusErrorCodes
+    name: WsusErrorCodes
+    type: Class
+  - uid: WsusManager.Core.Models.WsusErrorInfo
+    name: WsusErrorInfo
+    type: Class
+- uid: WsusManager.Core.Services
+  name: WsusManager.Core.Services
+  type: Namespace
+  items:
+  - uid: WsusManager.Core.Services.ClientService
+    name: ClientService
+    type: Class
+  - uid: WsusManager.Core.Services.ContentResetService
+    name: ContentResetService
+    type: Class
+  - uid: WsusManager.Core.Services.DashboardService
+    name: DashboardService
+    type: Class
+  - uid: WsusManager.Core.Services.DatabaseBackupService
+    name: DatabaseBackupService
+    type: Class
+  - uid: WsusManager.Core.Services.DeepCleanupService
+    name: DeepCleanupService
+    type: Class
+  - uid: WsusManager.Core.Services.ExportService
+    name: ExportService
+    type: Class
+  - uid: WsusManager.Core.Services.FirewallService
+    name: FirewallService
+    type: Class
+  - uid: WsusManager.Core.Services.GpoDeploymentService
+    name: GpoDeploymentService
+    type: Class
+  - uid: WsusManager.Core.Services.HealthService
+    name: HealthService
+    type: Class
+  - uid: WsusManager.Core.Services.ImportService
+    name: ImportService
+    type: Class
+  - uid: WsusManager.Core.Services.InstallationService
+    name: InstallationService
+    type: Class
+  - uid: WsusManager.Core.Services.PermissionsService
+    name: PermissionsService
+    type: Class
+  - uid: WsusManager.Core.Services.RobocopyService
+    name: RobocopyService
+    type: Class
+  - uid: WsusManager.Core.Services.ScheduledTaskService
+    name: ScheduledTaskService
+    type: Class
+  - uid: WsusManager.Core.Services.ScriptGeneratorService
+    name: ScriptGeneratorService
+    type: Class
+  - uid: WsusManager.Core.Services.SettingsService
+    name: SettingsService
+    type: Class
+  - uid: WsusManager.Core.Services.SqlService
+    name: SqlService
+    type: Class
+  - uid: WsusManager.Core.Services.SyncService
+    name: SyncService
+    type: Class
+  - uid: WsusManager.Core.Services.WinRmExecutor
+    name: WinRmExecutor
+    type: Class
+  - uid: WsusManager.Core.Services.WindowsServiceManager
+    name: WindowsServiceManager
+    type: Class
+  - uid: WsusManager.Core.Services.WsusServerService
+    name: WsusServerService
+    type: Class
+- uid: WsusManager.Core.Services.Interfaces
+  name: WsusManager.Core.Services.Interfaces
+  type: Namespace
+  items:
+  - uid: WsusManager.Core.Services.Interfaces.IClientService
+    name: IClientService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IContentResetService
+    name: IContentResetService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IDashboardService
+    name: IDashboardService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IDatabaseBackupService
+    name: IDatabaseBackupService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IDeepCleanupService
+    name: IDeepCleanupService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IExportService
+    name: IExportService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IFirewallService
+    name: IFirewallService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IGpoDeploymentService
+    name: IGpoDeploymentService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IHealthService
+    name: IHealthService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IImportService
+    name: IImportService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IInstallationService
+    name: IInstallationService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IPermissionsService
+    name: IPermissionsService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IRobocopyService
+    name: IRobocopyService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IScheduledTaskService
+    name: IScheduledTaskService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IScriptGeneratorService
+    name: IScriptGeneratorService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.ISettingsService
+    name: ISettingsService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.ISqlService
+    name: ISqlService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.ISyncService
+    name: ISyncService
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IWindowsServiceManager
+    name: IWindowsServiceManager
+    type: Interface
+  - uid: WsusManager.Core.Services.Interfaces.IWsusServerService
+    name: IWsusServerService
+    type: Interface
+memberLayout: SamePage

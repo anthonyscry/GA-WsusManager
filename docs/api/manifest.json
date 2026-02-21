@@ -1,0 +1,1273 @@
+{
+  "source_base_path": "/mnt/c/projects/GA-WsusManager",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Resource",
+      "output": {
+        "resource": {
+          "relative_path": "index.json"
+        }
+      }
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.App.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.App.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.App",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.App.yml\" sourcestartlinenumber=\"1\">WPF Application class. Handles global unhandled exception handlers.\nDI host and window creation are managed in Program.cs.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Program.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Program.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Program",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Program.yml\" sourcestartlinenumber=\"1\">Application entry point. Sets up the DI host, resolves the main window,\nand runs the WPF application. All service dependencies are registered here.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Services.IThemeService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Services.IThemeService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Services.IThemeService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Services.IThemeService.yml\" sourcestartlinenumber=\"1\">Manages runtime theme switching by swapping color ResourceDictionaries\nin Application.Current.Resources.MergedDictionaries.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Services.ThemeInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Services.ThemeInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Services.ThemeInfo",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Services.ThemeInfo.yml\" sourcestartlinenumber=\"1\">Theme metadata for UI binding (theme picker display names and swatch preview colors).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Services.ThemeService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Services.ThemeService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Services.ThemeService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Services.ThemeService.yml\" sourcestartlinenumber=\"1\">Singleton service that swaps color ResourceDictionaries at runtime.\nIdentifies the current color dictionary by checking for the &quot;PrimaryBackground&quot; key.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Services.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Services.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Services",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.ViewModels.MainViewModel.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.ViewModels.MainViewModel.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.ViewModels.MainViewModel",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.ViewModels.MainViewModel.yml\" sourcestartlinenumber=\"1\">Primary ViewModel for the main application window.\nManages dashboard state, navigation, operation execution, log output,\nserver mode detection, WSUS installation detection, and settings persistence.\nAll long-running operations must go through RunOperationAsync.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.ViewModels.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.ViewModels.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.ViewModels",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.GpoInstructionsDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.GpoInstructionsDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.GpoInstructionsDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.GpoInstructionsDialog.yml\" sourcestartlinenumber=\"1\">Dialog displaying GPO deployment instructions with copyable text.\nShown after GPO files are successfully copied to C:\\WSUS\\WSUS GPO.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.InstallDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.InstallDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.InstallDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.InstallDialog.yml\" sourcestartlinenumber=\"1\">Install WSUS dialog. Collects installer path, SA username, and SA password\nbefore installation begins. Returns InstallOptions via public property.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.MainWindow.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.MainWindow.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.MainWindow",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.MainWindow.yml\" sourcestartlinenumber=\"1\">Main application window. Constructor-only code-behind that sets DataContext\nfrom the DI-injected ViewModel. Minimal code-behind for UI-only concerns.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.ScheduleTaskDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.ScheduleTaskDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.ScheduleTaskDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.ScheduleTaskDialog.yml\" sourcestartlinenumber=\"1\">Schedule Task dialog. Collects all scheduling parameters:\ntask name, schedule type, day, time, maintenance profile, and credentials.\nReturns ScheduledTaskOptions via public property.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.SettingsDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.SettingsDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.SettingsDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.SettingsDialog.yml\" sourcestartlinenumber=\"1\">Settings dialog. Allows administrators to edit server mode, refresh interval,\ncontent path, SQL instance, and theme selection without restarting the application.\nReturns updated AppSettings via the Result property when DialogResult is true.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.SyncProfileDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.SyncProfileDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.SyncProfileDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.SyncProfileDialog.yml\" sourcestartlinenumber=\"1\">Sync profile selection dialog. Returns the selected SyncProfile via the SelectedProfile property.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.TransferDialog.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.TransferDialog.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views.TransferDialog",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.App.Views.TransferDialog.yml\" sourcestartlinenumber=\"1\">Transfer dialog for Export/Import operations.\nCollects all parameters before operation begins -- no interactive prompts during execution.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.Views.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.Views.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App.Views",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.App.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.App.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.App",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Infrastructure.IProcessRunner.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Infrastructure.IProcessRunner.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Infrastructure.IProcessRunner",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Infrastructure.IProcessRunner.yml\" sourcestartlinenumber=\"1\">Interface for external process execution. All shell commands (wsusutil,\nnetsh, sc, schtasks, etc.) go through this interface for testability.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Infrastructure.ProcessRunner.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Infrastructure.ProcessRunner.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Infrastructure.ProcessRunner",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Infrastructure.ProcessRunner.yml\" sourcestartlinenumber=\"1\">Centralized external process execution. All shell commands flow through here\nfor consistent logging, cancellation, and output capture. On cancellation,\nthe entire process tree is killed to prevent orphan child processes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Infrastructure.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Infrastructure.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Infrastructure",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Logging.ILogService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Logging.ILogService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Logging.ILogService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Logging.ILogService.yml\" sourcestartlinenumber=\"1\">Logging service interface for structured logging to C:\\WSUS\\Logs.\nWraps the underlying Serilog implementation for DI injection and testability.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Logging.LogService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Logging.LogService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Logging.LogService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Logging.LogService.yml\" sourcestartlinenumber=\"1\">Serilog-based structured logging service. Writes daily rolling log files\nto C:\\WSUS\\Logs\\WsusManager-{Date}.log with detailed structured entries\nsuitable for remote troubleshooting on air-gapped servers.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Logging.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Logging.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Logging",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.AppSettings.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.AppSettings.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.AppSettings",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.AppSettings.yml\" sourcestartlinenumber=\"1\">Application settings model. Serialized to/from JSON at\n%APPDATA%\\WsusManager\\settings.json. Survives close/reopen cycles.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.CheckStatus.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.CheckStatus.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.CheckStatus",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.CheckStatus.yml\" sourcestartlinenumber=\"1\">Status of a single diagnostic check.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ClientDiagnosticResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ClientDiagnosticResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ClientDiagnosticResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ClientDiagnosticResult.yml\" sourcestartlinenumber=\"1\">Snapshot of WSUS client configuration and state on a remote host, gathered\nfrom the Windows Update registry hive, service control manager, and WMI.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ConnectivityTestResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ConnectivityTestResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ConnectivityTestResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ConnectivityTestResult.yml\" sourcestartlinenumber=\"1\">Result of a network connectivity test from the client host to the WSUS server.\nPorts are tested with a TCP connection attempt; latency is measured via ping.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.DashboardData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.DashboardData.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.DashboardData",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.DashboardData.yml\" sourcestartlinenumber=\"1\">Holds all data collected during a dashboard refresh cycle.\nPopulated by IDashboardService.CollectAsync().</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.DiagnosticCheckResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.DiagnosticCheckResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.DiagnosticCheckResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.DiagnosticCheckResult.yml\" sourcestartlinenumber=\"1\">Result of a single health check. Each check has a name, status, detail message,\nand optional repair outcome if auto-repair was attempted.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.DiagnosticReport.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.DiagnosticReport.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.DiagnosticReport",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.DiagnosticReport.yml\" sourcestartlinenumber=\"1\">Aggregate result of a full diagnostics run. Contains all individual check results\nand computed summary statistics. Immutable — created once after all checks complete.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ExportOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ExportOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ExportOptions",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ExportOptions.yml\" sourcestartlinenumber=\"1\">Options for WSUS content export operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ImportOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ImportOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ImportOptions",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ImportOptions.yml\" sourcestartlinenumber=\"1\">Options for WSUS content import operations.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.InstallOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.InstallOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.InstallOptions",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.InstallOptions.yml\" sourcestartlinenumber=\"1\">Options for the WSUS + SQL Server Express installation wizard.\nAll fields are collected via the GUI dialog before installation begins.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.OperationResult-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.OperationResult-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.OperationResult<T>",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.OperationResult-1.yml\" sourcestartlinenumber=\"1\">Generic version of OperationResult that includes a data payload.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.OperationResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.OperationResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.OperationResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.OperationResult.yml\" sourcestartlinenumber=\"1\">Represents the result of a service operation. Every public service method\nreturns this type instead of throwing exceptions for expected failures.\nExceptions are reserved for programming errors only.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ProcessResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ProcessResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ProcessResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ProcessResult.yml\" sourcestartlinenumber=\"1\">Result of an external process execution.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ScheduleType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ScheduleType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ScheduleType",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ScheduleType.yml\" sourcestartlinenumber=\"1\">Schedule frequency for a Windows scheduled task.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ScheduledTaskOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ScheduledTaskOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ScheduledTaskOptions",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ScheduledTaskOptions.yml\" sourcestartlinenumber=\"1\">Options for creating a Windows scheduled task for WSUS maintenance.\nAll fields are collected via the ScheduleTaskDialog before task creation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.ServiceStatusInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.ServiceStatusInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.ServiceStatusInfo",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.ServiceStatusInfo.yml\" sourcestartlinenumber=\"1\">Status snapshot of a Windows service at a point in time.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.SyncProfile.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.SyncProfile.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.SyncProfile",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.SyncProfile.yml\" sourcestartlinenumber=\"1\">Sync profile selection for Online Sync operations.\nMatches legacy PowerShell MaintenanceProfile parameter.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.SyncResult.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.SyncResult.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.SyncResult",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.SyncResult.yml\" sourcestartlinenumber=\"1\">Result of a WSUS synchronization operation.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.WsusErrorCodes.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.WsusErrorCodes.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.WsusErrorCodes",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.WsusErrorCodes.yml\" sourcestartlinenumber=\"1\">Static dictionary of common WSUS and Windows Update error codes with descriptions\nand recommended fixes. Used by the error-code lookup feature (CLI-06).</p>\n<p sourcefile=\"docfx/api/WsusManager.Core.Models.WsusErrorCodes.yml\" sourcestartlinenumber=\"4\">Keys are uppercase hex codes without the &quot;0x&quot; prefix (e.g., &quot;80244010&quot;).\nThe <xref href=\"WsusManager.Core.Models.WsusErrorCodes.Lookup(System.String)\" data-throw-if-not-resolved=\"false\"></xref> method accepts either format.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.WsusErrorInfo.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.WsusErrorInfo.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models.WsusErrorInfo",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Models.WsusErrorInfo.yml\" sourcestartlinenumber=\"1\">Decoded information for a WSUS or Windows Update error code.\nSourced from the WsusErrorCodes static dictionary.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Models.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Models.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Models",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ClientService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ClientService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ClientService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ClientService.yml\" sourcestartlinenumber=\"1\">Implements remote WSUS client management operations via WinRM.\nAll remote operations check WinRM availability before executing and\nreturn clear failure messages when the target is unreachable.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ContentResetService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ContentResetService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ContentResetService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ContentResetService.yml\" sourcestartlinenumber=\"1\">Runs wsusutil.exe reset via IProcessRunner to re-verify content files.\nThe wsusutil executable is located at C:\\Program Files\\Update Services\\Tools\\wsusutil.exe.\nOutput is streamed to the progress reporter. No timeout is applied.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.DashboardService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.DashboardService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.DashboardService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.DashboardService.yml\" sourcestartlinenumber=\"1\">Collects dashboard data from the local system: Windows services,\nSQL database size, disk space, scheduled task status, and internet connectivity.\nAll queries use async patterns and timeouts to avoid blocking the UI.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.DatabaseBackupService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.DatabaseBackupService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.DatabaseBackupService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.DatabaseBackupService.yml\" sourcestartlinenumber=\"1\">Implements database backup and restore operations for the WSUS SUSDB.\nBackup uses SQL BACKUP DATABASE with compression.\nRestore uses the full workflow: verify, stop services, single-user, restore,\nmulti-user, wsusutil postinstall, restart services.\nBoth operations require SQL sysadmin permissions.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.DeepCleanupService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.DeepCleanupService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.DeepCleanupService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.DeepCleanupService.yml\" sourcestartlinenumber=\"1\">Implements the 6-step WSUS deep cleanup pipeline.\nMatches the PowerShell WsusDatabase.psm1 implementation exactly,\nincluding SQL batch sizes, retry logic, and progress format.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ExportService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ExportService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ExportService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ExportService.yml\" sourcestartlinenumber=\"1\">Exports WSUS content to external media using robocopy.\nSupports full and differential export modes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.FirewallService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.FirewallService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.FirewallService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.FirewallService.yml\" sourcestartlinenumber=\"1\">Firewall rule management via netsh advfirewall commands.\nChecks for and creates inbound rules on WSUS ports 8530 (HTTP) and 8531 (HTTPS).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.GpoDeploymentService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.GpoDeploymentService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.GpoDeploymentService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.GpoDeploymentService.yml\" sourcestartlinenumber=\"1\">Copies GPO deployment files from the application's DomainController/ directory\nto C:\\WSUS\\WSUS GPO\\ and returns structured instruction text for the DC admin.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.HealthService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.HealthService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.HealthService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.HealthService.yml\" sourcestartlinenumber=\"1\">Orchestrates the full 12-check diagnostics pipeline matching the PowerShell\nInvoke-WsusDiagnostics check list. Auto-repair is always on (matches GUI behavior).\nEach check streams its result to the progress reporter as it completes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ImportService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ImportService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ImportService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ImportService.yml\" sourcestartlinenumber=\"1\">Imports WSUS content from external media to the local WSUS content directory.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.InstallationService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.InstallationService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.InstallationService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.InstallationService.yml\" sourcestartlinenumber=\"1\">Validates installation prerequisites and launches the legacy\nInstall-WsusWithSqlExpress.ps1 script via IProcessRunner in non-interactive mode.\nThis is the only operation that deliberately shells out to PowerShell --\nthe install script is complex and re-implementing in C# provides no benefit.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IClientService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IClientService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IClientService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IClientService.yml\" sourcestartlinenumber=\"1\">Provides client machine management operations for WSUS-managed endpoints.\nAll remote operations use WinRM (Invoke-Command) to execute PowerShell on the target host.\nIf WinRM is unavailable, callers should direct users to the Script Generator in Phase 15.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IContentResetService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IContentResetService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IContentResetService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IContentResetService.yml\" sourcestartlinenumber=\"1\">Runs wsusutil.exe reset to re-verify WSUS content files against the database.\nUsed after air-gap database import to fix &quot;content is still downloading&quot; status.\nNo timeout is applied — wsusutil reset can take 10+ minutes on large content stores.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDashboardService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDashboardService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IDashboardService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDashboardService.yml\" sourcestartlinenumber=\"1\">Collects system state data for the dashboard: service statuses,\ndatabase size, disk space, scheduled task status, and connectivity.\nAll queries are async and non-blocking.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDatabaseBackupService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDatabaseBackupService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IDatabaseBackupService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDatabaseBackupService.yml\" sourcestartlinenumber=\"1\">Provides backup and restore operations for the WSUS SUSDB database.\nAll operations require SQL sysadmin permissions (hard-blocked otherwise).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IDeepCleanupService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"1\">Orchestrates the full 6-step WSUS deep cleanup pipeline.\nSteps match the PowerShell WsusDatabase.psm1 implementation:</p>\n<ol sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"3\">\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"3\">WSUS built-in cleanup (Invoke-WsusServerCleanup via PowerShell)</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"4\">Remove supersession records for declined updates</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"5\">Remove supersession records for superseded updates (10k batches)</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"6\">Delete declined updates via spDeleteUpdate (100/batch)</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"7\">Rebuild fragmented indexes + update statistics</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IDeepCleanupService.yml\" sourcestartlinenumber=\"8\">Shrink database (3 retries on backup-block).</li>\n</ol>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IExportService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IExportService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IExportService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IExportService.yml\" sourcestartlinenumber=\"1\">Exports WSUS content to external media. Supports full export (all content)\nand differential export (files modified within N days with Year/Month archive structure).\nBoth modes use IRobocopyService for content copy.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IFirewallService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IFirewallService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IFirewallService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IFirewallService.yml\" sourcestartlinenumber=\"1\">Manages WSUS firewall rules for ports 8530 (HTTP) and 8531 (HTTPS).\nUses netsh advfirewall commands via IProcessRunner for compatibility\nwith all Windows Server versions (no managed firewall API required).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IGpoDeploymentService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IGpoDeploymentService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IGpoDeploymentService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IGpoDeploymentService.yml\" sourcestartlinenumber=\"1\">Service for copying GPO deployment files from the application's DomainController/ directory\nto C:\\WSUS\\WSUS GPO\\ and returning step-by-step instructions for the DC admin.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IHealthService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IHealthService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IHealthService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IHealthService.yml\" sourcestartlinenumber=\"1\">Orchestrates the full diagnostics pipeline. Runs all health checks sequentially,\nstreams each result to the progress reporter in real time, and automatically\nattempts repairs for fixable issues. Returns a complete DiagnosticReport.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IImportService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IImportService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IImportService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IImportService.yml\" sourcestartlinenumber=\"1\">Imports WSUS content from external media (USB drive, network share) to the\nlocal WSUS content directory. Uses IRobocopyService for file copy and\noptionally runs content reset via IContentResetService after import.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IInstallationService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IInstallationService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IInstallationService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IInstallationService.yml\" sourcestartlinenumber=\"1\">Service for installing WSUS with SQL Server Express.\nValidates prerequisites and launches the legacy PowerShell install script\nin non-interactive mode with parameters collected via the GUI dialog.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IPermissionsService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IPermissionsService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IPermissionsService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IPermissionsService.yml\" sourcestartlinenumber=\"1\">Checks and repairs WSUS content directory permissions and SQL login permissions.\nContent path checks verify NETWORK SERVICE and IIS_IUSRS ACLs.\nSQL checks query server role membership and login existence.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IRobocopyService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IRobocopyService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IRobocopyService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IRobocopyService.yml\" sourcestartlinenumber=\"1\">Runs robocopy.exe with standardized WSUS export/import options.\nMirrors the PowerShell Invoke-WsusRobocopy function: /E /XO /MT:16 /R:2 /W:5 /NP /NDL,\nexcludes *.bak *.log files and Logs SQLDB Backup directories.\nInterprets robocopy exit codes correctly (0-7 = success, 8+ = error).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IScheduledTaskService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IScheduledTaskService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IScheduledTaskService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IScheduledTaskService.yml\" sourcestartlinenumber=\"1\">Service for managing Windows scheduled tasks for WSUS maintenance.\nUses schtasks.exe via IProcessRunner for task creation, querying, and deletion.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IScriptGeneratorService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IScriptGeneratorService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IScriptGeneratorService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IScriptGeneratorService.yml\" sourcestartlinenumber=\"1\">Generates self-contained PowerShell scripts for WSUS client operations.\nUse this service when WinRM is unavailable on a target host — the generated\nscript can be copied to the target and run manually as Administrator.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISettingsService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISettingsService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.ISettingsService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISettingsService.yml\" sourcestartlinenumber=\"1\">Persists and loads application settings from %APPDATA%\\WsusManager\\settings.json.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISqlService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISqlService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.ISqlService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISqlService.yml\" sourcestartlinenumber=\"1\">Centralized SQL execution service for all WSUS database operations.\nManages connection string construction, TrustServerCertificate handling,\nand timeout configuration. All methods accept CancellationToken and\nconfigurable CommandTimeout (0 = unlimited for maintenance queries).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.ISyncService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml\" sourcestartlinenumber=\"1\">Orchestrates the full Online Sync workflow using IWsusServerService.\nThree profiles match legacy PowerShell behavior:</p>\n<ul sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml\" sourcestartlinenumber=\"3\">\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml\" sourcestartlinenumber=\"3\">Full Sync: synchronize -&gt; decline -&gt; approve -&gt; monitor downloads</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml\" sourcestartlinenumber=\"4\">Quick Sync: synchronize -&gt; approve (skip decline)</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.ISyncService.yml\" sourcestartlinenumber=\"5\">Sync Only: synchronize metadata only.</li>\n</ul>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IWindowsServiceManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IWindowsServiceManager.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IWindowsServiceManager",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IWindowsServiceManager.yml\" sourcestartlinenumber=\"1\">Manages Windows service lifecycle for WSUS-related services.\nHandles dependency ordering (SQL first, then IIS, then WSUS for start; reverse for stop).\nAll methods return OperationResult — they do not throw for expected service failures.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IWsusServerService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.IWsusServerService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces.IWsusServerService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.Interfaces.IWsusServerService.yml\" sourcestartlinenumber=\"1\">Service for connecting to and operating on the local WSUS server via the\nMicrosoft.UpdateServices.Administration managed API. The API assembly ships\nwith the WSUS role and is loaded at runtime via Assembly.LoadFrom to avoid\ncompile-time dependencies on machines without WSUS installed.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.Interfaces.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.Interfaces",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.PermissionsService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.PermissionsService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.PermissionsService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.PermissionsService.yml\" sourcestartlinenumber=\"1\">Checks and repairs WSUS content directory permissions and SQL login permissions.\nContent permissions use System.Security.AccessControl for checking and icacls for repair.\nSQL checks use Microsoft.Data.SqlClient with integrated security (Integrated Security=True).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.RobocopyService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.RobocopyService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.RobocopyService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.RobocopyService.yml\" sourcestartlinenumber=\"1\">Runs robocopy.exe with standardized WSUS options for content transfer.\nMirrors the PowerShell Invoke-WsusRobocopy function exactly.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ScheduledTaskService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ScheduledTaskService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ScheduledTaskService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ScheduledTaskService.yml\" sourcestartlinenumber=\"1\">Creates, queries, and deletes Windows scheduled tasks using schtasks.exe via IProcessRunner.\nUses schtasks.exe instead of COM TaskScheduler API -- simpler, no NuGet dependency,\nand works reliably on Server 2019.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.ScriptGeneratorService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.ScriptGeneratorService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"1\">Generates self-contained PowerShell scripts for WSUS client operations.\nEach generated script:</p>\n<ul sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"3\">\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"3\">Requires administrator privileges (#Requires -RunAsAdministrator)</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"4\">Is fully self-contained with no module imports or external dependencies</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"5\">Uses Write-Host with colours for readable output</li>\n<li sourcefile=\"docfx/api/WsusManager.Core.Services.ScriptGeneratorService.yml\" sourcestartlinenumber=\"6\">Ends with a &quot;Press Enter&quot; pause so the admin can read results.</li>\n</ul>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.SettingsService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.SettingsService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.SettingsService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.SettingsService.yml\" sourcestartlinenumber=\"1\">Settings service that persists application settings to JSON at\n%APPDATA%\\WsusManager\\settings.json.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.SqlService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.SqlService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.SqlService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.SqlService.yml\" sourcestartlinenumber=\"1\">Centralized SQL execution service for WSUS database operations.\nAll connection strings use Integrated Security and TrustServerCertificate.\nOperations with commandTimeoutSeconds = 0 run with unlimited timeout —\nrequired for maintenance queries (index rebuild, shrink, batch deletes).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.SyncService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.SyncService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.SyncService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.SyncService.yml\" sourcestartlinenumber=\"1\">Orchestrates Online Sync workflows by composing IWsusServerService operations\naccording to the selected sync profile.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.WinRmExecutor.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.WinRmExecutor.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.WinRmExecutor",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.WinRmExecutor.yml\" sourcestartlinenumber=\"1\">Executes PowerShell commands on remote hosts using WinRM (Invoke-Command).\nDelegates to <xref href=\"WsusManager.Core.Infrastructure.IProcessRunner\" data-throw-if-not-resolved=\"false\"></xref> to invoke powershell.exe.</p>\n<p><b>WinRM availability note:</b> WinRM is not guaranteed to be enabled on target\nhosts, especially in locked-down environments. Every method returns a graceful error\nresult if the connection fails rather than throwing. Callers should direct users to\nthe Script Generator (Phase 15) when WinRM is unavailable.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.WindowsServiceManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.WindowsServiceManager.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.WindowsServiceManager",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.WindowsServiceManager.yml\" sourcestartlinenumber=\"1\">Manages Windows services for WSUS using System.ServiceProcess.ServiceController.\nService dependency order for start: SQL(1) -&gt; IIS(2) -&gt; WSUS(3).\nService dependency order for stop: WSUS(1) -&gt; IIS(2) -&gt; SQL(3).\nRetry logic: 3 attempts with 5-second delays for service start failures.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.WsusServerService.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.WsusServerService.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services.WsusServerService",
+      "Summary": "<p sourcefile=\"docfx/api/WsusManager.Core.Services.WsusServerService.yml\" sourcestartlinenumber=\"1\">Connects to the local WSUS server via the Microsoft.UpdateServices.Administration\nmanaged API loaded at runtime. All WSUS API calls are blocking, so they are wrapped\nin Task.Run to keep the UI responsive.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "docfx/api/WsusManager.Core.Services.yml",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/WsusManager.Core.Services.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "WsusManager.Core.Services",
+      "Summary": null
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docfx/api/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "docfx/api/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "docfx/api/toc.yml",
+      "output": {
+        ".json": {
+          "relative_path": "docfx/api/toc.json"
+        },
+        ".html": {
+          "relative_path": "docfx/api/toc.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "docs/toc.yml",
+      "output": {
+        ".json": {
+          "relative_path": "docs/toc.json"
+        },
+        ".html": {
+          "relative_path": "docs/toc.html"
+        }
+      },
+      "version": ""
+    }
+  ],
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}

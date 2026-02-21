@@ -1,0 +1,158 @@
+### YamlMime:ManagedReference
+items:
+- uid: WsusManager.Core.Models.SyncProfile
+  commentId: T:WsusManager.Core.Models.SyncProfile
+  id: SyncProfile
+  parent: WsusManager.Core.Models
+  children:
+  - WsusManager.Core.Models.SyncProfile.FullSync
+  - WsusManager.Core.Models.SyncProfile.QuickSync
+  - WsusManager.Core.Models.SyncProfile.SyncOnly
+  langs:
+  - csharp
+  - vb
+  name: SyncProfile
+  nameWithType: SyncProfile
+  fullName: WsusManager.Core.Models.SyncProfile
+  type: Enum
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncProfile.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: SyncProfile
+    path: src/WsusManager.Core/Models/SyncProfile.cs
+    startLine: 6
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: >-
+    Sync profile selection for Online Sync operations.
+
+    Matches legacy PowerShell MaintenanceProfile parameter.
+  example: []
+  syntax:
+    content: public enum SyncProfile
+    content.vb: Public Enum SyncProfile
+- uid: WsusManager.Core.Models.SyncProfile.FullSync
+  commentId: F:WsusManager.Core.Models.SyncProfile.FullSync
+  id: FullSync
+  parent: WsusManager.Core.Models.SyncProfile
+  langs:
+  - csharp
+  - vb
+  name: FullSync
+  nameWithType: SyncProfile.FullSync
+  fullName: WsusManager.Core.Models.SyncProfile.FullSync
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncProfile.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: FullSync
+    path: src/WsusManager.Core/Models/SyncProfile.cs
+    startLine: 11
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: 'Full Sync: synchronize -&gt; decline superseded/expired/old -&gt; approve updates -&gt; monitor downloads.'
+  example: []
+  syntax:
+    content: FullSync = 0
+    return:
+      type: WsusManager.Core.Models.SyncProfile
+- uid: WsusManager.Core.Models.SyncProfile.QuickSync
+  commentId: F:WsusManager.Core.Models.SyncProfile.QuickSync
+  id: QuickSync
+  parent: WsusManager.Core.Models.SyncProfile
+  langs:
+  - csharp
+  - vb
+  name: QuickSync
+  nameWithType: SyncProfile.QuickSync
+  fullName: WsusManager.Core.Models.SyncProfile.QuickSync
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncProfile.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: QuickSync
+    path: src/WsusManager.Core/Models/SyncProfile.cs
+    startLine: 16
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: 'Quick Sync: synchronize -&gt; approve updates (skip decline step).'
+  example: []
+  syntax:
+    content: QuickSync = 1
+    return:
+      type: WsusManager.Core.Models.SyncProfile
+- uid: WsusManager.Core.Models.SyncProfile.SyncOnly
+  commentId: F:WsusManager.Core.Models.SyncProfile.SyncOnly
+  id: SyncOnly
+  parent: WsusManager.Core.Models.SyncProfile
+  langs:
+  - csharp
+  - vb
+  name: SyncOnly
+  nameWithType: SyncProfile.SyncOnly
+  fullName: WsusManager.Core.Models.SyncProfile.SyncOnly
+  type: Field
+  source:
+    remote:
+      path: src/WsusManager.Core/Models/SyncProfile.cs
+      branch: main
+      repo: https://github.com/anthonyscry/GA-WsusManager2.git
+    id: SyncOnly
+    path: src/WsusManager.Core/Models/SyncProfile.cs
+    startLine: 21
+  assemblies:
+  - WsusManager.Core
+  namespace: WsusManager.Core.Models
+  summary: 'Sync Only: synchronize metadata only, no approval changes.'
+  example: []
+  syntax:
+    content: SyncOnly = 2
+    return:
+      type: WsusManager.Core.Models.SyncProfile
+references:
+- uid: WsusManager.Core.Models
+  commentId: N:WsusManager.Core.Models
+  href: WsusManager.html
+  name: WsusManager.Core.Models
+  nameWithType: WsusManager.Core.Models
+  fullName: WsusManager.Core.Models
+  spec.csharp:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+  spec.vb:
+  - uid: WsusManager
+    name: WsusManager
+    href: WsusManager.html
+  - name: .
+  - uid: WsusManager.Core
+    name: Core
+    href: WsusManager.Core.html
+  - name: .
+  - uid: WsusManager.Core.Models
+    name: Models
+    href: WsusManager.Core.Models.html
+- uid: WsusManager.Core.Models.SyncProfile
+  commentId: T:WsusManager.Core.Models.SyncProfile
+  parent: WsusManager.Core.Models
+  href: WsusManager.Core.Models.SyncProfile.html
+  name: SyncProfile
+  nameWithType: SyncProfile
+  fullName: WsusManager.Core.Models.SyncProfile

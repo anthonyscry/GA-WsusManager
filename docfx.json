@@ -3,7 +3,6 @@
     {
       "src": [
         {
-          "cwd": "..",
           "files": [
             "src/WsusManager.Core/WsusManager.Core.csproj",
             "src/WsusManager.App/WsusManager.App.csproj"
@@ -15,27 +14,26 @@
           ]
         }
       ],
-      "dest": "api",
-      "filter": "filterConfig.yml"
+      "dest": "docfx/api",
+      "filter": "docfx/filterConfig.yml"
     }
   ],
   "build": {
     "content": [
       {
         "files": [
-          "api/**.yml",
-          "api/index.md"
+          "docfx/api/**.yml",
+          "docfx/api/index.md"
         ]
       },
       {
-        "cwd": "..",
         "files": [
           "docs/articles/**/*.md",
           "docs/toc.yml"
         ]
       }
     ],
-    "dest": "../docs/api",
+    "dest": "docs/api",
     "globalMetadata": {
       "_appName": "WSUS Manager API Reference",
       "_appTitle": "WSUS Manager",
@@ -48,10 +46,10 @@
     "overwrite": [
       {
         "files": [
-          "overwrite/*.md"
+          "docfx/overwrite/*.md"
         ],
         "exclude": [
-          "overwrite/README.md"
+          "docfx/overwrite/README.md"
         ]
       }
     ],
