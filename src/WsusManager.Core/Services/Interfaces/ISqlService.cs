@@ -82,4 +82,21 @@ public interface ISqlService
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Database size in GB, or -1 if query fails.</returns>
     Task<double> GetDatabaseSizeAsync(string sqlInstance, string databaseName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches a page of updates from the WSUS database with optional filtering.
+    /// Supports pagination for large result sets to enable lazy-loading scenarios.
+    /// </summary>
+    /// <param name="sqlInstance">SQL Server instance (e.g., "localhost\SQLEXPRESS").</param>
+    /// <param name="pageNumber">Page number to fetch (1-based).</param>
+    /// <param name="pageSize">Number of items per page (default: 100).</param>
+    /// <param name="whereClause">Optional WHERE clause filter (without "WHERE" keyword).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Paged result containing update metadata and pagination information.</returns>
+    Task<PagedResult<UpdateInfo>> FetchUpdatesPageAsync(
+        string sqlInstance,
+        int pageNumber = 1,
+        int pageSize = 100,
+        string? whereClause = null,
+        CancellationToken ct = default);
 }
