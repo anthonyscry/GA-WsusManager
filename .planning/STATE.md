@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** v4.1 Bug Fixes & Polish — Phase 10 In Progress
+**Current focus:** v4.1 Bug Fixes & Polish — Phase 11 Complete
 
 ## Current Position
 
-Phase: 10 — Core Operations
+Phase: 11 — Stability Hardening
 Plan: 01 (complete)
-Status: Phase 10 complete — all plans executed
-Last activity: 2026-02-20 — Phase 10 plan 01 executed (10-01-SUMMARY.md)
+Status: Phase 11 complete — all plans executed
+Last activity: 2026-02-20 — Phase 11 plan 01 executed (11-01-SUMMARY.md)
 
 Progress: [####################] 100% (1/1 plans in phase complete)
 
 ## Performance Metrics
 
-| Metric | v4.0 Baseline | v4.1 (Phase 9) | v4.1 (Phase 10) |
-|--------|---------------|-----------------|-----------------|
-| xUnit tests | 257 passing | 257 passing (0 failures) | 263 passing (0 failures) |
-| Codebase | 12,674 LOC | unchanged | +162 lines (tests+fixes) |
-| CI build time | ~3 min | ~3 min (now .NET 8) | ~3 min |
+| Metric | v4.0 Baseline | v4.1 (Phase 9) | v4.1 (Phase 10) | v4.1 (Phase 11) |
+|--------|---------------|-----------------|-----------------|-----------------|
+| xUnit tests | 257 passing | 257 passing (0 failures) | 263 passing (0 failures) | 263 passing (0 failures) |
+| Codebase | 12,674 LOC | unchanged | +162 lines (tests+fixes) | +6 lines (CanExecute fix) |
+| CI build time | ~3 min | ~3 min (now .NET 8) | ~3 min | ~3 min |
 
 ## Accumulated Context
 
@@ -37,17 +37,15 @@ Recent decisions affecting current work:
 - [v4.1/Phase-10]: spDeleteUpdate takes @localUpdateID INT — use r.LocalUpdateID not u.UpdateID
 - [v4.1/Phase-10]: WSUS IUpdate.UpdateClassification.Title requires two-level reflection (no flat UpdateClassificationTitle)
 - [v4.1/Phase-10]: DeclineUpdatesAsync declines expired/superseded only (no age-based) per PowerShell parity
+- [v4.1/Phase-11]: STAB-01 and STAB-02 already met; STAB-03-A fixed by calling NotifyCommandCanExecuteChanged at operation start/end in RunOperationAsync
 - [v4.0]: All prior architectural decisions carry forward (see PROJECT.md Key Decisions)
 
 ### Pending Todos
 
-Phase 10 complete. All 5 bugs fixed:
-- [x] BUG-08: DeepCleanupService Step 4 — SELECT r.LocalUpdateID (int)
-- [x] BUG-04: WsusServerService.ApproveUpdatesAsync — two-level reflection UpdateClassification.Title
-- [x] BUG-03: WsusServerService.DeclineUpdatesAsync — expired/superseded only (no age-based)
-- [x] BUG-01: HealthService.CheckWsusAppPoolAsync — full appcmd.exe path
-- [x] BUG-05: WsusServerService.StartSynchronizationAsync — Convert.ToInt32
-- [x] 6 new unit tests added (263 total, 0 failures)
+Phase 11 complete. Stability hardening done:
+- [x] STAB-01: No unhandled exceptions — all three exception vectors covered in App.xaml.cs
+- [x] STAB-02: Cancel works — ProcessRunner kills process tree, OperationCanceledException propagates
+- [x] STAB-03: Concurrent blocking — buttons now visually disable via NotifyCommandCanExecuteChanged in RunOperationAsync
 
 ### Blockers/Concerns
 
@@ -56,6 +54,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 10-core-operations/10-01-PLAN.md — all 5 bugs fixed, 263 tests passing
+Stopped at: Completed 11-stability-hardening/11-PLAN.md — STAB-03-A fixed, 263 tests passing
 Resume file: N/A
-Next action: Phase 10 complete — ready for next phase
+Next action: Phase 11 complete — v4.1 Bug Fixes & Polish milestone complete

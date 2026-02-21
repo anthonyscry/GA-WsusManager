@@ -27,7 +27,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 - [x] **Phase 8: Build Compatibility** — Retarget to .NET 8, fix CI/CD, verify published EXE runs on Windows Server 2019+ (completed 2026-02-21)
 - [x] **Phase 9: Launch and UI Verification** — App launches without crash, dark theme renders, all panels and log panel work (completed 2026-02-20)
 - [x] **Phase 10: Core Operations** — All 6 operations execute successfully on a real WSUS server (completed 2026-02-20)
-- [ ] **Phase 11: Stability Hardening** — No unhandled exceptions, cancellation works, concurrent operation blocking holds
+- [x] **Phase 11: Stability Hardening** — No unhandled exceptions, cancellation works, concurrent operation blocking holds (completed 2026-02-20)
 
 ## Phase Details
 
@@ -83,7 +83,7 @@ Plans:
   1. No unhandled exception dialogs appear during any normal operation flow (including when WSUS or SQL is offline)
   2. Clicking Cancel during a running operation stops it and returns all buttons to their enabled state
   3. Double-clicking an operation button while another operation is running shows a graceful warning and does not start a second operation
-**Plans**: TBD
+**Plans**: 1 plan
 
 ## Progress
 
@@ -98,5 +98,5 @@ Plans:
 | 7. Polish and Distribution | v4.0 | 7/7 | Complete | 2026-02-20 |
 | 8. Build Compatibility | v4.1 | 1/1 | Complete | 2026-02-21 |
 | 9. Launch and UI Verification | v4.1 | 1/1 | Complete | 2026-02-20 |
-| 10. Core Operations | v4.1 | 1/1 | In progress | - |
-| 11. Stability Hardening | v4.1 | 0/? | Not started | - |
+| 10. Core Operations | v4.1 | 1/1 | Complete | 2026-02-20 |
+| 11. Stability Hardening | v4.1 | 1/1 | Complete | 2026-02-20 |
