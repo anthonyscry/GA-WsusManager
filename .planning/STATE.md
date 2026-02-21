@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so administrators trust it to manage critical WSUS infrastructure.
-**Current focus:** v4.1 Bug Fixes & Polish — Phase 9 Complete
+**Current focus:** v4.1 Bug Fixes & Polish — Phase 10 In Progress
 
 ## Current Position
 
-Phase: 9 — Launch and UI Verification
-Plan: 01 (complete)
-Status: Complete
-Last activity: 2026-02-20 — Phase 9 plan 01 executed (09-01-SUMMARY.md created)
+Phase: 10 — Core Operations
+Plan: 01 (in progress)
+Status: Planning complete, ready to execute
+Last activity: 2026-02-20 — Phase 10 plan 01 created (10-01-PLAN.md)
 
-Progress: [##########] 100% (1/1 plans in phase complete)
+Progress: [##########] 0% (0/1 plans in phase complete)
 
 ## Performance Metrics
 
@@ -38,7 +38,13 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None — all Phase 9 issues resolved.
+Phase 10 plan 01 to execute:
+- Fix BUG-08: DeepCleanupService Step 4 — SELECT r.LocalUpdateID (int), not u.UpdateID (guid)
+- Fix BUG-04: WsusServerService.ApproveUpdatesAsync — two-level reflection for UpdateClassification.Title
+- Fix BUG-03: WsusServerService.DeclineUpdatesAsync — decline expired/superseded only, remove age-based criterion
+- Fix BUG-01: HealthService.CheckWsusAppPoolAsync — use C:\Windows\System32\inetsrv\appcmd.exe full path
+- Fix BUG-05: WsusServerService.StartSynchronizationAsync — Convert.ToInt32 for sync progress values
+- Add 6 unit tests for each fix, run full test suite
 
 ### Blockers/Concerns
 
@@ -47,6 +53,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 9 plan 01 complete — all tasks done
+Stopped at: Phase 10 plan 01 created — ready to execute
 Resume file: N/A
-Next action: Project complete or new phase
+Next action: `/gsd:execute-phase 10-core-operations`
