@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using WsusManager.App.Services;
 using WsusManager.App.Views;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Models;
@@ -36,6 +37,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IGpoDeploymentService _gpoDeploymentService;
     private readonly IClientService _clientService;
     private readonly IScriptGeneratorService _scriptGeneratorService;
+    private readonly IThemeService _themeService;
     private CancellationTokenSource? _operationCts;
     private DispatcherTimer? _refreshTimer;
     private AppSettings _settings = new();
@@ -74,7 +76,8 @@ public partial class MainViewModel : ObservableObject
         IScheduledTaskService scheduledTaskService,
         IGpoDeploymentService gpoDeploymentService,
         IClientService clientService,
-        IScriptGeneratorService scriptGeneratorService)
+        IScriptGeneratorService scriptGeneratorService,
+        IThemeService themeService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -92,6 +95,7 @@ public partial class MainViewModel : ObservableObject
         _gpoDeploymentService = gpoDeploymentService;
         _clientService = clientService;
         _scriptGeneratorService = scriptGeneratorService;
+        _themeService = themeService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1289,7 +1293,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenSettings()
     {
-        var dialog = new SettingsDialog(_settings);
+        var dialog = new SettingsDialog(_settings, _themeService);
         if (Application.Current.MainWindow is not null)
             dialog.Owner = Application.Current.MainWindow;
 
@@ -1304,6 +1308,9 @@ public partial class MainViewModel : ObservableObject
         // Check if refresh interval changed (need timer restart)
         var intervalChanged = updated.RefreshIntervalSeconds != _settings.RefreshIntervalSeconds;
 
+        // Check if theme changed (theme already applied by dialog for preview)
+        var themeChanged = !string.Equals(updated.SelectedTheme, _settings.SelectedTheme, StringComparison.OrdinalIgnoreCase);
+
         // Apply in-memory
         _settings = updated;
         ApplySettings(_settings);
@@ -1315,13 +1322,14 @@ public partial class MainViewModel : ObservableObject
             StartRefreshTimer();
         }
 
-        // Persist to disk
+        // Persist to disk (includes theme selection)
         await SaveSettingsAsync();
 
         // Refresh dashboard so new paths/mode take effect immediately
         await RefreshDashboard();
 
-        AppendLog($"Settings saved. Server mode: {_settings.ServerMode}, Refresh: {_settings.RefreshIntervalSeconds}s");
+        var themeLog = themeChanged ? $", Theme: {updated.SelectedTheme}" : "";
+        AppendLog($"Settings saved. Server mode: {_settings.ServerMode}, Refresh: {_settings.RefreshIntervalSeconds}s{themeLog}");
     }
 
     private void ApplySettings(AppSettings settings)
