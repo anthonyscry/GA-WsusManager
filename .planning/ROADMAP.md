@@ -24,7 +24,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 
 ### v4.1 Bug Fixes & Polish
 
-- [x] **Phase 8: Build Compatibility** — Retarget to .NET 8, fix CI/CD, verify published EXE runs on Windows Server 2019+ (completed 2026-02-21)
+- [x] **Phase 8: Build Compatibility** — Retarget to .NET 8, fix CI/CD, verify published EXE runs on Windows Server 2019+ (completed 2026-02-21)
 - [ ] **Phase 9: Launch and UI Verification** — App launches without crash, dark theme renders, all panels and log panel work
 - [ ] **Phase 10: Core Operations** — All 6 operations execute successfully on a real WSUS server
 - [ ] **Phase 11: Stability Hardening** — No unhandled exceptions, cancellation works, concurrent operation blocking holds
@@ -54,7 +54,10 @@ Plans:
   3. Dark theme renders with no white panels, broken colors, or layout corruption
   4. Clicking each nav item (Dashboard, Diagnostics, Database, WSUS Ops, Setup) switches the panel correctly
   5. Log panel expands when an operation starts and shows operation output text
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 09-01-PLAN.md — Fix duplicate startup log message and add active nav button highlighting
 
 ### Phase 10: Core Operations
 **Goal**: Every core WSUS management operation executes to completion against a real WSUS server
@@ -90,7 +93,7 @@ Plans:
 | 5. WSUS Operations | v4.0 | 8/8 | Complete | 2026-02-19 |
 | 6. Installation and Scheduling | v4.0 | 1/1 | Complete | 2026-02-20 |
 | 7. Polish and Distribution | v4.0 | 7/7 | Complete | 2026-02-20 |
-| 8. Build Compatibility | 1/1 | Complete   | 2026-02-21 | - |
-| 9. Launch and UI Verification | v4.1 | 0/? | Not started | - |
+| 8. Build Compatibility | v4.1 | 1/1 | Complete | 2026-02-21 |
+| 9. Launch and UI Verification | v4.1 | 0/1 | Not started | - |
 | 10. Core Operations | v4.1 | 0/? | Not started | - |
 | 11. Stability Hardening | v4.1 | 0/? | Not started | - |
