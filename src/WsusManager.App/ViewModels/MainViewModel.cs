@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -44,6 +45,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IThemeService _themeService;
     private readonly IBenchmarkTimingService _benchmarkTimingService;
     private readonly ISettingsValidationService _validationService;
+    private readonly ICsvExportService _csvExportService;
     private readonly StringBuilder _logBuilder = new();
     private readonly Queue<string> _logBatchQueue = new();
     private DispatcherTimer? _logBatchTimer;
@@ -109,7 +111,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IScriptGeneratorService scriptGeneratorService,
         IThemeService themeService,
         IBenchmarkTimingService benchmarkTimingService,
-        ISettingsValidationService validationService)
+        ISettingsValidationService validationService,
+        ICsvExportService csvExportService)
     {
         _logService = logService;
         _settingsService = settingsService;
@@ -130,6 +133,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _themeService = themeService;
         _benchmarkTimingService = benchmarkTimingService;
         _validationService = validationService;
+        _csvExportService = csvExportService;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -680,6 +684,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             // Apply any active filters after loading
             ApplyComputerFilters();
 
+            // Refresh export button state (Phase 30)
+            ExportComputersCommand.NotifyCanExecuteChanged();
+
             _logService?.Info("Loaded {0} computers", FilteredComputers.Count);
         }
         catch (OperationCanceledException)
@@ -718,6 +725,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             // Apply any active filters after loading
             ApplyUpdateFilters();
+
+            // Refresh export button state (Phase 30)
+            ExportUpdatesCommand.NotifyCanExecuteChanged();
 
             _logService?.Info("Loaded {0} updates", FilteredUpdates.Count);
         }
@@ -2037,6 +2047,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowClearComputerFilters));
         OnPropertyChanged(nameof(ComputerVisibleCount));
         OnPropertyChanged(nameof(ComputerFilterCountText));
+
+        // Refresh export button state (Phase 30)
+        ExportComputersCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -2095,6 +2108,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowClearUpdateFilters));
         OnPropertyChanged(nameof(UpdateVisibleCount));
         OnPropertyChanged(nameof(UpdateFilterCountText));
+
+        // Refresh export button state (Phase 30)
+        ExportUpdatesCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -2146,6 +2162,102 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ApplyUpdateFilters();
         SaveUpdateFilterSettings();
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PHASE 30: DATA EXPORT
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Exports the currently filtered computers list to CSV.
+    /// Button enabled when FilteredComputers has items.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanExportComputers))]
+    private async Task ExportComputersAsync()
+    {
+        if (FilteredComputers.Count == 0)
+        {
+            MessageBox.Show(
+                "No computers to export. Apply filters or load data first.",
+                "Cannot Export",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await RunOperationAsync(
+            "Export Computers",
+            async (progress, ct) =>
+            {
+                var filePath = await _csvExportService.ExportComputersAsync(
+                    FilteredComputers,
+                    progress,
+                    ct).ConfigureAwait(false);
+
+                progress.Report($"Opening: {filePath}");
+
+                // Open destination folder with file selected
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{filePath}\"",
+                    UseShellExecute = true
+                });
+
+                return true;
+            }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Determines if ExportComputers command can execute.
+    /// Requires at least one visible computer in filtered list.
+    /// </summary>
+    private bool CanExportComputers() => FilteredComputers.Count > 0;
+
+    /// <summary>
+    /// Exports the currently filtered updates list to CSV.
+    /// Button enabled when FilteredUpdates has items.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanExportUpdates))]
+    private async Task ExportUpdatesAsync()
+    {
+        if (FilteredUpdates.Count == 0)
+        {
+            MessageBox.Show(
+                "No updates to export. Apply filters or load data first.",
+                "Cannot Export",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await RunOperationAsync(
+            "Export Updates",
+            async (progress, ct) =>
+            {
+                var filePath = await _csvExportService.ExportUpdatesAsync(
+                    FilteredUpdates,
+                    progress,
+                    ct).ConfigureAwait(false);
+
+                progress.Report($"Opening: {filePath}");
+
+                // Open destination folder with file selected
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{filePath}\"",
+                    UseShellExecute = true
+                });
+
+                return true;
+            }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Determines if ExportUpdates command can execute.
+    /// Requires at least one visible update in filtered list.
+    /// </summary>
+    private bool CanExportUpdates() => FilteredUpdates.Count > 0;
 
     // ═══════════════════════════════════════════════════════════════
     // Note: Data list models (ComputerInfo, UpdateInfo) are now in

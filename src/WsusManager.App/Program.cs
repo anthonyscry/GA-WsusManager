@@ -130,6 +130,12 @@ public static class Program
         // Phase 27: Visual Feedback Polish
         builder.Services.AddSingleton<IBenchmarkTimingService, BenchmarkTimingService>();
 
+        // Phase 28: Settings Expansion
+        builder.Services.AddSingleton<ISettingsValidationService, SettingsValidationService>();
+
+        // Phase 30: Data Export
+        builder.Services.AddSingleton<ICsvExportService, CsvExportService>();
+
         // ViewModels
         builder.Services.AddSingleton<MainViewModel>();
 
