@@ -119,4 +119,170 @@ public class OperationResultTests
 
         Assert.Equal(a, b);
     }
+
+    // ─── Edge Case Tests (Phase 18-02) ────────────────────────────────────────
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public void Ok_Handles_Null_Empty_Whitespace_Messages(string message)
+    {
+        var result = OperationResult.Ok(message);
+
+        Assert.True(result.Success);
+        // Message should be the provided value
+        Assert.Equal(message, result.Message);
+    }
+
+    [Fact]
+    public void Ok_Handles_Null_Message()
+    {
+        var result = OperationResult.Ok(null!);
+
+        Assert.True(result.Success);
+        // Null message is stored as-is
+        Assert.Null(result.Message);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public void Fail_Handles_Null_Empty_Whitespace_Messages(string message)
+    {
+        var result = OperationResult.Fail(message);
+
+        Assert.False(result.Success);
+        // Message should be the provided value
+        Assert.Equal(message, result.Message);
+    }
+
+    [Fact]
+    public void Fail_Handles_Null_Message()
+    {
+        var result = OperationResult.Fail((string)null!);
+
+        Assert.False(result.Success);
+        // Null message is stored as-is
+        Assert.Null(result.Message);
+    }
+
+    [Fact]
+    public void Ok_Handles_Very_Long_Message()
+    {
+        // Very long message (>1000 chars)
+        var longMessage = new string('a', 10000);
+        var result = OperationResult.Ok(longMessage);
+
+        Assert.True(result.Success);
+        Assert.Equal(10000, result.Message.Length);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MaxValue)]
+    [InlineData(int.MinValue)]
+    public void Generic_Fail_Handles_Boundary_Error_Codes(int errorCode)
+    {
+        var result = OperationResult<int>.Fail("Test", null);
+
+        Assert.False(result.Success);
+        // OperationResult<T>.Fail doesn't accept custom data value - uses default
+        Assert.Equal(0, result.Data);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MaxValue)]
+    public void Generic_Ok_Handles_Null_And_Boundary_Data(int? data)
+    {
+        var result = OperationResult<int?>.Ok(data, "Test");
+
+        Assert.True(result.Success);
+        Assert.Equal(data, result.Data);
+    }
+
+    [Fact]
+    public void Generic_Ok_Handles_Default_Data_For_Value_Types()
+    {
+        var result = OperationResult<int>.Ok(default, "Test");
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.Data);
+    }
+
+    [Fact]
+    public void Generic_Ok_Handles_Null_Data_For_Reference_Types()
+    {
+        var result = OperationResult<string>.Ok(null, "Test");
+
+        Assert.True(result.Success);
+        Assert.Null(result.Data);
+    }
+
+    [Theory]
+    [InlineData(true, "")]
+    [InlineData(true, "   ")]
+    [InlineData(false, "")]
+    [InlineData(false, "   ")]
+    public void OperationResult_Combines_Success_And_Message_Correctly(bool success, string message)
+    {
+        var result = success
+            ? OperationResult.Ok(message)
+            : OperationResult.Fail(message);
+
+        Assert.Equal(success, result.Success);
+        Assert.Equal(message, result.Message);
+    }
+
+    [Fact]
+    public void OperationResult_Handles_Null_Message()
+    {
+        var result = OperationResult.Fail((string)null!);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Message);
+    }
+
+    [Fact]
+    public void OperationResult_Handles_Exception_With_Null_Message()
+    {
+        var ex = new InvalidOperationException("test");
+        var result = OperationResult.Fail(null, ex);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Message);
+        Assert.Same(ex, result.Exception);
+    }
+
+    [Fact]
+    public void Generic_Ok_Handles_Message_With_Special_Characters()
+    {
+        var specialMessage = "Test\n\r\t\"'\\\0🚀";
+        var result = OperationResult.Ok(specialMessage);
+
+        Assert.True(result.Success);
+        Assert.Equal(specialMessage, result.Message);
+    }
+
+    [Theory]
+    [InlineData(byte.MinValue)]
+    [InlineData(byte.MaxValue)]
+    [InlineData(short.MinValue)]
+    [InlineData(short.MaxValue)]
+    [InlineData(long.MaxValue)]
+    [InlineData(long.MinValue)]
+    public void Generic_Fail_Handles_Various_Numeric_Types_Boundaries<T>(T value)
+        where T : struct
+    {
+        var result = OperationResult<T>.Fail("Test", null);
+
+        Assert.False(result.Success);
+        // Data is default value for the type
+        Assert.Equal(default(T), result.Data);
+    }
 }

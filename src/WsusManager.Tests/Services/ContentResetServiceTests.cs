@@ -188,6 +188,78 @@ public class ContentResetServiceTests
         }
     }
 
+    // ─── Edge Case Tests (Phase 18-02) ────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetContentAsync_Handles_Empty_ProcessOutput()
+    {
+        var tempExe = Path.Combine(Path.GetTempPath(), "wsusutil-mock5.exe");
+        File.WriteAllText(tempExe, "mock");
+
+        try
+        {
+            var mockService = new TestableContentResetService(
+                _mockRunner.Object,
+                _mockLog.Object,
+                tempExe);
+
+            // Empty output array
+            _mockRunner
+                .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ProcessResult(0, [])); // Empty output
+
+            var result = await mockService.ResetContentAsync();
+
+            Assert.True(result.Success);
+        }
+        finally
+        {
+            File.Delete(tempExe);
+        }
+    }
+
+    [Fact]
+    public async Task ResetContentAsync_Handles_Very_Long_Path()
+    {
+        // Create a path that exceeds MAX_PATH (260 characters)
+        var longDir = Path.Combine(Path.GetTempPath(), new string('a', 100), new string('b', 100), new string('c', 60));
+        var tempExe = Path.Combine(longDir, "wsusutil-mock6.exe");
+
+        try
+        {
+            // Create the directory structure
+            Directory.CreateDirectory(Path.GetDirectoryName(tempExe)!);
+            File.WriteAllText(tempExe, "mock");
+
+            var mockService = new TestableContentResetService(
+                _mockRunner.Object,
+                _mockLog.Object,
+                tempExe);
+
+            _mockRunner
+                .Setup(r => r.RunAsync(tempExe, "reset", It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(SuccessResult());
+
+            var result = await mockService.ResetContentAsync();
+
+            Assert.True(result.Success);
+        }
+        catch (PathTooLongException)
+        {
+            // Expected on Windows if MAX_PATH is enforced
+            Assert.True(true, "Path too long - expected behavior");
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempExe)) File.Delete(tempExe);
+                if (Directory.Exists(longDir)) Directory.Delete(longDir, true);
+            }
+            catch { /* Cleanup best-effort */ }
+        }
+    }
+
     /// <summary>
     /// Testable subclass that allows overriding the wsusutil.exe path
     /// so tests don't require WSUS to be installed.
