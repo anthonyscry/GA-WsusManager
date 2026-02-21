@@ -10,14 +10,14 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 17 — Theme Content and Picker
-Plan: 17-01-PLAN.md (5 tasks: theme files, ThemeService registration, Settings UI, ViewModel wiring, tests)
-Status: Planned, ready for execution
-Last activity: 2026-02-21 — Phase 17 planned
+Plan: 17-01-PLAN.md (Complete)
+Status: All tasks complete, ready for Phase 17 completion
+Last activity: 2026-02-21 — Plan 17-01 executed (5 tasks, 12 min)
 
 ```
-v4.3 Progress: [█████░░░░░] 1/2 phases
+v4.3 Progress: [██████████] 2/2 phases
 Phase 16:      [██████████] Complete
-Phase 17:      [░░░░░░░░░░] Not started
+Phase 17:      [██████████] Complete
 ```
 
 ## Performance Metrics
@@ -35,6 +35,7 @@ Phase 17:      [░░░░░░░░░░] Not started
 | v4.1 (8-11) | 4 | 4 | ~18 min |
 | v4.2 (12-15) | 4 | 9 | ~4 min |
 | v4.3 (16-17) | 1 | 1 | ~20 min |
+| Phase 17 P17-01 | 744 | 5 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -46,6 +47,14 @@ Phase 17:      [░░░░░░░░░░] Not started
 - **No new NuGet packages:** Zero additional dependencies. Native WPF ResourceDictionary merging handles everything.
 - **GetThemeBrush helper pattern:** ViewModel uses `Application.Current?.TryFindResource(key) as SolidColorBrush` with Color fallback for all dynamic brush assignments. Field initializers keep hardcoded defaults since Application.Current isn't available at field init time.
 - **Backward-compatible aliases removed:** All old key names (BgDark, BgSidebar, etc.) fully removed from DefaultDark.xaml after migration verified complete.
+- **ThemeInfo record type:** Record chosen over class for immutability and value semantics. DisplayName with spaces differs from key name (no spaces) for user-friendly UI.
+- **Case-insensitive theme names:** StringComparer.OrdinalIgnoreCase in _themeMap and _themeInfoMap for forgiving user input and lookups.
+- **Live preview on swatch click:** Theme applies immediately when user clicks a theme swatch in Settings, not after clicking Save. This provides instant visual feedback.
+- **Cancel-to-revert behavior:** Settings dialog captures entry theme on construction. If user cancels, original theme is restored via ThemeService.ApplyTheme().
+- [Phase 17]: ThemeInfo record type for immutability
+- [Phase 17]: Case-insensitive theme names with StringComparer.OrdinalIgnoreCase
+- [Phase 17]: Live preview on swatch click with immediate theme application
+- [Phase 17]: Cancel-to-revert behavior in Settings dialog
 
 ### Pending Todos
 
@@ -58,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Phase 16 complete, ready for Phase 17 planning
-Resume at: `/gsd:plan-phase 17` or `/gsd:execute-phase 17 --auto`
+Stopped at: Phase 17 Plan 01 complete, ready for Phase 17 completion
+Resume at: `/gsd:execute-phase 17 --auto` or plan next phase
