@@ -15,11 +15,11 @@ Requirements for bug fix and polish release. Each maps to roadmap phases.
 
 ### UI Verification
 
-- [ ] **UI-01**: App launches without crash on Windows
-- [ ] **UI-02**: Dashboard populates with WSUS server status (or "Not Installed" gracefully)
-- [ ] **UI-03**: Dark theme renders correctly (no white/broken panels)
-- [ ] **UI-04**: All navigation panels switch correctly (Dashboard, Diagnostics, Database, WSUS Ops, Setup)
-- [ ] **UI-05**: Log panel expands/collapses and shows operation output
+- [x] **UI-01**: App launches without crash on Windows
+- [x] **UI-02**: Dashboard populates with WSUS server status (or "Not Installed" gracefully)
+- [x] **UI-03**: Dark theme renders correctly (no white/broken panels)
+- [x] **UI-04**: All navigation panels switch correctly (Dashboard, Diagnostics, Database, WSUS Ops, Setup)
+- [x] **UI-05**: Log panel expands/collapses and shows operation output
 
 ### Core Operations
 
@@ -56,11 +56,11 @@ None — v4.1 is focused on making v4.0 work correctly.
 | COMPAT-01 | Phase 8 | Complete |
 | COMPAT-02 | Phase 8 | Complete |
 | COMPAT-03 | Phase 8 | Complete |
-| UI-01 | Phase 9 | Pending |
-| UI-02 | Phase 9 | Pending |
-| UI-03 | Phase 9 | Pending |
-| UI-04 | Phase 9 | Pending |
-| UI-05 | Phase 9 | Pending |
+| UI-01 | Phase 9 | Complete |
+| UI-02 | Phase 9 | Complete |
+| UI-03 | Phase 9 | Complete |
+| UI-04 | Phase 9 | Complete |
+| UI-05 | Phase 9 | Complete |
 | OPS-01 | Phase 10 | Pending |
 | OPS-02 | Phase 10 | Pending |
 | OPS-03 | Phase 10 | Pending |
@@ -78,4 +78,4 @@ None — v4.1 is focused on making v4.0 work correctly.
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 — traceability populated after roadmap creation*
+*Last updated: 2026-02-20 — UI-01 through UI-05 marked complete after Phase 9 execution*
