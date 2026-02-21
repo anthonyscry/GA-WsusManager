@@ -16,8 +16,8 @@
 - [ ] **Phase 27: Visual Feedback Polish** — Progress estimation, loading indicators, actionable errors
 - [x] **Phase 28: Settings Expansion** — Operations config, logging config, advanced options (completed 2026-02-21)
 - [x] **Phase 29: Data Filtering** — Status filters, classification filters, real-time search (completed 2026-02-21)
-- [ ] **Phase 30: Data Export** — CSV export for computers and updates with Excel compatibility
-- [ ] **Phase 31: Testing & Documentation** — Test coverage, UX testing, updated documentation
+- [x] **Phase 30: Data Export** — CSV export for computers and updates with Excel compatibility (planned 2026-02-21)
+- [x] **Phase 31: Testing & Documentation** — Test coverage, UX testing, updated documentation (planned 2026-02-21)
 
 <details>
 <summary>✅ v4.0 C# Rewrite (Phases 1-7) — SHIPPED 2026-02-20</summary>
@@ -139,11 +139,11 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 | 28. Settings Expansion | v4.5 | 7/7 | Complete | 2026-02-21 |
 | 29. Data Filtering | v4.5 | 3/3 | Complete | 2026-02-21 |
 | 30. Data Export | v4.5 | 3/3 | Planned | 2026-02-21 |
-| 31. Testing & Documentation | v4.5 | 0/4 | Not started | - |
+| 31. Testing & Documentation | v4.5 | 4/4 | Planned | 2026-02-21 |
 
 ---
 
-**Total:** 31 phases, 98 plans — 83 complete, 15 pending
+**Total:** 31 phases, 102 plans — 83 complete, 19 pending
 
 ## v4.5 Phase Details
 
@@ -307,7 +307,11 @@ Full details: `.planning/milestones/v4.4-ROADMAP.md`
 6. README.md documents new keyboard shortcuts and settings
 7. CHANGELOG.md enumerates all v4.5 features and improvements
 
-**Plans:** TBD
+**Plans:** 4/4 planned
+- [ ] 31-01-PLAN.md — Performance Benchmark Tests (2026-02-21) (PERF-08, PERF-09, PERF-10, PERF-11, PERF-12)
+- [ ] 31-02-PLAN.md — Unit Tests for New Features (2026-02-21) (Test coverage for Phases 26, 28, 29, 30)
+- [ ] 31-03-PLAN.md — Documentation Updates (2026-02-21) (README, CHANGELOG, CLAUDE.md)
+- [ ] 31-04-PLAN.md — Release Notes and Quality Gate (2026-02-21) (Final quality gate for v4.5.0)
 
 ---
 
