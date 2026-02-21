@@ -11,8 +11,8 @@ Requirements for UX & Client Management milestone. Each maps to roadmap phases.
 
 - [x] **SET-01**: User can edit all settings (server mode, refresh interval, paths) via Settings dialog
 - [x] **SET-02**: Settings changes persist to settings.json and take effect immediately
-- [ ] **SET-03**: User can toggle Air-Gap/Online mode from dashboard quick button
-- [ ] **SET-04**: Manual mode override bypasses automatic network detection
+- [x] **SET-03**: User can toggle Air-Gap/Online mode from dashboard quick button
+- [x] **SET-04**: Manual mode override bypasses automatic network detection
 
 ### Operation Feedback
 
@@ -64,8 +64,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SET-01 | Phase 12 | Complete |
 | SET-02 | Phase 12 | Complete |
-| SET-03 | Phase 12 | Pending |
-| SET-04 | Phase 12 | Pending |
+| SET-03 | Phase 12 | Complete |
+| SET-04 | Phase 12 | Complete |
 | UX-01 | Phase 13 | Pending |
 | UX-02 | Phase 13 | Pending |
 | UX-03 | Phase 13 | Pending |
