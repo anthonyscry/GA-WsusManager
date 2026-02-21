@@ -99,8 +99,8 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 | 19. Static Analysis & Code Quality | v4.4 | 5/5 | Complete   | 2026-02-21 |
 | 20. XML Documentation & API Reference | v4.4 | 0/2 | Not started | - |
 | 21. Code Refactoring & Async Audit | v4.4 | 0/2 | Not started | - |
-| 22. Performance Benchmarking | 3/3 | Complete   | 2026-02-21 | 2026-02-21 |
-| 23. Memory Leak Detection | v4.4 | 0/1 | Not started | - |
+| 22. Performance Benchmarking | v4.4 | 3/3 | Complete | 2026-02-21 |
+| 23. Memory Leak Detection | v4.4 | 1/1 | Ready for implementation | - |
 | 24. Documentation Generation | v4.4 | 0/4 | Not started | - |
 
 ---
@@ -232,7 +232,10 @@ Full details: `.planning/milestones/v4.3-ROADMAP.md`
 4. Long-lived publishers use weak event patterns
 5. Memory profiling shows no growing object counts over time
 
-**Plans:** TBD
+**Plans:** 1/1 plan complete
+
+**Plan List:**
+- [x] 23-01-PLAN.md — Memory leak detection and prevention (StringBuilder for logs, timer cleanup, IDisposable pattern, dialog event handler cleanup)
 
 ---
 
