@@ -861,15 +861,7 @@ public partial class MainViewModel : ObservableObject
         _settings = await _settingsService.LoadAsync();
         ApplySettings(_settings);
 
-        // Show startup message
-        if (!IsWsusInstalled)
-        {
-            AppendLog("WSUS is not installed on this server.");
-            AppendLog("To get started, click 'Install WSUS' in the sidebar.");
-            AppendLog("");
-        }
-
-        // First dashboard refresh
+        // First dashboard refresh (sets IsWsusInstalled correctly before any checks)
         await RefreshDashboard();
 
         // Check WSUS installation and show message if needed

@@ -58,20 +58,59 @@
                 <!-- DIAGNOSTICS Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DIAGNOSTICS" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Diagnostics"
-                        Style="{StaticResource NavBtn}" x:Name="BtnDiagnostics"
-                        Command="{Binding NavigateCommand}" CommandParameter="Diagnostics"/>
+                        x:Name="BtnDiagnostics"
+                        Command="{Binding NavigateCommand}" CommandParameter="Diagnostics">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentPanel}" Value="Diagnostics">
+                                    <Setter Property="Background" Value="#21262D"/>
+                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
                 <!-- DATABASE Category -->
                 <TextBlock DockPanel.Dock="Top" Text="DATABASE" Style="{StaticResource CategoryLabel}"/>
                 <Button DockPanel.Dock="Top" Content="Database"
-                        Style="{StaticResource NavBtn}" x:Name="BtnDatabase"
-                        Command="{Binding NavigateCommand}" CommandParameter="Database"/>
+                        x:Name="BtnDatabase"
+                        Command="{Binding NavigateCommand}" CommandParameter="Database">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentPanel}" Value="Database">
+                                    <Setter Property="Background" Value="#21262D"/>
+                                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
                 <!-- Bottom utility buttons -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,0,0,8">
                     <Separator Background="{StaticResource Border}" Margin="15,4"/>
-                    <Button Content="Dashboard" Style="{StaticResource NavBtn}"
-                            Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Dashboard">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavBtn}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentPanel}" Value="Dashboard">
+                                        <Setter Property="Background" Value="#21262D"/>
+                                        <Setter Property="BorderBrush" Value="#58A6FF"/>
+                                        <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                        <Setter Property="Foreground" Value="#E6EDF3"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        Dashboard
+                    </Button>
                     <Button Content="Settings" Style="{StaticResource NavBtn}"
                             Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
                     <Button Content="Help" Style="{StaticResource NavBtn}"
