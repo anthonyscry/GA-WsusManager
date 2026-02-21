@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -27,6 +28,58 @@ public partial class ScheduleTaskDialog : Window
             if (e.Key == Key.Escape)
                 Close();
         };
+
+        // Set initial validation state
+        ValidateInputs();
+    }
+
+    private void Input_Changed(object sender, RoutedEventArgs e) => ValidateInputs();
+
+    private void ValidateInputs()
+    {
+        if (BtnCreate is null || TxtValidation is null) return;
+
+        // Task name must not be empty
+        if (string.IsNullOrWhiteSpace(TxtTaskName?.Text))
+        {
+            TxtValidation.Text = "Task name is required.";
+            BtnCreate.IsEnabled = false;
+            return;
+        }
+
+        // Time must match HH:mm format
+        var time = TxtTime?.Text ?? string.Empty;
+        if (!Regex.IsMatch(time, @"^\d{2}:\d{2}$"))
+        {
+            TxtValidation.Text = "Time must be in HH:mm format (e.g. 02:00).";
+            BtnCreate.IsEnabled = false;
+            return;
+        }
+
+        // When Monthly: day of month must be 1-31
+        var isMonthly = CmbScheduleType?.SelectedIndex == 0;
+        if (isMonthly)
+        {
+            var dayText = TxtDayOfMonth?.Text ?? string.Empty;
+            if (!int.TryParse(dayText, out var day) || day < 1 || day > 31)
+            {
+                TxtValidation.Text = "Day of month must be between 1 and 31.";
+                BtnCreate.IsEnabled = false;
+                return;
+            }
+        }
+
+        // Password must not be empty
+        if (string.IsNullOrEmpty(PwdPassword?.Password))
+        {
+            TxtValidation.Text = "Password is required for the scheduled task.";
+            BtnCreate.IsEnabled = false;
+            return;
+        }
+
+        // All valid
+        TxtValidation.Text = string.Empty;
+        BtnCreate.IsEnabled = true;
     }
 
     private void ScheduleType_Changed(object sender, SelectionChangedEventArgs e)
@@ -40,25 +93,17 @@ public partial class ScheduleTaskDialog : Window
         // Daily = 2: hide both
         DayOfMonthPanel.Visibility = selectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         DayOfWeekPanel.Visibility = selectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        ValidateInputs();
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
         var password = PwdPassword.Password;
 
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            MessageBox.Show("Password is required for the scheduled task.", "Validation",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+        // Safety net — button should already be disabled for invalid inputs
+        if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(TxtTaskName.Text))
             return;
-        }
-
-        if (string.IsNullOrWhiteSpace(TxtTaskName.Text))
-        {
-            MessageBox.Show("Task name is required.", "Validation",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
 
         // Parse day of month
         if (!int.TryParse(TxtDayOfMonth.Text, out var dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31)

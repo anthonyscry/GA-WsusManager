@@ -31,6 +31,34 @@ public partial class TransferDialog : Window
         };
     }
 
+    private void Input_Changed(object sender, RoutedEventArgs e) => ValidateInputs();
+
+    private void ValidateInputs()
+    {
+        if (BtnOk is null || TxtValidation is null) return;
+
+        if (IsExportMode)
+        {
+            // Export mode: all paths optional — always valid
+            TxtValidation.Text = string.Empty;
+            BtnOk.IsEnabled = true;
+        }
+        else
+        {
+            // Import mode: source path is required
+            if (string.IsNullOrWhiteSpace(TxtSourcePath?.Text))
+            {
+                TxtValidation.Text = "Source path is required for import.";
+                BtnOk.IsEnabled = false;
+            }
+            else
+            {
+                TxtValidation.Text = string.Empty;
+                BtnOk.IsEnabled = true;
+            }
+        }
+    }
+
     private void Direction_Changed(object sender, RoutedEventArgs e)
     {
         if (ExportFields is null || ImportFields is null || BtnOk is null) return;
@@ -47,6 +75,8 @@ public partial class TransferDialog : Window
             ImportFields.Visibility = Visibility.Visible;
             BtnOk.Content = "Start Import";
         }
+
+        ValidateInputs();
     }
 
     private void BrowseFullExport_Click(object sender, RoutedEventArgs e)
@@ -64,7 +94,11 @@ public partial class TransferDialog : Window
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
     {
         var path = BrowseFolder("Select Source Path");
-        if (path is not null) TxtSourcePath.Text = path;
+        if (path is not null)
+        {
+            TxtSourcePath.Text = path;
+            ValidateInputs();
+        }
     }
 
     private void BrowseDest_Click(object sender, RoutedEventArgs e)
@@ -102,11 +136,9 @@ public partial class TransferDialog : Window
         }
         else
         {
+            // Safety net — button should already be disabled for empty source
             if (string.IsNullOrWhiteSpace(TxtSourcePath.Text))
-            {
-                MessageBox.Show("Source path is required for import.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
-            }
 
             ImportResult = new ImportOptions
             {

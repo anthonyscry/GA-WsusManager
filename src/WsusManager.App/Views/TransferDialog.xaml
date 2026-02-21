@@ -13,6 +13,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
@@ -95,7 +96,8 @@
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="TxtSourcePath" Grid.Column="0"
                          Background="{StaticResource BgInput}" Foreground="{StaticResource Text1}"
-                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"/>
+                         BorderBrush="{StaticResource Border}" Padding="6,4" FontSize="12"
+                         TextChanged="Input_Changed"/>
                 <Button Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}"
                         Padding="10,4" Margin="6,0,0,0" FontSize="11"
                         Click="BrowseSource_Click"/>
@@ -123,8 +125,13 @@
                       Margin="0,0,0,8"/>
         </StackPanel>
 
+        <!-- Validation Text -->
+        <TextBlock x:Name="TxtValidation" Grid.Row="3"
+                   Foreground="#F85149" FontSize="11" Margin="0,4,0,0"
+                   Text=""/>
+
         <!-- Buttons -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right"
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
                     Margin="0,16,0,0">
             <Button Content="Cancel" Style="{StaticResource BtnSec}"
                     Padding="20,8" Margin="0,0,8,0"
