@@ -39,7 +39,15 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 
 ### Active
 
-(Next milestone requirements will be defined via `/gsd:new-milestone`)
+## Current Milestone: v4.3 Themes
+
+**Goal:** Add a built-in theming system with 6 color schemes (current dark default + 5 Chrome-inspired themes) and a live-preview theme picker in Settings.
+
+**Target features:**
+- Theming infrastructure using WPF dynamic resource dictionaries
+- 6 built-in color themes: Default Dark, Just Black, Slate, Serenity, Rose, Classic Blue
+- Theme picker section in Settings dialog with live preview
+- Immediate theme application with JSON persistence
 
 ### Out of Scope
 
@@ -100,4 +108,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-21 after v4.2 milestone completion*
+*Last updated: 2026-02-20 after v4.3 milestone started*
