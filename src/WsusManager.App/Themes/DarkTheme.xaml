@@ -255,6 +255,72 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════
+         ProgressBar Dark Style
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <Style TargetType="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource BgDark}"/>
+        <Setter Property="Foreground" Value="{StaticResource Blue}"/>
+        <Setter Property="Height" Value="3"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid x:Name="TemplateRoot">
+                        <Border x:Name="PART_Track"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="1"/>
+                        <Border x:Name="PART_Indicator"
+                                Background="{TemplateBinding Foreground}"
+                                HorizontalAlignment="Left"
+                                CornerRadius="1"/>
+                        <!-- Indeterminate animation overlay -->
+                        <Rectangle x:Name="Animation"
+                                   Fill="{TemplateBinding Foreground}"
+                                   Visibility="Collapsed">
+                            <Rectangle.RenderTransform>
+                                <TranslateTransform x:Name="AnimationTranslate"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Determinate"/>
+                                <VisualState x:Name="Indeterminate">
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <ObjectAnimationUsingKeyFrames
+                                            Storyboard.TargetName="Animation"
+                                            Storyboard.TargetProperty="Visibility">
+                                            <DiscreteObjectKeyFrame KeyTime="0"
+                                                Value="{x:Static Visibility.Visible}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames
+                                            Storyboard.TargetName="PART_Indicator"
+                                            Storyboard.TargetProperty="Visibility">
+                                            <DiscreteObjectKeyFrame KeyTime="0"
+                                                Value="{x:Static Visibility.Collapsed}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <DoubleAnimationUsingKeyFrames
+                                            Storyboard.TargetName="AnimationTranslate"
+                                            Storyboard.TargetProperty="X">
+                                            <LinearDoubleKeyFrame KeyTime="0" Value="-60"/>
+                                            <LinearDoubleKeyFrame KeyTime="0:0:1" Value="180"/>
+                                        </DoubleAnimationUsingKeyFrames>
+                                        <DoubleAnimationUsingKeyFrames
+                                            Storyboard.TargetName="Animation"
+                                            Storyboard.TargetProperty="Width">
+                                            <DiscreteDoubleKeyFrame KeyTime="0" Value="60"/>
+                                        </DoubleAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════
          ScrollBar / ScrollViewer Dark Styles
          ═══════════════════════════════════════════════════════════════ -->
 
