@@ -65,7 +65,10 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
   3. Dashboard card status bars and connection dot colors update when the theme swaps (ViewModel brushes use TryFindResource, not hardcoded Color.FromRgb)
   4. App reads SelectedTheme from settings.json on startup and applies it before the main window appears — no theme flash on launch
   5. A grep for `StaticResource` on any color/brush resource key returns zero results across all 8 XAML files
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 16-01-PLAN.md — Split styles/tokens, DynamicResource migration, ViewModel brush migration, ThemeService (INFRA-01 through INFRA-05)
 
 ### Phase 17: Theme Content and Picker
 **Goal**: Users can choose from 6 built-in color themes in Settings, see a live preview when clicking swatches, and have their selection persist across restarts
@@ -98,5 +101,5 @@ Full details: `.planning/milestones/v4.2-ROADMAP.md`
 | 13. Operation Feedback & Dialog Polish | v4.2 | 2/2 | Complete | 2026-02-21 |
 | 14. Client Management Core | v4.2 | 3/3 | Complete | 2026-02-21 |
 | 15. Client Management Advanced | v4.2 | 2/2 | Complete | 2026-02-21 |
-| 16. Theme Infrastructure | v4.3 | 0/? | Not started | - |
+| 16. Theme Infrastructure | v4.3 | 0/1 | Not started | - |
 | 17. Theme Content and Picker | v4.3 | 0/? | Not started | - |
