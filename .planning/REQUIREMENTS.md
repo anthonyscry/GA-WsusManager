@@ -9,9 +9,9 @@ Requirements for v4.4 Quality & Polish milestone. Each maps to roadmap phases.
 
 ### Test Coverage
 
-- [ ] **TEST-01**: Code coverage report shows >80% line coverage for WsusManager.Core
-- [ ] **TEST-02**: Branch coverage analysis tracks conditional logic coverage
-- [ ] **TEST-03**: Coverage report generates as HTML artifact in CI/CD pipeline
+- [x] **TEST-01**: Code coverage report shows >80% line coverage for WsusManager.Core
+- [x] **TEST-02**: Branch coverage analysis tracks conditional logic coverage
+- [x] **TEST-03**: Coverage report generates as HTML artifact in CI/CD pipeline
 - [ ] **TEST-04**: Integration tests verify end-to-end workflows (run manually/on-demand)
 - [ ] **TEST-05**: Edge case testing covers null inputs, empty collections, boundary values
 - [ ] **TEST-06**: Exception path testing verifies all caught exceptions are tested
@@ -82,9 +82,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | Phase 18 | Pending |
-| TEST-02 | Phase 18 | Pending |
-| TEST-03 | Phase 18 | Pending |
+| TEST-01 | Phase 18 | Complete |
+| TEST-02 | Phase 18 | Complete |
+| TEST-03 | Phase 18 | Complete |
 | TEST-04 | Phase 18 | Pending |
 | TEST-05 | Phase 18 | Pending |
 | TEST-06 | Phase 18 | Pending |
