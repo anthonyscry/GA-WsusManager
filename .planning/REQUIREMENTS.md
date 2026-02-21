@@ -30,11 +30,11 @@ Requirements for UX & Client Management milestone. Each maps to roadmap phases.
 
 ### Client Management
 
-- [ ] **CLI-01**: User can cancel stuck Windows Update jobs on a remote host (stop services, clear cache, restart)
-- [ ] **CLI-02**: User can force WSUS check-in on a remote host (gpupdate + resetauthorization + detectnow + reportnow)
+- [x] **CLI-01**: User can cancel stuck Windows Update jobs on a remote host (stop services, clear cache, restart)
+- [x] **CLI-02**: User can force WSUS check-in on a remote host (gpupdate + resetauthorization + detectnow + reportnow)
 - [ ] **CLI-03**: User can run mass GPUpdate across multiple hosts (from text file or manual entry)
-- [ ] **CLI-04**: User can test WSUS port connectivity from a remote host to WSUS server
-- [ ] **CLI-05**: User can run quick diagnostics on a remote host (WSUS settings, service status, last check-in, pending reboot)
+- [x] **CLI-04**: User can test WSUS port connectivity from a remote host to WSUS server
+- [x] **CLI-05**: User can run quick diagnostics on a remote host (WSUS settings, service status, last check-in, pending reboot)
 - [x] **CLI-06**: User can look up common WSUS error codes with descriptions and fixes
 - [x] **CLI-07**: Remote operations execute via WinRM when available
 - [ ] **CLI-08**: User can generate ready-to-run PowerShell scripts as fallback when WinRM unavailable
@@ -74,11 +74,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DLG-02 | Phase 13 | Complete |
 | DLG-03 | Phase 13 | Complete |
 | DLG-04 | Phase 13 | Complete |
-| CLI-01 | Phase 14 | Pending |
-| CLI-02 | Phase 14 | Pending |
+| CLI-01 | Phase 14 | Complete |
+| CLI-02 | Phase 14 | Complete |
 | CLI-03 | Phase 15 | Pending |
-| CLI-04 | Phase 14 | Pending |
-| CLI-05 | Phase 14 | Pending |
+| CLI-04 | Phase 14 | Complete |
+| CLI-05 | Phase 14 | Complete |
 | CLI-06 | Phase 14 | Complete |
 | CLI-07 | Phase 14 | Complete |
 | CLI-08 | Phase 15 | Pending |
