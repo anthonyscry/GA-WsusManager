@@ -337,10 +337,18 @@ public partial class MainViewModel : ObservableObject
     // SERVER MODE & CONNECTIVITY
     // ═══════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// When true, dashboard auto-refresh does not update IsOnline from DashboardService.
+    /// Activated when admin manually toggles the mode via ToggleModeCommand.
+    /// </summary>
+    private bool _modeOverrideActive;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ConnectionDotColor))]
     [NotifyPropertyChangedFor(nameof(ConnectionStatusText))]
     [NotifyPropertyChangedFor(nameof(ServerModeText))]
+    [NotifyPropertyChangedFor(nameof(ToggleModeText))]
+    [NotifyPropertyChangedFor(nameof(ModeOverrideIndicator))]
     private bool _isOnline = true;
 
     public SolidColorBrush ConnectionDotColor => IsOnline
@@ -349,6 +357,30 @@ public partial class MainViewModel : ObservableObject
 
     public string ConnectionStatusText => IsOnline ? "Online" : "Offline";
     public string ServerModeText => IsOnline ? "Online" : "Air-Gap";
+
+    /// <summary>Dynamic button label for the mode toggle button.</summary>
+    public string ToggleModeText => IsOnline ? "Switch to Air-Gap" : "Switch to Online";
+
+    /// <summary>Indicator shown near toggle to signal whether mode is manually overridden.</summary>
+    public string ModeOverrideIndicator => _modeOverrideActive ? "(manual)" : "(auto)";
+
+    [RelayCommand]
+    private async Task ToggleMode()
+    {
+        // Flip mode and activate manual override
+        IsOnline = !IsOnline;
+        _modeOverrideActive = true;
+
+        // Persist the new mode to settings
+        _settings.ServerMode = IsOnline ? "Online" : "AirGap";
+        await SaveSettingsAsync();
+
+        // Notify CanExecute for online-dependent operations
+        NotifyCommandCanExecuteChanged();
+
+        var modeLabel = IsOnline ? "Online" : "Air-Gap";
+        AppendLog($"Server mode manually set to {modeLabel}. Auto-detection bypassed until changed.");
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // WSUS INSTALLATION DETECTION
@@ -748,8 +780,12 @@ public partial class MainViewModel : ObservableObject
         IsWsusInstalled = data.IsWsusInstalled;
         NotifyCommandCanExecuteChanged();
 
-        // Server mode
-        IsOnline = data.IsOnline;
+        // Server mode — only update from auto-detection when no manual override is active
+        if (!_modeOverrideActive)
+        {
+            IsOnline = data.IsOnline;
+        }
+        // When override is active, IsOnline stays at the manually chosen value
 
         if (!data.IsWsusInstalled)
         {
@@ -848,6 +884,8 @@ public partial class MainViewModel : ObservableObject
         RunInstallWsusCommand.NotifyCanExecuteChanged();
         RunScheduleTaskCommand.NotifyCanExecuteChanged();
         RunCreateGpoCommand.NotifyCanExecuteChanged();
+        // Phase 12: Mode Override
+        ToggleModeCommand.NotifyCanExecuteChanged();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -889,6 +927,9 @@ public partial class MainViewModel : ObservableObject
     {
         IsLogPanelExpanded = settings.LogPanelExpanded;
         IsOnline = settings.ServerMode == "Online";
+        // Activate override on startup when saved mode is AirGap so auto-detection
+        // doesn't flip it back to Online on the first ping check.
+        _modeOverrideActive = settings.ServerMode == "AirGap";
         ConfigContentPath = settings.ContentPath;
         ConfigSqlInstance = settings.SqlInstance;
         ConfigLogPath = @"C:\WSUS\Logs";
