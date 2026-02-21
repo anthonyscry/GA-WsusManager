@@ -193,7 +193,7 @@ GA-WsusManager/
 - **[docs/ci-cd.md](docs/ci-cd.md)** - CI/CD pipeline documentation, workflows, and troubleshooting
 - **[docs/releases.md](docs/releases.md)** - Release process and versioning
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature notes
-- **[docs/architecture.md](docs/architecture.md)** - C# architecture and design decisions (to be added)
+- **[docs/architecture.md](docs/architecture.md)** - C# architecture, MVVM pattern, DI, and design decisions
 - **[docs/api/](docs/api/)** - API reference documentation (to be generated via DocFX)
 
 ## Testing
