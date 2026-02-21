@@ -188,6 +188,9 @@ public partial class MainViewModel : ObservableObject
         CurrentOperationName = operationName;
         StatusMessage = $"Running: {operationName}...";
 
+        // Notify all operation commands to re-evaluate CanExecute (disables buttons during operation)
+        NotifyCommandCanExecuteChanged();
+
         // Auto-expand log panel when operation starts
         IsLogPanelExpanded = true;
 
@@ -236,6 +239,9 @@ public partial class MainViewModel : ObservableObject
             CurrentOperationName = string.Empty;
             _operationCts?.Dispose();
             _operationCts = null;
+
+            // Notify all operation commands to re-evaluate CanExecute (re-enables buttons after operation)
+            NotifyCommandCanExecuteChanged();
         }
     }
 
