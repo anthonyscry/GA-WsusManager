@@ -697,11 +697,10 @@
                                                 Command="{Binding RunClientTestConnectivityCommand}"
                                                 ToolTip="Test TCP connection from client to WSUS server on ports 8530/8531"/>
                                         <Button Content="Run Diagnostics" Style="{StaticResource BtnGreen}"
-                                                automation:AutomationProperties.AutomationId="HealthCheckButton"
+                                                automation:AutomationProperties.AutomationId="ClientDiagnosticsButton"
                                                 Padding="16,8" Margin="0,0,8,8"
                                                 Command="{Binding RunClientDiagnosticsCommand}"
                                                 ToolTip="Gather WSUS settings, service status, last check-in, reboot state"/>
-                                                automation:AutomationProperties.AutomationId="ClientDiagnosticsButton"
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>
@@ -941,7 +940,7 @@
 
                                     <!-- Empty State -->
                                     <ListBox.Style>
-                                        <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+                                        <Style TargetType="ListBox">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding FilteredComputers.Count}" Value="0">
                                                     <Setter Property="Template">
@@ -1124,7 +1123,7 @@
 
                                     <!-- Empty State -->
                                     <ListView.Style>
-                                        <Style TargetType="ListView" BasedOn="{StaticResource {x:Type ListView}}">
+                                        <Style TargetType="ListView">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding FilteredUpdates.Count}" Value="0">
                                                     <Setter Property="Template">
