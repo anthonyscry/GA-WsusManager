@@ -4,10 +4,11 @@ This file provides guidance for AI assistants working with this codebase.
 
 ## Project Overview
 
-WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides both a GUI application and CLI scripts for managing WSUS servers, including support for air-gapped networks.
+WSUS Manager is a C# WPF automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides a modern GUI application for managing WSUS servers, including support for air-gapped networks. The PowerShell version (v3.8.11) is still available for backward compatibility.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.11
+**Current Version:** 4.5.0 (C# WPF)
+**Legacy Version:** 3.8.11 (PowerShell)
 
 ## Repository Structure
 
@@ -876,9 +877,9 @@ Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 
 ---
 
-## C# Port (v4.0)
+## C# Version (v4.5)
 
-A complete C# port of WSUS Manager is available in the `CSharp/` directory. This section documents the C# version for AI assistants.
+The C# version is the primary application (src/WsusManager.App/). This section documents the C# version for AI assistants.
 
 ### Why C#?
 
@@ -894,52 +895,59 @@ The PowerShell GUI (v3.8.3) has reached practical complexity limits with 12 docu
 ### Repository Structure
 
 ```
-CSharp/
+GA-WsusManager/
 ├── src/
 │   ├── WsusManager.Core/           # Core library (.NET 8.0)
-│   │   ├── Database/              # SQL operations (SqlHelper, DatabaseOperations)
-│   │   ├── Health/                # Health checking (HealthChecker)
-│   │   ├── Services/              # Windows service management (ServiceManager)
-│   │   ├── Operations/            # Export/Import operations
-│   │   └── Utilities/             # Logging, admin checks, path validation
+│   │   ├── Models/                # Data models (ComputerInfo, UpdateInfo, AppSettings)
+│   │   ├── Services/              # Service implementations
+│   │   │   ├── Interfaces/        # Service interfaces
+│   │   │   ├── CsvExportService   # CSV export with UTF-8 BOM
+│   │   │   ├── SettingsService    # Settings persistence
+│   │   │   ├── ThemeService       # Theme management
+│   │   │   └── ...
+│   │   ├── Infrastructure/        # Utilities (logging, admin checks)
+│   │   └── Logging/               # Serilog configuration
 │   │
-│   └── WsusManager.Gui/           # WPF GUI application
-│       ├── MainWindow.xaml        # UI layout (matches PowerShell exactly)
-│       ├── ViewModels/            # MVVM view models
-│       │   └── MainViewModel.cs   # Main app logic (all operations)
-│       └── Views/                 # Dialog windows
+│   ├── WsusManager.App/           # WPF GUI application
+│   │   ├── Views/                 # XAML views (MainWindow, Dialogs)
+│   │   ├── ViewModels/            # MVVM view models
+│   │   │   └── MainViewModel.cs   # Main app logic (all operations)
+│   │   ├── Services/              # App-specific services (ThemeService)
+│   │   └── WsusManager.App.csproj
+│   │
+│   ├── WsusManager.Tests/         # xUnit tests (560+ tests)
+│   │   ├── Services/              # Service tests
+│   │   ├── ViewModels/            # ViewModel tests
+│   │   └── ...                    # Test categories
+│   │
+│   └── WsusManager.Benchmarks/    # Performance benchmarks (BenchmarkDotNet)
+│       ├── BenchmarkStartup.cs
+│       ├── BenchmarkPhase25Optimizations.cs
+│       └── baselines/             # Performance baseline documentation
 │
-├── tests/
-│   └── WsusManager.Tests/         # xUnit tests
-│
-├── README.md                       # POC overview
-├── TROUBLESHOOTING.md              # Debugging guide for AI assistants
-├── EXECUTIVE-SUMMARY.md            # Migration decision guide
-├── POWERSHELL-VS-CSHARP.md         # Side-by-side comparison
-├── MIGRATION-PLAN.md               # 8-10 week hybrid migration plan
-└── WsusManager.sln                 # Visual Studio solution
+└── WsusManager.sln                # Visual Studio solution
 ```
 
 ### Building the C# Version
 
 **Automatic (GitHub Actions):**
 ```
-Push to claude/evaluate-csharp-port-RxyW2 branch
+Push to main branch
 → Builds automatically
 → Download artifact from Actions tab
 ```
 
 **Manual (requires .NET 8.0 SDK):**
 ```bash
-cd CSharp
+cd src
 dotnet restore
 dotnet build --configuration Release
-dotnet run --project src/WsusManager.Gui
+dotnet run --project WsusManager.App
 ```
 
 **Publish single-file EXE:**
 ```bash
-dotnet publish src/WsusManager.Gui/WsusManager.Gui.csproj \
+dotnet publish src/WsusManager.App/WsusManager.App.csproj \
   --configuration Release \
   --output publish \
   --self-contained true \
@@ -1153,7 +1161,221 @@ dotnet test --filter "FullyQualifiedName~HealthCheckerTests"
 
 ---
 
-**C# Port Status:** POC Complete (90% feature parity)
-**Last Updated:** 2026-01-12
-**Branch:** `claude/evaluate-csharp-port-RxyW2`
-**Download:** GitHub Actions → Artifacts → `WsusManager-CSharp-POC.zip`
+**C# Version Status:** v4.5.0 Released (Production Ready)
+**Last Updated:** 2026-02-21
+**Branch:** `main`
+**Download:** GitHub Releases → `v4.5.0`
+
+## v4.5 Implementation Patterns
+
+### Data Filtering (Phase 29)
+
+**Models:**
+```csharp
+public record ComputerInfo(
+    string Hostname,
+    string IpAddress,
+    string Status,
+    DateTime LastSync,
+    int PendingUpdates,
+    string OsVersion);
+
+public record UpdateInfo(
+    Guid UpdateId,
+    string Title,
+    string? KbArticle,
+    string Classification,
+    DateTime ApprovalDate,
+    bool IsApproved,
+    bool IsDeclined);
+```
+
+**Filter Persistence:**
+- Filter state saved to `AppSettings` properties (ComputerStatusFilter, UpdateApprovalFilter, etc.)
+- 300ms debounce timer for search input (DispatcherTimer)
+- CollectionView filtering for O(n) performance
+- BoolToVisibilityConverter for conditional UI elements
+- Empty state TextBlock when no items match filters
+
+**Example:**
+```csharp
+private void ApplyComputerFilters()
+{
+    var filtered = _allComputers.AsEnumerable();
+
+    if (ComputerStatusFilter != "All")
+    {
+        filtered = filtered.Where(c => c.Status == ComputerStatusFilter);
+    }
+
+    if (!string.IsNullOrWhiteSpace(ComputerSearchText))
+    {
+        filtered = filtered.Where(c =>
+            c.Hostname.Contains(ComputerSearchText, StringComparison.OrdinalIgnoreCase) ||
+            c.IpAddress.Contains(ComputerSearchText, StringComparison.OrdinalIgnoreCase));
+    }
+
+    FilteredComputers = filtered.ToList();
+}
+```
+
+### CSV Export (Phase 30)
+
+**Service Interface:**
+```csharp
+public interface ICsvExportService
+{
+    Task<string> ExportComputersAsync(
+        IEnumerable<ComputerInfo> computers,
+        IProgress<string>? progress,
+        CancellationToken cancellationToken = default);
+
+    Task<string> ExportUpdatesAsync(
+        IEnumerable<UpdateInfo> updates,
+        IProgress<string>? progress,
+        CancellationToken cancellationToken = default);
+}
+```
+
+**Implementation Details:**
+- UTF-8 BOM encoding (new UTF8Encoding(true)) for Excel compatibility
+- Streaming writes via StreamWriter (no StringBuilder for large datasets)
+- Batch size: 100 rows for progress updates
+- Field escaping: quotes for commas, quotes, newlines; escape quotes by doubling
+- File naming: WsusManager-{Type}-{yyyyMMdd-HHmmss}.csv
+- Destination: Environment.SpecialFolder.MyDocuments
+
+**Field Escaping:**
+```csharp
+private static string EscapeField(string? field)
+{
+    if (string.IsNullOrEmpty(field)) return string.Empty;
+
+    if (field.Contains(',') || field.Contains('"') ||
+        field.Contains('\n') || field.Contains('\r'))
+    {
+        return $"\"{field.Replace("\"", "\"\"")}\"";
+    }
+    return field;
+}
+```
+
+### Settings Validation (Phase 28)
+
+**Settings Model:**
+```csharp
+public class AppSettings
+{
+    public DefaultSyncProfile DefaultSyncProfile { get; set; }
+    public LogLevel LogLevel { get; set; }
+    public int LogRetentionDays { get; set; } = 30;
+    public int LogMaxFileSizeMb { get; set; } = 10;
+    public bool PersistWindowState { get; set; } = true;
+    public bool RequireConfirmationDestructive { get; set; } = true;
+    public DashboardRefreshInterval DashboardRefreshInterval { get; set; }
+    public int WinRMTimeoutSeconds { get; set; } = 60;
+    public int WinRMRetryCount { get; set; } = 3;
+    public WindowBounds? WindowBounds { get; set; }
+}
+```
+
+**Validation Ranges:**
+- RetentionDays: 1-365 (default: 30)
+- MaxFileSizeMb: 1-1000 (default: 10)
+- WinRMTimeoutSeconds: 10-300 (default: 60)
+- WinRMRetryCount: 1-10 (default: 3)
+
+**Reset to Defaults:**
+```csharp
+public async Task ResetToDefaultsAsync(AppSettings settings)
+{
+    await Task.Run(() =>
+    {
+        settings.DefaultSyncProfile = DefaultSyncProfile.Full;
+        settings.LogLevel = LogLevel.Info;
+        settings.LogRetentionDays = 30;
+        settings.LogMaxFileSizeMb = 10;
+        settings.PersistWindowState = true;
+        settings.RequireConfirmationDestructive = true;
+        settings.DashboardRefreshInterval = DashboardRefreshInterval.Sec30;
+        settings.WinRMTimeoutSeconds = 60;
+        settings.WinRMRetryCount = 3;
+    });
+}
+```
+
+### Performance Optimization (Phase 25)
+
+**Parallelized Initialization:**
+```csharp
+private async Task InitializeAsync()
+{
+    var tasks = new List<Task>
+    {
+        Task.Run(() => _settingsService.LoadSettingsAsync()),
+        Task.Run(() => _themeService.PreloadThemesAsync()),
+        Task.Run(() => _dashboardService.InitializeAsync())
+    };
+
+    await Task.WhenAll(tasks);
+}
+```
+
+**Theme Pre-Loading:**
+```csharp
+private readonly Dictionary<string, ResourceDictionary> _themeCache = new();
+
+public void PreloadThemes()
+{
+    foreach (var kvp in _themeMap)
+    {
+        var dict = LoadThemeDictionary(kvp.Value);
+        _themeCache[kvp.Key] = dict;
+    }
+}
+```
+
+**Batched Log Updates:**
+```csharp
+private readonly List<string> _logBuffer = new();
+private const int BatchSize = 100;
+
+protected void AddLog(string line)
+{
+    _logBuffer.Add(line);
+
+    if (_logBuffer.Count >= BatchSize)
+    {
+        FlushLogBuffer();
+    }
+}
+```
+
+### Security Considerations
+
+**CSV Injection Prevention:**
+- CSV injection prevention: escape all fields containing formulas (=, +, -, @)
+- File path validation: restrict export to Documents folder only
+- Large file handling: stream writes to avoid memory exhaustion
+
+### Testing Patterns
+
+**Unit Tests:**
+- xUnit framework with Moq for mocking
+- Test naming: {MethodUnderTest}_Should_{ExpectedBehavior}
+- Data-driven tests with [Theory] and [InlineData]
+- Assert.Single, Assert.All, Assert.Contains for readable assertions
+
+**Example:**
+```csharp
+[Theory]
+[InlineData("Online")]
+[InlineData("Offline")]
+[InlineData("Error")]
+public void FilterComputersByStatus_ShouldReturnOnlyMatching(string status)
+{
+    var computers = CreateMockComputers(20);
+    var filtered = computers.Where(c => c.Status == status).ToList();
+    Assert.All(filtered, c => Assert.Equal(status, c.Status));
+}
+```

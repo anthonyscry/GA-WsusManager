@@ -5,10 +5,74 @@ All notable changes to WSUS Manager will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.5.0] - 2026-02-21
 
 ### Added
-- (To be filled in next release)
+
+#### Performance (Phase 25)
+- Parallelized application initialization for 30% faster startup
+- Theme pre-loading for sub-100ms theme switching
+- List virtualization for handling 2000+ computers without UI freezing
+- Lazy-loaded update metadata with 5-minute cache TTL
+- Batched log panel updates (100 lines, 100ms) to reduce UI thread overhead
+
+#### Accessibility (Phase 26)
+- Global keyboard shortcuts: F1 (Help), F5 (Refresh), Ctrl+S (Settings), Ctrl+Q (Quit), Escape (Cancel)
+- AutomationId attributes on all interactive elements for UI automation testing
+- Keyboard navigation with Tab, arrow keys, Enter, and Space support
+- WCAG 2.1 AA contrast compliance verification for all 6 themes
+- Dialog centering on owner window for cohesive UX
+
+#### Settings (Phase 28)
+- Default operation profile setting (Full/Quick/Sync Only)
+- Configurable logging level (Debug/Info/Warning/Error/Fatal)
+- Log retention policy (days to keep, max file size)
+- Window state persistence (size and position)
+- Dashboard refresh interval configuration (10s/30s/60s/Disabled)
+- Confirmation prompts toggle for destructive operations
+- WinRM timeout and retry configuration
+- Reset to Defaults button with confirmation dialog
+
+#### Data Views (Phase 29)
+- Computer status filter (All/Online/Offline/Error)
+- Update approval status filter (All/Approved/Not Approved/Declined)
+- Update classification filter (All/Critical/Security/Definition/Updates)
+- Real-time search with 300ms debounce
+- Filter state persistence across application restarts
+- Empty state message when no items match filters
+
+#### Data Export (Phase 30)
+- CSV export for computers and updates panels
+- UTF-8 BOM encoding for Excel compatibility
+- Export respects applied filters
+- Progress reporting during export
+- Automatic Explorer navigation to exported file
+
+#### Testing (Phase 31)
+- Performance benchmark suite for Phase 25 optimizations (6 benchmarks)
+- 61 new unit tests for Phases 26, 28, 29, 30
+- Code coverage maintained at 84% line coverage
+
+### Changed
+- Dashboard refresh uses lazy loading for 50-70% performance improvement
+- Log panel batches updates to reduce PropertyChanged notifications by 90%
+- Theme switching from file-based to memory-cached (instant feedback)
+- Filter dropdowns use CollectionView for O(n) filtering performance
+
+### Performance
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Cold Startup | 1200ms | 840ms | 30% faster |
+| Theme Switch | 300-500ms | <10ms | 98% faster |
+| Dashboard (2k computers) | 450ms | 180ms | 60% faster |
+| Update Metadata | 150ms | 75ms | 50% faster |
+
+### Documentation
+- Added keyboard shortcuts section to README
+- Added performance benchmarks table
+- Added data filtering and export documentation
+- Updated CLAUDE.md with new patterns and services
 
 ## [4.4.0] - 2026-02-21
 
@@ -138,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - MaxAutoApproveCount increased to 200
 
-[Unreleased]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.4.0...HEAD
+[Unreleased]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.5.0...HEAD
+[4.5.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.1.0...v4.2.0
