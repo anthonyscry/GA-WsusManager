@@ -673,19 +673,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             _logService?.Debug("Loading computers...");
 
-            var computers = await _dashboardService.GetComputersAsync(ct).ConfigureAwait(false);
+            var computers = await _dashboardService.GetComputersAsync(ct).ConfigureAwait(true);
 
-            FilteredComputers.Clear();
-            foreach (var computer in computers)
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                FilteredComputers.Add(computer);
-            }
+                FilteredComputers.Clear();
+                foreach (var computer in computers)
+                {
+                    FilteredComputers.Add(computer);
+                }
 
-            // Apply any active filters after loading
-            ApplyComputerFilters();
+                // Apply any active filters after loading
+                ApplyComputerFilters();
 
-            // Refresh export button state (Phase 30)
-            ExportComputersCommand.NotifyCanExecuteChanged();
+                // Refresh export button state (Phase 30)
+                ExportComputersCommand.NotifyCanExecuteChanged();
+            });
 
             _logService?.Info("Loaded {0} computers", FilteredComputers.Count);
         }
@@ -697,12 +700,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             _logService?.Error(ex, "Failed to load computers: {Message}", ex.Message);
-            FilteredComputers.Clear();
+            await Application.Current.Dispatcher.InvokeAsync(() => FilteredComputers.Clear());
         }
         finally
         {
-            OnPropertyChanged(nameof(ComputerVisibleCount));
-            OnPropertyChanged(nameof(ComputerFilterCountText));
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                OnPropertyChanged(nameof(ComputerVisibleCount));
+                OnPropertyChanged(nameof(ComputerFilterCountText));
+            });
         }
     }
 
@@ -715,19 +721,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             _logService?.Debug("Loading updates...");
 
-            var updates = await _dashboardService.GetUpdatesAsync(ct).ConfigureAwait(false);
+            var updates = await _dashboardService.GetUpdatesAsync(ct).ConfigureAwait(true);
 
-            FilteredUpdates.Clear();
-            foreach (var update in updates)
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                FilteredUpdates.Add(update);
-            }
+                FilteredUpdates.Clear();
+                foreach (var update in updates)
+                {
+                    FilteredUpdates.Add(update);
+                }
 
-            // Apply any active filters after loading
-            ApplyUpdateFilters();
+                // Apply any active filters after loading
+                ApplyUpdateFilters();
 
-            // Refresh export button state (Phase 30)
-            ExportUpdatesCommand.NotifyCanExecuteChanged();
+                // Refresh export button state (Phase 30)
+                ExportUpdatesCommand.NotifyCanExecuteChanged();
+            });
 
             _logService?.Info("Loaded {0} updates", FilteredUpdates.Count);
         }
@@ -739,12 +748,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             _logService?.Error(ex, "Failed to load updates: {Message}", ex.Message);
-            FilteredUpdates.Clear();
+            await Application.Current.Dispatcher.InvokeAsync(() => FilteredUpdates.Clear());
         }
         finally
         {
-            OnPropertyChanged(nameof(UpdateVisibleCount));
-            OnPropertyChanged(nameof(UpdateFilterCountText));
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                OnPropertyChanged(nameof(UpdateVisibleCount));
+                OnPropertyChanged(nameof(UpdateFilterCountText));
+            });
         }
     }
 
@@ -1638,39 +1650,43 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Notifies all commands that their CanExecute state may have changed.
     /// Called after dashboard refresh updates IsWsusInstalled or IsOperationRunning.
+    /// Always runs on UI thread via Dispatcher to prevent cross-thread exceptions.
     /// </summary>
     private void NotifyCommandCanExecuteChanged()
     {
-        QuickDiagnosticsCommand.NotifyCanExecuteChanged();
-        QuickCleanupCommand.NotifyCanExecuteChanged();
-        QuickSyncCommand.NotifyCanExecuteChanged();
-        QuickStartServicesCommand.NotifyCanExecuteChanged();
-        RunDiagnosticsCommand.NotifyCanExecuteChanged();
-        ResetContentCommand.NotifyCanExecuteChanged();
-        StartServiceCommand.NotifyCanExecuteChanged();
-        StopServiceCommand.NotifyCanExecuteChanged();
-        // Phase 4: Database Operations
-        RunDeepCleanupCommand.NotifyCanExecuteChanged();
-        BackupDatabaseCommand.NotifyCanExecuteChanged();
-        RestoreDatabaseCommand.NotifyCanExecuteChanged();
-        // Phase 5: WSUS Operations
-        RunOnlineSyncCommand.NotifyCanExecuteChanged();
-        RunTransferCommand.NotifyCanExecuteChanged();
-        // Phase 6: Installation and Scheduling
-        RunInstallWsusCommand.NotifyCanExecuteChanged();
-        RunScheduleTaskCommand.NotifyCanExecuteChanged();
-        RunCreateGpoCommand.NotifyCanExecuteChanged();
-        // Phase 12: Mode Override + Settings
-        ToggleModeCommand.NotifyCanExecuteChanged();
-        OpenSettingsCommand.NotifyCanExecuteChanged();
-        // Phase 14: Client Management
-        RunClientCancelStuckJobsCommand.NotifyCanExecuteChanged();
-        RunClientForceCheckInCommand.NotifyCanExecuteChanged();
-        RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
-        RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
-        // Phase 15: Mass Operations + Script Generator
-        RunMassGpUpdateCommand.NotifyCanExecuteChanged();
-        GenerateScriptCommand.NotifyCanExecuteChanged();
+        Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            QuickDiagnosticsCommand.NotifyCanExecuteChanged();
+            QuickCleanupCommand.NotifyCanExecuteChanged();
+            QuickSyncCommand.NotifyCanExecuteChanged();
+            QuickStartServicesCommand.NotifyCanExecuteChanged();
+            RunDiagnosticsCommand.NotifyCanExecuteChanged();
+            ResetContentCommand.NotifyCanExecuteChanged();
+            StartServiceCommand.NotifyCanExecuteChanged();
+            StopServiceCommand.NotifyCanExecuteChanged();
+            // Phase 4: Database Operations
+            RunDeepCleanupCommand.NotifyCanExecuteChanged();
+            BackupDatabaseCommand.NotifyCanExecuteChanged();
+            RestoreDatabaseCommand.NotifyCanExecuteChanged();
+            // Phase 5: WSUS Operations
+            RunOnlineSyncCommand.NotifyCanExecuteChanged();
+            RunTransferCommand.NotifyCanExecuteChanged();
+            // Phase 6: Installation and Scheduling
+            RunInstallWsusCommand.NotifyCanExecuteChanged();
+            RunScheduleTaskCommand.NotifyCanExecuteChanged();
+            RunCreateGpoCommand.NotifyCanExecuteChanged();
+            // Phase 12: Mode Override + Settings
+            ToggleModeCommand.NotifyCanExecuteChanged();
+            OpenSettingsCommand.NotifyCanExecuteChanged();
+            // Phase 14: Client Management
+            RunClientCancelStuckJobsCommand.NotifyCanExecuteChanged();
+            RunClientForceCheckInCommand.NotifyCanExecuteChanged();
+            RunClientTestConnectivityCommand.NotifyCanExecuteChanged();
+            RunClientDiagnosticsCommand.NotifyCanExecuteChanged();
+            // Phase 15: Mass Operations + Script Generator
+            RunMassGpUpdateCommand.NotifyCanExecuteChanged();
+            GenerateScriptCommand.NotifyCanExecuteChanged();
+        }, System.Windows.Threading.DispatcherPriority.Normal);
     }
 
     // ═══════════════════════════════════════════════════════════════

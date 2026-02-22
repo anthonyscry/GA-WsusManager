@@ -45,6 +45,9 @@ public static class Program
         var settingsService = host.Services.GetRequiredService<ISettingsService>();
         var settings = settingsService.Current;
 
+        // Set main window for title bar theming
+        themeService.SetMainWindow(window);
+
         // Pre-load all theme resources to enable instant switching (<100ms)
         themeService.PreloadThemes();
 

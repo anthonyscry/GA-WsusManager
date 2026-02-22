@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media;
 using WsusManager.Core.Logging;
 using WsusManager.Core.Services.Interfaces;
 
@@ -8,11 +9,13 @@ namespace WsusManager.App.Services;
 /// <summary>
 /// Singleton service that swaps color ResourceDictionaries at runtime.
 /// Identifies the current color dictionary by checking for the "PrimaryBackground" key.
+/// Also applies Windows title bar colors to match each theme.
 /// </summary>
 public class ThemeService : IThemeService
 {
     private readonly ILogService _logService;
     private readonly Dictionary<string, ResourceDictionary> _themeCache = new(StringComparer.OrdinalIgnoreCase);
+    private Window? _mainWindow;
 
     /// <summary>
     /// Maps theme names to their XAML resource paths (relative to the App project).
@@ -40,6 +43,19 @@ public class ThemeService : IThemeService
         ["ClassicBlue"] = new ThemeInfo("Classic Blue", "#0D1525", "#42A5F5")
     };
 
+    /// <summary>
+    /// Title bar colors for each theme (background and foreground).
+    /// </summary>
+    private readonly Dictionary<string, (Color? Background, Color? Foreground)> _titleBarColors = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["DefaultDark"] = (Color.FromRgb(0x0D, 0x11, 0x17), Color.FromRgb(0xF0, 0xF6, 0xFC)),
+        ["JustBlack"] = (Color.FromRgb(0x00, 0x00, 0x00), Color.FromRgb(0xFF, 0xFF, 0xFF)),
+        ["Slate"] = (Color.FromRgb(0x1B, 0x21, 0x27), Color.FromRgb(0xE8, 0xEA, 0xED)),
+        ["Serenity"] = (Color.FromRgb(0x0F, 0x14, 0x19), Color.FromRgb(0xE0, 0xF2, 0xF1)),
+        ["Rose"] = (Color.FromRgb(0x1A, 0x11, 0x18), Color.FromRgb(0xFF, 0xEB, 0xEE)),
+        ["ClassicBlue"] = (Color.FromRgb(0x0D, 0x15, 0x25), Color.FromRgb(0xE3, 0xF2, 0xFD))
+    };
+
     public ThemeService(ISettingsService settingsService, ILogService logService)
     {
         _logService = logService;
@@ -63,6 +79,17 @@ public class ThemeService : IThemeService
 
         _themeInfoMap.TryGetValue(themeName, out var info);
         return info;
+    }
+
+    /// <inheritdoc/>
+    public void SetMainWindow(Window mainWindow)
+    {
+        _mainWindow = mainWindow;
+        // Apply current theme's title bar colors when window is set
+        if (_mainWindow != null && !string.IsNullOrEmpty(CurrentTheme))
+        {
+            ApplyTitleBarColors(CurrentTheme);
+        }
     }
 
     /// <inheritdoc/>
@@ -93,12 +120,26 @@ public class ThemeService : IThemeService
             }
 
             ApplyThemeDictionary(themeDict);
+            ApplyTitleBarColors(themeName);
             CurrentTheme = themeName;
             _logService.Info("Theme applied: {ThemeName}", themeName);
         }
         catch (Exception ex)
         {
             _logService.Error(ex, "Failed to apply theme: {ThemeName}", themeName);
+        }
+    }
+
+    /// <summary>
+    /// Applies title bar colors for the specified theme.
+    /// </summary>
+    private void ApplyTitleBarColors(string themeName)
+    {
+        if (_mainWindow == null) return;
+
+        if (_titleBarColors.TryGetValue(themeName, out var colors))
+        {
+            TitleBarService.SetTitleBarColors(_mainWindow, colors.Background, colors.Foreground);
         }
     }
 
