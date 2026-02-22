@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using WsusManager.App.Services;
 using WsusManager.Core.Models;
+using WsusManager.Core.Services.Interfaces;
 
 namespace WsusManager.App.Views;
 
@@ -15,6 +16,7 @@ namespace WsusManager.App.Views;
 public partial class SettingsDialog : Window
 {
     private readonly IThemeService _themeService;
+    private readonly ISettingsValidationService _validationService;
     private readonly string _entryTheme;
     private string _previewTheme;
     private KeyEventHandler? _escHandler;
@@ -32,11 +34,13 @@ public partial class SettingsDialog : Window
     /// </summary>
     /// <param name="current">Current application settings to display as defaults.</param>
     /// <param name="themeService">Theme service for live theme preview.</param>
-    public SettingsDialog(AppSettings current, IThemeService themeService)
+    /// <param name="validationService">Settings validation service.</param>
+    public SettingsDialog(AppSettings current, IThemeService themeService, ISettingsValidationService validationService)
     {
         InitializeComponent();
 
         _themeService = themeService;
+        _validationService = validationService;
         _entryTheme = themeService.CurrentTheme;
         _previewTheme = _entryTheme;
 
@@ -57,6 +61,44 @@ public partial class SettingsDialog : Window
         TxtRefreshInterval.Text = current.RefreshIntervalSeconds.ToString();
         TxtContentPath.Text = current.ContentPath;
         TxtSqlInstance.Text = current.SqlInstance;
+
+        // Populate Operations section
+        PopulateComboBoxFromEnum(CboDefaultSyncProfile, current.DefaultSyncProfile.ToString());
+
+        // Populate Logging section
+        PopulateComboBoxFromEnum(CboLogLevel, current.LogLevel.ToString());
+        TxtLogRetentionDays.Text = current.LogRetentionDays.ToString();
+        TxtLogMaxFileSizeMb.Text = current.LogMaxFileSizeMb.ToString();
+
+        // Populate Behavior section
+        ChkPersistWindowState.IsChecked = current.PersistWindowState;
+        PopulateComboBoxFromEnum(CboDashboardRefreshInterval, current.DashboardRefreshInterval.ToString());
+        ChkRequireConfirmationDestructive.IsChecked = current.RequireConfirmationDestructive;
+
+        // Populate Advanced section
+        TxtWinRMTimeoutSeconds.Text = current.WinRMTimeoutSeconds.ToString();
+        TxtWinRMRetryCount.Text = current.WinRMRetryCount.ToString();
+
+        // Wire up validation handlers
+        TxtLogRetentionDays.LostFocus += (s, e) => ValidateNumericTextBox(
+            TxtLogRetentionDays,
+            int.TryParse(TxtLogRetentionDays.Text, out var days) ? days : 0,
+            _validationService.ValidateRetentionDays(days));
+
+        TxtLogMaxFileSizeMb.LostFocus += (s, e) => ValidateNumericTextBox(
+            TxtLogMaxFileSizeMb,
+            int.TryParse(TxtLogMaxFileSizeMb.Text, out var size) ? size : 0,
+            _validationService.ValidateMaxFileSizeMb(size));
+
+        TxtWinRMTimeoutSeconds.LostFocus += (s, e) => ValidateNumericTextBox(
+            TxtWinRMTimeoutSeconds,
+            int.TryParse(TxtWinRMTimeoutSeconds.Text, out var timeout) ? timeout : 0,
+            _validationService.ValidateWinRMTimeoutSeconds(timeout));
+
+        TxtWinRMRetryCount.LostFocus += (s, e) => ValidateNumericTextBox(
+            TxtWinRMRetryCount,
+            int.TryParse(TxtWinRMRetryCount.Text, out var count) ? count : 0,
+            _validationService.ValidateWinRMRetryCount(count));
 
         // Build theme swatch grid
         BuildThemeSwatches();
@@ -195,6 +237,39 @@ public partial class SettingsDialog : Window
             return;
         }
 
+        // Validate new numeric fields
+        var retentionResult = _validationService.ValidateRetentionDays(
+            int.TryParse(TxtLogRetentionDays.Text, out var retention) ? retention : 0);
+        if (!retentionResult.IsValid)
+        {
+            ShowValidationError(retentionResult.ErrorMessage ?? "Validation failed");
+            return;
+        }
+
+        var sizeResult = _validationService.ValidateMaxFileSizeMb(
+            int.TryParse(TxtLogMaxFileSizeMb.Text, out var size) ? size : 0);
+        if (!sizeResult.IsValid)
+        {
+            ShowValidationError(sizeResult.ErrorMessage ?? "Validation failed");
+            return;
+        }
+
+        var timeoutResult = _validationService.ValidateWinRMTimeoutSeconds(
+            int.TryParse(TxtWinRMTimeoutSeconds.Text, out var timeout) ? timeout : 0);
+        if (!timeoutResult.IsValid)
+        {
+            ShowValidationError(timeoutResult.ErrorMessage ?? "Validation failed");
+            return;
+        }
+
+        var retryResult = _validationService.ValidateWinRMRetryCount(
+            int.TryParse(TxtWinRMRetryCount.Text, out var retry) ? retry : 0);
+        if (!retryResult.IsValid)
+        {
+            ShowValidationError(retryResult.ErrorMessage ?? "Validation failed");
+            return;
+        }
+
         // Determine server mode from ComboBox selection
         var selectedMode = "Online";
         if (CboServerMode.SelectedItem is ComboBoxItem selected &&
@@ -214,7 +289,17 @@ string.Equals(selected.Content?.ToString(), "Air-Gap", StringComparison.Ordinal)
             // The caller (MainViewModel.OpenSettings) will overwrite these
             // with the current in-memory values before saving to disk.
             LogPanelExpanded = true,
-            LiveTerminalMode = false
+            LiveTerminalMode = false,
+            // New properties
+            DefaultSyncProfile = ParseDefaultSyncProfile(),
+            LogLevel = ParseLogLevel(),
+            LogRetentionDays = int.Parse(TxtLogRetentionDays.Text),
+            LogMaxFileSizeMb = int.Parse(TxtLogMaxFileSizeMb.Text),
+            PersistWindowState = ChkPersistWindowState.IsChecked ?? true,
+            DashboardRefreshInterval = ParseDashboardRefreshInterval(),
+            RequireConfirmationDestructive = ChkRequireConfirmationDestructive.IsChecked ?? true,
+            WinRMTimeoutSeconds = int.Parse(TxtWinRMTimeoutSeconds.Text),
+            WinRMRetryCount = int.Parse(TxtWinRMRetryCount.Text)
         };
 
         DialogResult = true;
@@ -231,5 +316,149 @@ string.Equals(selected.Content?.ToString(), "Air-Gap", StringComparison.Ordinal)
 
         DialogResult = false;
         Close();
+    }
+
+    private void BtnResetToDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        // Show confirmation dialog
+        var result = MessageBox.Show(
+            "Reset all settings to default values? This cannot be undone.",
+            "Reset to Defaults",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        // Create default AppSettings
+        var defaults = new AppSettings();
+
+        // Reset all controls to default values
+        // Server Mode
+        foreach (var item in CboServerMode.Items)
+        {
+            if (item is ComboBoxItem cbi && string.Equals(cbi.Content?.ToString(), "Online", StringComparison.Ordinal))
+                CboServerMode.SelectedItem = cbi;
+        }
+
+        // General settings
+        TxtRefreshInterval.Text = defaults.RefreshIntervalSeconds.ToString();
+        TxtContentPath.Text = defaults.ContentPath;
+        TxtSqlInstance.Text = defaults.SqlInstance;
+
+        // New controls
+        PopulateComboBoxFromEnum(CboDefaultSyncProfile, defaults.DefaultSyncProfile.ToString());
+        PopulateComboBoxFromEnum(CboLogLevel, defaults.LogLevel.ToString());
+        TxtLogRetentionDays.Text = defaults.LogRetentionDays.ToString();
+        TxtLogMaxFileSizeMb.Text = defaults.LogMaxFileSizeMb.ToString();
+        ChkPersistWindowState.IsChecked = defaults.PersistWindowState;
+        PopulateComboBoxFromEnum(CboDashboardRefreshInterval, defaults.DashboardRefreshInterval.ToString());
+        ChkRequireConfirmationDestructive.IsChecked = defaults.RequireConfirmationDestructive;
+        TxtWinRMTimeoutSeconds.Text = defaults.WinRMTimeoutSeconds.ToString();
+        TxtWinRMRetryCount.Text = defaults.WinRMRetryCount.ToString();
+
+        // Reset theme
+        _previewTheme = defaults.SelectedTheme;
+        _themeService.ApplyTheme(_previewTheme);
+        BuildThemeSwatches();
+
+        // Clear any validation errors
+        ClearValidationErrors();
+    }
+
+    /// <summary>
+    /// Populates a ComboBox from an enum value by matching Tag property.
+    /// </summary>
+    private void PopulateComboBoxFromEnum(ComboBox comboBox, string enumValue)
+    {
+        foreach (var item in comboBox.Items)
+        {
+            if (item is ComboBoxItem cbi && string.Equals(cbi.Tag?.ToString(), enumValue, StringComparison.Ordinal))
+            {
+                comboBox.SelectedItem = cbi;
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates a numeric TextBox and provides visual feedback.
+    /// </summary>
+    private void ValidateNumericTextBox(TextBox textBox, int value, Core.Models.ValidationResult result)
+    {
+        if (result.IsValid)
+        {
+            textBox.BorderBrush = (Brush)FindResource("BorderPrimary");
+            textBox.ToolTip = null;
+        }
+        else
+        {
+            textBox.BorderBrush = new SolidColorBrush(Colors.Red);
+            textBox.ToolTip = result.ErrorMessage;
+        }
+    }
+
+    /// <summary>
+    /// Clears validation errors from all numeric TextBoxes.
+    /// </summary>
+    private void ClearValidationErrors()
+    {
+        var primaryBorder = (Brush)FindResource("BorderPrimary");
+        TxtLogRetentionDays.BorderBrush = primaryBorder;
+        TxtLogRetentionDays.ToolTip = null;
+        TxtLogMaxFileSizeMb.BorderBrush = primaryBorder;
+        TxtLogMaxFileSizeMb.ToolTip = null;
+        TxtWinRMTimeoutSeconds.BorderBrush = primaryBorder;
+        TxtWinRMTimeoutSeconds.ToolTip = null;
+        TxtWinRMRetryCount.BorderBrush = primaryBorder;
+        TxtWinRMRetryCount.ToolTip = null;
+    }
+
+    /// <summary>
+    /// Shows a validation error message box.
+    /// </summary>
+    private void ShowValidationError(string message)
+    {
+        MessageBox.Show(
+            message,
+            "Validation Error",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
+    /// <summary>
+    /// Parses the DefaultSyncProfile enum from the ComboBox selection.
+    /// </summary>
+    private DefaultSyncProfile ParseDefaultSyncProfile()
+    {
+        if (CboDefaultSyncProfile.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+        {
+            return Enum.Parse<DefaultSyncProfile>(tag);
+        }
+        return DefaultSyncProfile.Full;
+    }
+
+    /// <summary>
+    /// Parses the LogLevel enum from the ComboBox selection.
+    /// </summary>
+    private LogLevel ParseLogLevel()
+    {
+        if (CboLogLevel.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+        {
+            return Enum.Parse<LogLevel>(tag);
+        }
+        return LogLevel.Info;
+    }
+
+    /// <summary>
+    /// Parses the DashboardRefreshInterval enum from the ComboBox selection.
+    /// </summary>
+    private DashboardRefreshInterval ParseDashboardRefreshInterval()
+    {
+        if (CboDashboardRefreshInterval.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+        {
+            return Enum.Parse<DashboardRefreshInterval>(tag);
+        }
+        return DashboardRefreshInterval.Sec30;
     }
 }

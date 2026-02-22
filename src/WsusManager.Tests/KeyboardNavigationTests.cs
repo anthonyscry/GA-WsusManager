@@ -103,4 +103,56 @@ public class KeyboardNavigationTests
         Assert.Contains("Key=\"Q\" Modifiers=\"Control\"", content);  // Quit
         Assert.Contains("Key=\"Escape\"", content);  // Cancel
     }
+
+    // Phase 26: AutomationId Tests
+    [Theory]
+    [InlineData("DashboardButton")]
+    [InlineData("ComputersButton")]
+    [InlineData("UpdatesButton")]
+    [InlineData("DiagnosticsButton")]
+    [InlineData("SettingsButton")]
+    [InlineData("HelpButton")]
+    public void MainWindow_NavigationButtons_ShouldHaveAutomationId(string automationId)
+    {
+        var content = File.ReadAllText(GetXamlPath("MainWindow.xaml"));
+        // Check for the full AutomationProperties.AutomationId syntax
+        Assert.Contains($"AutomationProperties.AutomationId=\"{automationId}\"", content);
+    }
+
+    [Theory]
+    [InlineData("SettingsDialog.xaml")]
+    [InlineData("SyncProfileDialog.xaml")]
+    [InlineData("TransferDialog.xaml")]
+    [InlineData("ScheduleTaskDialog.xaml")]
+    [InlineData("InstallDialog.xaml")]
+    public void Dialogs_ShouldUseCenterOwner(string dialogFile)
+    {
+        var content = File.ReadAllText(GetXamlPath(dialogFile));
+
+        // Phase 26: All dialogs should center on owner window for cohesive UX
+        Assert.Contains("WindowStartupLocation=\"CenterOwner\"", content);
+    }
+
+    [Fact]
+    public void MainWindow_ShouldHaveAutomationIdOnInteractiveElements()
+    {
+        var content = File.ReadAllText(GetXamlPath("MainWindow.xaml"));
+
+        // Verify key interactive elements have AutomationId for accessibility testing
+        Assert.Contains("AutomationProperties.AutomationId=\"ExportComputersButton\"", content);
+        Assert.Contains("AutomationProperties.AutomationId=\"ExportUpdatesButton\"", content);
+        Assert.Contains("AutomationProperties.AutomationId=\"ClearComputerFiltersButton\"", content);
+        Assert.Contains("AutomationProperties.AutomationId=\"ClearUpdateFiltersButton\"", content);
+    }
+
+    [Fact]
+    public void SettingsDialog_ShouldHaveAutomationIdsOnInputs()
+    {
+        var content = File.ReadAllText(GetXamlPath("SettingsDialog.xaml"));
+
+        // Verify settings inputs have AutomationId for UI automation
+        Assert.Contains("AutomationProperties.AutomationId=\"DefaultSyncProfileComboBox\"", content);
+        Assert.Contains("AutomationProperties.AutomationId=\"LogLevelComboBox\"", content);
+        Assert.Contains("AutomationProperties.AutomationId=\"LogRetentionDaysTextBox\"", content);
+    }
 }

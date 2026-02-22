@@ -126,9 +126,16 @@ The project uses test categories for organization:
 
 ### Coverage Goals (Phase 18)
 
-**Current Status:** 84.27% line coverage, 62.19% branch coverage
+**Current Status:** 84.27% line coverage, 62.19% branch coverage (560+ tests)
 
 **Target:** Maintain >80% line coverage for new code
+
+**v4.5 Additions (Phase 31):**
+- 61 new tests for Phases 26, 28, 29, 30
+- Performance benchmark suite (6 benchmarks)
+- DataFilteringTests (21 tests)
+- CsvExportServiceTests (15 tests)
+- KeyboardNavigationTests extended (11 new tests)
 
 See `.planning/phases/18-test-coverage/18-SUMMARY.md` for detailed coverage analysis.
 

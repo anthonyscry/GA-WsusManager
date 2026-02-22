@@ -3,21 +3,25 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="Settings — WSUS Manager"
-        Width="520" Height="620"
+        Width="520" Height="780"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{DynamicResource PrimaryBackground}"
         automation:AutomationProperties.AutomationId="SettingsDialog">
 
-    <Grid Margin="24" KeyboardNavigation.TabNavigation="Continue">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="24" KeyboardNavigation.TabNavigation="Continue">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
@@ -28,85 +32,367 @@
         </StackPanel>
 
         <!-- Section 1: Server Mode -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,16">
-            <TextBlock Text="Server Mode" Foreground="{DynamicResource TextSecondary}"
-                       FontSize="12" Margin="0,0,0,4"/>
-            <ComboBox x:Name="CboServerMode"
-                      automation:AutomationProperties.AutomationId="ServerModeComboBox"
-                      Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
-                      BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
-                      KeyboardNavigation.DirectionalNavigation="Cycle">
-                <ComboBoxItem>Online</ComboBoxItem>
-                <ComboBoxItem>Air-Gap</ComboBoxItem>
-            </ComboBox>
-            <TextBlock Text="Online uses network connectivity detection. Air-Gap disables sync operations."
-                       Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"
-                       Margin="0,4,0,0"/>
-        </StackPanel>
+        <GroupBox Grid.Row="1" Header="Server Mode" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <StackPanel>
+                <ComboBox x:Name="CboServerMode"
+                          automation:AutomationProperties.AutomationId="ServerModeComboBox"
+                          Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
+                          KeyboardNavigation.DirectionalNavigation="Cycle">
+                    <ComboBoxItem>Online</ComboBoxItem>
+                    <ComboBoxItem>Air-Gap</ComboBoxItem>
+                </ComboBox>
+                <TextBlock Text="Online uses network connectivity detection. Air-Gap disables sync operations."
+                           Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+        </GroupBox>
 
-        <!-- Section 2: General Settings -->
-        <Grid Grid.Row="2" Margin="0,0,0,16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="160"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- Section 2: Operations -->
+        <GroupBox Grid.Row="2" Header="Operations" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- Row 0: Refresh Interval -->
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Refresh Interval (sec)"
-                       Foreground="{DynamicResource TextSecondary}" FontSize="12"
-                       VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <TextBox x:Name="TxtRefreshInterval" Grid.Row="0" Grid.Column="1"
-                     automation:AutomationProperties.AutomationId="RefreshIntervalTextBox"
-                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
-                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
-                     Margin="0,0,0,12"/>
+                <!-- Default Sync Profile -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Default Sync Profile"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Preset selection when opening Online Sync dialog."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <ComboBox x:Name="CboDefaultSyncProfile"
+                          Grid.Row="0" Grid.Column="1"
+                          automation:AutomationProperties.AutomationId="DefaultSyncProfileComboBox"
+                          Background="{DynamicResource InputBackground}"
+                          Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderPrimary}"
+                          Padding="6,4" FontSize="12"
+                          KeyboardNavigation.DirectionalNavigation="Cycle">
+                    <ComboBoxItem Tag="Full">Full Sync</ComboBoxItem>
+                    <ComboBoxItem Tag="Quick">Quick Sync</ComboBoxItem>
+                    <ComboBoxItem Tag="SyncOnly">Sync Only</ComboBoxItem>
+                </ComboBox>
+            </Grid>
+        </GroupBox>
 
-            <!-- Row 1: Content Path -->
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Content Path"
-                       Foreground="{DynamicResource TextSecondary}" FontSize="12"
-                       VerticalAlignment="Center" Margin="0,0,0,12"/>
-            <TextBox x:Name="TxtContentPath" Grid.Row="1" Grid.Column="1"
-                     automation:AutomationProperties.AutomationId="ContentPathTextBox"
-                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
-                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
-                     Margin="0,0,0,12"/>
+        <!-- Section 3: Logging -->
+        <GroupBox Grid.Row="3" Header="Logging" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- Row 2: SQL Instance -->
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="SQL Instance"
-                       Foreground="{DynamicResource TextSecondary}" FontSize="12"
-                       VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtSqlInstance" Grid.Row="2" Grid.Column="1"
-                     automation:AutomationProperties.AutomationId="SqlInstanceTextBox"
-                     Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
-                     BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"/>
-        </Grid>
+                <!-- Log Level -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Log Level"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Minimum log level to output (Debug = verbose, Fatal = critical only)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <ComboBox x:Name="CboLogLevel"
+                          Grid.Row="0" Grid.Column="1"
+                          automation:AutomationProperties.AutomationId="LogLevelComboBox"
+                          Background="{DynamicResource InputBackground}"
+                          Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderPrimary}"
+                          Padding="6,4" FontSize="12" Margin="0,0,0,12"
+                          KeyboardNavigation.DirectionalNavigation="Cycle">
+                    <ComboBoxItem Tag="Debug">Debug</ComboBoxItem>
+                    <ComboBoxItem Tag="Info">Info</ComboBoxItem>
+                    <ComboBoxItem Tag="Warning">Warning</ComboBoxItem>
+                    <ComboBoxItem Tag="Error">Error</ComboBoxItem>
+                    <ComboBoxItem Tag="Fatal">Fatal</ComboBoxItem>
+                </ComboBox>
 
-        <!-- Section 3: Appearance (Theme Picker) -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,16">
-            <TextBlock Text="Appearance" Foreground="{DynamicResource TextSecondary}"
-                       FontSize="12" Margin="0,0,0,8"/>
+                <!-- Retention Days -->
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Retention Days"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Number of days to retain log files before deletion (1-365)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <TextBox x:Name="TxtLogRetentionDays"
+                         Grid.Row="1" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="LogRetentionDaysTextBox"
+                         Background="{DynamicResource InputBackground}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}"
+                         Padding="6,4" FontSize="12" Margin="0,0,0,12"
+                         InputScope="Number"/>
 
-            <!-- Theme Swatch Grid (3x2 layout) -->
-            <UniformGrid x:Name="ThemeSwatchGrid" Rows="2" Columns="3"
-                         automation:AutomationProperties.AutomationId="ThemeSwatchGrid">
-                <!-- Theme swatches will be generated dynamically in code-behind -->
-            </UniformGrid>
+                <!-- Max File Size MB -->
+                <TextBlock Grid.Row="2" Grid.Column="0"
+                           Text="Max File Size (MB)"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Maximum log file size in MB before rotation (1-1000)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <TextBox x:Name="TxtLogMaxFileSizeMb"
+                         Grid.Row="2" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="LogMaxFileSizeMbTextBox"
+                         Background="{DynamicResource InputBackground}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}"
+                         Padding="6,4" FontSize="12"
+                         InputScope="Number"/>
+            </Grid>
+        </GroupBox>
 
-            <TextBlock x:Name="ThemeDescriptionText"
-                       Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"
-                       Margin="0,8,0,0"/>
-        </StackPanel>
+        <!-- Section 4: Behavior -->
+        <GroupBox Grid.Row="4" Header="Behavior" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-        <!-- Spacer -->
-        <Border Grid.Row="4"/>
+                <!-- Persist Window State -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Persist Window State"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Save and restore window position and size between sessions."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <CheckBox x:Name="ChkPersistWindowState"
+                          Grid.Row="0" Grid.Column="1"
+                          automation:AutomationProperties.AutomationId="PersistWindowStateCheckBox"
+                          Content="Save position and size"
+                          VerticalAlignment="Center" Margin="0,0,0,12"/>
+
+                <!-- Dashboard Refresh Interval -->
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Refresh Interval"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="How often to refresh dashboard data from WSUS server."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <ComboBox x:Name="CboDashboardRefreshInterval"
+                          Grid.Row="1" Grid.Column="1"
+                          automation:AutomationProperties.AutomationId="DashboardRefreshIntervalComboBox"
+                          Background="{DynamicResource InputBackground}"
+                          Foreground="{DynamicResource TextPrimary}"
+                          BorderBrush="{DynamicResource BorderPrimary}"
+                          Padding="6,4" FontSize="12" Margin="0,0,0,12"
+                          KeyboardNavigation.DirectionalNavigation="Cycle">
+                    <ComboBoxItem Tag="Sec10">10 seconds</ComboBoxItem>
+                    <ComboBoxItem Tag="Sec30">30 seconds</ComboBoxItem>
+                    <ComboBoxItem Tag="Sec60">60 seconds</ComboBoxItem>
+                    <ComboBoxItem Tag="Disabled">Disabled</ComboBoxItem>
+                </ComboBox>
+
+                <!-- Confirmation Prompts -->
+                <TextBlock Grid.Row="2" Grid.Column="0"
+                           Text="Confirmation Prompts"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Show confirmation before destructive operations (cleanup, restore, reset)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <CheckBox x:Name="ChkRequireConfirmationDestructive"
+                          Grid.Row="2" Grid.Column="1"
+                          automation:AutomationProperties.AutomationId="RequireConfirmationDestructiveCheckBox"
+                          Content="Require confirmation for destructive operations"
+                          VerticalAlignment="Center"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Section 5: Advanced -->
+        <GroupBox Grid.Row="5" Header="Advanced" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- WinRM Timeout Seconds -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="WinRM Timeout (sec)"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="WinRM operation timeout in seconds (10-300)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <TextBox x:Name="TxtWinRMTimeoutSeconds"
+                         Grid.Row="0" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="WinRMTimeoutSecondsTextBox"
+                         Background="{DynamicResource InputBackground}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}"
+                         Padding="6,4" FontSize="12" Margin="0,0,0,12"
+                         InputScope="Number"/>
+
+                <!-- WinRM Retry Count -->
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="WinRM Retry Count"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12">
+                    <TextBlock.ToolTip>
+                        <ToolTip Content="Number of WinRM operation retry attempts (1-10)."/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <TextBox x:Name="TxtWinRMRetryCount"
+                         Grid.Row="1" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="WinRMRetryCountTextBox"
+                         Background="{DynamicResource InputBackground}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}"
+                         Padding="6,4" FontSize="12" Margin="0,0,0,12"
+                         InputScope="Number"/>
+
+                <!-- Reset to Defaults Button -->
+                <Button Grid.Row="2" Grid.ColumnSpan="2"
+                        x:Name="BtnResetToDefaults"
+                        Content="Reset to Defaults"
+                        Style="{StaticResource BtnSec}"
+                        automation:AutomationProperties.AutomationId="ResetToDefaultsButton"
+                        Padding="16,6" HorizontalAlignment="Left"
+                        Click="BtnResetToDefaults_Click">
+                    <Button.ToolTip>
+                        <ToolTip Content="Reset all settings to their default values. This cannot be undone."/>
+                    </Button.ToolTip>
+                </Button>
+            </Grid>
+        </GroupBox>
+
+        <!-- Section 6: General Settings (Existing) -->
+        <GroupBox Grid.Row="6" Header="General" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Row 0: Refresh Interval -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Refresh Interval (sec)"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12"/>
+                <TextBox x:Name="TxtRefreshInterval" Grid.Row="0" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="RefreshIntervalTextBox"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
+                         Margin="0,0,0,12"/>
+
+                <!-- Row 1: Content Path -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Content Path"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,0,12"/>
+                <TextBox x:Name="TxtContentPath" Grid.Row="1" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="ContentPathTextBox"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"
+                         Margin="0,0,0,12"/>
+
+                <!-- Row 2: SQL Instance -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="SQL Instance"
+                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
+                           VerticalAlignment="Center"/>
+                <TextBox x:Name="TxtSqlInstance" Grid.Row="2" Grid.Column="1"
+                         automation:AutomationProperties.AutomationId="SqlInstanceTextBox"
+                         Background="{DynamicResource InputBackground}" Foreground="{DynamicResource TextPrimary}"
+                         BorderBrush="{DynamicResource BorderPrimary}" Padding="6,4" FontSize="12"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Section 7: Appearance (Theme Picker) -->
+        <GroupBox Grid.Row="7" Header="Appearance" Margin="0,0,0,16">
+            <GroupBox.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </DataTemplate>
+            </GroupBox.HeaderTemplate>
+            <StackPanel>
+                <!-- Theme Swatch Grid (3x2 layout) -->
+                <UniformGrid x:Name="ThemeSwatchGrid" Rows="2" Columns="3"
+                             automation:AutomationProperties.AutomationId="ThemeSwatchGrid">
+                    <!-- Theme swatches will be generated dynamically in code-behind -->
+                </UniformGrid>
+
+                <TextBlock x:Name="ThemeDescriptionText"
+                           Foreground="{DynamicResource TextMuted}" FontSize="11" TextWrapping="Wrap"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+        </GroupBox>
 
         <!-- Buttons -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right"
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right"
                     Margin="0,12,0,0">
             <Button Content="Cancel" Style="{StaticResource BtnSec}"
                     automation:AutomationProperties.AutomationId="CancelSettingsButton"
@@ -117,5 +403,6 @@
                     Padding="20,8" IsDefault="True"
                     Click="BtnSave_Click"/>
         </StackPanel>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Window>
