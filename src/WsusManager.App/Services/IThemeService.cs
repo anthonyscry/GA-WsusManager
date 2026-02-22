@@ -1,3 +1,6 @@
+using System.Windows;
+using System.Windows.Media;
+
 namespace WsusManager.App.Services;
 
 /// <summary>
@@ -43,4 +46,9 @@ public interface IThemeService
     /// Returns a read-only dictionary of all theme metadata keyed by theme name.
     /// </summary>
     IReadOnlyDictionary<string, ThemeInfo> ThemeInfos { get; }
+
+    /// <summary>
+    /// Sets the main window reference for title bar theming.
+    /// </summary>
+    void SetMainWindow(Window mainWindow);
 }
