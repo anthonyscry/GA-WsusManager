@@ -110,3 +110,13 @@
 
 ---
 *Last updated: 2026-02-21*
+
+## v4.5 Enhancement Suite (Shipped: 2026-02-22)
+
+**Phases completed:** 16 phases, 54 plans, 10 tasks
+
+**Key accomplishments:**
+- All dialog windows center properly on owner window with WindowStartupLocation="CenterOwner
+
+---
+

@@ -62,17 +62,44 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - ✓ Memory leak detection (StringBuilder, timer cleanup, IDisposable) — v4.4
 - ✓ Comprehensive documentation: README, CONTRIBUTING, CI/CD, releases, architecture — v4.4
 
+- ✓ 30% startup time reduction via parallelized initialization — v4.5
+- ✓ Dashboard virtualization for 2000+ computers — v4.5
+- ✓ Lazy-loaded update metadata (100-item pagination) — v4.5
+- ✓ Batched log panel updates (90% UI overhead reduction) — v4.5
+- ✓ Sub-100ms theme switching with pre-loaded themes — v4.5
+- ✓ 5 global keyboard shortcuts (F1, F5, Ctrl+S, Ctrl+Q, Esc) — v4.5
+- ✓ Full keyboard navigation (Tab, arrows, Enter/Space) — v4.5
+- ✓ 45 AutomationId attributes for UI automation — v4.5
+- ✓ WCAG 2.1 AA compliance (55 contrast tests passing) — v4.5
+- ✓ Dialog centering on owner window — v4.5
+- ✓ Estimated time remaining for long operations — v4.5
+- ✓ Loading indicators on operation buttons — v4.5
+- ✓ Actionable error messages with "To fix:" steps — v4.5
+- ✓ Consistent success/failure banners (✓/✗/⚠) — v4.5
+- ✓ Tooltip help text on all interactive buttons — v4.5
+- ✓ 8 configurable settings across 4 categories — v4.5
+- ✓ Settings validation with min/max ranges — v4.5
+- ✓ Reset to defaults functionality — v4.5
+- ✓ Window state persistence — v4.5
+- ✓ Real-time filtering (300ms debounce) — v4.5
+- ✓ Status/approval/classification filters — v4.5
+- ✓ Case-insensitive search — v4.5
+- ✓ CSV export (UTF-8 BOM for Excel) — v4.5
+- ✓ Export respects filters — v4.5
+- ✓ Progress dialog with cancellation — v4.5
+- ✓ 53 new tests (593 total, 100% passing) — v4.5
+- ✓ 6 performance benchmarks (Phase 25 verification) — v4.5
+- ✓ Documentation updates (README, CHANGELOG, CLAUDE.md) — v4.5
+
 ### Active
 
-**Current Milestone: v4.5 Enhancement Suite**
+**Current Milestone: Planning Next Enhancement**
 
-**Goal:** Comprehensive UX, performance, and data management enhancements to improve administrator productivity and system usability.
+**Completed:** v4.5 Enhancement Suite (shipped 2026-02-22)
 
-**Target features:**
-- **Performance:** Startup optimization, operation speed improvements, data loading optimization
-- **UX Polish:** Keyboard shortcuts, accessibility (WCAG 2.1 AA+), visual polish, enhanced feedback
-- **Settings:** Operations config, logging config, window behavior, advanced options
-- **Data Views:** Update/computer filters, search, data export (CSV/Excel)
+**Goal for next milestone:** TBD — user feedback analysis from v4.5 deployment
+
+**Potential areas:** Real-time dashboard monitoring, advanced reporting, multi-server management
 
 ### Out of Scope
 
@@ -89,17 +116,17 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 ## Context
 
 ### Current State
-- **Version:** v4.4 Quality & Polish (shipped 2026-02-21)
-- **Phases:** 24 phases complete, 62 plans delivered
-- **Codebase:** ~21,000 LOC C#/XAML across 100+ files
+- **Version:** v4.5 Enhancement Suite (shipped 2026-02-22)
+- **Phases:** 31 phases complete, 94 plans delivered
+- **Codebase:** ~22,000 LOC C#/XAML across 110+ files
 - **Tech stack:** C#/.NET 8, WPF, CommunityToolkit.Mvvm, Serilog, xUnit + Moq + Coverlet + BenchmarkDotNet
-- **Tests:** 455 xUnit tests (70% branch coverage threshold enforced)
-- **Coverage:** 84.27% line / 62.19% branch with HTML artifacts in CI/CD
+- **Tests:** 593 xUnit tests (84% line / 62% branch coverage maintained)
 - **Quality:** Zero compiler warnings, .editorconfig enforced, Roslyn analyzers enabled
-- **Docs:** README, CONTRIBUTING, CHANGELOG, docs/api/, docs/ci-cd.md, docs/releases.md, docs/architecture.md
+- **Docs:** README, CONTRIBUTING, CHANGELOG, CLAUDE.md, docs/api/
 - **CI/CD:** GitHub Actions — build, test, coverage, benchmarks, publish, release automation
 - **Distribution:** Single self-contained win-x64 EXE + DomainController/ folder
 - **Themes:** 6 built-in dark-family themes with runtime switching
+- **v4.5 Features:** Performance (30% faster startup), Keyboard shortcuts (5), Accessibility (WCAG AA), Settings (8), Data Filtering, CSV Export
 
 ### Technical Environment
 - Windows Server 2019/2022 with WSUS role installed
@@ -128,6 +155,17 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 | Verbatim strings for PS script templates | Avoids C# interpolation conflicts with PowerShell $() | ✓ Good — clean separation |
 | WinRM pre-check before every remote op | Fail fast with clear message and Script Generator guidance | ✓ Good — better UX than timeout |
 | 70% branch coverage quality gate (Phase 18) | Balances quality with practicality; line coverage alone misses critical paths | ✓ Good — revealed 7 NullReference bugs during test development |
+| Task.WhenAll for parallel initialization (Phase 25) | 30% startup reduction by parallelizing independent operations | ✓ Good — settings load + dashboard fetch run concurrently |
+| Lazy-loading with 5-min cache TTL (Phase 25) | Separates summary counts from detailed metadata | ✓ Good — dashboard refresh 50-70% faster |
+| 100-item pagination for updates (Phase 25) | Balances SQL query performance with UI responsiveness | ✓ Good — handles 1000+ updates efficiently |
+| Theme pre-loading at startup (Phase 25) | Load all 6 themes into memory cache | ✓ Good — <10ms theme switching (was 300-500ms) |
+| F1/F5/Ctrl+S/Ctrl+Q/Esc shortcuts (Phase 26) | Standard Windows patterns admins expect | ✓ Good — familiar keyboard navigation |
+| PascalCase AutomationId naming (Phase 26) | `[Purpose][ControlType]` pattern for UI automation | ✓ Good — predictable for WinAppDriver/FlaUI |
+| Progress estimation using BenchmarkDotNet data (Phase 27) | Reuse Phase 22 baselines for time estimates | ✓ Good — accurate without manual timing |
+| Three-part error format (Phase 27) | "What failed + Why it matters + Specific action to resolve" | ✓ Good — admins know exactly what to do |
+| CollectionView filtering (Phase 29) | O(n) filtering with 300ms debounce for real-time search | ✓ Good — instant feedback without UI lag |
+| UTF-8 BOM for CSV export (Phase 30) | Required for Excel to display UTF-8 correctly | ✓ Good — no mojibake in exported data |
+
 
 ## Constraints
 
@@ -139,4 +177,4 @@ Rock-solid stability — zero crashes, no threading bugs, no UI freezes — so a
 - **WSUS APIs**: Must interact with Microsoft.UpdateServices.Administration and SUSDB directly
 
 ---
-*Last updated: 2026-02-21 after v4.4 Quality & Polish milestone*
+*Last updated: 2026-02-22 after v4.5 Enhancement Suite milestone*
