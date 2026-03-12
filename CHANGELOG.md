@@ -5,6 +5,14 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.13] - 2026-03-12
+
+### Changed
+- Restored PowerShell-only distribution by removing C# source/workflow/documentation tracks
+
+### Added
+- Monthly maintenance policy now auto-declines ARM64 and 25H2 updates and excludes them from auto-approval
+
 ## [3.8.12] - 2026-02-14
 
 ### Fixed
@@ -44,6 +52,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Shrink retry behavior while backups are active
 - Reduced expected noisy purge output errors
 
+[3.8.13]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.12...v3.8.13
 [3.8.12]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.11...v3.8.12
 [3.8.11]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.10...v3.8.11
 [3.8.10]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.9...v3.8.10
