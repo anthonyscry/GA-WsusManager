@@ -1,8 +1,7 @@
-
 {
-  "name": "GA-WsusManager Pro",
-  "description": "Desktop Portable WSUS Management Suite (Electron Build)",
-  "version": "3.8.6",
+  "name": "GA-WsusManager",
+  "description": "PowerShell WPF WSUS Management Suite",
+  "version": "3.8.12",
   "environment": "Desktop/Win32",
   "requestFramePermissions": []
 }
