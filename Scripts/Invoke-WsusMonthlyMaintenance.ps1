@@ -5,14 +5,14 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, and old updates (released over 6 months ago)
+    - Declines expired, superseded, old updates (released over 6 months ago), ARM64, and 25H2 updates
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
     - Exports full backup + content to root export folder
     - Creates differential archive copy in year/month subfolder
 
-    Excludes "Upgrades" from auto-approval (require manual review).
+    Excludes "Upgrades", ARM64, and 25H2 updates from auto-approval.
 
     Author: Tony Tran, ISSO, GA-ASI
     Version: 3.0.1
@@ -219,7 +219,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.5"
+$ScriptVersion = "3.0.6"
 
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
@@ -593,6 +593,8 @@ $MaintenanceResults = @{
     DeclinedExpired = 0
     DeclinedSuperseded = 0
     DeclinedOld = 0
+    DeclinedArm64 = 0
+    Declined25H2 = 0
     Approved = 0
     DatabaseSize = 0
     BackupFile = ""
@@ -907,18 +909,22 @@ try {
 $expiredCount = 0
 $supersededCount = 0
 $oldCount = 0
+$arm64Count = 0
+$h25Count = 0
 $approvedCount = 0
 
 if ($allUpdates.Count -gt 0) {
-    Write-Log "Declining updates based on Microsoft RELEASE DATE..."
+    Write-Log "Declining updates based on Microsoft RELEASE DATE and policy filters..."
     
     $expired = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsExpired })
     $superseded = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsSuperseded })
     $cutoff = (Get-Date).AddMonths(-6)
     # Use CreationDate (Microsoft's release date) not ArrivalDate (when imported to WSUS)
     $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.CreationDate -lt $cutoff })
+    $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
+    $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -953,7 +959,29 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount"
+    if ($arm64Updates.Count -gt 0) {
+        $arm64Updates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $arm64Count++
+            } catch {
+                Write-Warning "Failed to decline ARM64 update: $($_.Title)"
+            }
+        }
+    }
+
+    if ($h25Updates.Count -gt 0) {
+        $h25Updates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $h25Count++
+            } catch {
+                Write-Warning "Failed to decline 25H2 update: $($_.Title)"
+            }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -969,6 +997,8 @@ if ($allUpdates.Count -gt 0) {
             $_.CreationDate -gt (Get-Date).AddMonths(-6) -and  # Only recent updates (last 6 months)
             $_.Title -notlike "*Preview*" -and
             $_.Title -notlike "*Beta*" -and
+            $_.Title -notmatch '(?i)\bARM64\b' -and
+            $_.Title -notmatch '(?i)\b25H2\b' -and
             (
                 $_.UpdateClassificationTitle -eq "Critical Updates" -or
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
@@ -982,7 +1012,7 @@ if ($allUpdates.Count -gt 0) {
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
         Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
-        Write-Log "  Excluded: Upgrades, Preview/Beta updates"
+        Write-Log "  Excluded: Upgrades, ARM64, 25H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
             # Safety check - don't auto-approve more than 200 updates
@@ -1023,6 +1053,8 @@ if ($allUpdates.Count -gt 0) {
 $MaintenanceResults.DeclinedExpired = $expiredCount
 $MaintenanceResults.DeclinedSuperseded = $supersededCount
 $MaintenanceResults.DeclinedOld = $oldCount
+$MaintenanceResults.DeclinedArm64 = $arm64Count
+$MaintenanceResults.Declined25H2 = $h25Count
 $MaintenanceResults.Approved = $approvedCount
 
 # === CLEANUP ===
@@ -1608,7 +1640,7 @@ Write-Host ""
 Write-Host "  Duration        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$totalDuration minutes" -ForegroundColor White
 Write-Host "  Declined        " -NoNewline -ForegroundColor DarkGray
-Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old: $($MaintenanceResults.DeclinedOld)" -ForegroundColor White
+Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old: $($MaintenanceResults.DeclinedOld)  ARM64: $($MaintenanceResults.DeclinedArm64)  25H2: $($MaintenanceResults.Declined25H2)" -ForegroundColor White
 Write-Host "  Approved        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$($MaintenanceResults.Approved) updates" -ForegroundColor White
 

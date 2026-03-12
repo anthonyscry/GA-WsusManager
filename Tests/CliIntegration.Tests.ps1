@@ -354,6 +354,14 @@ Describe "Update Classifications Configuration" {
             # Should mention Upgrades as excluded
             $script:MaintenanceContent | Should -Match 'Upgrades.*manual review|Excluding.*Upgrades'
         }
+
+        It "Excludes ARM64 updates from auto-approval" {
+            $script:MaintenanceContent | Should -Match 'Title\s*-notmatch\s*''\(\?i\)\\bARM64\\b'''
+        }
+
+        It "Excludes 25H2 updates from auto-approval" {
+            $script:MaintenanceContent | Should -Match 'Title\s*-notmatch\s*''\(\?i\)\\b25H2\\b'''
+        }
     }
 
     Context "Safety Limits" {

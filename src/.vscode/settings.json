@@ -1,9 +1,0 @@
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "ms-dotnettools.csharp",
-  "[csharp]": {
-    "editor.defaultFormatter": "ms-dotnettools.csharp"
-  },
-  "omnisharp.enableRoslynAnalyzers": true,
-  "omnisharp.enableEditorConfigSupport": true
-}

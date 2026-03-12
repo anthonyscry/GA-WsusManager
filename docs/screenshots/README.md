@@ -1,32 +1,25 @@
 # Screenshots
 
-This directory contains UI screenshots for the WSUS Manager documentation.
+This directory contains UI screenshots for WSUS Manager documentation.
 
-## Placeholder Status
+## How to Capture Screenshots
 
-Currently, these screenshots are placeholders. To generate actual screenshots:
+1. Build or download a release package
+2. Ensure `WsusManager.exe`, `Scripts/`, and `Modules/` are in the same folder
+3. Run `WsusManager.exe` as Administrator
+4. Navigate to each view and capture images with Snipping Tool (`Win+Shift+S`)
+5. Save PNG files in this directory
 
-1. Build the application: `dotnet publish src/WsusManager.App/WsusManager.App.csproj --configuration Release`
-2. Run the application as Administrator
-3. Navigate to each view:
-   - **Dashboard** - Main window on startup
-   - **Diagnostics** - After running Diagnostics operation
-   - **Settings** - Settings dialog with theme picker
-   - **Transfer** - Transfer dialog for air-gap operations
-4. Use Windows Snipping Tool (Win+Shift+S) or similar
-5. Save as PNG files in this directory
+## Suggested Screenshots
 
-## Required Screenshots
-
-- `dashboard.png` - Main dashboard with all cards
-- `diagnostics.png` - Diagnostics panel with results
-- `settings.png` - Settings dialog with theme picker
-- `transfer.png` - Transfer dialog for air-gap operations
+- `dashboard.png` - Main dashboard
+- `diagnostics.png` - Diagnostics results view
+- `settings.png` - Settings dialog
+- `transfer.png` - Transfer dialog (air-gap workflow)
 
 ## Guidelines
 
 - Resolution: 1920x1080 recommended
 - Format: PNG
-- Use dark theme for consistency
-- Capture full application window
+- Use full application window captures
 - Ensure text is readable
