@@ -289,3 +289,227 @@ Describe "Start-WsusAutoRecovery" {
         }
     }
 }
+
+Describe "Dashboard Data Functions" {
+    Context "Module exports" {
+        It "Should export Get-WsusDashboardData" {
+            Get-Command Get-WsusDashboardData -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Get-WsusDashboardServiceStatus" {
+            Get-Command Get-WsusDashboardServiceStatus -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Get-WsusDashboardDiskFreeGB" {
+            Get-Command Get-WsusDashboardDiskFreeGB -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Get-WsusDashboardDatabaseSizeGB" {
+            Get-Command Get-WsusDashboardDatabaseSizeGB -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Get-WsusDashboardTaskStatus" {
+            Get-Command Get-WsusDashboardTaskStatus -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Test-WsusDashboardInternetConnection" {
+            Get-Command Test-WsusDashboardInternetConnection -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Get-WsusDashboardCachedData" {
+            Get-Command Get-WsusDashboardCachedData -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Set-WsusDashboardCache" {
+            Get-Command Set-WsusDashboardCache -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+        It "Should export Test-WsusDashboardDataUnavailable" {
+            Get-Command Test-WsusDashboardDataUnavailable -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Get-WsusDashboardData return structure" {
+        BeforeAll {
+            Mock Get-Service { $null } -ModuleName WsusAutoDetection
+            Mock Get-PSDrive {
+                [PSCustomObject]@{ Free = 50GB }
+            } -ModuleName WsusAutoDetection
+            Mock Get-ScheduledTask { $null } -ModuleName WsusAutoDetection
+        }
+
+        It "Should return a hashtable" {
+            $result = Get-WsusDashboardData
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Services key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "Services"
+        }
+
+        It "Should contain DiskFreeGB key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "DiskFreeGB"
+        }
+
+        It "Should contain DatabaseSizeGB key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "DatabaseSizeGB"
+        }
+
+        It "Should contain TaskStatus key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "TaskStatus"
+        }
+
+        It "Should contain IsOnline key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "IsOnline"
+        }
+
+        It "Should contain CollectedAt key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "CollectedAt"
+        }
+
+        It "Should contain Error key" {
+            $result = Get-WsusDashboardData
+            $result.Keys | Should -Contain "Error"
+        }
+
+        It "Services value should be a hashtable with Running and Names" {
+            $result = Get-WsusDashboardData
+            $result.Services | Should -BeOfType [hashtable]
+            $result.Services.Keys | Should -Contain "Running"
+            $result.Services.Keys | Should -Contain "Names"
+        }
+
+        It "CollectedAt should be a DateTime" {
+            $result = Get-WsusDashboardData
+            $result.CollectedAt | Should -BeOfType [DateTime]
+        }
+    }
+
+    Context "Get-WsusDashboardDiskFreeGB" {
+        It "Should return a non-negative number" {
+            Mock Get-PSDrive {
+                [PSCustomObject]@{ Free = 100GB }
+            } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardDiskFreeGB
+            $result | Should -BeGreaterOrEqual 0
+        }
+
+        It "Should return 0 when drive query fails" {
+            Mock Get-PSDrive { throw "Drive not found" } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardDiskFreeGB
+            $result | Should -Be 0
+        }
+    }
+
+    Context "Get-WsusDashboardTaskStatus" {
+        It "Should return 'Not Set' when task does not exist" {
+            Mock Get-ScheduledTask { $null } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardTaskStatus
+            $result | Should -Be "Not Set"
+        }
+
+        It "Should return task state string when task exists" {
+            Mock Get-ScheduledTask {
+                [PSCustomObject]@{ State = "Ready" }
+            } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardTaskStatus
+            $result | Should -Be "Ready"
+        }
+    }
+
+    Context "Get-WsusDashboardServiceStatus" {
+        It "Should return a hashtable" {
+            Mock Get-Service { $null } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardServiceStatus
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should have Running=0 when all services are stopped" {
+            Mock Get-Service {
+                [PSCustomObject]@{ Name = $args[0]; Status = "Stopped" }
+            } -ModuleName WsusAutoDetection
+            $result = Get-WsusDashboardServiceStatus
+            $result.Running | Should -Be 0
+        }
+    }
+
+    Context "Cache roundtrip - Set-WsusDashboardCache and Get-WsusDashboardCachedData" {
+        It "Should return null before any data is cached" {
+            # Re-import to reset module state
+            $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $result = Get-WsusDashboardCachedData
+            $result | Should -BeNullOrEmpty
+        }
+
+        It "Should return cached data after Set-WsusDashboardCache is called" {
+            $fakeData = @{
+                Services = @{Running=2; Names=@("SQL","WSUS")}
+                DiskFreeGB = 42.5
+                DatabaseSizeGB = 1.2
+                TaskStatus = "Ready"
+                IsOnline = $true
+                CollectedAt = Get-Date
+                Error = $null
+            }
+            Set-WsusDashboardCache -Data $fakeData
+            $result = Get-WsusDashboardCachedData
+            $result | Should -Not -BeNullOrEmpty
+            $result.DiskFreeGB | Should -Be 42.5
+        }
+
+        It "Should not cache data with an error" {
+            # Re-import to reset module state
+            $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $errorData = @{
+                Services = @{Running=0; Names=@()}
+                DiskFreeGB = 0
+                DatabaseSizeGB = -1
+                TaskStatus = "Not Set"
+                IsOnline = $false
+                CollectedAt = Get-Date
+                Error = "Something went wrong"
+            }
+            Set-WsusDashboardCache -Data $errorData
+            $result = Get-WsusDashboardCachedData
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "Test-WsusDashboardDataUnavailable" {
+        It "Should return false initially" {
+            # Re-import to reset module state
+            $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $result = Test-WsusDashboardDataUnavailable
+            $result | Should -Be $false
+        }
+
+        It "Should return true after 10 consecutive failures" {
+            $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $errorData = @{ Error = "fail" }
+            1..10 | ForEach-Object { Set-WsusDashboardCache -Data $errorData }
+            $result = Test-WsusDashboardDataUnavailable
+            $result | Should -Be $true
+        }
+
+        It "Should reset to false after successful cache set" {
+            $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
+            Import-Module $ModulePath -Force -DisableNameChecking
+            $errorData = @{ Error = "fail" }
+            1..10 | ForEach-Object { Set-WsusDashboardCache -Data $errorData }
+            $goodData = @{
+                Services = @{Running=1; Names=@("SQL")}
+                DiskFreeGB = 10
+                DatabaseSizeGB = 0.5
+                TaskStatus = "Ready"
+                IsOnline = $false
+                CollectedAt = Get-Date
+                Error = $null
+            }
+            Set-WsusDashboardCache -Data $goodData
+            $result = Test-WsusDashboardDataUnavailable
+            $result | Should -Be $false
+        }
+    }
+}

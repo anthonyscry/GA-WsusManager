@@ -83,6 +83,11 @@ $script:OpCheckTimer = $null
 $script:RecentLines = @{}
 # Live Terminal Mode - launches operations in visible console window
 $script:LiveTerminalMode = $false
+$script:NotificationsEnabled = $true  # Show notifications when operations complete
+$script:NotificationBeep = $false     # Beep on completion
+$script:ThemeMode = "Dark"            # "Dark" or "Light" (reserved for Phase 3 theme toggle)
+$script:TrayMinimize = $false         # Minimize to system tray
+$script:HistoryEnabled = $true        # Track operation history
 
 function Write-Log { param([string]$Msg)
     try {
@@ -100,6 +105,10 @@ function Import-WsusSettings {
             if ($s.ExportRoot) { $script:ExportRoot = $s.ExportRoot }
             if ($s.ServerMode) { $script:ServerMode = $s.ServerMode }
             if ($null -ne $s.LiveTerminalMode) { $script:LiveTerminalMode = $s.LiveTerminalMode }
+            if ($null -ne $s.NotificationsEnabled) { $script:NotificationsEnabled = $s.NotificationsEnabled }
+            if ($null -ne $s.NotificationBeep) { $script:NotificationBeep = $s.NotificationBeep }
+            if ($null -ne $s.TrayMinimize) { $script:TrayMinimize = $s.TrayMinimize }
+            if ($null -ne $s.HistoryEnabled) { $script:HistoryEnabled = $s.HistoryEnabled }
         }
     } catch { Write-Log "Failed to load settings: $_" }
 }
@@ -108,12 +117,34 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode } |
+        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
 
 Import-WsusSettings
+
+#region Import Additional Modules
+$script:ModulesDir = $null
+$moduleLocations = @(
+    (Join-Path $script:ScriptRoot "Modules"),
+    (Join-Path (Split-Path -Parent $script:ScriptRoot) "Modules"),
+    (Join-Path $PSScriptRoot "Modules")
+)
+foreach ($loc in $moduleLocations) {
+    if (Test-Path $loc) { $script:ModulesDir = $loc; break }
+}
+if ($script:ModulesDir) {
+    foreach ($mod in @("WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
+        $modPath = Join-Path $script:ModulesDir "$mod.psm1"
+        if (Test-Path $modPath) {
+            try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction SilentlyContinue }
+            catch { Write-Log "Failed to load module ${mod}: $_" }
+        }
+    }
+}
+#endregion
+
 Write-Log "=== Starting v$script:AppVersion ==="
 #endregion
 
@@ -289,6 +320,7 @@ $script:StdinFlushTimer = $null
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
+                    <Button x:Name="BtnHistory" Content="📜 History" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnHelp" Content="? Help" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnSettings" Content="⚙ Settings" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnAbout" Content="ℹ About" Style="{StaticResource NavBtn}"/>
@@ -305,6 +337,7 @@ $script:StdinFlushTimer = $null
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateUsb" Content="💾 Create USB Package" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
@@ -341,6 +374,7 @@ $script:StdinFlushTimer = $null
             <!-- Dashboard Panel -->
             <Grid x:Name="DashboardPanel" Grid.Row="1">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -390,8 +424,28 @@ $script:StdinFlushTimer = $null
                     </Border>
                 </UniformGrid>
 
+                <!-- Health Score Band -->
+                <Border Grid.Row="1" Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,0,0,12" Padding="16,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Health Score" FontSize="11" Foreground="{StaticResource Text2}"/>
+                            <TextBlock x:Name="HealthScoreValue" Text="—" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                        </StackPanel>
+                        <ProgressBar x:Name="HealthScoreBar" Grid.Column="1" Height="8" Minimum="0" Maximum="100" Value="0" Background="{StaticResource BgDark}" Margin="16,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock x:Name="HealthScoreGrade" Text="" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Green}" HorizontalAlignment="Right"/>
+                            <TextBlock x:Name="LastSyncText" Text="Last sync: —" FontSize="10" Foreground="{StaticResource Text2}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- Quick Actions -->
-                <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                <StackPanel Grid.Row="2" Margin="0,0,0,16">
                     <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
                         <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
@@ -402,7 +456,7 @@ $script:StdinFlushTimer = $null
                 </StackPanel>
 
                 <!-- Config -->
-                <Border Grid.Row="2" Background="{StaticResource BgCard}" CornerRadius="4" Padding="14" VerticalAlignment="Top">
+                <Border Grid.Row="3" Background="{StaticResource BgCard}" CornerRadius="4" Padding="14" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="Configuration" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,10"/>
                         <Grid>
@@ -545,6 +599,28 @@ $script:StdinFlushTimer = $null
                 </ScrollViewer>
             </Grid>
 
+            <!-- History Panel -->
+            <Grid x:Name="HistoryPanel" Grid.Row="1" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Operation History" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                <Border Grid.Row="1" Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button x:Name="BtnRefreshHistory" Content="↻ Refresh" Style="{StaticResource BtnSec}" Padding="10,4" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnClearHistory" Content="🗑 Clear History" Style="{StaticResource BtnSec}" Padding="10,4"/>
+                        </StackPanel>
+                        <ListBox x:Name="HistoryList" Grid.Row="1" Background="{StaticResource BgDark}" BorderThickness="0" Foreground="{StaticResource Text1}" FontFamily="Consolas" FontSize="11" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
             <!-- Log Panel -->
             <Border x:Name="LogPanel" Grid.Row="2" Background="{StaticResource BgSidebar}" CornerRadius="4" Margin="0,12,0,0" Height="250">
                 <Grid>
@@ -593,9 +669,150 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 }
 #endregion
 
+#region Keyboard Shortcuts
+$script:window.Add_KeyDown({
+    param($s, $e)
+    if ($e.Key -eq [System.Windows.Input.Key]::D -and $e.KeyboardDevice.Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        # Ctrl+D = Diagnostics
+        if ($controls.BtnDiagnostics -and $controls.BtnDiagnostics.IsEnabled) { $controls.BtnDiagnostics.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)) }
+    }
+    elseif ($e.Key -eq [System.Windows.Input.Key]::S -and $e.KeyboardDevice.Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        # Ctrl+S = Online Sync
+        if ($controls.BtnMaintenance -and $controls.BtnMaintenance.IsEnabled) { $controls.BtnMaintenance.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)) }
+    }
+    elseif ($e.Key -eq [System.Windows.Input.Key]::H -and $e.KeyboardDevice.Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        # Ctrl+H = History
+        if ($controls.BtnHistory) { $controls.BtnHistory.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)) }
+    }
+    elseif (($e.Key -eq [System.Windows.Input.Key]::R -and $e.KeyboardDevice.Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) -or $e.Key -eq [System.Windows.Input.Key]::F5) {
+        # Ctrl+R or F5 = Refresh dashboard
+        if (-not $script:RefreshInProgress) {
+            $script:RefreshInProgress = $true
+            try { Update-Dashboard } finally { $script:RefreshInProgress = $false }
+        }
+    }
+})
+if ($controls.BtnDiagnostics) { $controls.BtnDiagnostics.ToolTip = "Run Diagnostics (Ctrl+D)" }
+if ($controls.BtnMaintenance) { $controls.BtnMaintenance.ToolTip = "Online Sync (Ctrl+S)" }
+#endregion
+
 #region Helper Functions
 $script:LogExpanded = $true
 $script:FullLogContent = ""
+
+function Show-SplashScreen {
+<#
+.SYNOPSIS
+    Displays a lightweight splash screen during application startup.
+.DESCRIPTION
+    Shows a borderless window with logo, version, and progress bar.
+    Progress updates as each startup stage completes.
+    Auto-dismisses when the main window is ready.
+.OUTPUTS
+    Returns a hashtable with Window, ProgressBar, StatusText, and Close scriptblock.
+#>
+    try {
+        $splash = New-Object System.Windows.Window
+        $splash.Title = "WSUS Manager"
+        $splash.Width = 400
+        $splash.Height = 220
+        $splash.WindowStartupLocation = "CenterScreen"
+        $splash.WindowStyle = "None"
+        $splash.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+        $splash.ResizeMode = "NoResize"
+        $splash.Topmost = $true
+        $splash.AllowsTransparency = $false
+
+        $border = New-Object System.Windows.Controls.Border
+        $border.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#161B22")
+        $border.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+        $border.BorderThickness = "1"
+
+        $grid = New-Object System.Windows.Controls.Grid
+        $grid.Margin = "32"
+
+        $r0 = New-Object System.Windows.Controls.RowDefinition; $r0.Height = "Auto"
+        $r1 = New-Object System.Windows.Controls.RowDefinition; $r1.Height = "Auto"
+        $r2 = New-Object System.Windows.Controls.RowDefinition; $r2.Height = "Auto"
+        $r3 = New-Object System.Windows.Controls.RowDefinition; $r3.Height = "Auto"
+        $grid.RowDefinitions.Add($r0)
+        $grid.RowDefinitions.Add($r1)
+        $grid.RowDefinitions.Add($r2)
+        $grid.RowDefinitions.Add($r3)
+
+        $titleText = New-Object System.Windows.Controls.TextBlock
+        $titleText.Text = "WSUS Manager"
+        $titleText.FontSize = 22
+        $titleText.FontWeight = "Bold"
+        $titleText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+        $titleText.HorizontalAlignment = "Center"
+        $titleText.Margin = "0,0,0,4"
+        [System.Windows.Controls.Grid]::SetRow($titleText, 0)
+        $null = $grid.Children.Add($titleText)
+
+        $versionText = New-Object System.Windows.Controls.TextBlock
+        $versionText.Text = "v$script:AppVersion"
+        $versionText.FontSize = 11
+        $versionText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $versionText.HorizontalAlignment = "Center"
+        $versionText.Margin = "0,0,0,20"
+        [System.Windows.Controls.Grid]::SetRow($versionText, 1)
+        $null = $grid.Children.Add($versionText)
+
+        $progressBar = New-Object System.Windows.Controls.ProgressBar
+        $progressBar.Minimum = 0
+        $progressBar.Maximum = 100
+        $progressBar.Value = 0
+        $progressBar.Height = 4
+        $progressBar.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $progressBar.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+        $progressBar.BorderThickness = "0"
+        $progressBar.Margin = "0,0,0,8"
+        [System.Windows.Controls.Grid]::SetRow($progressBar, 2)
+        $null = $grid.Children.Add($progressBar)
+
+        $statusText = New-Object System.Windows.Controls.TextBlock
+        $statusText.Text = "Initializing..."
+        $statusText.FontSize = 10
+        $statusText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $statusText.HorizontalAlignment = "Center"
+        [System.Windows.Controls.Grid]::SetRow($statusText, 3)
+        $null = $grid.Children.Add($statusText)
+
+        $border.Child = $grid
+        $splash.Content = $border
+
+        $splash.Show()
+        $splash.Dispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+
+        return @{
+            Window     = $splash
+            ProgressBar = $progressBar
+            StatusText  = $statusText
+            Close       = { param($s) try { $s.Window.Close() } catch {} }
+        }
+    } catch {
+        Write-Log "Splash screen failed: $_"
+        return $null
+    }
+}
+
+function Update-SplashProgress {
+<#
+.SYNOPSIS Updates splash screen progress bar and status message.
+#>
+    param(
+        [hashtable]$Splash,
+        [int]$Progress,
+        [string]$Status
+    )
+    if ($null -eq $Splash) { return }
+    try {
+        $Splash.ProgressBar.Value = $Progress
+        $Splash.StatusText.Text = $Status
+        $Splash.Window.Dispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+    } catch { }
+}
 
 function Write-LogOutput {
     param(
@@ -743,6 +960,25 @@ function Update-Dashboard {
                 $controls.Card2Sub.Text = "SQL stopped"
                 $controls.Card2Bar.Background = "#D29922"
             }
+            # Add trending data snapshot and display trend
+            if (Get-Command Add-WsusTrendSnapshot -ErrorAction SilentlyContinue) {
+                if ($db -ge 0) { Add-WsusTrendSnapshot -DatabaseSizeGB $db }
+                $trend = Get-WsusTrendSummary
+                if ($trend -and $trend.Status -eq "OK") {
+                    $sign = if ($trend.GrowthPerMonth -ge 0) { "+" } else { "" }
+                    $trendTxt = "$db GB  $sign$([math]::Round($trend.GrowthPerMonth,1))/mo"
+                    if ($null -ne $controls.Card2Sub) { $controls.Card2Sub.Text = $trendTxt }
+                    # Alert if < 90 days until full
+                    if ($trend.AlertLevel -eq "Critical" -and $null -ne $controls.Card2Sub) {
+                        $controls.Card2Sub.Text = "⚠ $($trend.DaysUntilFull) days until full"
+                        $controls.Card2Sub.Foreground = $window.FindResource("Red")
+                    } elseif ($trend.AlertLevel -eq "Warning") {
+                        $controls.Card2Sub.Foreground = $window.FindResource("Orange")
+                    }
+                } elseif ($trend -and $trend.Status -ne "OK" -and $null -ne $controls.Card2Sub) {
+                    $controls.Card2Sub.Text = "Collecting trend data..."
+                }
+            }
         }
     }
 
@@ -773,13 +1009,92 @@ function Update-Dashboard {
     if ($controls.CfgLogPath) { $controls.CfgLogPath.Text = $script:LogDir }
     if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
 
+    # Update Health Score
+    if ($controls.HealthScoreValue -and (Get-Command Get-WsusHealthScore -ErrorAction SilentlyContinue)) {
+        try {
+            $health = Get-WsusHealthScore -SqlInstance $script:SqlInstance -ContentPath $script:ContentPath
+            if ($health.Score -ge 0) {
+                $controls.HealthScoreValue.Text = "$($health.Score)"
+                $controls.HealthScoreBar.Value = $health.Score
+                $scoreColor = switch($health.Grade) {
+                    "Green"   { "#3FB950" }
+                    "Yellow"  { "#D29922" }
+                    default   { "#F85149" }
+                }
+                $controls.HealthScoreValue.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($scoreColor)
+                $controls.HealthScoreGrade.Text = $health.Grade
+                $controls.HealthScoreGrade.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($scoreColor)
+                # Update tray tooltip with health grade
+                if ($null -ne $script:TrayIcon) {
+                    $script:TrayIcon.Text = "WSUS Manager — Health: $($health.Grade) ($($health.Score)/100)"
+                }
+            } else {
+                $controls.HealthScoreValue.Text = "N/A"
+                $controls.HealthScoreGrade.Text = "Unknown"
+            }
+        } catch { }
+    }
+
+    # Last Successful Sync
+    if ($controls.LastSyncText) {
+        try {
+            $wsus = Get-WsusServer -ErrorAction SilentlyContinue
+            if ($wsus) {
+                $lastSync = $wsus.GetSubscription().LastSuccessfulSynchronizationTime
+                if ($lastSync -and $lastSync -ne [DateTime]::MinValue) {
+                    $daysAgo = [int]([DateTime]::Now - $lastSync).TotalDays
+                    $lastSyncStr = if ($daysAgo -eq 0) { "today" } elseif ($daysAgo -eq 1) { "yesterday" } else { "$daysAgo days ago" }
+                    $controls.LastSyncText.Text = "Last sync: $lastSyncStr ($($lastSync.ToString('MMM d, yyyy HH:mm')))"
+                    $syncColor = if ($daysAgo -le 7) { "#3FB950" } elseif ($daysAgo -le 30) { "#D29922" } else { "#F85149" }
+                    $controls.LastSyncText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($syncColor)
+                } else {
+                    $controls.LastSyncText.Text = "Last sync: Never"
+                    $controls.LastSyncText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                }
+            }
+        } catch {
+            $controls.LastSyncText.Text = "Last sync: unavailable"
+        }
+    }
+
     # Check WSUS installation and update button states
     Update-WsusButtonState
 }
 
+function Update-HistoryView {
+    if (-not $controls.HistoryList) { return }
+    $controls.HistoryList.Items.Clear()
+    if (-not (Get-Command Get-WsusOperationHistory -ErrorAction SilentlyContinue)) {
+        $item = New-Object System.Windows.Controls.ListBoxItem
+        $item.Content = "History module not loaded."
+        $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $null = $controls.HistoryList.Items.Add($item)
+        return
+    }
+    $entries = Get-WsusOperationHistory -Count 50
+    if (-not $entries -or $entries.Count -eq 0) {
+        $item = New-Object System.Windows.Controls.ListBoxItem
+        $item.Content = "No operation history yet. Run an operation to start tracking."
+        $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $null = $controls.HistoryList.Items.Add($item)
+        return
+    }
+    foreach ($entry in $entries) {
+        $ts = try { ([DateTime]$entry.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
+        $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { "—" }
+        $icon = if ($entry.Result -eq "Pass") { "[+]" } else { "[-]" }
+        $line = "$ts  $icon  $($entry.OperationType.PadRight(15))  $($dur.PadLeft(8))"
+        if ($entry.Summary) { $line += "  $($entry.Summary)" }
+        $item = New-Object System.Windows.Controls.ListBoxItem
+        $item.Content = $line
+        $item.Foreground = if ($entry.Result -eq "Pass") { [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950") } else { [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149") }
+        $null = $controls.HistoryList.Items.Add($item)
+    }
+}
+
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp","BtnHistory")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -791,13 +1106,16 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
-$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
 # Track WSUS installation status
 $script:WsusInstalled = $false
+# Destination path for USB Package workflow
+$script:UsbPackageDestination = ""
+$script:UsbPackageVerify = $true
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
@@ -948,6 +1266,7 @@ function Show-Panel {
     $controls.OperationPanel.Visibility = if($Panel -eq "Operation"){"Visible"}else{"Collapsed"}
     $controls.AboutPanel.Visibility = if($Panel -eq "About"){"Visible"}else{"Collapsed"}
     $controls.HelpPanel.Visibility = if($Panel -eq "Help"){"Visible"}else{"Collapsed"}
+    if ($controls.HistoryPanel) { $controls.HistoryPanel.Visibility = if($Panel -eq "History"){"Visible"}else{"Collapsed"} }
     Set-ActiveNavButton $NavBtn
     if ($Panel -eq "Dashboard") { Update-Dashboard }
 }
@@ -2315,7 +2634,7 @@ function Show-SettingsDialog {
     $dlg = New-Object System.Windows.Window
     $dlg.Title = "Settings"
     $dlg.Width = 480
-    $dlg.Height = 280
+    $dlg.Height = 430
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
@@ -2358,6 +2677,40 @@ function Show-SettingsDialog {
     $txt2.Padding = "6,4"
     $stack.Children.Add($txt2)
 
+    # Notification Settings
+    $notifSep = New-Object System.Windows.Controls.Separator
+    $notifSep.Margin = "0,4,0,12"
+    $notifSep.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $stack.Children.Add($notifSep)
+
+    $notifLbl = New-Object System.Windows.Controls.TextBlock
+    $notifLbl.Text = "Notifications & Sound"
+    $notifLbl.FontWeight = "SemiBold"
+    $notifLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $notifLbl.Margin = "0,0,0,8"
+    $stack.Children.Add($notifLbl)
+
+    $chkNotif = New-Object System.Windows.Controls.CheckBox
+    $chkNotif.Content = "Show notification when operation completes"
+    $chkNotif.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkNotif.IsChecked = $script:NotificationsEnabled
+    $chkNotif.Margin = "0,0,0,6"
+    $stack.Children.Add($chkNotif)
+
+    $chkBeep = New-Object System.Windows.Controls.CheckBox
+    $chkBeep.Content = "Play beep sound on completion"
+    $chkBeep.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkBeep.IsChecked = $script:NotificationBeep
+    $chkBeep.Margin = "0,0,0,4"
+    $stack.Children.Add($chkBeep)
+
+    $chkTray = New-Object System.Windows.Controls.CheckBox
+    $chkTray.Content = "Minimize to system tray"
+    $chkTray.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkTray.IsChecked = $script:TrayMinimize
+    $chkTray.Margin = "0,0,0,16"
+    $stack.Children.Add($chkTray)
+
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
@@ -2372,6 +2725,9 @@ function Show-SettingsDialog {
     $saveBtn.Add_Click({
         $script:ContentPath = if($txt1.Text){$txt1.Text}else{"C:\WSUS"}
         $script:SqlInstance = if($txt2.Text){$txt2.Text}else{".\SQLEXPRESS"}
+        $script:NotificationsEnabled = $chkNotif.IsChecked -eq $true
+        $script:NotificationBeep = $chkBeep.IsChecked -eq $true
+        $script:TrayMinimize = $chkTray.IsChecked -eq $true
         Save-Settings
         Update-Dashboard
         $dlg.Close()
@@ -2390,6 +2746,139 @@ function Show-SettingsDialog {
     $stack.Children.Add($btnPanel)
     $dlg.Content = $stack
     $dlg.ShowDialog() | Out-Null
+}
+
+function Invoke-CreateUsbPackage {
+<#
+.SYNOPSIS
+    One-click workflow to create a verified USB transfer package for air-gap operations.
+.DESCRIPTION
+    Shows a dialog to select an export destination, runs a differential export via
+    Invoke-WsusManagement.ps1, then generates a SHA-256 transfer manifest JSON with
+    file list, checksums, timestamp, and total size.
+#>
+    if ($script:OperationRunning) {
+        [System.Windows.MessageBox]::Show("An operation is already running.", "Operation In Progress", "OK", "Warning")
+        return
+    }
+
+    # --- Dialog ---
+    $dlg = New-Object System.Windows.Window
+    $dlg.Title = "Create USB Transfer Package"
+    $dlg.Width = 480
+    $dlg.Height = 280
+    $dlg.WindowStartupLocation = "CenterOwner"
+    $dlg.Owner = $script:window
+    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.ResizeMode = "NoResize"
+    $dlg.Add_KeyDown({ param($s, $e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
+
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $stack.Margin = "20"
+
+    $titleBlock = New-Object System.Windows.Controls.TextBlock
+    $titleBlock.Text = "Create USB Transfer Package"
+    $titleBlock.FontSize = 14
+    $titleBlock.FontWeight = "Bold"
+    $titleBlock.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $titleBlock.Margin = "0,0,0,8"
+    $stack.Children.Add($titleBlock)
+
+    $descBlock = New-Object System.Windows.Controls.TextBlock
+    $descBlock.Text = "Exports WSUS updates and generates a verified transfer manifest for air-gap import."
+    $descBlock.TextWrapping = "Wrap"
+    $descBlock.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $descBlock.Margin = "0,0,0,16"
+    $stack.Children.Add($descBlock)
+
+    $destLbl = New-Object System.Windows.Controls.TextBlock
+    $destLbl.Text = "Export Destination (USB drive or network path):"
+    $destLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $destLbl.Margin = "0,0,0,6"
+    $stack.Children.Add($destLbl)
+
+    $destPanel = New-Object System.Windows.Controls.DockPanel
+    $destPanel.Margin = "0,0,0,16"
+
+    $destBtn = New-Object System.Windows.Controls.Button
+    $destBtn.Content = "Browse"
+    $destBtn.Padding = "10,4"
+    $destBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $destBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($destBtn, "Right")
+    $destPanel.Children.Add($destBtn)
+
+    $destTxt = New-Object System.Windows.Controls.TextBox
+    $destTxt.Margin = "0,0,8,0"
+    $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destTxt.Padding = "6,4"
+    $destPanel.Children.Add($destTxt)
+
+    $destBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        try { if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
+    }.GetNewClosure())
+    $stack.Children.Add($destPanel)
+
+    $chkVerify = New-Object System.Windows.Controls.CheckBox
+    $chkVerify.Content = "Generate SHA-256 checksums in transfer manifest"
+    $chkVerify.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkVerify.IsChecked = $true
+    $chkVerify.Margin = "0,0,0,16"
+    $stack.Children.Add($chkVerify)
+
+    $btnPanel = New-Object System.Windows.Controls.StackPanel
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+
+    $confirmed = $false
+    $selectedVerify = $true
+    $selectedDest = ""
+
+    $createBtn = New-Object System.Windows.Controls.Button
+    $createBtn.Content = "Create Package"
+    $createBtn.Padding = "14,6"
+    $createBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+    $createBtn.Foreground = "White"
+    $createBtn.BorderThickness = 0
+    $createBtn.Margin = "0,0,8,0"
+    $createBtn.Add_Click({
+        if ([string]::IsNullOrWhiteSpace($destTxt.Text)) {
+            [System.Windows.MessageBox]::Show("Please select a destination folder.", "Export", "OK", "Warning")
+            return
+        }
+        $confirmed = $true
+        $selectedDest = $destTxt.Text
+        $selectedVerify = ($chkVerify.IsChecked -eq $true)
+        $dlg.Close()
+    }.GetNewClosure())
+    $btnPanel.Children.Add($createBtn)
+
+    $cancelBtn = New-Object System.Windows.Controls.Button
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.BorderThickness = 0
+    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $btnPanel.Children.Add($cancelBtn)
+
+    $stack.Children.Add($btnPanel)
+    $dlg.Content = $stack
+    $dlg.ShowDialog() | Out-Null
+
+    if (-not $confirmed -or [string]::IsNullOrWhiteSpace($selectedDest)) { return }
+    if (-not (Test-SafePath $selectedDest)) {
+        [System.Windows.MessageBox]::Show("Invalid destination path.", "Error", "OK", "Error")
+        return
+    }
+
+    $script:UsbPackageDestination = $selectedDest
+    $script:UsbPackageVerify = $selectedVerify
+    Invoke-LogOperation "usb-package" "Create USB Package"
 }
 #endregion
 
@@ -2603,6 +3092,48 @@ function Invoke-LogOperation {
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "diagnostics" { "`$null = & '$mgmtSafe' -Diagnostics -ContentPath '$cp' -SqlInstance '$sql'" }
         "reset"       { "& '$mgmtSafe' -Reset" }
+        "usb-package" {
+            $usbDest = $script:UsbPackageDestination
+            if ([string]::IsNullOrWhiteSpace($usbDest)) {
+                [System.Windows.MessageBox]::Show("No destination path set for USB Package.", "Error", "OK", "Error")
+                return
+            }
+            $destSafe = Get-EscapedPath $usbDest
+            $doVerify = if ($script:UsbPackageVerify) { '$true' } else { '$false' }
+            # Export then generate manifest in a single PowerShell block
+            @"
+& '$mgmtSafe' -Export -ContentPath '$cpSafe' -DestinationPath '$destSafe' -CopyMode 'Differential' -SqlInstance '$sql'
+if (`$LASTEXITCODE -eq 0 -or `$?) {
+    Write-Host '[*] Generating transfer manifest...'
+    `$destDir = '$destSafe'
+    `$doVerify = $doVerify
+    `$files = @(Get-ChildItem -Path `$destDir -Recurse -File -ErrorAction SilentlyContinue)
+    `$fileList = `$files | ForEach-Object {
+        `$hash = if (`$doVerify) { (Get-FileHash `$_.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash } else { `$null }
+        [ordered]@{
+            RelativePath = `$_.FullName.Substring(`$destDir.Length).TrimStart('\/')
+            SizeBytes    = `$_.Length
+            LastModified = `$_.LastWriteTime.ToString('o')
+            SHA256       = `$hash
+        }
+    }
+    `$totalBytes = (`$files | Measure-Object -Property Length -Sum).Sum
+    `$manifest = [ordered]@{
+        GeneratedAt   = (Get-Date -Format 'o')
+        SourceServer  = `$env:COMPUTERNAME
+        TotalFiles    = `$files.Count
+        TotalSizeGB   = [math]::Round(`$totalBytes / 1GB, 2)
+        ChecksumsIncluded = `$doVerify
+        Files         = `$fileList
+    }
+    `$manifestPath = Join-Path `$destDir 'transfer-manifest.json'
+    `$manifest | ConvertTo-Json -Depth 5 | Set-Content `$manifestPath -Encoding UTF8
+    Write-Host "[+] Manifest: `$(`$manifest.TotalFiles) files, `$(`$manifest.TotalSizeGB) GB"
+    Write-Host "[+] Saved to: `$manifestPath"
+    Write-Host '[+] USB Transfer Package is ready for air-gap import.'
+}
+"@
+        }
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
@@ -2689,6 +3220,17 @@ while ($countdown -gt 0) {
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $data.Controls.LogOutput.AppendText("`r`n[$timestamp] [+] Console closed - $($data.Title) finished`r`n")
+                    # Show completion notification if enabled
+                    if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
+                        $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
+                        $dur = [TimeSpan]::FromSeconds($durationSecs)
+                        Show-WsusNotification -Title "WSUS Manager — $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
+                    }
+                    # Record operation history
+                    if ($script:HistoryEnabled -and (Get-Command Write-WsusOperationHistory -ErrorAction SilentlyContinue)) {
+                        $duration = if ($data.StartTime) { (Get-Date) - $data.StartTime } else { [TimeSpan]::Zero }
+                        Write-WsusOperationHistory -OperationType $data.Title -Duration $duration -Result "Pass" -Summary "Completed via GUI"
+                    }
                     $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
                     $data.Controls.BtnCancelOp.Visibility = "Collapsed"
                     foreach ($btnName in $data.OperationButtons) {
@@ -2715,6 +3257,7 @@ while ($countdown -gt 0) {
                 Title = $Title
                 OperationButtons = $script:OperationButtons
                 OperationInputs = $script:OperationInputs
+                StartTime = Get-Date
             }
 
             $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
@@ -2853,6 +3396,7 @@ while ($countdown -gt 0) {
                 Title = $Title
                 OperationButtons = $script:OperationButtons
                 OperationInputs = $script:OperationInputs
+                StartTime = Get-Date
             }
 
             $outputHandler = {
@@ -2899,6 +3443,17 @@ while ($countdown -gt 0) {
                     $script:FullLogContent += $line
                     $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
+                    # Show completion notification if enabled
+                    if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
+                        $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
+                        $dur = [TimeSpan]::FromSeconds($durationSecs)
+                        Show-WsusNotification -Title "WSUS Manager — $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
+                    }
+                    # Record operation history
+                    if ($script:HistoryEnabled -and (Get-Command Write-WsusOperationHistory -ErrorAction SilentlyContinue)) {
+                        $duration = if ($data.StartTime) { (Get-Date) - $data.StartTime } else { [TimeSpan]::Zero }
+                        Write-WsusOperationHistory -OperationType $data.Title -Duration $duration -Result "Pass" -Summary "Completed via GUI"
+                    }
                     $data.Controls.StatusLabel.Text = " - Completed at $timestamp"
                     $data.Controls.BtnCancelOp.Visibility = "Collapsed"
                     # Re-enable all operation buttons
@@ -3132,6 +3687,7 @@ GPO files copied to: $destDir
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
+$controls.BtnCreateUsb.Add_Click({ Invoke-CreateUsbPackage })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({
@@ -3158,6 +3714,23 @@ $controls.BtnReset.Add_Click({
 $controls.BtnAbout.Add_Click({ Show-Panel "About" "About" "BtnAbout" })
 $controls.BtnHelp.Add_Click({ Show-Help "Overview" })
 $controls.BtnSettings.Add_Click({ Show-SettingsDialog })
+if ($controls.BtnHistory) {
+    $controls.BtnHistory.Add_Click({
+        Show-Panel "History" "History" "BtnHistory"
+        Update-HistoryView
+    })
+}
+if ($controls.BtnRefreshHistory) {
+    $controls.BtnRefreshHistory.Add_Click({ Update-HistoryView })
+}
+if ($controls.BtnClearHistory) {
+    $controls.BtnClearHistory.Add_Click({
+        if (Get-Command Clear-WsusOperationHistory -ErrorAction SilentlyContinue) {
+            Clear-WsusOperationHistory | Out-Null
+            Update-HistoryView
+        }
+    })
+}
 
 $controls.BtnBrowseInstallPath.Add_Click({
     $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -3275,6 +3848,31 @@ $controls.BtnSaveLog.Add_Click({
     }
 })
 
+#region Log Panel Context Menu
+$logContextMenu = New-Object System.Windows.Controls.ContextMenu
+$menuCopyAll = New-Object System.Windows.Controls.MenuItem
+$menuCopyAll.Header = "Copy All"
+$menuCopyAll.Add_Click({
+    if ($controls.LogOutput.Text.Length -gt 0) {
+        [System.Windows.Clipboard]::SetText($controls.LogOutput.Text)
+    }
+}.GetNewClosure())
+$menuSaveToFile = New-Object System.Windows.Controls.MenuItem
+$menuSaveToFile.Header = "Save to File..."
+$menuSaveToFile.Add_Click({
+    $dialog = New-Object Microsoft.Win32.SaveFileDialog
+    $dialog.Filter = "Text Files (*.txt)|*.txt"
+    $dialog.FileName = "WsusManager-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+    if ($dialog.ShowDialog() -eq $true) {
+        $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
+        Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
+    }
+}.GetNewClosure())
+$null = $logContextMenu.Items.Add($menuCopyAll)
+$null = $logContextMenu.Items.Add($menuSaveToFile)
+$controls.LogOutput.ContextMenu = $logContextMenu
+#endregion
+
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
 $controls.BtnCancel.Add_Click({
     Stop-CurrentOperation
@@ -3285,6 +3883,8 @@ $controls.BtnCancel.Add_Click({
 #endregion
 
 #region Initialize
+$script:Splash = Show-SplashScreen
+Update-SplashProgress -Splash $script:Splash -Progress 20 -Status "Loading interface..."
 $controls.VersionLabel.Text = "v$script:AppVersion"
 $controls.AboutVersion.Text = "Version $script:AppVersion"
 
@@ -3334,7 +3934,9 @@ try {
     }
 } catch { <# About logo load failed #> }
 
+Update-SplashProgress -Splash $script:Splash -Progress 60 -Status "Checking services..."
 Update-Dashboard
+Update-SplashProgress -Splash $script:Splash -Progress 90 -Status "Starting..."
 
 # Show message if WSUS is not installed
 if (-not $script:WsusInstalled) {
@@ -3355,8 +3957,64 @@ $timer.Add_Tick({
 })
 $timer.Start()
 
+# Initialize system tray icon
+$script:TrayIcon = $null
+try {
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+    $ni = New-Object System.Windows.Forms.NotifyIcon
+    $ni.Text = "WSUS Manager v$script:AppVersion"
+    $ni.Visible = $false
+    # Load app icon for tray; fall back to built-in application icon
+    $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
+    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
+    if (Test-Path $iconPath) {
+        $ni.Icon = New-Object System.Drawing.Icon($iconPath)
+    } else {
+        $ni.Icon = [System.Drawing.SystemIcons]::Application
+    }
+    # Context menu: Restore + Exit
+    $ctxMenu = New-Object System.Windows.Forms.ContextMenuStrip
+    $miRestore = $ctxMenu.Items.Add("Restore WSUS Manager")
+    $miRestore.add_Click({
+        $script:window.Show()
+        $script:window.WindowState = "Normal"
+        $script:window.Activate()
+        $script:TrayIcon.Visible = $false
+    })
+    $ctxMenu.Items.Add("-") | Out-Null
+    $miExit = $ctxMenu.Items.Add("Exit")
+    $miExit.add_Click({ $script:window.Close() })
+    $ni.ContextMenuStrip = $ctxMenu
+    # Double-click restores window
+    $ni.add_DoubleClick({
+        $script:window.Show()
+        $script:window.WindowState = "Normal"
+        $script:window.Activate()
+        $script:TrayIcon.Visible = $false
+    })
+    $script:TrayIcon = $ni
+} catch {
+    Write-Log "System tray icon unavailable: $($_.Exception.Message)"
+}
+
+# Intercept minimize → hide to tray when TrayMinimize is enabled
+$script:window.Add_StateChanged({
+    if ($script:TrayMinimize -and $script:window.WindowState -eq "Minimized" -and $null -ne $script:TrayIcon) {
+        $script:window.Hide()
+        $script:TrayIcon.Text = "WSUS Manager v$script:AppVersion"
+        $script:TrayIcon.Visible = $true
+        $script:TrayIcon.ShowBalloonTip(1500, "WSUS Manager", "Running in the system tray. Double-click to restore.", [System.Windows.Forms.ToolTipIcon]::Info)
+    }
+})
+
 $script:window.Add_Closing({
     $timer.Stop()
+    # Dispose tray icon before closing so it doesn't linger in taskbar
+    if ($null -ne $script:TrayIcon) {
+        try { $script:TrayIcon.Visible = $false; $script:TrayIcon.Dispose() } catch {}
+        $script:TrayIcon = $null
+    }
     # Clean up any running operation (suppress log since we're closing)
     Stop-CurrentOperation -SuppressLog
 })
@@ -3366,6 +4024,13 @@ $script:window.Add_Closing({
 $script:StartupDuration = ((Get-Date) - $script:StartupTime).TotalMilliseconds
 Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 Write-Log "Running WPF form"
+
+if ($null -ne $script:Splash) {
+    Update-SplashProgress -Splash $script:Splash -Progress 100 -Status "Ready"
+    Start-Sleep -Milliseconds 300
+    try { $script:Splash.Window.Close() } catch {}
+    $script:Splash = $null
+}
 
 try {
     $script:window.ShowDialog() | Out-Null

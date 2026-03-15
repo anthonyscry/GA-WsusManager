@@ -552,6 +552,60 @@ function Get-WsusTimerInterval {
     return $script:WsusConfig.Gui.Timers[$Timer]
 }
 
+#region Health and Operation Config
+
+function Get-WsusHealthWeights {
+    <#
+    .SYNOPSIS
+        Returns the component weights used by Get-WsusHealthScore.
+    .DESCRIPTION
+        Provides the canonical point allocations for each health component so
+        callers and tests can reference a single source of truth.
+    .OUTPUTS
+        Hashtable with keys: Services, DatabaseSize, SyncRecency, DiskSpace, LastOperation
+    #>
+    return @{
+        Services      = 30
+        DatabaseSize  = 20
+        SyncRecency   = 20
+        DiskSpace     = 20
+        LastOperation = 10
+    }
+}
+
+function Get-WsusOperationTimeout {
+    <#
+    .SYNOPSIS
+        Returns the timeout in minutes for a given operation type.
+    .DESCRIPTION
+        Centralised operation timeout table used by GUI and CLI scripts to
+        enforce per-operation time limits.
+    .PARAMETER OperationType
+        One of: Cleanup, Sync, Install, Export, Import, Diagnostics, Default.
+    .OUTPUTS
+        Integer timeout value in minutes.
+    .EXAMPLE
+        $mins = Get-WsusOperationTimeout -OperationType 'Sync'
+        # Returns 120
+    #>
+    param(
+        [ValidateSet('Cleanup', 'Sync', 'Install', 'Export', 'Import', 'Diagnostics', 'Default')]
+        [string]$OperationType = 'Default'
+    )
+    $timeouts = @{
+        Cleanup     = 60
+        Sync        = 120
+        Install     = 60
+        Export      = 90
+        Import      = 90
+        Diagnostics = 30
+        Default     = 30
+    }
+    return $timeouts[$OperationType]
+}
+
+#endregion Health and Operation Config
+
 # ===========================
 # INITIALIZATION
 # ===========================
@@ -578,5 +632,7 @@ Export-ModuleMember -Function @(
     'Get-WsusGuiSetting',
     'Get-WsusRetrySetting',
     'Get-WsusDialogSize',
-    'Get-WsusTimerInterval'
+    'Get-WsusTimerInterval',
+    'Get-WsusHealthWeights',
+    'Get-WsusOperationTimeout'
 )

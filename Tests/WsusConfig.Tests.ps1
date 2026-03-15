@@ -317,3 +317,92 @@ Describe "Export-WsusConfigToFile" {
         { $content | ConvertFrom-Json } | Should -Not -Throw
     }
 }
+
+Describe "Get-WsusHealthWeights" {
+    Context "Module export validation" {
+        It "Should export Get-WsusHealthWeights function" {
+            Get-Command Get-WsusHealthWeights -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return value validation" {
+        BeforeAll {
+            $script:Weights = Get-WsusHealthWeights
+        }
+
+        It "Should return a hashtable" {
+            $script:Weights | Should -BeOfType [hashtable]
+        }
+
+        It "Services weight should be 30" {
+            $script:Weights.Services | Should -Be 30
+        }
+
+        It "DatabaseSize weight should be 20" {
+            $script:Weights.DatabaseSize | Should -Be 20
+        }
+
+        It "SyncRecency weight should be 20" {
+            $script:Weights.SyncRecency | Should -Be 20
+        }
+
+        It "DiskSpace weight should be 20" {
+            $script:Weights.DiskSpace | Should -Be 20
+        }
+
+        It "LastOperation weight should be 10" {
+            $script:Weights.LastOperation | Should -Be 10
+        }
+
+        It "Total of all weights should equal 100" {
+            $total = $script:Weights.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+            $total | Should -Be 100
+        }
+    }
+}
+
+Describe "Get-WsusOperationTimeout" {
+    Context "Module export validation" {
+        It "Should export Get-WsusOperationTimeout function" {
+            Get-Command Get-WsusOperationTimeout -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return value validation" {
+        It "Should return 60 for Cleanup" {
+            Get-WsusOperationTimeout -OperationType 'Cleanup' | Should -Be 60
+        }
+
+        It "Should return 120 for Sync" {
+            Get-WsusOperationTimeout -OperationType 'Sync' | Should -Be 120
+        }
+
+        It "Should return 60 for Install" {
+            Get-WsusOperationTimeout -OperationType 'Install' | Should -Be 60
+        }
+
+        It "Should return 90 for Export" {
+            Get-WsusOperationTimeout -OperationType 'Export' | Should -Be 90
+        }
+
+        It "Should return 90 for Import" {
+            Get-WsusOperationTimeout -OperationType 'Import' | Should -Be 90
+        }
+
+        It "Should return 30 for Diagnostics" {
+            Get-WsusOperationTimeout -OperationType 'Diagnostics' | Should -Be 30
+        }
+
+        It "Should return 30 for Default" {
+            Get-WsusOperationTimeout -OperationType 'Default' | Should -Be 30
+        }
+
+        It "Should default to 30 when no OperationType specified" {
+            Get-WsusOperationTimeout | Should -Be 30
+        }
+
+        It "Should reject invalid OperationType" {
+            { Get-WsusOperationTimeout -OperationType 'Invalid' } | Should -Throw
+        }
+    }
+}
