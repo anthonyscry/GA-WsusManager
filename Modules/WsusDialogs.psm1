@@ -193,26 +193,31 @@ function New-WsusFolderBrowser {
 
     $browseBtn.Add_Click({
         $fbd = [System.Windows.Forms.FolderBrowserDialog]::new()
-        $fbd.Description = 'Select a folder'
-        if (-not [string]::IsNullOrWhiteSpace($capturedTextBox.Text)) {
-            $fbd.SelectedPath = $capturedTextBox.Text
+        try {
+            $fbd.Description = 'Select a folder'
+            if (-not [string]::IsNullOrWhiteSpace($capturedTextBox.Text)) {
+                $fbd.SelectedPath = $capturedTextBox.Text
+            }
+            $handle = if ($null -ne $capturedOwner) {
+                [System.Windows.Interop.WindowInteropHelper]::new($capturedOwner).Handle
+            }
+            else {
+                [System.IntPtr]::Zero
+            }
+            $hwndWrapper = [System.Windows.Forms.NativeWindow]::new()
+            if ($handle -ne [System.IntPtr]::Zero) {
+                $hwndWrapper.AssignHandle($handle)
+            }
+            $result = $fbd.ShowDialog($hwndWrapper)
+            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                $capturedTextBox.Text = $fbd.SelectedPath
+            }
+            if ($handle -ne [System.IntPtr]::Zero) {
+                $hwndWrapper.ReleaseHandle()
+            }
         }
-        $handle = if ($null -ne $capturedOwner) {
-            [System.Windows.Interop.WindowInteropHelper]::new($capturedOwner).Handle
-        }
-        else {
-            [System.IntPtr]::Zero
-        }
-        $hwndWrapper = [System.Windows.Forms.NativeWindow]::new()
-        if ($handle -ne [System.IntPtr]::Zero) {
-            $hwndWrapper.AssignHandle($handle)
-        }
-        $result = $fbd.ShowDialog($hwndWrapper)
-        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-            $capturedTextBox.Text = $fbd.SelectedPath
-        }
-        if ($handle -ne [System.IntPtr]::Zero) {
-            $hwndWrapper.ReleaseHandle()
+        finally {
+            $fbd.Dispose()
         }
     }.GetNewClosure())
 

@@ -4012,7 +4012,10 @@ $script:window.Add_Closing({
     $timer.Stop()
     # Dispose tray icon before closing so it doesn't linger in taskbar
     if ($null -ne $script:TrayIcon) {
-        try { $script:TrayIcon.Visible = $false; $script:TrayIcon.Dispose() } catch {}
+        try {
+            if ($null -ne $script:TrayIcon.ContextMenuStrip) { $script:TrayIcon.ContextMenuStrip.Dispose() }
+            $script:TrayIcon.Visible = $false; $script:TrayIcon.Dispose()
+        } catch {}
         $script:TrayIcon = $null
     }
     # Clean up any running operation (suppress log since we're closing)

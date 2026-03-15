@@ -521,8 +521,9 @@ function Start-WsusOperation {
 
         $wdTimer = New-Object System.Windows.Threading.DispatcherTimer
         $wdTimer.Interval = [TimeSpan]::FromMilliseconds($wdMs)
+        $wdData['Timer'] = $wdTimer
         $wdTimer.Add_Tick({
-            $wdTimer.Stop()
+            $wdData.Timer.Stop()
             $p = $wdData.Proc
             if ($null -ne $p -and -not $p.HasExited) {
                 try { $p.Kill() } catch { }
