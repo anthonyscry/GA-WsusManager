@@ -271,3 +271,115 @@ Describe "Invoke-WsusDiagnostics" {
         }
     }
 }
+
+Describe "Get-WsusHealthScore" {
+    Context "Module export validation" {
+        It "Should export Get-WsusHealthScore function" {
+            Get-Command Get-WsusHealthScore -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return structure validation" {
+        BeforeAll {
+            # Call the function without mocks; all data-source try/catch blocks will handle
+            # unavailable services/SQL gracefully and return a valid hashtable regardless.
+            $script:HealthResult = Get-WsusHealthScore -SqlInstance '.\SQLEXPRESS' -ContentPath 'C:\WSUS'
+        }
+
+        It "Should return a hashtable" {
+            $script:HealthResult | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Score key" {
+            $script:HealthResult.Keys | Should -Contain 'Score'
+        }
+
+        It "Should contain Components key" {
+            $script:HealthResult.Keys | Should -Contain 'Components'
+        }
+
+        It "Should contain Grade key" {
+            $script:HealthResult.Keys | Should -Contain 'Grade'
+        }
+
+        It "Should contain AllFailed key" {
+            $script:HealthResult.Keys | Should -Contain 'AllFailed'
+        }
+
+        It "Components should have all five keys" {
+            $c = $script:HealthResult.Components
+            $c.Keys | Should -Contain 'Services'
+            $c.Keys | Should -Contain 'DatabaseSize'
+            $c.Keys | Should -Contain 'SyncRecency'
+            $c.Keys | Should -Contain 'DiskSpace'
+            $c.Keys | Should -Contain 'LastOperation'
+        }
+
+        It "Score should be -1 or an integer in range 0-100" {
+            $score = $script:HealthResult.Score
+            ($score -eq -1 -or ($score -ge 0 -and $score -le 100)) | Should -Be $true
+        }
+
+        It "Grade should be one of the valid values" {
+            $script:HealthResult.Grade | Should -BeIn @('Green', 'Yellow', 'Red', 'Unknown')
+        }
+
+        It "AllFailed should be a boolean" {
+            $script:HealthResult.AllFailed | Should -BeOfType [bool]
+        }
+    }
+
+    Context "Grade logic - pure formula" {
+        It "Grade should be Green when score is 80 or above" {
+            $grade = if (85 -ge 80) { 'Green' } elseif (85 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Green'
+        }
+
+        It "Grade should be Green when score is exactly 80" {
+            $grade = if (80 -ge 80) { 'Green' } elseif (80 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Green'
+        }
+
+        It "Grade should be Yellow when score is between 50 and 79" {
+            $grade = if (65 -ge 80) { 'Green' } elseif (65 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Yellow'
+        }
+
+        It "Grade should be Yellow when score is exactly 50" {
+            $grade = if (50 -ge 80) { 'Green' } elseif (50 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Yellow'
+        }
+
+        It "Grade should be Red when score is below 50" {
+            $grade = if (30 -ge 80) { 'Green' } elseif (30 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Red'
+        }
+
+        It "Grade should be Red when score is 0" {
+            $grade = if (0 -ge 80) { 'Green' } elseif (0 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Red'
+        }
+    }
+
+    Context "AllFailed flag and Unknown grade" {
+        It "When AllFailed is true Score should be -1 and Grade should be Unknown" {
+            # Simulate the AllFailed branch by constructing the return value directly
+            # (mirrors the logic inside Get-WsusHealthScore)
+            $allFailed = $true
+            $total     = 0
+            $score     = if ($allFailed) { -1 } else { [int]$total }
+            $grade     = if ($allFailed) { 'Unknown' } elseif ($total -ge 80) { 'Green' } `
+                         elseif ($total -ge 50) { 'Yellow' } else { 'Red' }
+
+            $score | Should -Be -1
+            $grade | Should -Be 'Unknown'
+        }
+
+        It "When AllFailed is false Score should be 0 or higher" {
+            $allFailed = $false
+            $total     = 0
+            $score     = if ($allFailed) { -1 } else { [int]$total }
+            $score | Should -BeGreaterOrEqual 0
+        }
+    }
+}

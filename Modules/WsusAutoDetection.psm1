@@ -648,6 +648,188 @@ function Show-WsusHealthSummary {
     return $health
 }
 
+#region Dashboard Data Functions
+
+# Module-level cache state
+$script:DashboardCache = $null
+$script:DashboardCacheTime = [DateTime]::MinValue
+$script:DashboardCacheTTLSeconds = 30
+$script:DashboardFailureCount = 0
+$script:DashboardMaxFailures = 10  # 5 minutes at 30s intervals
+
+function Get-WsusDashboardServiceStatus {
+<#
+.SYNOPSIS Gets WSUS-related service running status.
+.OUTPUTS Hashtable: @{ Running=[int]; Names=[string[]] }
+#>
+    $result = @{Running=0; Names=@()}
+    foreach ($svc in @("MSSQL`$SQLEXPRESS","WSUSService","W3SVC")) {
+        try {
+            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+            if ($s -and $s.Status -eq "Running") {
+                $result.Running++
+                $result.Names += switch($svc){"MSSQL`$SQLEXPRESS"{"SQL"}"WSUSService"{"WSUS"}"W3SVC"{"IIS"}}
+            }
+        } catch { }
+    }
+    return $result
+}
+
+function Get-WsusDashboardDiskFreeGB {
+<#
+.SYNOPSIS Gets free disk space on C: in GB.
+.OUTPUTS [double] Free GB, or 0 on error.
+#>
+    try {
+        $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue
+        if ($d.Free) { return [math]::Round($d.Free/1GB,1) }
+    } catch { }
+    return 0
+}
+
+function Get-WsusDashboardDatabaseSizeGB {
+    param([string]$SqlInstance = ".\SQLEXPRESS")
+<#
+.SYNOPSIS Gets SUSDB database size in GB.
+.OUTPUTS [double] Size in GB, or -1 if SQL offline or error.
+#>
+    try {
+        $sql = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
+        if ($sql -and $sql.Status -eq "Running") {
+            # Import WsusDatabase module for Invoke-WsusSqlcmd wrapper
+            $dbModule = Join-Path $PSScriptRoot "WsusDatabase.psm1"
+            if (Test-Path $dbModule) {
+                Import-Module $dbModule -Force -DisableNameChecking -ErrorAction SilentlyContinue
+            }
+            $q = "SELECT SUM(size * 8 / 1024.0) AS SizeMB FROM sys.master_files WHERE database_id = DB_ID('SUSDB')"
+            $r = $null
+            if (Get-Command Invoke-WsusSqlcmd -ErrorAction SilentlyContinue) {
+                $r = Invoke-WsusSqlcmd -Query $q -SqlInstance $SqlInstance -ErrorAction SilentlyContinue
+            } else {
+                $r = Invoke-Sqlcmd -ServerInstance $SqlInstance -Query $q -ErrorAction SilentlyContinue
+            }
+            if ($r -and $r.SizeMB) { return [math]::Round($r.SizeMB / 1024, 2) }
+        }
+    } catch { }
+    return -1
+}
+
+function Get-WsusDashboardTaskStatus {
+<#
+.SYNOPSIS Gets the Windows Scheduled Task state for WSUS Maintenance.
+.OUTPUTS [string] Task state (e.g., "Ready", "Running", "Not Set")
+#>
+    try {
+        $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
+        if ($t) { return $t.State.ToString() }
+    } catch { }
+    return "Not Set"
+}
+
+function Test-WsusDashboardInternetConnection {
+<#
+.SYNOPSIS Non-blocking internet connectivity check using .NET Ping (500ms timeout).
+.OUTPUTS [bool]
+#>
+    $ping = $null
+    try {
+        $ping = New-Object System.Net.NetworkInformation.Ping
+        $reply = $ping.Send("8.8.8.8", 500)
+        return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+    } catch { return $false }
+    finally { if ($null -ne $ping) { $ping.Dispose() } }
+}
+
+function Get-WsusDashboardData {
+<#
+.SYNOPSIS
+    Collects all dashboard data in a single call. Designed to run in a background runspace.
+.DESCRIPTION
+    Returns a hashtable with all dashboard card data. Safe to call from a runspace.
+    Pass resolved module directory path as argument since $PSScriptRoot may not be available.
+.PARAMETER SqlInstance
+    SQL Server instance. Default ".\SQLEXPRESS".
+.PARAMETER ModulePath
+    Path to the Modules directory (pass explicitly when calling from runspace).
+.OUTPUTS
+    Hashtable: @{
+        Services = @{Running=int; Names=string[]}
+        DiskFreeGB = double
+        DatabaseSizeGB = double (or -1)
+        TaskStatus = string
+        IsOnline = bool
+        CollectedAt = DateTime
+        Error = string (or $null)
+    }
+#>
+    param(
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [string]$ModulePath = ""
+    )
+    $data = @{
+        Services = @{Running=0; Names=@()}
+        DiskFreeGB = 0
+        DatabaseSizeGB = -1
+        TaskStatus = "Not Set"
+        IsOnline = $false
+        CollectedAt = Get-Date
+        Error = $null
+    }
+    try {
+        # Import self if running in a runspace (PSScriptRoot not available)
+        if ($ModulePath -and (Test-Path $ModulePath)) {
+            $autoDetectModule = Join-Path $ModulePath "WsusAutoDetection.psm1"
+            if (Test-Path $autoDetectModule) {
+                Import-Module $autoDetectModule -Force -DisableNameChecking -ErrorAction SilentlyContinue
+            }
+        }
+        $data.Services = Get-WsusDashboardServiceStatus
+        $data.DiskFreeGB = Get-WsusDashboardDiskFreeGB
+        $data.DatabaseSizeGB = Get-WsusDashboardDatabaseSizeGB -SqlInstance $SqlInstance
+        $data.TaskStatus = Get-WsusDashboardTaskStatus
+        $data.IsOnline = Test-WsusDashboardInternetConnection
+    } catch {
+        $data.Error = $_.Exception.Message
+    }
+    return $data
+}
+
+function Get-WsusDashboardCachedData {
+<#
+.SYNOPSIS Returns cached dashboard data if fresh, otherwise $null.
+#>
+    param([string]$SqlInstance = ".\SQLEXPRESS")
+    $age = ([DateTime]::Now - $script:DashboardCacheTime).TotalSeconds
+    if ($null -ne $script:DashboardCache -and $age -lt $script:DashboardCacheTTLSeconds) {
+        return $script:DashboardCache
+    }
+    return $null
+}
+
+function Set-WsusDashboardCache {
+<#
+.SYNOPSIS Updates the dashboard data cache with fresh data.
+#>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
+    param([hashtable]$Data)
+    if ($null -ne $Data -and $null -eq $Data.Error) {
+        $script:DashboardCache = $Data
+        $script:DashboardCacheTime = [DateTime]::Now
+        $script:DashboardFailureCount = 0
+    } else {
+        $script:DashboardFailureCount++
+    }
+}
+
+function Test-WsusDashboardDataUnavailable {
+<#
+.SYNOPSIS Returns $true if dashboard has failed too many consecutive times.
+#>
+    return $script:DashboardFailureCount -ge $script:DashboardMaxFailures
+}
+
+#endregion Dashboard Data Functions
+
 # ============================================================================
 # EXPORTS
 # ============================================================================
@@ -661,5 +843,14 @@ Export-ModuleMember -Function @(
     'Start-WsusAutoRecovery',
     'Start-WsusHealthMonitor',
     'Stop-WsusHealthMonitor',
-    'Show-WsusHealthSummary'
+    'Show-WsusHealthSummary',
+    'Get-WsusDashboardServiceStatus',
+    'Get-WsusDashboardDiskFreeGB',
+    'Get-WsusDashboardDatabaseSizeGB',
+    'Get-WsusDashboardTaskStatus',
+    'Test-WsusDashboardInternetConnection',
+    'Get-WsusDashboardData',
+    'Get-WsusDashboardCachedData',
+    'Set-WsusDashboardCache',
+    'Test-WsusDashboardDataUnavailable'
 )

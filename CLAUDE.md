@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell WPF automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides a modern GUI application for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 3.8.13 (PowerShell)
+**Current Version:** 4.0.0 (PowerShell)
 
 ## Repository Structure
 
@@ -24,19 +24,24 @@ GA-WsusManager/
 │   ├── Install-WsusWithSqlExpress.ps1
 │   ├── Invoke-WsusClientCheckIn.ps1
 │   └── Set-WsusHttps.ps1
-├── Modules/                     # Reusable PowerShell modules (11 modules)
+├── Modules/                     # Reusable PowerShell modules (16 modules)
 │   ├── WsusUtilities.psm1       # Logging, colors, helpers
 │   ├── WsusDatabase.psm1        # Database operations
-│   ├── WsusHealth.psm1          # Health checks and repair
+│   ├── WsusHealth.psm1          # Health checks, repair, + health score (0-100)
 │   ├── WsusServices.psm1        # Service management
 │   ├── WsusFirewall.psm1        # Firewall rules
 │   ├── WsusPermissions.psm1     # Directory permissions
-│   ├── WsusConfig.psm1          # Configuration
+│   ├── WsusConfig.psm1          # Configuration, timeouts, health weights
 │   ├── WsusExport.psm1          # Export/import
 │   ├── WsusScheduledTask.psm1   # Scheduled tasks
-│   ├── WsusAutoDetection.psm1   # Server detection and auto-recovery
-│   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
-├── Tests/                       # Pester unit tests
+│   ├── WsusAutoDetection.psm1   # Server detection, auto-recovery, dashboard data
+│   ├── AsyncHelpers.psm1        # Async/background operation helpers for WPF
+│   ├── WsusDialogs.psm1         # [v4.0] Dialog factory — New-WsusDialog, New-WsusFolderBrowser
+│   ├── WsusOperationRunner.psm1 # [v4.0] Unified operation lifecycle — Start/Stop/Complete-WsusOperation
+│   ├── WsusHistory.psm1         # [v4.0] Operation history — Write/Get/Clear-WsusOperationHistory
+│   ├── WsusNotification.psm1    # [v4.0] Toast/balloon notifications — Show-WsusNotification
+│   └── WsusTrending.psm1        # [v4.0] DB size trending — Add/Get/Clear trend snapshots
+├── Tests/                       # Pester unit tests (one file per module)
 └── DomainController/            # GPO deployment scripts
 ```
 
@@ -101,19 +106,76 @@ README.md
 - Scripts import modules at runtime using relative paths
 - Modules export functions explicitly via `Export-ModuleMember`
 - `WsusHealth.psm1` automatically imports dependent modules (Services, Firewall, Permissions)
-- `WsusAutoDetection.psm1` provides auto-recovery with re-queried service status (not Refresh())
+- `WsusAutoDetection.psm1` provides auto-recovery, dashboard data functions, and 30s TTL cache
+- **v4.0 additions:** `WsusDialogs.psm1`, `WsusOperationRunner.psm1`, `WsusHistory.psm1`, `WsusNotification.psm1`, `WsusTrending.psm1`
+
+### v4.0 Module Architecture
+
+**WsusDialogs.psm1** — Dialog Factory
+- `New-WsusDialog` → `{Window, ContentPanel}`: window shell with ESC-close, owner, dark theme
+- `New-WsusFolderBrowser` → `{Panel, TextBox, Label}`: DockPanel with Browse button
+- `New-WsusDialogLabel`, `New-WsusDialogButton`, `New-WsusDialogTextBox`: styled UI helpers
+- Eliminates the 6 copy-pasted dialog boilerplate patterns (anti-patterns #1, #3 resolved)
+
+**WsusOperationRunner.psm1** — Unified Operation Lifecycle
+- `Start-WsusOperation -Command -Title -Context -Mode [Embedded|Terminal] -TimeoutMinutes`
+- `Stop-WsusOperation`, `Complete-WsusOperation`, `Find-WsusScript`
+- Context hashtable carries GUI state (Window, Controls, buttons, inputs)
+- Uses `[System.Text.StringBuilder]` for log accumulation (not string concat)
+- Timeout watchdog kills hung processes (configurable per-type in WsusConfig)
+- Eliminates ~200 lines of duplicated operation logic (anti-patterns #4, #7, #8, #11, #12 resolved)
+
+**WsusHistory.psm1** — Operation History
+- `Write-WsusOperationHistory -OperationType -Duration -Result -Summary`
+- `Get-WsusOperationHistory -Count -OperationType -ResultFilter`
+- JSON storage: `%APPDATA%\WsusManager\history.json`, trimmed to 100 entries
+- File-lock retry, corrupt JSON recovery
+
+**WsusNotification.psm1** — Completion Notifications
+- `Show-WsusNotification -Title -Message -Result -EnableBeep`
+- 3-tier fallback: Windows 10 toast → balloon tip → log-only
+- Called by operation exit handlers; configurable in Settings
+
+**WsusTrending.psm1** — DB Size Trending
+- `Add-WsusTrendSnapshot`, `Get-WsusTrendSummary`, `Clear-WsusTrendData`
+- Linear regression over last 30 days → days-until-full estimate
+- Alert when <90 days to 10GB SQL Express limit
+
+**WsusAutoDetection.psm1 additions (v4.0)**
+- `Get-WsusDashboardServiceStatus`, `Get-WsusDashboardDiskFreeGB`, `Get-WsusDashboardDatabaseSizeGB`
+- `Get-WsusDashboardTaskStatus`, `Test-WsusDashboardInternetConnection`
+- `Get-WsusDashboardData` — aggregate function, runspace-safe
+- `Get-WsusDashboardCachedData`, `Set-WsusDashboardCache`, `Test-WsusDashboardDataUnavailable`
+- 30s TTL cache, "Data unavailable" after 10 consecutive failures
+
+**WsusHealth.psm1 additions (v4.0)**
+- `Get-WsusHealthScore` → `{Score, Components, Grade, AllFailed}`
+- Weighted: Services 30, DB 20, Sync 20, Disk 20, LastOp 10
+- Grade: "Green" ≥80, "Yellow" 50-79, "Red" <50, "Unknown" if all fail
+
+**WsusConfig.psm1 additions (v4.0)**
+- `Get-WsusHealthWeights` — canonical health score weights
+- `Get-WsusOperationTimeout -OperationType` — per-operation timeout (minutes)
 
 ### GUI Application
 - Built with WPF (`PresentationFramework`) and XAML
-- Dark theme matching GA-AppLocker style
-- Auto-refresh dashboard (30-second interval) with refresh guard
+- Dark theme matching GA-AppLocker style; Light theme toggle in Settings (reserved)
+- Auto-refresh dashboard (30-second interval) with refresh guard and operation skip
+- Startup splash screen with progress bar (4 stages)
+- History view (📜 History nav button) showing last 50 operations
+- Keyboard shortcuts: Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh
+- Right-click context menu on log panel: Copy All / Save to File
+- Notifications on operation completion (toast/balloon, configurable in Settings)
+- Health Score card on dashboard (0-100, color-coded)
+- DB size trend indicator with days-until-full estimate
+- Last successful sync timestamp on dashboard
+- Air-Gap "Create USB Package" workflow with transfer manifest
 - Server Mode toggle (Online vs Air-Gap) with context-aware menu
 - Custom icon: `wsus-icon.ico` (if present)
 - Requires admin privileges
 - Settings stored in `%APPDATA%\WsusManager\settings.json`
 - DPI-aware rendering (Windows 8.1+ per-monitor, Vista+ system fallback)
 - Global error handling with user-friendly error dialogs
-- Startup time logging for performance monitoring
 
 ### Standard Paths
 - WSUS Content: `C:\WSUS\`
@@ -195,7 +257,31 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v3.8.11)
+## Recent Changes (v4.0.0)
+
+### Phase 1 — Foundations
+- **WsusDialogs.psm1** — Dialog factory eliminating 6 copy-paste dialog patterns
+- **WsusOperationRunner.psm1** — Unified operation lifecycle (start/stop/complete); timeout watchdog; Terminal + Embedded mode support
+- **Async Dashboard** — Dashboard data functions moved to `WsusAutoDetection.psm1`; 30s TTL cache; `Get-WsusDashboardData` is runspace-safe; `Test-WsusDashboardDataUnavailable` after 10 failures
+- **CLAUDE.md update** — Documented v4.0 architecture, new modules, and additional GUI patterns
+
+### Phase 2 — Features
+- **WsusHistory.psm1** — `Write/Get/Clear-WsusOperationHistory`; JSON at `%APPDATA%\WsusManager\history.json`; 100-entry trim; file-lock retry
+- **WsusNotification.psm1** — `Show-WsusNotification`; toast → balloon → log fallback; configurable in Settings
+- **DB Size Trending** — `WsusTrending.psm1` with linear regression; days-until-full estimate; Critical/Warning alerts near 10GB limit
+- **Health Score** — `Get-WsusHealthScore` in `WsusHealth.psm1`; 0-100 weighted composite (Services=30, DB=20, Sync=20, Disk=20, LastOp=10); Grade Green/Yellow/Red/Unknown
+- **Operation Timeouts** — `Get-WsusOperationTimeout` in `WsusConfig.psm1`; per-type values (Cleanup=60min, Sync=120min, Default=30min)
+- **Air-Gap USB Package** — "Create USB Package" button in GUI; generates transfer manifest with checksums
+- **History View** — 📜 History nav button; lists last 50 operations from history.json
+
+### Phase 3 — Polish
+- **Startup Splash Screen** — `Show-SplashScreen` / `Update-SplashProgress`; 4-stage progress; non-modal, non-fatal
+- **Keyboard Shortcuts** — Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh Dashboard
+- **Log Context Menu** — Right-click on log panel: Copy All / Save to File
+- **Last Sync Display** — Last successful sync timestamp on dashboard card
+- **Theme Toggle** — Dark/Light theme toggle in Settings (reserved)
+
+### Previous (v3.8.11)
 
 - **TrustServerCertificate Compatibility Fix:**
   - Fixed "A parameter cannot be found that matches parameter name 'TrustServerCertificate'" error
@@ -776,6 +862,46 @@ function Invoke-ExportToMedia {
 # Pass all export parameters to avoid interactive prompts
 "& '$mgmt' -Export -DestinationPath '$dest' -SourcePath '$src' -CopyMode '$mode' -DaysOld $days"
 ```
+
+### 15. Using v4.0 Dialog Factory (WsusDialogs.psm1)
+
+**Problem:** Repeating ~40 lines of dark-theme WPF dialog boilerplate for every new dialog.
+
+**Solution:** Use `New-WsusDialog` + helper functions from `WsusDialogs.psm1`:
+```powershell
+# OLD pattern (~40 lines):
+$dlg = New-Object System.Windows.Window
+$dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+$dlg.Title = "My Dialog"
+$dlg.Width = 480; $dlg.Height = 360
+# ... etc.
+$dlg.Add_KeyDown({ if ($_.Key -eq 'Escape') { $this.Close() } })
+
+# NEW pattern (4 lines):
+$d = New-WsusDialog -Title "My Dialog" -Width 480 -Height 360 -Owner $window
+$d.ContentPanel.Children.Add((New-WsusDialogLabel "Choose folder:"))
+$d.ContentPanel.Children.Add((New-WsusFolderBrowser -Label "Path").Panel)
+$d.Window.ShowDialog()
+```
+
+### 16. Using v4.0 Operation Runner (WsusOperationRunner.psm1)
+
+**Problem:** Operation execution logic (~200 lines of duplicated code) spread across Terminal/Embedded branches.
+
+**Solution:** Call `Start-WsusOperation` which handles the full lifecycle:
+```powershell
+$ctx = @{
+    Window          = $window
+    Controls        = $controls
+    OperationButtons = $script:OperationButtons
+    OperationInputs  = $script:OperationInputs
+}
+
+Start-WsusOperation -Command "& '$mgmt' -Health" -Title "Diagnostics" -Context $ctx
+# Handles: disable buttons, start process, pipe output to log, timeout watchdog, re-enable, notification
+```
+
+Always use `Find-WsusScript` to locate CLI scripts instead of hardcoding paths.
 
 ## Testing Checklist for GUI Changes
 

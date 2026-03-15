@@ -898,11 +898,142 @@ function Invoke-WsusDiagnostics {
     }
 }
 
+#region Health Score
+
+function Get-WsusHealthScore {
+<#
+.SYNOPSIS
+    Calculates a 0-100 composite health score for the WSUS server.
+.DESCRIPTION
+    Weighted composite: Services up (30pts), DB size healthy (20pts),
+    Sync recent (20pts), Disk OK (20pts), Last operation passed (10pts).
+    Returns -1 if all data sources failed (display as N/A).
+    Returns partial score with available data if only some sources fail.
+.PARAMETER SqlInstance
+    SQL Server instance. Defaults to ".\SQLEXPRESS".
+.PARAMETER ContentPath
+    WSUS content path for disk check. Defaults to "C:\WSUS".
+.PARAMETER HistoryPath
+    Path to operation history JSON file. Defaults to %APPDATA%\WsusManager\history.json.
+.OUTPUTS
+    Hashtable with: Score (int, -1 to 100), Components (hashtable of each component score),
+    Grade (string: "Green"/"Yellow"/"Red"/"Unknown"), AllFailed (bool)
+#>
+    param(
+        [string]$SqlInstance  = '.\SQLEXPRESS',
+        [string]$ContentPath  = 'C:\WSUS',
+        [string]$HistoryPath  = "$env:APPDATA\WsusManager\history.json"
+    )
+
+    $failedSources = 0
+    $totalSources  = 5
+
+    # ---- Services (30 pts) ----
+    $servicesScore = 0
+    try {
+        $serviceNames = @('MSSQL$SQLEXPRESS', 'WSUSService', 'W3SVC')
+        $running = 0
+        foreach ($svc in $serviceNames) {
+            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+            if ($s -and $s.Status -eq 'Running') { $running++ }
+        }
+        $servicesScore = switch ($running) {
+            3 { 30 }
+            2 { 20 }
+            1 { 10 }
+            default { 0 }
+        }
+    } catch {
+        $failedSources++
+    }
+
+    # ---- Database Size (20 pts) ----
+    $dbScore = 0
+    try {
+        $query = "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
+        $sqlResult = $null
+        if (Get-Command 'Invoke-WsusSqlcmd' -ErrorAction SilentlyContinue) {
+            $sqlResult = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+        } else {
+            $sqlResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+        }
+        $sizeGB = [double]$sqlResult.SizeGB
+        $dbScore = if ($sizeGB -lt 7) { 20 } elseif ($sizeGB -lt 9) { 10 } else { 0 }
+    } catch {
+        $failedSources++
+    }
+
+    # ---- Sync Recency (20 pts) ----
+    $syncScore = 0
+    try {
+        $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer('localhost', $false, 8530)
+        $lastSync = $wsus.GetSubscription().LastSynchronizationTime
+        $daysSinceSync = ([datetime]::UtcNow - $lastSync.ToUniversalTime()).TotalDays
+        $syncScore = if ($daysSinceSync -le 7) { 20 } elseif ($daysSinceSync -le 30) { 10 } else { 0 }
+    } catch {
+        $failedSources++
+    }
+
+    # ---- Disk Space (20 pts) ----
+    $diskScore = 0
+    try {
+        $drive = Split-Path -Qualifier $ContentPath
+        $disk = Get-PSDrive -Name ($drive.TrimEnd(':')) -ErrorAction Stop
+        $freeGB = [math]::Round($disk.Free / 1GB, 2)
+        $diskScore = if ($freeGB -gt 50) { 20 } elseif ($freeGB -ge 10) { 10 } else { 0 }
+    } catch {
+        $failedSources++
+    }
+
+    # ---- Last Operation (10 pts) ----
+    $opScore = 5   # neutral default — no history
+    try {
+        if (Test-Path $HistoryPath) {
+            $history = Get-Content $HistoryPath -Raw | ConvertFrom-Json
+            if ($history -and $history.Count -gt 0) {
+                $last = $history | Sort-Object -Property Timestamp -Descending | Select-Object -First 1
+                $opScore = if ($last.Result -eq 'Pass') { 10 } else { 0 }
+            }
+        }
+    } catch {
+        $failedSources++
+    }
+
+    $allFailed = ($failedSources -ge $totalSources)
+    $total     = $servicesScore + $dbScore + $syncScore + $diskScore + $opScore
+
+    $grade = if ($allFailed) {
+        'Unknown'
+    } elseif ($total -ge 80) {
+        'Green'
+    } elseif ($total -ge 50) {
+        'Yellow'
+    } else {
+        'Red'
+    }
+
+    return @{
+        Score      = if ($allFailed) { -1 } else { [int]$total }
+        Components = @{
+            Services      = $servicesScore
+            DatabaseSize  = $dbScore
+            SyncRecency   = $syncScore
+            DiskSpace     = $diskScore
+            LastOperation = $opScore
+        }
+        Grade     = $grade
+        AllFailed = $allFailed
+    }
+}
+
+#endregion Health Score
+
 # Export functions
 Export-ModuleMember -Function @(
     'Get-WsusSSLStatus',
     'Test-WsusDatabaseConnection',
     'Test-WsusHealth',
     'Repair-WsusHealth',
-    'Invoke-WsusDiagnostics'
+    'Invoke-WsusDiagnostics',
+    'Get-WsusHealthScore'
 )
