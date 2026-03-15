@@ -47,7 +47,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "3.8.13"
+$script:AppVersion = "3.9.0"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
