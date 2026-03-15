@@ -53,6 +53,7 @@ package.ps1
 
 # Build artifacts
 /*.exe
+SQLDB/*.exe
 /WsusManager-v*.zip
 /GA-WsusManager-v*.zip
 /dist/
