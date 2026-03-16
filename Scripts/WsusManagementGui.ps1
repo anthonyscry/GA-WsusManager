@@ -71,6 +71,7 @@ $script:ExportRoot = "C:\"
 $script:InstallPath = "C:\WSUS\SQLDB"
 $script:SaUser = "sa"
 $script:ServerMode = "Online"
+$script:ServerModeOverride = $null   # set to "Online" or "Air-Gap" to lock mode manually
 $script:RefreshInProgress = $false
 $script:CurrentProcess = $null
 $script:OperationRunning = $false
@@ -132,10 +133,12 @@ foreach ($loc in $moduleLocations) {
     if (Test-Path $loc) { $script:ModulesDir = $loc; break }
 }
 if ($script:ModulesDir) {
+    # Bypass execution policy for this process so UNC-path modules load without signing requirement
+    try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch {}
     foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusHealth","WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
         $modPath = Join-Path $script:ModulesDir "$mod.psm1"
         if (Test-Path $modPath) {
-            try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction SilentlyContinue }
+            try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction Stop }
             catch { Write-Log "Failed to load module ${mod}: $_" }
         }
     }
@@ -358,7 +361,8 @@ $script:StdinFlushTimer = $null
 
             <!-- Header -->
             <DockPanel Margin="0,0,0,12">
-                <Border DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4">
+                <Border x:Name="InternetStatusBorder" DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4" Cursor="Hand">
+                    <Border.ToolTip>Click to toggle Online/Offline mode manually</Border.ToolTip>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
                         <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
@@ -889,12 +893,19 @@ function Test-InternetConnection {
 }
 
 function Update-ServerMode {
-    $isOnline = Test-InternetConnection
+    # Use manual override if set, otherwise auto-detect
+    if ($script:ServerModeOverride) {
+        $isOnline = ($script:ServerModeOverride -eq "Online")
+    } else {
+        $isOnline = Test-InternetConnection
+    }
     $script:ServerMode = if ($isOnline) { "Online" } else { "Air-Gap" }
 
     if ($controls.InternetStatusDot -and $controls.InternetStatusText) {
         $controls.InternetStatusDot.Fill = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
-        $controls.InternetStatusText.Text = if ($isOnline) { "Online" } else { "Offline" }
+        $label = if ($isOnline) { "Online" } else { "Offline" }
+        if ($script:ServerModeOverride) { $label += " (Manual)" }
+        $controls.InternetStatusText.Text = $label
         $controls.InternetStatusText.Foreground = if ($isOnline) { $window.FindResource("Green") } else { $window.FindResource("Red") }
     }
 
@@ -1069,59 +1080,69 @@ function Update-Dashboard {
 function Update-HistoryView {
     if (-not $controls.HistoryList) { return }
     $controls.HistoryList.Items.Clear()
-    if (-not (Get-Command Get-WsusOperationHistory -ErrorAction SilentlyContinue)) {
-        # Fallback: parse recent log files from C:\WSUS\Logs\
-        $logDir = "C:\WSUS\Logs"
-        if (Test-Path $logDir) {
-            $logFiles = Get-ChildItem -Path $logDir -Filter "*.log" -ErrorAction SilentlyContinue |
-                Sort-Object LastWriteTime -Descending | Select-Object -First 3
-            $lines = @()
-            foreach ($lf in $logFiles) {
-                $raw = Get-Content -Path $lf.FullName -ErrorAction SilentlyContinue
-                if ($raw) { $lines += $raw }
-            }
-            $lines = $lines | Select-Object -Last 100
-            if ($lines.Count -gt 0) {
-                foreach ($line in ($lines | Select-Object -Last 50)) {
-                    $item = New-Object System.Windows.Controls.ListBoxItem
-                    $item.Content = $line
-                    $item.Foreground = if ($line -match "ERROR|FAIL|[-]") {
-                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
-                    } elseif ($line -match "SUCCESS|PASS|[+]") {
-                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
-                    } else {
-                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-                    }
-                    $null = $controls.HistoryList.Items.Add($item)
+
+    # Try WsusHistory module first
+    if (Get-Command Get-WsusOperationHistory -ErrorAction SilentlyContinue) {
+        $entries = Get-WsusOperationHistory -Count 50
+        if ($entries -and $entries.Count -gt 0) {
+            foreach ($entry in $entries) {
+                $ts = try { ([DateTime]$entry.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
+                $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { " -" }
+                $icon = if ($entry.Result -eq "Pass") { "[+]" } else { "[-]" }
+                $line = "$ts  $icon  $($entry.OperationType.PadRight(15))  $($dur.PadLeft(8))"
+                if ($entry.Summary) { $line += "  $($entry.Summary)" }
+                $item = New-Object System.Windows.Controls.ListBoxItem
+                $item.Content = $line
+                $item.Foreground = if ($entry.Result -eq "Pass") {
+                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+                } else {
+                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
                 }
-                return
+                $null = $controls.HistoryList.Items.Add($item)
             }
+            return
         }
-        $item = New-Object System.Windows.Controls.ListBoxItem
-        $item.Content = "No log files found. Run an operation to populate history."
-        $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-        $null = $controls.HistoryList.Items.Add($item)
-        return
     }
-    $entries = Get-WsusOperationHistory -Count 50
-    if (-not $entries -or $entries.Count -eq 0) {
-        $item = New-Object System.Windows.Controls.ListBoxItem
-        $item.Content = "No operation history yet. Run an operation to start tracking."
-        $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-        $null = $controls.HistoryList.Items.Add($item)
-        return
+
+    # Fallback: parse recent log files from the app log directory
+    $logDir = $script:LogDir
+    if (-not $logDir) { $logDir = "C:\WSUS\Logs" }
+    $logFiles = @()
+    if (Test-Path $logDir) {
+        $logFiles = Get-ChildItem -Path $logDir -Filter "WsusOperations_*.log" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 5
     }
-    foreach ($entry in $entries) {
-        $ts = try { ([DateTime]$entry.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
-        $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { " -" }
-        $icon = if ($entry.Result -eq "Pass") { "[+]" } else { "[-]" }
-        $line = "$ts  $icon  $($entry.OperationType.PadRight(15))  $($dur.PadLeft(8))"
-        if ($entry.Summary) { $line += "  $($entry.Summary)" }
-        $item = New-Object System.Windows.Controls.ListBoxItem
-        $item.Content = $line
-        $item.Foreground = if ($entry.Result -eq "Pass") { [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950") } else { [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149") }
-        $null = $controls.HistoryList.Items.Add($item)
+    # Also try the currently active log file
+    if ($logFiles.Count -eq 0 -and $script:LogPath -and (Test-Path $script:LogPath)) {
+        $logFiles = @(Get-Item $script:LogPath -ErrorAction SilentlyContinue)
     }
+    if ($logFiles.Count -gt 0) {
+        $lines = @()
+        foreach ($lf in $logFiles) {
+            $raw = Get-Content -Path $lf.FullName -ErrorAction SilentlyContinue
+            if ($raw) { $lines += $raw }
+        }
+        $lines = ($lines | Where-Object { $_ -match '^\[' }) | Select-Object -Last 50
+        if ($lines.Count -gt 0) {
+            foreach ($line in $lines) {
+                $item = New-Object System.Windows.Controls.ListBoxItem
+                $item.Content = $line
+                $item.Foreground = if ($line -match "ERROR|FAIL|Failed") {
+                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                } elseif ($line -match "SUCCESS|PASS|\[\+\]|Starting v") {
+                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+                } else {
+                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+                }
+                $null = $controls.HistoryList.Items.Add($item)
+            }
+            return
+        }
+    }
+    $item = New-Object System.Windows.Controls.ListBoxItem
+    $item.Content = "No operation history yet. Run an operation to start tracking."
+    $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $null = $controls.HistoryList.Items.Add($item)
 }
 
 function Set-ActiveNavButton {
@@ -3583,6 +3604,25 @@ if ($controls.BtnClearHistory) {
             Clear-WsusOperationHistory | Out-Null
             Update-HistoryView
         }
+    })
+}
+
+# Online/Offline status indicator — click to toggle manual override
+if ($controls.InternetStatusBorder) {
+    $controls.InternetStatusBorder.Add_MouseLeftButtonUp({
+        if ($script:ServerModeOverride) {
+            # Already manually overridden — toggle to opposite mode
+            $script:ServerModeOverride = if ($script:ServerModeOverride -eq "Online") { "Air-Gap" } else { "Online" }
+        } else {
+            # Currently auto — force override to opposite of current auto mode
+            $script:ServerModeOverride = if ($script:ServerMode -eq "Online") { "Air-Gap" } else { "Online" }
+        }
+        $window.Dispatcher.Invoke([Action]{ Update-ServerMode })
+    })
+    $controls.InternetStatusBorder.Add_MouseRightButtonUp({
+        # Right-click clears manual override and returns to auto-detect
+        $script:ServerModeOverride = $null
+        $window.Dispatcher.Invoke([Action]{ Update-ServerMode })
     })
 }
 
