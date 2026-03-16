@@ -27,7 +27,7 @@ Date: 2026-01-20
 
 # WPF assemblies are only available on Windows. Guard the Add-Type so the module
 # can be imported on other platforms (e.g. for syntax/linting checks) without error.
-if ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop') {
+if ($PSVersionTable.PSEdition -eq 'Desktop' -or $env:OS -eq 'Windows_NT') {
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms -ErrorAction SilentlyContinue
 }
 

@@ -126,7 +126,7 @@ Describe "Stop-WsusOperation" {
     }
 
     Context "Already-exited process" {
-        It "Does not throw for a process that has already exited" -Skip:(-not $IsWindows) {
+        It "Does not throw for a process that has already exited" -Skip:($PSVersionTable.PSEdition -ne 'Desktop' -and $env:OS -ne 'Windows_NT') {
             # Start a trivially short process and wait for it to exit
             $proc = Start-Process -FilePath 'powershell.exe' `
                                   -ArgumentList '-NoProfile -Command exit 0' `

@@ -21,14 +21,14 @@ BeforeDiscovery {
     $script:ModuleExists  = Test-Path $script:ModulePath
 
     # WPF is only available on Windows  - skip WPF construction tests on Linux/macOS
-    $script:WpfAvailable  = ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop') -and $script:ModuleExists
+    $script:WpfAvailable  = ($PSVersionTable.PSEdition -eq 'Desktop' -or $env:OS -eq 'Windows_NT') -and $script:ModuleExists
 }
 
 BeforeAll {
     # Redefine for the run phase (BeforeDiscovery vars don't persist to It blocks)
     $script:ModulePath   = Join-Path $PSScriptRoot '..\Modules\WsusDialogs.psm1'
     $script:ModuleExists = Test-Path $script:ModulePath
-    $script:WpfAvailable = ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop') -and $script:ModuleExists
+    $script:WpfAvailable = ($PSVersionTable.PSEdition -eq 'Desktop' -or $env:OS -eq 'Windows_NT') -and $script:ModuleExists
 
     # ---------------------------------------------------------------------------
     # Helper: run a scriptblock in a fresh STA runspace and return the result.
