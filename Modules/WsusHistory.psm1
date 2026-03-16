@@ -215,7 +215,7 @@ function Write-WsusOperationHistory {
 function Get-WsusOperationHistory {
     [CmdletBinding()]
     param(
-        [ValidateRange(1, [int]::MaxValue)]
+        [ValidateRange(1, 2147483647)]
         [int]$Count = 50,
 
         [string]$OperationType = "",
