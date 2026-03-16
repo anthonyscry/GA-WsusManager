@@ -334,12 +334,11 @@ $script:StdinFlushTimer = $null
 
                         <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCreateUsb" Content="💾 Create USB Package" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCleanup" Content="🧹 Cleanup" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCleanup" Content="🧹 Deep Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
                         <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
@@ -1037,7 +1036,16 @@ function Update-Dashboard {
         try {
             $wsus = Get-WsusServer -ErrorAction SilentlyContinue
             if ($wsus) {
-                $lastSync = $wsus.GetSubscription().LastSuccessfulSynchronizationTime
+                $sub = $wsus.GetSubscription()
+                $lastSync = $sub.LastSuccessfulSynchronizationTime
+                # Fallback: LastSuccessfulSynchronizationTime can return MinValue on air-gapped servers
+                # even after a successful sync — check GetLastSynchronizationInfo() instead
+                if (-not $lastSync -or $lastSync -eq [DateTime]::MinValue) {
+                    $syncInfo = $sub.GetLastSynchronizationInfo()
+                    if ($syncInfo -and $syncInfo.Result -eq [Microsoft.UpdateServices.Administration.SynchronizationResult]::Succeeded) {
+                        $lastSync = $syncInfo.StartTime
+                    }
+                }
                 if ($lastSync -and $lastSync -ne [DateTime]::MinValue) {
                     $daysAgo = [int]([DateTime]::Now - $lastSync).TotalDays
                     $lastSyncStr = if ($daysAgo -eq 0) { "today" } elseif ($daysAgo -eq 1) { "yesterday" } else { "$daysAgo days ago" }
@@ -1091,7 +1099,7 @@ function Update-HistoryView {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp","BtnHistory")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp","BtnHistory")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -1103,16 +1111,13 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
-$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnCreateUsb","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
+$script:WsusRequiredButtons = @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart")
 # Track WSUS installation status
 $script:WsusInstalled = $false
-# Destination path for USB Package workflow
-$script:UsbPackageDestination = ""
-$script:UsbPackageVerify = $true
 
 function Disable-OperationButtons {
     foreach ($b in $script:OperationButtons) {
@@ -2745,138 +2750,6 @@ function Show-SettingsDialog {
     $dlg.ShowDialog() | Out-Null
 }
 
-function Invoke-CreateUsbPackage {
-<#
-.SYNOPSIS
-    One-click workflow to create a verified USB transfer package for air-gap operations.
-.DESCRIPTION
-    Shows a dialog to select an export destination, runs a differential export via
-    Invoke-WsusManagement.ps1, then generates a SHA-256 transfer manifest JSON with
-    file list, checksums, timestamp, and total size.
-#>
-    if ($script:OperationRunning) {
-        [System.Windows.MessageBox]::Show("An operation is already running.", "Operation In Progress", "OK", "Warning")
-        return
-    }
-
-    # --- Dialog ---
-    $dlg = New-Object System.Windows.Window
-    $dlg.Title = "Create USB Transfer Package"
-    $dlg.Width = 480
-    $dlg.Height = 280
-    $dlg.WindowStartupLocation = "CenterOwner"
-    $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
-    $dlg.ResizeMode = "NoResize"
-    $dlg.Add_KeyDown({ param($s, $e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
-
-    $stack = New-Object System.Windows.Controls.StackPanel
-    $stack.Margin = "20"
-
-    $titleBlock = New-Object System.Windows.Controls.TextBlock
-    $titleBlock.Text = "Create USB Transfer Package"
-    $titleBlock.FontSize = 14
-    $titleBlock.FontWeight = "Bold"
-    $titleBlock.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $titleBlock.Margin = "0,0,0,8"
-    $stack.Children.Add($titleBlock)
-
-    $descBlock = New-Object System.Windows.Controls.TextBlock
-    $descBlock.Text = "Exports WSUS updates and generates a verified transfer manifest for air-gap import."
-    $descBlock.TextWrapping = "Wrap"
-    $descBlock.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $descBlock.Margin = "0,0,0,16"
-    $stack.Children.Add($descBlock)
-
-    $destLbl = New-Object System.Windows.Controls.TextBlock
-    $destLbl.Text = "Export Destination (USB drive or network path):"
-    $destLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $destLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($destLbl)
-
-    $destPanel = New-Object System.Windows.Controls.DockPanel
-    $destPanel.Margin = "0,0,0,16"
-
-    $destBtn = New-Object System.Windows.Controls.Button
-    $destBtn.Content = "Browse"
-    $destBtn.Padding = "10,4"
-    $destBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $destBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $destBtn.BorderThickness = 0
-    [System.Windows.Controls.DockPanel]::SetDock($destBtn, "Right")
-    $destPanel.Children.Add($destBtn)
-
-    $destTxt = New-Object System.Windows.Controls.TextBox
-    $destTxt.Margin = "0,0,8,0"
-    $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $destTxt.Padding = "6,4"
-    $destPanel.Children.Add($destTxt)
-
-    $destBtn.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        try { if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath } }
-        finally { $fbd.Dispose() }
-    }.GetNewClosure())
-    $stack.Children.Add($destPanel)
-
-    $chkVerify = New-Object System.Windows.Controls.CheckBox
-    $chkVerify.Content = "Generate SHA-256 checksums in transfer manifest"
-    $chkVerify.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $chkVerify.IsChecked = $true
-    $chkVerify.Margin = "0,0,0,16"
-    $stack.Children.Add($chkVerify)
-
-    $btnPanel = New-Object System.Windows.Controls.StackPanel
-    $btnPanel.Orientation = "Horizontal"
-    $btnPanel.HorizontalAlignment = "Right"
-
-    $confirmed = $false
-    $selectedVerify = $true
-    $selectedDest = ""
-
-    $createBtn = New-Object System.Windows.Controls.Button
-    $createBtn.Content = "Create Package"
-    $createBtn.Padding = "14,6"
-    $createBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $createBtn.Foreground = "White"
-    $createBtn.BorderThickness = 0
-    $createBtn.Margin = "0,0,8,0"
-    $createBtn.Add_Click({
-        if ([string]::IsNullOrWhiteSpace($destTxt.Text)) {
-            [System.Windows.MessageBox]::Show("Please select a destination folder.", "Export", "OK", "Warning")
-            return
-        }
-        $confirmed = $true
-        $selectedDest = $destTxt.Text
-        $selectedVerify = ($chkVerify.IsChecked -eq $true)
-        $dlg.Close()
-    }.GetNewClosure())
-    $btnPanel.Children.Add($createBtn)
-
-    $cancelBtn = New-Object System.Windows.Controls.Button
-    $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
-    $btnPanel.Children.Add($cancelBtn)
-
-    $stack.Children.Add($btnPanel)
-    $dlg.Content = $stack
-    $dlg.ShowDialog() | Out-Null
-
-    if (-not $confirmed -or [string]::IsNullOrWhiteSpace($selectedDest)) { return }
-    if (-not (Test-SafePath $selectedDest)) {
-        [System.Windows.MessageBox]::Show("Invalid destination path.", "Error", "OK", "Error")
-        return
-    }
-
-    $script:UsbPackageDestination = $selectedDest
-    $script:UsbPackageVerify = $selectedVerify
-    Invoke-LogOperation "usb-package" "Create USB Package"
-}
 #endregion
 
 #region Operations
@@ -3089,48 +2962,6 @@ function Invoke-LogOperation {
         "cleanup"     { "& '$mgmtSafe' -Cleanup -Force -SqlInstance '$sql'" }
         "diagnostics" { "`$null = & '$mgmtSafe' -Diagnostics -ContentPath '$cp' -SqlInstance '$sql'" }
         "reset"       { "& '$mgmtSafe' -Reset" }
-        "usb-package" {
-            $usbDest = $script:UsbPackageDestination
-            if ([string]::IsNullOrWhiteSpace($usbDest)) {
-                [System.Windows.MessageBox]::Show("No destination path set for USB Package.", "Error", "OK", "Error")
-                return
-            }
-            $destSafe = Get-EscapedPath $usbDest
-            $doVerify = if ($script:UsbPackageVerify) { '$true' } else { '$false' }
-            # Export then generate manifest in a single PowerShell block
-            @"
-& '$mgmtSafe' -Export -ContentPath '$cpSafe' -DestinationPath '$destSafe' -CopyMode 'Differential' -SqlInstance '$sql'
-if (`$LASTEXITCODE -eq 0 -or `$?) {
-    Write-Host '[*] Generating transfer manifest...'
-    `$destDir = '$destSafe'
-    `$doVerify = $doVerify
-    `$files = @(Get-ChildItem -Path `$destDir -Recurse -File -ErrorAction SilentlyContinue)
-    `$fileList = `$files | ForEach-Object {
-        `$hash = if (`$doVerify) { (Get-FileHash `$_.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash } else { `$null }
-        [ordered]@{
-            RelativePath = `$_.FullName.Substring(`$destDir.Length).TrimStart('\/')
-            SizeBytes    = `$_.Length
-            LastModified = `$_.LastWriteTime.ToString('o')
-            SHA256       = `$hash
-        }
-    }
-    `$totalBytes = (`$files | Measure-Object -Property Length -Sum).Sum
-    `$manifest = [ordered]@{
-        GeneratedAt   = (Get-Date -Format 'o')
-        SourceServer  = `$env:COMPUTERNAME
-        TotalFiles    = `$files.Count
-        TotalSizeGB   = [math]::Round(`$totalBytes / 1GB, 2)
-        ChecksumsIncluded = `$doVerify
-        Files         = `$fileList
-    }
-    `$manifestPath = Join-Path `$destDir 'transfer-manifest.json'
-    `$manifest | ConvertTo-Json -Depth 5 | Set-Content `$manifestPath -Encoding UTF8
-    Write-Host "[+] Manifest: `$(`$manifest.TotalFiles) files, `$(`$manifest.TotalSizeGB) GB"
-    Write-Host "[+] Saved to: `$manifestPath"
-    Write-Host '[+] USB Transfer Package is ready for air-gap import.'
-}
-"@
-        }
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
@@ -3684,7 +3515,6 @@ GPO files copied to: $destDir
     }
 })
 $controls.BtnTransfer.Add_Click({ Invoke-LogOperation "transfer" "Transfer" })
-$controls.BtnCreateUsb.Add_Click({ Invoke-CreateUsbPackage })
 $controls.BtnMaintenance.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" })
 $controls.BtnSchedule.Add_Click({ Invoke-LogOperation "schedule" "Schedule Task" })
 $controls.BtnCleanup.Add_Click({
