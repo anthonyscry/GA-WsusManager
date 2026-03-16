@@ -47,7 +47,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "3.9.1"
+$script:AppVersion = "4.0.1"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -132,7 +132,7 @@ foreach ($loc in $moduleLocations) {
     if (Test-Path $loc) { $script:ModulesDir = $loc; break }
 }
 if ($script:ModulesDir) {
-    foreach ($mod in @("WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
+    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusHealth","WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
         $modPath = Join-Path $script:ModulesDir "$mod.psm1"
         if (Test-Path $modPath) {
             try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction SilentlyContinue }
@@ -563,7 +563,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                         <StackPanel>
                             <TextBlock Text="Requirements" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 50GB+ disk space"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 150 GB+ disk space (recommended)"/>
                             <TextBlock Text="© 2026 GA-ASI. Internal use only." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,12,0,0"/>
                         </StackPanel>
                     </Border>
@@ -1070,8 +1070,35 @@ function Update-HistoryView {
     if (-not $controls.HistoryList) { return }
     $controls.HistoryList.Items.Clear()
     if (-not (Get-Command Get-WsusOperationHistory -ErrorAction SilentlyContinue)) {
+        # Fallback: parse recent log files from C:\WSUS\Logs\
+        $logDir = "C:\WSUS\Logs"
+        if (Test-Path $logDir) {
+            $logFiles = Get-ChildItem -Path $logDir -Filter "*.log" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 3
+            $lines = @()
+            foreach ($lf in $logFiles) {
+                $raw = Get-Content -Path $lf.FullName -ErrorAction SilentlyContinue
+                if ($raw) { $lines += $raw }
+            }
+            $lines = $lines | Select-Object -Last 100
+            if ($lines.Count -gt 0) {
+                foreach ($line in ($lines | Select-Object -Last 50)) {
+                    $item = New-Object System.Windows.Controls.ListBoxItem
+                    $item.Content = $line
+                    $item.Foreground = if ($line -match "ERROR|FAIL|[-]") {
+                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                    } elseif ($line -match "SUCCESS|PASS|[+]") {
+                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+                    } else {
+                        [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+                    }
+                    $null = $controls.HistoryList.Items.Add($item)
+                }
+                return
+            }
+        }
         $item = New-Object System.Windows.Controls.ListBoxItem
-        $item.Content = "History module not loaded."
+        $item.Content = "No log files found. Run an operation to populate history."
         $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
         $null = $controls.HistoryList.Items.Add($item)
         return
@@ -1299,7 +1326,7 @@ REQUIREMENTS
 • Windows Server 2019+
 • PowerShell 5.1+
 • SQL Server Express 2022
-• 50+ GB disk space
+• 150 GB+ disk space
 
 PATHS
 • Content: C:\WSUS\
@@ -1322,7 +1349,7 @@ DATABASE CARD
 • Green: <7GB | Orange: 7-9GB | Red: >9GB
 
 DISK CARD
-• Green: >50GB | Orange: 10-50GB | Red: <10GB
+• Green: >50GB | Orange: 10-50GB | Red: <10GB (recommend 150 GB+ total)
 
 TASK CARD
 • Green: Scheduled task ready
@@ -1369,7 +1396,7 @@ WORKFLOW
 3. On Air-Gap server: Import, then Restore DB
 
 EXPORT OPTIONS
-• Full: Complete DB + all files (50+ GB)
+• Full: Complete DB + all files (100 GB+)
 • Differential: Recent updates only (smaller)
 
 TIPS
