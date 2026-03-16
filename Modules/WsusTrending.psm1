@@ -31,14 +31,14 @@ function Read-TrendData {
         }
         return $list
     } catch {
-        # Corrupt JSON — back up and reset
-        Write-Verbose "WsusTrending: Corrupt trends file, backing up and resetting — $($_.Exception.Message)"
+        # Corrupt JSON  - back up and reset
+        Write-Verbose "WsusTrending: Corrupt trends file, backing up and resetting  - $($_.Exception.Message)"
         try {
             $backupPath = "$path.bak"
             Copy-Item -Path $path -Destination $backupPath -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-Verbose "WsusTrending: Could not back up corrupt file — $($_.Exception.Message)"
+            Write-Verbose "WsusTrending: Could not back up corrupt file  - $($_.Exception.Message)"
         }
         return [System.Collections.Generic.List[hashtable]]::new()
     }
@@ -58,7 +58,7 @@ function Save-TrendData {
         }
         $Data | ConvertTo-Json -Depth 3 | Set-Content -Path $path -Encoding UTF8 -ErrorAction Stop
     } catch {
-        Write-Verbose "WsusTrending: Failed to save trends data — $($_.Exception.Message)"
+        Write-Verbose "WsusTrending: Failed to save trends data  - $($_.Exception.Message)"
     }
 }
 
@@ -104,9 +104,9 @@ function Add-WsusTrendSnapshot {
         }
 
         Save-TrendData -Data $trimmed
-        Write-Verbose "WsusTrending: Snapshot recorded — $today = $DatabaseSizeGB GB ($($trimmed.Count) points stored)"
+        Write-Verbose "WsusTrending: Snapshot recorded  - $today = $DatabaseSizeGB GB ($($trimmed.Count) points stored)"
     } catch {
-        Write-Verbose "WsusTrending: Add-WsusTrendSnapshot failed — $($_.Exception.Message)"
+        Write-Verbose "WsusTrending: Add-WsusTrendSnapshot failed  - $($_.Exception.Message)"
     }
 }
 
@@ -159,7 +159,7 @@ function Get-WsusTrendSummary {
         $defaultResult.CurrentSizeGB = $sorted[-1].DatabaseSizeGB
 
         if ($sorted.Count -lt 3) {
-            $defaultResult.TrendText = "$([math]::Round($defaultResult.CurrentSizeGB, 1)) GB — collecting data"
+            $defaultResult.TrendText = "$([math]::Round($defaultResult.CurrentSizeGB, 1)) GB  - collecting data"
             return $defaultResult
         }
 
@@ -177,7 +177,7 @@ function Get-WsusTrendSummary {
 
         $daysDiff = ([datetime]$last.Date - [datetime]$first.Date).TotalDays
         if ($daysDiff -le 0) {
-            # All points on same day — no trend calculable
+            # All points on same day  - no trend calculable
             $growthPerMonth = 0.0
         } else {
             $rawGrowth      = $last.DatabaseSizeGB - $first.DatabaseSizeGB
@@ -224,7 +224,7 @@ function Get-WsusTrendSummary {
             Status         = "OK"
         }
     } catch {
-        Write-Verbose "WsusTrending: Get-WsusTrendSummary failed — $($_.Exception.Message)"
+        Write-Verbose "WsusTrending: Get-WsusTrendSummary failed  - $($_.Exception.Message)"
         return $defaultResult
     }
 }
@@ -253,10 +253,10 @@ function Clear-WsusTrendData {
     try {
         if ($PSCmdlet.ShouldProcess($path, "Delete trend data")) {
             Remove-Item -Path $path -Force -ErrorAction Stop
-            Write-Verbose "WsusTrending: Trend data cleared — $path"
+            Write-Verbose "WsusTrending: Trend data cleared  - $path"
         }
     } catch {
-        Write-Verbose "WsusTrending: Clear-WsusTrendData failed — $($_.Exception.Message)"
+        Write-Verbose "WsusTrending: Clear-WsusTrendData failed  - $($_.Exception.Message)"
     }
 }
 

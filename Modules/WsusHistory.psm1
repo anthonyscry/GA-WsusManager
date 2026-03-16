@@ -53,11 +53,11 @@ function Read-HistoryFile {
         return $valid
     }
     catch [System.IO.IOException] {
-        # File locked — bubble up to caller to retry
+        # File locked  - bubble up to caller to retry
         throw
     }
     catch {
-        # Corrupt JSON — backup and reset
+        # Corrupt JSON  - backup and reset
         $timestamp = Get-Date -Format "yyyyMMddHHmmss"
         $backupPath = "$path.corrupt.$timestamp"
         try {
@@ -87,7 +87,7 @@ function Write-HistoryFile {
     }
 
     $json = $Entries | ConvertTo-Json -Depth 5
-    # ConvertTo-Json returns a string for single-element arrays — ensure array brackets
+    # ConvertTo-Json returns a string for single-element arrays  - ensure array brackets
     if ($Entries.Count -eq 1 -and $json -notmatch '^\s*\[') {
         $json = "[$json]"
     }

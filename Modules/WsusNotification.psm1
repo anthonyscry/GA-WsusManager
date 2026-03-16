@@ -35,7 +35,7 @@ function New-WsusNotificationIcon {
         $notifyIcon.Visible = $true
         return $notifyIcon
     } catch {
-        Write-Verbose "WsusNotification: Failed to create NotifyIcon — $($_.Exception.Message)"
+        Write-Verbose "WsusNotification: Failed to create NotifyIcon  - $($_.Exception.Message)"
         return $null
     }
 }
@@ -62,7 +62,7 @@ function Remove-WsusNotificationIcon {
         $NotifyIcon.Visible = $false
         $NotifyIcon.Dispose()
     } catch {
-        Write-Verbose "WsusNotification: Failed to dispose NotifyIcon — $($_.Exception.Message)"
+        Write-Verbose "WsusNotification: Failed to dispose NotifyIcon  - $($_.Exception.Message)"
     }
 }
 
@@ -75,11 +75,11 @@ function Show-WsusNotification {
     Falls back to log-only if no notification API is available.
     Optionally plays a system beep based on operation result.
 .PARAMETER Title
-    Notification title (e.g., "WSUS Manager — Cleanup Complete").
+    Notification title (e.g., "WSUS Manager  - Cleanup Complete").
 .PARAMETER Message
-    Notification body (e.g., "Completed in 4m 23s — Pass").
+    Notification body (e.g., "Completed in 4m 23s  - Pass").
 .PARAMETER Result
-    "Pass" or "Fail" — determines icon and beep behavior.
+    "Pass" or "Fail"  - determines icon and beep behavior.
 .PARAMETER Duration
     Optional TimeSpan included in the message if provided.
 .PARAMETER EnableBeep
@@ -87,10 +87,10 @@ function Show-WsusNotification {
 .PARAMETER AppId
     AppId for the toast notification. Defaults to "WSUS Manager".
 .EXAMPLE
-    Show-WsusNotification -Title "WSUS Manager — Sync Complete" -Message "Sync finished successfully." -Result "Pass"
+    Show-WsusNotification -Title "WSUS Manager  - Sync Complete" -Message "Sync finished successfully." -Result "Pass"
 .EXAMPLE
     $elapsed = New-TimeSpan -Minutes 4 -Seconds 23
-    Show-WsusNotification -Title "WSUS Manager — Cleanup" -Message "Deep cleanup finished." -Result "Pass" -Duration $elapsed -EnableBeep
+    Show-WsusNotification -Title "WSUS Manager  - Cleanup" -Message "Deep cleanup finished." -Result "Pass" -Duration $elapsed -EnableBeep
 #>
     [CmdletBinding()]
     param(
@@ -117,11 +117,11 @@ function Show-WsusNotification {
         } else {
             "$($Duration.Seconds)s"
         }
-        $Message = "$Message — $durationText"
+        $Message = "$Message  - $durationText"
     }
 
     # Append result to message
-    $Message = "$Message — $Result"
+    $Message = "$Message  - $Result"
 
     # Play system beep before showing notification
     if ($EnableBeep) {
@@ -133,7 +133,7 @@ function Show-WsusNotification {
                 [System.Media.SystemSounds]::Exclamation.Play()
             }
         } catch {
-            Write-Verbose "WsusNotification: Beep failed — $($_.Exception.Message)"
+            Write-Verbose "WsusNotification: Beep failed  - $($_.Exception.Message)"
         }
     }
 
@@ -154,10 +154,10 @@ function Show-WsusNotification {
         $xml.LoadXml($toastXml)
         $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($AppId).Show($toast)
-        Write-Verbose "WsusNotification: Toast displayed — $Title"
+        Write-Verbose "WsusNotification: Toast displayed  - $Title"
         return
     } catch {
-        Write-Verbose "WsusNotification: Toast unavailable, trying balloon tip — $($_.Exception.Message)"
+        Write-Verbose "WsusNotification: Toast unavailable, trying balloon tip  - $($_.Exception.Message)"
     }
 
     # Attempt 2: System tray balloon tip
@@ -171,14 +171,14 @@ function Show-WsusNotification {
                 [System.Windows.Forms.ToolTipIcon]::Warning
             }
             $notifyIcon.ShowBalloonTip(5000, $Title, $Message, $balloonIcon)
-            Write-Verbose "WsusNotification: Balloon tip displayed — $Title"
+            Write-Verbose "WsusNotification: Balloon tip displayed  - $Title"
 
             # Keep icon alive long enough for the balloon to display, then clean up
             Start-Sleep -Seconds 6
             return
         }
     } catch {
-        Write-Verbose "WsusNotification: Balloon tip failed — $($_.Exception.Message)"
+        Write-Verbose "WsusNotification: Balloon tip failed  - $($_.Exception.Message)"
     } finally {
         if ($null -ne $notifyIcon) {
             Remove-WsusNotificationIcon -NotifyIcon $notifyIcon
@@ -186,8 +186,8 @@ function Show-WsusNotification {
     }
 
     # Attempt 3: Log-only fallback
-    Write-Verbose "WsusNotification: [$Result] $Title — $Message"
-    Write-Host "[$Result] $Title — $Message"
+    Write-Verbose "WsusNotification: [$Result] $Title  - $Message"
+    Write-Host "[$Result] $Title  - $Message"
 }
 
 Export-ModuleMember -Function Show-WsusNotification, New-WsusNotificationIcon, Remove-WsusNotificationIcon

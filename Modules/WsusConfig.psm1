@@ -581,7 +581,7 @@ function Get-WsusOperationTimeout {
         Centralised operation timeout table used by GUI and CLI scripts to
         enforce per-operation time limits.
     .PARAMETER OperationType
-        One of: Cleanup, Sync, Install, Export, Import, Diagnostics, Default.
+        One of: Cleanup, Sync, Install, Export, Import, Diagnostics, Health, Repair, Default.
     .OUTPUTS
         Integer timeout value in minutes.
     .EXAMPLE
@@ -589,7 +589,7 @@ function Get-WsusOperationTimeout {
         # Returns 120
     #>
     param(
-        [ValidateSet('Cleanup', 'Sync', 'Install', 'Export', 'Import', 'Diagnostics', 'Default')]
+        [ValidateSet('Cleanup', 'Sync', 'Install', 'Export', 'Import', 'Diagnostics', 'Health', 'Repair', 'Default')]
         [string]$OperationType = 'Default'
     )
     $timeouts = @{
@@ -599,6 +599,8 @@ function Get-WsusOperationTimeout {
         Export      = 90
         Import      = 90
         Diagnostics = 30
+        Health      = 30
+        Repair      = 45
         Default     = 30
     }
     return $timeouts[$OperationType]

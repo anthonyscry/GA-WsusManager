@@ -434,12 +434,12 @@ $script:StdinFlushTimer = $null
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Health Score" FontSize="11" Foreground="{StaticResource Text2}"/>
-                            <TextBlock x:Name="HealthScoreValue" Text="—" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                            <TextBlock x:Name="HealthScoreValue" Text=" -" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
                         </StackPanel>
                         <ProgressBar x:Name="HealthScoreBar" Grid.Column="1" Height="8" Minimum="0" Maximum="100" Value="0" Background="{StaticResource BgDark}" Margin="16,0" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock x:Name="HealthScoreGrade" Text="" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Green}" HorizontalAlignment="Right"/>
-                            <TextBlock x:Name="LastSyncText" Text="Last sync: —" FontSize="10" Foreground="{StaticResource Text2}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="LastSyncText" Text="Last sync:  -" FontSize="10" Foreground="{StaticResource Text2}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -1026,7 +1026,7 @@ function Update-Dashboard {
                 $controls.HealthScoreGrade.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($scoreColor)
                 # Update tray tooltip with health grade
                 if ($null -ne $script:TrayIcon) {
-                    $script:TrayIcon.Text = "WSUS Manager — Health: $($health.Grade) ($($health.Score)/100)"
+                    $script:TrayIcon.Text = "WSUS Manager  - Health: $($health.Grade) ($($health.Score)/100)"
                 }
             } else {
                 $controls.HealthScoreValue.Text = "N/A"
@@ -1081,7 +1081,7 @@ function Update-HistoryView {
     }
     foreach ($entry in $entries) {
         $ts = try { ([DateTime]$entry.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
-        $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { "—" }
+        $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { " -" }
         $icon = if ($entry.Result -eq "Pass") { "[+]" } else { "[-]" }
         $line = "$ts  $icon  $($entry.OperationType.PadRight(15))  $($dur.PadLeft(8))"
         if ($entry.Summary) { $line += "  $($entry.Summary)" }
@@ -3224,7 +3224,7 @@ while ($countdown -gt 0) {
                     if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
                         $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
                         $dur = [TimeSpan]::FromSeconds($durationSecs)
-                        Show-WsusNotification -Title "WSUS Manager — $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
+                        Show-WsusNotification -Title "WSUS Manager  - $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
                     }
                     # Record operation history
                     if ($script:HistoryEnabled -and (Get-Command Write-WsusOperationHistory -ErrorAction SilentlyContinue)) {
@@ -3447,7 +3447,7 @@ while ($countdown -gt 0) {
                     if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
                         $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
                         $dur = [TimeSpan]::FromSeconds($durationSecs)
-                        Show-WsusNotification -Title "WSUS Manager — $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
+                        Show-WsusNotification -Title "WSUS Manager  - $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
                     }
                     # Record operation history
                     if ($script:HistoryEnabled -and (Get-Command Write-WsusOperationHistory -ErrorAction SilentlyContinue)) {
