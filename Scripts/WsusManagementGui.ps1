@@ -82,7 +82,7 @@ $script:OpCheckTimer = $null
 # Deduplication tracking - prevents same line appearing multiple times
 $script:RecentLines = @{}
 # Live Terminal Mode - launches operations in visible console window
-$script:LiveTerminalMode = $false
+$script:LiveTerminalMode = $true
 $script:NotificationsEnabled = $true  # Show notifications when operations complete
 $script:NotificationBeep = $false     # Beep on completion
 $script:ThemeMode = "Dark"            # "Dark" or "Light" (reserved for Phase 3 theme toggle)
@@ -126,11 +126,8 @@ Import-WsusSettings
 
 #region Import Additional Modules
 $script:ModulesDir = $null
-$moduleLocations = @(
-    (Join-Path $script:ScriptRoot "Modules"),
-    (Join-Path (Split-Path -Parent $script:ScriptRoot) "Modules"),
-    (Join-Path $PSScriptRoot "Modules")
-)
+$moduleLocations = @($script:ScriptRoot, (Split-Path -Parent $script:ScriptRoot -ErrorAction SilentlyContinue), $PSScriptRoot) |
+    Where-Object { $_ } | ForEach-Object { Join-Path $_ "Modules" }
 foreach ($loc in $moduleLocations) {
     if (Test-Path $loc) { $script:ModulesDir = $loc; break }
 }
