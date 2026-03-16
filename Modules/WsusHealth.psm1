@@ -986,7 +986,7 @@ function Get-WsusHealthScore {
     }
 
     # ---- Last Operation (10 pts) ----
-    $opScore = 5   # neutral default — no history
+    $opScore = 5   # neutral default  - no history
     try {
         if (Test-Path $HistoryPath) {
             $history = Get-Content $HistoryPath -Raw | ConvertFrom-Json

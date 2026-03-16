@@ -20,7 +20,7 @@ BeforeDiscovery {
     $script:ModulePath    = Join-Path $PSScriptRoot '..\Modules\WsusDialogs.psm1'
     $script:ModuleExists  = Test-Path $script:ModulePath
 
-    # WPF is only available on Windows — skip WPF construction tests on Linux/macOS
+    # WPF is only available on Windows  - skip WPF construction tests on Linux/macOS
     $script:WpfAvailable  = ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop') -and $script:ModuleExists
 }
 

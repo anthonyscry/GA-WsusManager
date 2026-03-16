@@ -63,7 +63,7 @@ function New-WsusDialog {
     .DESCRIPTION
         Builds a configured System.Windows.Window with the GA dark theme applied,
         ESC-to-close behaviour, and a StackPanel as the root content area.
-        The window is NOT shown by this function — the caller must invoke
+        The window is NOT shown by this function  - the caller must invoke
         ShowDialog() when ready.
 
     .PARAMETER Title
