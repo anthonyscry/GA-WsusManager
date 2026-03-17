@@ -830,57 +830,6 @@ function Set-UIText {
         throw "Failed to set text on AutomationId=$AutomationId : $($_.Exception.Message)"
     }
 }
-    #>
-    [CmdletBinding()]
-    param(
-        [PSCustomObject]$AppContext,
-        [Parameter(Mandatory)]
-        [string]$AutomationId,
-        [string]$Name,
-        [Parameter(Mandatory)]
-        [string]$Text,
-        [string]$Element,
-        [switch]$Clear
-    )
-
-    $el = if ($Element) {
-        $Element
-    } else {
-        Find-UIElement -AppContext $AppContext -AutomationId $AutomationId -Name $Name -Timeout 5
-    }
-
-    if ($null -eq $el) {
-        throw "Element not found (AutomationId=$AutomationId, Name=$Name)"
-    }
-
-    try {
-        $valPattern = $el.Patterns.Value
-        if ($null -ne $valPattern -and $null -ne $valPattern.Value) {
-            if ($Clear) {
-                $valPattern.Value.SetValue("")
-                Start-Sleep -Milliseconds 100
-            }
-            $valPattern.Value.SetValue($Text)
-            Write-Verbose "Set text on AutomationId=$AutomationId to: $Text"
-        }
-        else {
-            # Fallback: focus + keyboard input
-            $el.Focus()
-            Start-Sleep -Milliseconds 100
-            if ($Clear) {
-                [System.Windows.Forms.SendKeys]::SendWait("^a")
-                Start-Sleep -Milliseconds 50
-                [System.Windows.Forms.SendKeys]::SendWait("{DEL}")
-                Start-Sleep -Milliseconds 100
-            }
-            [System.Windows.Forms.SendKeys]::SendWait($Text)
-            Write-Verbose "Set text via SendKeys on AutomationId=$AutomationId"
-        }
-    }
-    catch {
-        throw "Failed to set text on AutomationId=$AutomationId : $($_.Exception.Message)"
-    }
-}
 
 # ---------------------------------------------------------------------------
 # Assertions (Pester-friendly)
