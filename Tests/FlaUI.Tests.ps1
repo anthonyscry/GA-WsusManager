@@ -62,12 +62,17 @@ BeforeDiscovery {
     # Test FlaUI assembly loading during discovery
     if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
+        $script:FlaUIAssembliesLoaded = $false
         try {
-$null = [FlaUI.UIA3.UIA3Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
-$null = [FlaUI.UIA2.UIA2Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
-$script:FlaUIAssembliesLoaded = $false
+            $null = [FlaUI.UIA2.UIA2Automation]::new()
+            $script:FlaUIAssembliesLoaded = $true
         } catch {
-            $script:FlaUIAssembliesLoaded = $false
+            try {
+                $null = [FlaUI.UIA3.UIA3Automation]::new()
+                $script:FlaUIAssembliesLoaded = $true
+            } catch {
+                $script:FlaUIAssembliesLoaded = $false
+            }
         }
     } else {
         $script:FlaUIAssembliesLoaded = $false
@@ -110,12 +115,17 @@ BeforeAll {
     $script:FlaUIAvailable = (Test-Path $harnessPath)
     if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
+        $script:FlaUIAssembliesLoaded = $false
         try {
-$null = [FlaUI.UIA3.UIA3Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
-$null = [FlaUI.UIA2.UIA2Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
-$script:FlaUIAssembliesLoaded = $false
+            $null = [FlaUI.UIA2.UIA2Automation]::new()
+            $script:FlaUIAssembliesLoaded = $true
         } catch {
-            $script:FlaUIAssembliesLoaded = $false
+            try {
+                $null = [FlaUI.UIA3.UIA3Automation]::new()
+                $script:FlaUIAssembliesLoaded = $true
+            } catch {
+                $script:FlaUIAssembliesLoaded = $false
+            }
         }
     } else {
         $script:FlaUIAssembliesLoaded = $false
