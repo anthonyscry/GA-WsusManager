@@ -332,21 +332,21 @@ function Find-UIElement {
 
     $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
 
-    # Build condition tree
-    $conditions = [System.Collections.Generic.List[FlaUI.Core.Definitions.ConditionFactory]]::new()
+    # Build condition tree (use PS array — generic List<ConditionFactory> fails in PS 5.1)
+    $conditions = @()
     $cf = [FlaUI.Core.Definitions.ConditionFactory]::new($ctx.Automation.ConditionFactory)
 
     if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
-        $conditions.Add($cf.ByAutomationId($AutomationId))
+        $conditions += $cf.ByAutomationId($AutomationId)
     }
     if (-not [string]::IsNullOrWhiteSpace($Name)) {
-        $conditions.Add($cf.ByName($Name))
+        $conditions += $cf.ByName($Name)
     }
     if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
-        $conditions.Add($cf.ByClassName($ClassName))
+        $conditions += $cf.ByClassName($ClassName)
     }
     if ($null -ne $ControlType) {
-        $conditions.Add($cf.ByControlType($ControlType))
+        $conditions += $cf.ByControlType($ControlType)
     }
 
     if ($conditions.Count -eq 0) {
@@ -407,18 +407,18 @@ function Find-AllUIElements {
     $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
     $cf = [FlaUI.Core.Definitions.ConditionFactory]::new($ctx.Automation.ConditionFactory)
 
-    $conditions = [System.Collections.Generic.List[object]]::new()
+    $conditions = @()  # PS array (generic List<object> fails in PS 5.1)
     if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
-        $conditions.Add($cf.ByAutomationId($AutomationId))
+        $conditions += $cf.ByAutomationId($AutomationId)
     }
     if (-not [string]::IsNullOrWhiteSpace($Name)) {
-        $conditions.Add($cf.ByName($Name))
+        $conditions += $cf.ByName($Name)
     }
     if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
-        $conditions.Add($cf.ByClassName($ClassName))
+        $conditions += $cf.ByClassName($ClassName)
     }
     if ($null -ne $ControlType) {
-        $conditions.Add($cf.ByControlType($ControlType))
+        $conditions += $cf.ByControlType($ControlType)
     }
 
     if ($conditions.Count -eq 0) { throw "Specify at least one search criterion." }
@@ -945,7 +945,7 @@ function Get-UIElementTree {
     $ctx = if ($AppContext) { $AppContext } else { $script:AppContext }
     if ($null -eq $ctx -or $null -eq $ctx.MainWindow) { return @() }
 
-    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines = @()  # PS array (generic List<string> fails in PS 5.1)
 
     function Walk($el, $depth) {
         if ($depth -gt $MaxDepth) { return }
@@ -963,7 +963,7 @@ function Get-UIElementTree {
         if ($class) { $label += " <$class>" }
         $label += "$enabled$offscreen"
 
-        $lines.Add("$indent$label")
+        $lines += "$indent$label"
 
         $children = $el.FindAllDescendants()
         $count = 0
@@ -971,7 +971,7 @@ function Get-UIElementTree {
             if ($count -ge $MaxChildren) {
                 $remaining = $children.Count - $MaxChildren
                 if ($remaining -gt 0) {
-                    $lines.Add("$indent  ... ($remaining more)")
+                    $lines += "$indent  ... ($remaining more)"
                 }
                 break
             }
@@ -981,7 +981,7 @@ function Get-UIElementTree {
     }
 
     Walk $ctx.MainWindow 0
-    $lines.ToArray()
+    $lines
 }
 
 # ---------------------------------------------------------------------------
