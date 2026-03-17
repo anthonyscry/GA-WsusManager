@@ -334,6 +334,63 @@ function Get-GuiApplication {
 # Element finding
 # ---------------------------------------------------------------------------
 
+# COM-based element finder (fallback for PS2EXE WPF apps where FlaUI's tree walk fails)
+function Find-UIElementCom {
+    <#
+    .SYNOPSIS
+        Finds a UI element using COM UI Automation (TreeWalker).
+        Used as fallback when FlaUI's FindFirstDescendant returns nothing.
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$ParentAutomationId,
+        [string]$AutomationId,
+        [string]$Name,
+        [string]$ClassName,
+        [int]$ProcessId
+    )
+
+    try {
+        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes -ErrorAction Stop
+    } catch {
+        return $null
+    }
+
+    $root = [System.Windows.Automation.AutomationElement]::RootElement
+    $treeWalker = [System.Windows.Automation.TreeWalker]::ContentViewWalker
+
+    # Build condition: match by ProcessId
+    $conditions = @()
+    if ($ProcessId -gt 0) {
+        $conditions += New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $ProcessId)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $conditions += New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $AutomationId)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Name)) {
+        $conditions += New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $Name)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
+        $conditions += New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ClassNameProperty, $ClassName)
+    }
+
+    if ($conditions.Count -eq 0) { return $null }
+
+    # Combine with AND
+    $condition = $conditions[0]
+    for ($i = 1; $i -lt $conditions.Count; $i++) {
+        $condition = New-Object System.Windows.Automation.AndCondition($condition, $conditions[$i])
+    }
+
+    # Search descendants of root
+    $found = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    return $found  # Returns COM AutomationElement (not FlaUI element)
+}
+
 function Find-UIElement {
     <#
     .SYNOPSIS
@@ -424,10 +481,26 @@ function Find-UIElement {
 
     while ($sw.Elapsed.TotalSeconds -lt $Timeout) {
         try {
+            # Try FlaUI's FindFirstDescendant
             $element = $searchRoot.FindFirstDescendant($condition)
             if ($null -ne $element) {
                 Write-Verbose "Found element (AutomationId=$AutomationId, Name=$Name) in $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
                 return $element
+            }
+
+            # Fallback: Use FindAllDescendants and manually filter (works when FindFirstDescendant fails)
+            $allElements = $searchRoot.FindAllDescendants()
+            if ($null -ne $allElements -and $allElements.Count -gt 0) {
+                foreach ($el in $allElements) {
+                    $match = $true
+                    if (-not [string]::IsNullOrWhiteSpace($AutomationId) -and $el.AutomationId -ne $AutomationId) { $match = $false }
+                    if (-not [string]::IsNullOrWhiteSpace($Name) -and $el.Name -ne $Name) { $match = $false }
+                    if (-not [string]::IsNullOrWhiteSpace($ClassName) -and $el.ClassName -ne $ClassName) { $match = $false }
+                    if ($match) {
+                        Write-Verbose "Found element via FindAllDescendants (AutomationId=$AutomationId, Name=$Name)"
+                        return $el
+                    }
+                }
             }
         }
         catch {
