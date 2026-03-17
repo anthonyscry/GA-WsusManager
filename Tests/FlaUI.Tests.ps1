@@ -37,54 +37,59 @@
 
 #region Test Configuration
 
-BeforeAll {
+# BeforeDiscovery runs during Pester's discovery phase, BEFORE -Skip is evaluated.
+# This is critical — variables used in -Skip must be set here, not in BeforeAll.
+BeforeDiscovery {
     $script:RepoRoot = Split-Path -Parent $PSScriptRoot
     $script:AppName = "GA-WsusManager"
-    $script:ScreenshotDir = Join-Path $PSScriptRoot "Screenshots"
 
-    # Find executable — prefer dist/ build, fall back to root
+    # Find executable — prefer dist/ build, fall back to root, then PS1 script
     $exeCandidates = @(
         (Join-Path $script:RepoRoot "dist\GA-WsusManager.exe"),
         (Join-Path $script:RepoRoot "dist\WsusManager.exe"),
         (Join-Path $script:RepoRoot "GA-WsusManager.exe"),
-        (Join-Path $script:RepoRoot "WsusManager.exe")
+        (Join-Path $script:RepoRoot "WsusManager.exe"),
+        (Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1")
     )
     $script:ExePath = $null
     foreach ($c in $exeCandidates) {
         if (Test-Path $c) { $script:ExePath = $c; break }
     }
 
-    # Fall back to PS1 script (slower but works without compilation)
-    if (-not $script:ExePath) {
-        $ps1 = Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1"
-        if (Test-Path $ps1) {
-            $script:ExePath = $ps1
-            Write-Warning "No EXE found — using PS1 script directly (slower startup)"
-        }
-    }
-
-    # Import FlaUI Test Harness
     $harnessPath = Join-Path $PSScriptRoot "FlaUITestHarness\FlaUITestHarness.psm1"
     $script:FlaUIAvailable = (Test-Path $harnessPath)
+
+    # Test FlaUI assembly loading during discovery
     if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
-        # Verify FlaUI assemblies loaded
-        $app = Get-GuiApplication
-        # Check if module loaded correctly by testing internal function
         try {
             $null = [FlaUI.UIA3.UIA3Automation]::new()
             $script:FlaUIAssembliesLoaded = $true
         } catch {
             $script:FlaUIAssembliesLoaded = $false
-            Write-Warning "FlaUI .NET assemblies not loaded. Run .\Tests\FlaUITestHarness\Install-FlaUI.ps1 first."
         }
     } else {
         $script:FlaUIAssembliesLoaded = $false
-        Write-Warning "FlaUI Test Harness not found at: $harnessPath"
     }
 
     $script:ExeAvailable = ($null -ne $script:ExePath -and (Test-Path $script:ExePath))
     $script:CanRunTests = ($script:FlaUIAvailable -and $script:ExeAvailable -and $script:FlaUIAssembliesLoaded)
+
+    if (-not $script:CanRunTests) {
+        $reasons = @()
+        if (-not $script:FlaUIAvailable) { $reasons += "FlaUI harness not found" }
+        if (-not $script:ExeAvailable) { $reasons += "EXE/script not found" }
+        if (-not $script:FlaUIAssembliesLoaded) { $reasons += "FlaUI assemblies failed to load" }
+        Write-Warning "FlaUI tests skipped: $($reasons -join ', ')"
+    }
+}
+
+BeforeAll {
+    $script:ScreenshotDir = Join-Path $PSScriptRoot "Screenshots"
+
+    if ($null -eq $script:ExePath) {
+        $script:ExePath = (Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1")
+    }
 
     # Detect WSUS installation
     $script:WsusInstalled = $false
