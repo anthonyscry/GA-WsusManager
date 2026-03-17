@@ -41,7 +41,7 @@ $script:ModuleRoot = $PSScriptRoot
 $script:FlaUILoaded = $false
 $script:AppContext = $null
 
-function _LoadFlaUIAssemblies {
+function Load-FlaUIAssemblies {
     <#
     .SYNOPSIS
         Loads FlaUI .NET assemblies from the packages directory.
@@ -93,7 +93,7 @@ function _LoadFlaUIAssemblies {
 }
 
 # Try to load on import
-_LoadFlaUIAssemblies | Out-Null
+Load-FlaUIAssemblies | Out-Null
 
 # ---------------------------------------------------------------------------
 # Application lifecycle
@@ -140,7 +140,9 @@ function Start-GuiApplication {
         throw "Application not found: $Path"
     }
 
-    if (-not _LoadFlaUIAssemblies) {
+    if (-not $script:FlaUILoaded) {
+        Load-FlaUIAssemblies | Out-Null
+    }
         throw "FlaUI assemblies not available. Run .\Tests\FlaUITestHarness\Install-FlaUI.ps1 first."
     }
 
