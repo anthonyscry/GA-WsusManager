@@ -143,6 +143,7 @@ function Start-GuiApplication {
     if (-not $script:FlaUILoaded) {
         Load-FlaUIAssemblies | Out-Null
     }
+    if (-not $script:FlaUILoaded) {
         throw "FlaUI assemblies not available. Run .\Tests\FlaUITestHarness\Install-FlaUI.ps1 first."
     }
 
