@@ -106,9 +106,21 @@ BeforeAll {
 
     # Import FlaUI Test Harness (also needed at runtime for harness functions)
     $harnessPath = Join-Path $PSScriptRoot "FlaUITestHarness\FlaUITestHarness.psm1"
-    if (Test-Path $harnessPath) {
+    $script:FlaUIAvailable = (Test-Path $harnessPath)
+    if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
+        try {
+            $null = [FlaUI.UIA3.UIA3Automation]::new()
+            $script:FlaUIAssembliesLoaded = $true
+        } catch {
+            $script:FlaUIAssembliesLoaded = $false
+        }
+    } else {
+        $script:FlaUIAssembliesLoaded = $false
     }
+
+    $script:ExeAvailable = ($null -ne $script:ExePath -and (Test-Path $script:ExePath))
+    $script:CanRunTests = ($script:FlaUIAvailable -and $script:ExeAvailable -and $script:FlaUIAssembliesLoaded)
 
     # Detect WSUS installation
     $script:WsusInstalled = $false
