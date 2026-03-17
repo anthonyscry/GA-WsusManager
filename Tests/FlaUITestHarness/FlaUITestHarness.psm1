@@ -66,8 +66,15 @@ function Load-FlaUIAssemblies {
 
         if ($uia3Dll -and $coreDll) {
             try {
-                Add-Type -Path $coreDll.FullName -ErrorAction Stop
-                Add-Type -Path $uia3Dll.FullName -ErrorAction Stop
+                # Load ALL DLLs in the packages directory (handles transitive deps)
+                $allDlls = Get-ChildItem -Path $basePath -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Extension -eq ".dll" -and $_.Name -notmatch "^System\." } |
+                    Sort-Object { $_.FullName }
+                foreach ($dll in $allDlls) {
+                    Add-Type -Path $dll.FullName -ErrorAction SilentlyContinue
+                }
+                # Verify FlaUI types are accessible
+                $null = [FlaUI.UIA3.UIA3Automation]
                 $script:FlaUILoaded = $true
                 $script:FlaUIPackagePath = $basePath
                 return $true
