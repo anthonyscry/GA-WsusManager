@@ -57,29 +57,32 @@ function Load-FlaUIAssemblies {
     foreach ($basePath in $searchPaths) {
         if (-not (Test-Path $basePath)) { continue }
 
-        # Find FlaUI.UIA3 DLL (primary)
-        $uia3Dll = Get-ChildItem -Path $basePath -Recurse -Filter "FlaUI.UIA3.dll" -ErrorAction SilentlyContinue |
-            Select-Object -First 1
-        # Find FlaUI.Core DLL
-        $coreDll = Get-ChildItem -Path $basePath -Recurse -Filter "FlaUI.Core.dll" -ErrorAction SilentlyContinue |
-            Select-Object -First 1
+        $uia3Dir = Get-ChildItem -Path $basePath -Directory -Filter "FlaUI.UIA3.*" -ErrorAction SilentlyContinue | Select-Object -First 1
+        $coreDir = Get-ChildItem -Path $basePath -Directory -Filter "FlaUI.Core.*" -ErrorAction SilentlyContinue | Select-Object -First 1
+        $interopDir = Get-ChildItem -Path $basePath -Directory -Filter "Interop.UIAutomationClient.*" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-        if ($uia3Dll -and $coreDll) {
+        if ($uia3Dir -and $coreDir) {
             try {
-                # Load ALL DLLs in the packages directory (handles transitive deps)
-                $allDlls = Get-ChildItem -Path $basePath -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
-                    Sort-Object { $_.FullName }
-                foreach ($dll in $allDlls) {
-                    Add-Type -Path $dll.FullName -ErrorAction SilentlyContinue
+                $uia3Lib = Join-Path $uia3Dir.FullName "lib\net48\FlaUI.UIA3.dll"
+                $coreLib = Join-Path $coreDir.FullName "lib\net48\FlaUI.Core.dll"
+                $interopLib = Join-Path $interopDir.FullName "lib\netstandard2.0\Interop.UIAutomationClient.dll"
+                if (-not (Test-Path $interopLib)) {
+                    $interopLib = Join-Path $interopDir.FullName "lib\net48\Interop.UIAutomationClient.dll"
                 }
-                # Verify FlaUI types are accessible
-                $null = [FlaUI.UIA3.UIA3Automation]
-                $script:FlaUILoaded = $true
-                $script:FlaUIPackagePath = $basePath
-                return $true
+
+                if ((Test-Path $uia3Lib) -and (Test-Path $coreLib)) {
+                    Add-Type -Path $coreLib -ErrorAction Stop
+                    if (Test-Path $interopLib) {
+                        Add-Type -Path $interopLib -ErrorAction Stop
+                    }
+                    Add-Type -Path $uia3Lib -ErrorAction Stop
+                    $script:FlaUILoaded = $true
+                    $script:FlaUIPackagePath = $basePath
+                    return $true
+                }
             }
             catch {
-                Write-Warning "Failed to load FlaUI assemblies from $basePath : $($_.Exception.Message)"
+                Write-Warning "Failed to load FlaUI from $basePath : $($_.Exception.Message)"
             }
         }
     }
