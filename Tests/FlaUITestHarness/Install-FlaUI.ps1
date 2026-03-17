@@ -20,6 +20,7 @@ $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) "FlaUI-Install-$(Get-Rand
 # Packages to install
 $Packages = @(
     @{ Id = "FlaUI.UIA3"; Version = "4.0.0" }
+    @{ Id = "FlaUI.UIA2"; Version = "4.0.0" }
     @{ Id = "FlaUI.Core"; Version = "4.0.0" }
 )
 

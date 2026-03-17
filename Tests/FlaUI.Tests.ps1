@@ -63,8 +63,9 @@ BeforeDiscovery {
     if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
         try {
-            $null = [FlaUI.UIA3.UIA3Automation]::new()
-            $script:FlaUIAssembliesLoaded = $true
+$null = [FlaUI.UIA3.UIA3Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
+$null = [FlaUI.UIA2.UIA2Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
+$script:FlaUIAssembliesLoaded = $false
         } catch {
             $script:FlaUIAssembliesLoaded = $false
         }
@@ -110,8 +111,9 @@ BeforeAll {
     if ($script:FlaUIAvailable) {
         Import-Module $harnessPath -Force
         try {
-            $null = [FlaUI.UIA3.UIA3Automation]::new()
-            $script:FlaUIAssembliesLoaded = $true
+$null = [FlaUI.UIA3.UIA3Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
+$null = [FlaUI.UIA2.UIA2Automation]::new() 2>$null; if ($?) { $script:FlaUIAssembliesLoaded = $true; return }
+$script:FlaUIAssembliesLoaded = $false
         } catch {
             $script:FlaUIAssembliesLoaded = $false
         }
