@@ -413,12 +413,12 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
             Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
             Start-Sleep -Milliseconds 500
 
-            # Send ESC
-            Send-UIKeys -Keys "{ESC}" -Delay 1000
+            # Close via COM WindowPattern (more reliable than SendKeys in non-interactive sessions)
+            Close-UIWindow -AppContext $script:AppContext -Name "Settings" -Timeout 3 | Out-Null
 
             # Verify dialog is gone
             $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -Timeout 5
-            $gone | Should -BeTrue -Because "ESC should close Settings dialog"
+            $gone | Should -BeTrue -Because "Settings dialog should be closed"
         }
     }
 }
@@ -558,7 +558,9 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
         It 'Survives opening and closing Settings multiple times' {
             for ($i = 0; $i -lt 3; $i++) {
                 Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 800
-                Send-UIKeys -Keys "{ESC}" -Delay 800
+                Start-Sleep -Milliseconds 500
+                Close-UIWindow -AppContext $script:AppContext -Name "Settings" -Timeout 3 | Out-Null
+                Start-Sleep -Milliseconds 300
             }
 
             # App should still be responsive

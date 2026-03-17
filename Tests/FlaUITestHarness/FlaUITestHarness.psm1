@@ -1028,6 +1028,58 @@ function Wait-UIElementGone {
     return $false
 }
 
+function Close-UIWindow {
+    <#
+    .SYNOPSIS
+        Closes a window by AutomationId or Name using COM WindowPattern.
+    #>
+    [CmdletBinding()]
+    param(
+        [PSCustomObject]$AppContext,
+        [string]$AutomationId,
+        [string]$Name,
+        [int]$Timeout = 5
+    )
+
+    $el = Find-UIElement -AppContext $AppContext -AutomationId $AutomationId -Name $Name -Timeout $Timeout
+    if ($null -eq $el) {
+        Write-Verbose "Window not found to close (AutomationId=$AutomationId, Name=$Name)"
+        return $false
+    }
+
+    $comEl = $null
+    if ($el.PSObject.Properties['_ComElement']) {
+        $comEl = $el._ComElement
+    }
+
+    if ($null -ne $comEl) {
+        try {
+            $windowPattern = $comEl.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+            if ($null -ne $windowPattern) {
+                $windowPattern.Close()
+                Write-Verbose "Closed window via WindowPattern (AutomationId=$AutomationId, Name=$Name)"
+                return $true
+            }
+        }
+        catch {
+            Write-Verbose "WindowPattern.Close() failed: $($_.Exception.Message)"
+        }
+
+        # Fallback: try InvokePattern on a close button
+        try {
+            $invokePattern = $comEl.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+            if ($null -ne $invokePattern) {
+                $invokePattern.Invoke()
+                Write-Verbose "Closed window via InvokePattern"
+                return $true
+            }
+        }
+        catch { }
+    }
+
+    return $false
+}
+
 # ---------------------------------------------------------------------------
 # Screenshots
 # ---------------------------------------------------------------------------
@@ -1287,5 +1339,6 @@ Export-ModuleMember -Function @(
     'Save-UIScreenshot',
     'Get-UIElementInfo',
     'Get-UIElementTree',
-    'Send-UIKeys'
+    'Send-UIKeys',
+    'Close-UIWindow'
 )
