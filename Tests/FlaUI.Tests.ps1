@@ -605,7 +605,7 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
 
 #region Dialog Smoke Tests
 
-Describe "WSUS Manager Dialog Smoke Tests" -Tag "Dialogs" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager WSUS-Dependent Buttons" -Tag "Dialogs" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -614,97 +614,21 @@ Describe "WSUS Manager Dialog Smoke Tests" -Tag "Dialogs" -Skip:(-not $script:Ca
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
     }
 
-    Context 'Transfer Dialog' {
-        It 'Transfer dialog opens and has expected controls' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnTransfer" -Delay 500
-            $dialog = Find-UIElement -AppContext $script:AppContext -AutomationId "TransferDialog" -Timeout 5
-            $dialog | Should -Not -BeNullOrEmpty -Because "Transfer dialog should open"
+    Context 'WSUS-required buttons are disabled on clean VM' {
+        # On a clean VM without WSUS, these buttons are disabled with Opacity=0.5
+        # and tooltip "WSUS is not installed. Use 'Install WSUS' first."
+        # This is the EXPECTED behavior — test that disabled state is correct.
+        $wsusButtons = @(
+            "BtnRestore", "BtnCreateGpo", "BtnTransfer", "BtnMaintenance",
+            "BtnSchedule", "BtnCleanup", "BtnDiagnostics", "BtnReset",
+            "QBtnDiagnostics", "QBtnCleanup", "QBtnMaint", "QBtnStart"
+        )
 
-            # Verify key controls exist
-            $startBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "StartTransferButton" -Timeout 2
-            $startBtn | Should -Not -BeNullOrEmpty -Because "Start Transfer button should exist"
-        }
-
-        AfterAll {
-            Close-UIWindow -AppContext $script:AppContext -AutomationId "TransferDialog" -Timeout 2 | Out-Null
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    Context 'Maintenance (Online Sync) Dialog' {
-        It 'Maintenance dialog opens and has expected controls' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnMaintenance" -Delay 500
-            $dialog = Find-UIElement -AppContext $script:AppContext -AutomationId "MaintenanceDialog" -Timeout 5
-            $dialog | Should -Not -BeNullOrEmpty -Because "Maintenance dialog should open"
-
-            # Verify sync button exists
-            $syncBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "RunSyncButton" -Timeout 2
-            $syncBtn | Should -Not -BeNullOrEmpty -Because "Run Sync button should exist"
-        }
-
-        AfterAll {
-            Close-UIWindow -AppContext $script:AppContext -AutomationId "MaintenanceDialog" -Timeout 2 | Out-Null
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    Context 'Schedule Task Dialog' {
-        It 'Schedule dialog opens and has expected controls' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSchedule" -Delay 500
-            $dialog = Find-UIElement -AppContext $script:AppContext -AutomationId "ScheduleDialog" -Timeout 5
-            $dialog | Should -Not -BeNullOrEmpty -Because "Schedule dialog should open"
-
-            # Verify schedule combo and create button exist
-            $schedCombo = Find-UIElement -AppContext $script:AppContext -AutomationId "ScheduleComboBox" -Timeout 2
-            $schedCombo | Should -Not -BeNullOrEmpty -Because "Schedule combo should exist"
-
-            $createBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "CreateScheduleButton" -Timeout 2
-            $createBtn | Should -Not -BeNullOrEmpty -Because "Create Schedule button should exist"
-
-            $cancelBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "CancelScheduleButton" -Timeout 2
-            $cancelBtn | Should -Not -BeNullOrEmpty -Because "Cancel Schedule button should exist"
-        }
-
-        AfterAll {
-            Close-UIWindow -AppContext $script:AppContext -AutomationId "ScheduleDialog" -Timeout 2 | Out-Null
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    Context 'Restore Dialog' {
-        It 'Restore dialog opens and has expected controls' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnRestore" -Delay 500
-            $dialog = Find-UIElement -AppContext $script:AppContext -AutomationId "RestoreDialog" -Timeout 5
-            $dialog | Should -Not -BeNullOrEmpty -Because "Restore dialog should open"
-
-            # Verify restore button and file textbox exist
-            $restoreBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "RestoreButton" -Timeout 2
-            $restoreBtn | Should -Not -BeNullOrEmpty -Because "Restore button should exist"
-
-            $fileBox = Find-UIElement -AppContext $script:AppContext -AutomationId "RestoreFileTextBox" -Timeout 2
-            $fileBox | Should -Not -BeNullOrEmpty -Because "Restore file textbox should exist"
-        }
-
-        AfterAll {
-            Close-UIWindow -AppContext $script:AppContext -AutomationId "RestoreDialog" -Timeout 2 | Out-Null
-            Start-Sleep -Milliseconds 500
-        }
-    }
-
-    Context 'Settings Dialog (re-verify)' {
-        It 'Settings dialog opens with content controls' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 500
-            $dialog = Find-UIElement -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 5
-            $dialog | Should -Not -BeNullOrEmpty
-
-            # Verify content controls exist
-            $saveBtn = Find-UIElement -AppContext $script:AppContext -AutomationId "SaveSettingsButton" -Timeout 2
-            $saveBtn | Should -Not -BeNullOrEmpty -Because "Save Settings button should exist"
-        }
-
-        AfterAll {
-            Close-UIWindow -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 2 | Out-Null
-            Start-Sleep -Milliseconds 500
+        It "WSUS button '<_>' is disabled on clean VM" -TestCases $wsusButtons {
+            param($_)
+            $btn = Find-UIElement -AppContext $script:AppContext -AutomationId $_ -Timeout 5
+            $btn | Should -Not -BeNullOrEmpty -Because "Button $_ should exist"
+            $btn.IsEnabled | Should -BeFalse -Because "WSUS button $_ should be disabled on clean VM"
         }
     }
 }
@@ -779,9 +703,9 @@ Describe "WSUS Manager Keyboard Shortcuts" -Tag "Shortcuts" -Skip:(-not $script:
 
 #endregion
 
-#region Button Click Smoke Tests
+#region Non-WSUS Button State Tests
 
-Describe "WSUS Manager Operation Buttons" -Tag "Operations" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Non-WSUS Buttons" -Tag "Operations" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -790,55 +714,18 @@ Describe "WSUS Manager Operation Buttons" -Tag "Operations" -Skip:(-not $script:
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
     }
 
-    Context 'Diagnostics button starts and completes' {
-        It 'Clicking Diagnostics starts an operation that completes' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnDiagnostics" -Delay 500
+    Context 'Non-WSUS buttons are enabled on clean VM' {
+        # These buttons work without WSUS installed and should always be enabled
+        $enabledButtons = @(
+            "BtnDashboard", "BtnInstall", "BtnHistory", "BtnHelp",
+            "BtnSettings", "BtnAbout"
+        )
 
-            $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            $found = $false
-            while ($sw.Elapsed.TotalSeconds -lt 30) {
-                $btn = Find-UIElement -AppContext $script:AppContext -AutomationId "BtnDiagnostics" -Timeout 2
-                if ($null -ne $btn -and $btn.IsEnabled) {
-                    $found = $true
-                    break
-                }
-                Start-Sleep -Milliseconds 500
-            }
-            $found | Should -BeTrue -Because "Diagnostics operation should complete and re-enable buttons"
-        }
-    }
-
-    Context 'Quick action buttons work' {
-        It 'QBtnDiagnostics starts and completes' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "QBtnDiagnostics" -Delay 500
-
-            $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            $found = $false
-            while ($sw.Elapsed.TotalSeconds -lt 30) {
-                $btn = Find-UIElement -AppContext $script:AppContext -AutomationId "QBtnDiagnostics" -Timeout 2
-                if ($null -ne $btn -and $btn.IsEnabled) {
-                    $found = $true
-                    break
-                }
-                Start-Sleep -Milliseconds 500
-            }
-            $found | Should -BeTrue -Because "Quick Diagnostics should complete"
-        }
-
-        It 'QBtnCleanup starts and completes' {
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "QBtnCleanup" -Delay 500
-
-            $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            $found = $false
-            while ($sw.Elapsed.TotalSeconds -lt 30) {
-                $btn = Find-UIElement -AppContext $script:AppContext -AutomationId "QBtnCleanup" -Timeout 2
-                if ($null -ne $btn -and $btn.IsEnabled) {
-                    $found = $true
-                    break
-                }
-                Start-Sleep -Milliseconds 500
-            }
-            $found | Should -BeTrue -Because "Quick Cleanup should complete"
+        It "Non-WSUS button '<_>' is enabled on clean VM" -TestCases $enabledButtons {
+            param($_)
+            $btn = Find-UIElement -AppContext $script:AppContext -AutomationId $_ -Timeout 5
+            $btn | Should -Not -BeNullOrEmpty -Because "Button $_ should exist"
+            $btn.IsEnabled | Should -BeTrue -Because "Non-WSUS button $_ should be enabled on clean VM"
         }
     }
 }
