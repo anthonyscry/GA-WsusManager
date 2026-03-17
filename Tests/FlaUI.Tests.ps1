@@ -413,8 +413,22 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
             Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
             Start-Sleep -Milliseconds 500
 
-            # Close via COM WindowPattern (more reliable than SendKeys in non-interactive sessions)
-            Close-UIWindow -AppContext $script:AppContext -Name "Settings" -Timeout 3 | Out-Null
+            # Find the Settings window and send ESC via COM Input.SendKeys
+            $settingsWin = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 3
+            $settingsWin | Should -Not -BeNullOrEmpty -Because "Settings dialog should be open"
+
+            # Use COM to set focus and send ESC
+            if ($settingsWin.PSObject.Properties['_ComElement']) {
+                $comEl = $settingsWin._ComElement
+                try {
+                    $comEl.SetFocus()
+                    Start-Sleep -Milliseconds 200
+                    [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+                    Start-Sleep -Milliseconds 500
+                } catch {
+                    Write-Warning "COM focus+ESC failed: $($_.Exception.Message)"
+                }
+            }
 
             # Verify dialog is gone
             $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -Timeout 5
@@ -559,7 +573,18 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
             for ($i = 0; $i -lt 3; $i++) {
                 Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 800
                 Start-Sleep -Milliseconds 500
-                Close-UIWindow -AppContext $script:AppContext -Name "Settings" -Timeout 3 | Out-Null
+
+                # Find Settings window and close via COM focus + ESC
+                $sw = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 3
+                if ($sw -and $sw.PSObject.Properties['_ComElement']) {
+                    try {
+                        $sw._ComElement.SetFocus()
+                        Start-Sleep -Milliseconds 200
+                        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+                        Start-Sleep -Milliseconds 300
+                    } catch { }
+                }
+
                 Start-Sleep -Milliseconds 300
             }
 
