@@ -473,6 +473,21 @@ function Invoke-ComClick {
         [System.Windows.Automation.AutomationElement]$ComElement
     )
 
+    # Check element state
+    $current = $ComElement.Current
+    if (-not $current.IsEnabled) {
+        throw "Failed to click element (AutomationId=$($current.AutomationId)): element is disabled"
+    }
+    if ($current.IsOffscreen) {
+        throw "Failed to click element (AutomationId=$($current.AutomationId)): element is offscreen"
+    }
+
+    # Set focus on the element first — required for InvokePattern to work
+    try {
+        $ComElement.SetFocus() | Out-Null
+        Start-Sleep -Milliseconds 100
+    } catch { }
+
     # Try InvokePattern first (works for WPF buttons)
     try {
         $invokePattern = $ComElement.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
