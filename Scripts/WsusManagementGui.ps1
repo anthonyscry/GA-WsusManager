@@ -97,7 +97,7 @@ $script:RecentLines = @{}
 $script:LiveTerminalMode = $true
 $script:NotificationsEnabled = $true  # Show notifications when operations complete
 $script:NotificationBeep = $false     # Beep on completion
-$script:ThemeMode = "Dark"            # "Dark" or "Light" (reserved for Phase 3 theme toggle)
+# Theme: Dark mode only (light theme not implemented — remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
 
@@ -289,6 +289,7 @@ $script:StdinFlushTimer = $null
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="WSUS Manager" Height="736" Width="950" MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen" Background="#0D1117"
+        FontFamily="Segoe UI"
         AutomationProperties.AutomationId="WsusManagerMainWindow">
     <Window.Resources>
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
@@ -302,6 +303,18 @@ $script:StdinFlushTimer = $null
         <SolidColorBrush x:Key="Text1" Color="#E6EDF3"/>
         <SolidColorBrush x:Key="Text2" Color="#8B949E"/>
         <SolidColorBrush x:Key="Text3" Color="#484F58"/>
+        <SolidColorBrush x:Key="TextDisabled" Color="#6E7681"/>
+
+        <!-- Focus indicator for keyboard navigation (accessibility) -->
+        <Style x:Key="FocusStyle">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border BorderBrush="{StaticResource Blue}" BorderThickness="2" CornerRadius="2" Margin="-2"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style x:Key="NavBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -330,12 +343,13 @@ $script:StdinFlushTimer = $null
 
         <Style x:Key="Btn" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource Blue}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Foreground" Value="{StaticResource Text1}"/>
+            <Setter Property="Padding" Value="12,8"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusStyle}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -348,7 +362,7 @@ $script:StdinFlushTimer = $null
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Background" Value="#30363D"/>
-                                <Setter Property="Foreground" Value="#484F58"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextDisabled}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -384,8 +398,8 @@ $script:StdinFlushTimer = $null
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="WSUS Manager" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v3.8.3" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                            <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                            <TextBlock x:Name="VersionLabel" Text="v4.0.1" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -402,29 +416,29 @@ $script:StdinFlushTimer = $null
                     <StackPanel>
                         <Button x:Name="BtnDashboard" Content="◉ Dashboard" Style="{StaticResource NavBtn}" Background="#21262D" Foreground="{StaticResource Text1}"/>
 
-                        <TextBlock Text="SETUP" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <TextBlock Text="SETUP" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="TRANSFER" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <TextBlock Text="TRANSFER" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="MAINTENANCE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <TextBlock Text="MAINTENANCE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="🧹 Deep Cleanup" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="DIAGNOSTICS" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,14,0,4"/>
+                        <TextBlock Text="DIAGNOSTICS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnReset" Content="🔄 Reset Content" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnReset" Content="🔄 Reset Content" Style="{StaticResource NavBtn}" ToolTip="Re-verify all downloaded content files against the database"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
 
         <!-- Main Content -->
-        <Grid Grid.Column="1" Margin="20,12">
+        <Grid Grid.Column="1" Margin="20,16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -454,13 +468,13 @@ $script:StdinFlushTimer = $null
 
                 <!-- Status Cards -->
                 <UniformGrid Rows="1" Margin="0,0,0,16">
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,0,8,0">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
                             <StackPanel Margin="12,14,12,12">
                                 <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card1Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
-                                <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                                <TextBlock x:Name="Card1Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -469,8 +483,8 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
                             <StackPanel Margin="12,14,12,12">
                                 <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card2Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
-                                <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                                <TextBlock x:Name="Card2Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -479,25 +493,25 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
                             <StackPanel Margin="12,14,12,12">
                                 <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card3Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
-                                <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                                <TextBlock x:Name="Card3Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="8,0,0,0">
+                    <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
                             <StackPanel Margin="12,14,12,12">
                                 <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card4Value" Text="..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
-                                <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="9" Foreground="{StaticResource Text3}" Margin="0,2,0,0"/>
+                                <TextBlock x:Name="Card4Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
                 </UniformGrid>
 
                 <!-- Health Score Band -->
-                <Border Grid.Row="1" Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,0,0,12" Padding="16,10">
+                <Border Grid.Row="1" Background="{StaticResource BgCard}" CornerRadius="4" Margin="0,0,0,12" Padding="16,12">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -505,13 +519,13 @@ $script:StdinFlushTimer = $null
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Health Score" FontSize="11" Foreground="{StaticResource Text2}"/>
+                            <TextBlock Text="Health Score" FontSize="12" Foreground="{StaticResource Text2}"/>
                             <TextBlock x:Name="HealthScoreValue" AutomationProperties.AutomationId="HealthScoreValue" Text=" -" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
                         </StackPanel>
-                        <ProgressBar x:Name="HealthScoreBar" Grid.Column="1" Height="8" Minimum="0" Maximum="100" Value="0" Background="{StaticResource BgDark}" Margin="16,0" VerticalAlignment="Center"/>
+                        <ProgressBar x:Name="HealthScoreBar" Grid.Column="1" Height="8" Minimum="0" Maximum="100" Value="0" Background="{StaticResource BgDark}" Foreground="{StaticResource Blue}" Margin="16,0" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock x:Name="HealthScoreGrade" AutomationProperties.AutomationId="HealthScoreGrade" Text="" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Green}" HorizontalAlignment="Right"/>
-                            <TextBlock x:Name="LastSyncText" Text="Last sync:  -" FontSize="10" Foreground="{StaticResource Text2}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="HealthScoreGrade" AutomationProperties.AutomationId="HealthScoreGrade" Text="" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Green}" HorizontalAlignment="Right"/>
+                            <TextBlock x:Name="LastSyncText" Text="Last sync:  -" FontSize="10" Foreground="{StaticResource Text2}" HorizontalAlignment="Right" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -528,9 +542,9 @@ $script:StdinFlushTimer = $null
                 </StackPanel>
 
                 <!-- Config -->
-                <Border Grid.Row="3" Background="{StaticResource BgCard}" CornerRadius="4" Padding="14" VerticalAlignment="Top">
+                <Border Grid.Row="3" Background="{StaticResource BgCard}" CornerRadius="4" Padding="12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Configuration" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Configuration" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="90"/>
@@ -542,16 +556,16 @@ $script:StdinFlushTimer = $null
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Text="Content:" Foreground="{StaticResource Text2}" FontSize="11"/>
-                            <TextBlock x:Name="CfgContentPath" Grid.Column="1" Text="C:\WSUS" Foreground="{StaticResource Text1}" FontSize="11"/>
-                            <TextBlock Grid.Row="1" Text="SQL:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
-                            <TextBlock x:Name="CfgSqlInstance" Grid.Row="1" Grid.Column="1" Text=".\SQLEXPRESS" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="2" Text="Export:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
-                            <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource Text1}" FontSize="11" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="3" Text="Logs:" Foreground="{StaticResource Text2}" FontSize="11" Margin="0,4,0,0"/>
+                            <TextBlock Text="Content:" Foreground="{StaticResource Text2}" FontSize="12"/>
+                            <TextBlock x:Name="CfgContentPath" Grid.Column="1" Text="C:\WSUS" Foreground="{StaticResource Text1}" FontSize="12"/>
+                            <TextBlock Grid.Row="1" Text="SQL:" Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="CfgSqlInstance" Grid.Row="1" Grid.Column="1" Text=".\SQLEXPRESS" Foreground="{StaticResource Text1}" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="2" Text="Export:" Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="CfgExportRoot" Grid.Row="2" Grid.Column="1" Text="C:\" Foreground="{StaticResource Text1}" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="3" Text="Logs:" Foreground="{StaticResource Text2}" FontSize="12" Margin="0,4,0,0"/>
                             <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource Text1}" FontSize="11"/>
-                                <Button x:Name="BtnOpenLog" Content="Open" FontSize="9" Padding="6,1" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
+                                <TextBlock x:Name="CfgLogPath" Foreground="{StaticResource Text1}" FontSize="12"/>
+                                <Button x:Name="BtnOpenLog" Content="Open" FontSize="10" Padding="8,4" Margin="8,0,0,0" Background="#30363D" Foreground="{StaticResource Text2}" BorderThickness="0" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -563,24 +577,24 @@ $script:StdinFlushTimer = $null
                 <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                     <StackPanel>
                         <TextBlock Text="Install WSUS + SQL Express" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                        <TextBlock Text="Select the folder containing SQL Server installers. Default is C:\WSUS\SQLDB." FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <TextBlock Text="Select the folder containing SQL Server installers. Default is C:\WSUS\SQLDB." FontSize="12" Foreground="{StaticResource Text2}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="InstallPathBox" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
-                            <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="10,6" Margin="8,0,0,0"/>
+                            <TextBox x:Name="InstallPathBox" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                            <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="8,4" Margin="8,0,0,0"/>
                         </Grid>
-                        <TextBlock Text="SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
-                        <PasswordBox x:Name="InstallSaPassword" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
-                        <TextBlock Text="Confirm SA Password:" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
-                        <PasswordBox x:Name="InstallSaPasswordConfirm" Height="28" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="6,4"/>
-                        <ProgressBar x:Name="PasswordStrength" Height="4" Margin="0,4,0,0" Visibility="Collapsed" Maximum="100"/>
-                        <TextBlock x:Name="PasswordError" Foreground="#F85149" FontSize="11" Margin="0,4,0,0" Visibility="Collapsed"/>
+                        <TextBlock Text="SQL Admin Password (SA):" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPassword" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                        <TextBlock Text="Confirm SA Password:" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
+                        <PasswordBox x:Name="InstallSaPasswordConfirm" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                        <ProgressBar x:Name="PasswordStrength" Height="6" Margin="0,4,0,0" Visibility="Collapsed" Maximum="100"/>
+                        <TextBlock x:Name="PasswordError" Foreground="{StaticResource Red}" FontSize="12" Margin="0,4,0,0" Visibility="Collapsed"/>
                         <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
-                        <ProgressBar x:Name="InstallProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
-                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <ProgressBar x:Name="InstallProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                             <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
                             <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -600,8 +614,8 @@ $script:StdinFlushTimer = $null
                     </ScrollViewer>
                 </Border>
 <StackPanel Grid.Row="1" Margin="0,2,0,0">
-                    <ProgressBar x:Name="CleanupProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
-                    <ProgressBar x:Name="DiagnosticsProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" Foreground="#58A6FF" />
+                    <ProgressBar x:Name="CleanupProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
+                    <ProgressBar x:Name="DiagnosticsProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
                         <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
@@ -616,30 +630,30 @@ $script:StdinFlushTimer = $null
                         <StackPanel Orientation="Horizontal">
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="WSUS Manager" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                 <TextBlock x:Name="AboutVersion" Text="Version 3.8.10" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
-                                <TextBlock Text="Windows Server Update Services Management Tool" FontSize="11" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                                <TextBlock Text="WSUS Manager" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.1" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Author" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock Text="Tony Tran" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Blue}"/>
-                            <TextBlock Text="ISSO, Classified Computing, GA-ASI" FontSize="11" Foreground="{StaticResource Text2}" Margin="0,2,0,0"/>
-                            <TextBlock Text="tony.tran@ga-asi.com" FontSize="11" Foreground="{StaticResource Blue}" Margin="0,6,0,0"/>
+                            <TextBlock Text="Author" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Tony Tran" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Blue}"/>
+                            <TextBlock Text="ISSO, Classified Computing, GA-ASI" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                            <TextBlock Text="tony.tran@ga-asi.com" FontSize="12" Foreground="{StaticResource Blue}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Features" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Monthly maintenance automation&#x0a;• Health diagnostics with auto-repair&#x0a;• Deep cleanup and optimization"/>
+                            <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Monthly maintenance automation&#x0a;• Health diagnostics with auto-repair&#x0a;• Deep cleanup and optimization"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="Requirements" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text2}" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 150 GB+ disk space (recommended)"/>
+                            <TextBlock Text="Requirements" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Windows Server 2019+&#x0a;• PowerShell 5.1+&#x0a;• SQL Server Express 2022&#x0a;• 150 GB+ disk space (recommended)"/>
                             <TextBlock Text="© 2026 GA-ASI. Internal use only." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,12,0,0"/>
                         </StackPanel>
                     </Border>
@@ -677,17 +691,23 @@ $script:StdinFlushTimer = $null
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="Operation History" FontSize="18" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
+                <TextBlock Text="Operation History" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,0,0,12"/>
                 <Border Grid.Row="1" Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <Button x:Name="BtnRefreshHistory" Content="↻ Refresh" Style="{StaticResource BtnSec}" Padding="10,4" Margin="0,0,8,0"/>
-                            <Button x:Name="BtnClearHistory" Content="🗑 Clear History" Style="{StaticResource BtnSec}" Padding="10,4"/>
-                        </StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="HistoryFilter" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4" FontSize="12" Margin="0,0,8,0" ToolTip="Filter by operation type, result, or keyword"/>
+                            <Button x:Name="BtnRefreshHistory" Grid.Column="1" Content="↻ Refresh" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnClearHistory" Grid.Column="2" Content="🗑 Clear History" Style="{StaticResource BtnSec}" Padding="8,4"/>
+                        </Grid>
                         <ListBox x:Name="HistoryList" Grid.Row="1" Background="{StaticResource BgDark}" BorderThickness="0" Foreground="{StaticResource Text1}" FontFamily="Consolas" FontSize="11" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
                     </Grid>
                 </Border>
@@ -707,15 +727,15 @@ $script:StdinFlushTimer = $null
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Output Log" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Output Log" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="StatusLabel" Text=" - Ready" FontSize="10" Foreground="{StaticResource Text2}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="#F85149" Foreground="White" BorderThickness="0" Padding="8,3" FontSize="10" Margin="0,0,6,0" Visibility="Collapsed"/>
-                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
-                                <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
-                                <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10" Margin="0,0,6,0"/>
-                                <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,3" FontSize="10"/>
+                                <Button x:Name="BtnCancelOp" Content="Cancel" Background="{StaticResource Red}" Foreground="{StaticResource Text1}" BorderThickness="0" Padding="8,4" FontSize="10" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
+                                <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -811,7 +831,7 @@ function Show-SplashScreen {
 
         $titleText = New-Object System.Windows.Controls.TextBlock
         $titleText.Text = "WSUS Manager"
-        $titleText.FontSize = 22
+        $titleText.FontSize = 20
         $titleText.FontWeight = "Bold"
         $titleText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
         $titleText.HorizontalAlignment = "Center"
@@ -821,7 +841,7 @@ function Show-SplashScreen {
 
         $versionText = New-Object System.Windows.Controls.TextBlock
         $versionText.Text = "v$script:AppVersion"
-        $versionText.FontSize = 11
+        $versionText.FontSize = 10
         $versionText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
         $versionText.HorizontalAlignment = "Center"
         $versionText.Margin = "0,0,0,20"
@@ -1249,11 +1269,20 @@ function Update-HistoryView {
     if (-not $controls.HistoryList) { return }
     $controls.HistoryList.Items.Clear()
 
+    # Get filter text for history search
+    $filterText = ""
+    if ($controls.HistoryFilter -and $controls.HistoryFilter.Text) {
+        $filterText = $controls.HistoryFilter.Text.Trim().ToLower()
+    }
+
     # Try WsusHistory module first
     if (Get-Command Get-WsusOperationHistory -ErrorAction SilentlyContinue) {
         $entries = Get-WsusOperationHistory -Count 50
         if ($entries -and $entries.Count -gt 0) {
-            foreach ($entry in $entries) {
+            foreach ($entry in ($entries | Where-Object {
+                if ([string]::IsNullOrEmpty($filterText)) { $true }
+                else { ($_.OperationType -and $_.OperationType.ToLower().Contains($filterText)) -or ($_.Result -and $_.Result.ToLower().Contains($filterText)) -or ($_.Summary -and $_.Summary.ToLower().Contains($filterText)) }
+            })) {
                 $ts = try { ([DateTime]$entry.Timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
                 $dur = if ($entry.DurationSeconds) { "$($entry.DurationSeconds)s" } else { " -" }
                 $icon = if ($entry.Result -eq "Pass") { "[+]" } else { "[-]" }
@@ -1487,6 +1516,27 @@ function Show-Panel {
     if ($controls.HistoryPanel) { $controls.HistoryPanel.Visibility = if($Panel -eq "History"){"Visible"}else{"Collapsed"} }
     Set-ActiveNavButton $NavBtn
     if ($Panel -eq "Dashboard") { Invoke-DashboardRefreshSafe -Source "Panel Navigation" }
+
+    # Fade-in animation for panel transitions
+    $targetPanel = switch ($Panel) {
+        "Dashboard" { $controls.DashboardPanel }
+        "Install"   { $controls.InstallPanel }
+        "Operation" { $controls.OperationPanel }
+        "About"     { $controls.AboutPanel }
+        "Help"      { $controls.HelpPanel }
+        "History"   { if ($controls.HistoryPanel) { $controls.HistoryPanel } else { $null } }
+        default     { $null }
+    }
+    if ($null -ne $targetPanel) {
+        try {
+            $targetPanel.Opacity = 0
+            $fadeIn = New-Object System.Windows.Media.Animation.DoubleAnimation
+            $fadeIn.From = 0
+            $fadeIn.To = 1
+            $fadeIn.Duration = [System.Windows.Duration]::new([TimeSpan]::FromMilliseconds(150))
+            $targetPanel.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $fadeIn)
+        } catch { $targetPanel.Opacity = 1 }
+    }
 }
 
 #endregion
@@ -1722,7 +1772,7 @@ function Show-ExportDialog {
     $destTxt.Margin = "0,0,8,0"
     $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $destTxt.Padding = "6,4"
+    $destTxt.Padding = "8,4"
     $destPanel.Children.Add($destTxt)
 
     $destBtn.Add_Click({
@@ -1738,9 +1788,9 @@ function Show-ExportDialog {
 
     $exportBtn = New-Object System.Windows.Controls.Button
     $exportBtn.Content = "Export"
-    $exportBtn.Padding = "14,6"
+    $exportBtn.Padding = "12,8"
     $exportBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $exportBtn.Foreground = "White"
+    $exportBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $exportBtn.BorderThickness = 0
     $exportBtn.Margin = "0,0,8,0"
     $exportBtn.Add_Click({
@@ -1763,7 +1813,7 @@ function Show-ExportDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -1823,7 +1873,7 @@ function Show-ImportDialog {
     $srcTxt.Margin = "0,0,8,0"
     $srcTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $srcTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $srcTxt.Padding = "6,4"
+    $srcTxt.Padding = "8,4"
     $srcPanel.Children.Add($srcTxt)
 
     $srcBtn.Add_Click({
@@ -1858,7 +1908,7 @@ function Show-ImportDialog {
     $dstTxt.Margin = "0,0,8,0"
     $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $dstTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $dstTxt.Padding = "6,4"
+    $dstTxt.Padding = "8,4"
     $dstPanel.Children.Add($dstTxt)
 
     $dstBtn.Add_Click({
@@ -1876,9 +1926,9 @@ function Show-ImportDialog {
 
     $importBtn = New-Object System.Windows.Controls.Button
     $importBtn.Content = "Import"
-    $importBtn.Padding = "14,6"
+    $importBtn.Padding = "12,8"
     $importBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $importBtn.Foreground = "White"
+    $importBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $importBtn.BorderThickness = 0
     $importBtn.Margin = "0,0,8,0"
     $importBtn.Add_Click({
@@ -1899,7 +1949,7 @@ function Show-ImportDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -1941,14 +1991,22 @@ function Show-RestoreDialog {
     $title.FontSize = 14
     $title.FontWeight = "Bold"
     $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $title.Margin = "0,0,0,12"
+    $title.Margin = "0,0,0,8"
     $stack.Children.Add($title)
+
+    $restoreWarning = New-Object System.Windows.Controls.TextBlock
+    $restoreWarning.Text = "This will permanently replace the current SUSDB database. Create a backup first."
+    $restoreWarning.FontSize = 12
+    $restoreWarning.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+    $restoreWarning.TextWrapping = "Wrap"
+    $restoreWarning.Margin = "0,0,0,12"
+    $stack.Children.Add($restoreWarning)
 
     # Backup file selection
     $fileLbl = New-Object System.Windows.Controls.TextBlock
     $fileLbl.Text = "Backup file:"
     $fileLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $fileLbl.Margin = "0,0,0,6"
+    $fileLbl.Margin = "0,0,0,4"
     $stack.Children.Add($fileLbl)
 
     $filePanel = New-Object System.Windows.Controls.DockPanel
@@ -1967,7 +2025,7 @@ function Show-RestoreDialog {
     $fileTxt.Margin = "0,0,8,0"
     $fileTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $fileTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $fileTxt.Padding = "6,4"
+    $fileTxt.Padding = "8,4"
     # Pre-fill with most recent backup if found
     if ($backupFiles.Count -gt 0) {
         $fileTxt.Text = $backupFiles[0].FullName
@@ -2033,9 +2091,9 @@ function Show-RestoreDialog {
 
     $restoreBtn = New-Object System.Windows.Controls.Button
     $restoreBtn.Content = "Restore"
-    $restoreBtn.Padding = "14,6"
+    $restoreBtn.Padding = "12,8"
     $restoreBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
-    $restoreBtn.Foreground = "White"
+    $restoreBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $restoreBtn.BorderThickness = 0
     $restoreBtn.Margin = "0,0,8,0"
     $restoreBtn.Add_Click({
@@ -2058,7 +2116,7 @@ function Show-RestoreDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -2106,7 +2164,7 @@ function Show-MaintenanceDialog {
     $fullDesc = New-Object System.Windows.Controls.TextBlock
     $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup > Export"
     $fullDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $fullDesc.FontSize = 11
+    $fullDesc.FontSize = 12
     $fullDesc.Margin = "20,0,0,12"
     $stack.Children.Add($fullDesc)
 
@@ -2119,7 +2177,7 @@ function Show-MaintenanceDialog {
     $quickDesc = New-Object System.Windows.Controls.TextBlock
     $quickDesc.Text = "Sync > Cleanup > Backup (skip heavy cleanup)"
     $quickDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $quickDesc.FontSize = 11
+    $quickDesc.FontSize = 12
     $quickDesc.Margin = "20,0,0,12"
     $stack.Children.Add($quickDesc)
 
@@ -2132,7 +2190,7 @@ function Show-MaintenanceDialog {
     $syncDesc = New-Object System.Windows.Controls.TextBlock
     $syncDesc.Text = "Synchronize and approve updates only (no export)"
     $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $syncDesc.FontSize = 11
+    $syncDesc.FontSize = 12
     $syncDesc.Margin = "20,0,0,12"
     $stack.Children.Add($syncDesc)
 
@@ -2149,7 +2207,7 @@ function Show-MaintenanceDialog {
     $exportLabel = New-Object System.Windows.Controls.TextBlock
     $exportLabel.Text = "Full Export Path (backup + all content):"
     $exportLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $exportLabel.FontSize = 11
+    $exportLabel.FontSize = 12
     $exportLabel.Margin = "0,0,0,4"
     $stack.Children.Add($exportLabel)
 
@@ -2179,7 +2237,7 @@ function Show-MaintenanceDialog {
     $diffLabel = New-Object System.Windows.Controls.TextBlock
     $diffLabel.Text = "Differential Export Path (recent changes only):"
     $diffLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $diffLabel.FontSize = 11
+    $diffLabel.FontSize = 12
     $diffLabel.Margin = "0,0,0,4"
     $stack.Children.Add($diffLabel)
 
@@ -2213,7 +2271,7 @@ function Show-MaintenanceDialog {
     $daysLabel = New-Object System.Windows.Controls.TextBlock
     $daysLabel.Text = "Differential includes files from last"
     $daysLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $daysLabel.FontSize = 11
+    $daysLabel.FontSize = 12
     $daysLabel.VerticalAlignment = "Center"
     $daysPanel.Children.Add($daysLabel)
 
@@ -2231,7 +2289,7 @@ function Show-MaintenanceDialog {
     $daysLabel2 = New-Object System.Windows.Controls.TextBlock
     $daysLabel2.Text = "days"
     $daysLabel2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
-    $daysLabel2.FontSize = 11
+    $daysLabel2.FontSize = 12
     $daysLabel2.VerticalAlignment = "Center"
     $daysPanel.Children.Add($daysLabel2)
 
@@ -2265,9 +2323,9 @@ function Show-MaintenanceDialog {
 
     $runBtn = New-Object System.Windows.Controls.Button
     $runBtn.Content = "Run Sync"
-    $runBtn.Padding = "14,6"
+    $runBtn.Padding = "12,8"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $runBtn.Foreground = "White"
+    $runBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
@@ -2285,7 +2343,7 @@ function Show-MaintenanceDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -2351,8 +2409,8 @@ function Show-ScheduleTaskDialog {
             <Setter Property="Foreground" Value="#E6EDF3"/>
             <Setter Property="BorderBrush" Value="#30363D"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -2397,7 +2455,7 @@ function Show-ScheduleTaskDialog {
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background" Value="#21262D"/>
             <Setter Property="Foreground" Value="#E6EDF3"/>
-            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Padding" Value="8,4"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#58A6FF"/>
@@ -2414,8 +2472,8 @@ function Show-ScheduleTaskDialog {
             <Setter Property="Foreground" Value="#E6EDF3"/>
             <Setter Property="BorderBrush" Value="#30363D"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="CaretBrush" Value="#E6EDF3"/>
         </Style>
 
@@ -2425,8 +2483,8 @@ function Show-ScheduleTaskDialog {
             <Setter Property="Foreground" Value="#E6EDF3"/>
             <Setter Property="BorderBrush" Value="#30363D"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="CaretBrush" Value="#E6EDF3"/>
         </Style>
     </Window.Resources>
@@ -2435,7 +2493,7 @@ function Show-ScheduleTaskDialog {
         <!-- Title -->
         <TextBlock Text="Create Scheduled Task" FontSize="14" FontWeight="Bold"
                    Foreground="#E6EDF3" Margin="0,0,0,8"/>
-        <TextBlock Text="Recommended: Weekly on Saturday at 02:00" FontSize="11"
+        <TextBlock Text="Recommended: Weekly on Saturday at 02:00" FontSize="12"
                    Foreground="#8B949E" Margin="0,0,0,16"/>
 
         <!-- Schedule Type -->
@@ -2480,7 +2538,7 @@ function Show-ScheduleTaskDialog {
 
         <!-- Credentials Section -->
         <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
-                   FontSize="11" Margin="0,4,0,8"/>
+                   FontSize="12" Margin="0,4,0,8"/>
 
         <TextBlock Text="Username (e.g., DoD_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
         <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
@@ -2490,9 +2548,9 @@ function Show-ScheduleTaskDialog {
 
         <!-- Buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="BtnCreate" Content="Create Task" Padding="14,6"
-                    Background="#58A6FF" Foreground="White" BorderThickness="0" Margin="0,0,8,0"/>
-            <Button x:Name="BtnCancel" Content="Cancel" Padding="14,6"
+            <Button x:Name="BtnCreate" Content="Create Task" Padding="12,8"
+                    Background="#58A6FF" Foreground="#E6EDF3" BorderThickness="0" Margin="0,0,8,0"/>
+            <Button x:Name="BtnCancel" Content="Cancel" Padding="12,8"
                     Background="#21262D" Foreground="#E6EDF3" BorderThickness="0"/>
         </StackPanel>
     </StackPanel>
@@ -2711,7 +2769,7 @@ function Show-TransferDialog {
     $pathTxt.Margin = "0,0,8,0"
     $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $pathTxt.Padding = "6,4"
+    $pathTxt.Padding = "8,4"
     $pathPanel.Children.Add($pathTxt)
 
     $browseBtn.Add_Click({
@@ -2749,7 +2807,7 @@ function Show-TransferDialog {
     $importDestTxt.Margin = "0,0,8,0"
     $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $importDestTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $importDestTxt.Padding = "6,4"
+    $importDestTxt.Padding = "8,4"
     $importDestDock.Children.Add($importDestTxt)
 
     $importDestBtn.Add_Click({
@@ -2789,9 +2847,9 @@ function Show-TransferDialog {
 
     $runBtn = New-Object System.Windows.Controls.Button
     $runBtn.Content = "Start Transfer"
-    $runBtn.Padding = "14,6"
+    $runBtn.Padding = "12,8"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $runBtn.Foreground = "White"
+    $runBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
@@ -2835,7 +2893,7 @@ function Show-TransferDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -2878,7 +2936,7 @@ function Show-SettingsDialog {
     $txt1.Margin = "0,0,0,12"
     $txt1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $txt1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $txt1.Padding = "6,4"
+    $txt1.Padding = "8,4"
     $stack.Children.Add($txt1)
 
     $lbl2 = New-Object System.Windows.Controls.TextBlock
@@ -2892,7 +2950,7 @@ function Show-SettingsDialog {
     $txt2.Margin = "0,0,0,16"
     $txt2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $txt2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
-    $txt2.Padding = "6,4"
+    $txt2.Padding = "8,4"
     $stack.Children.Add($txt2)
 
     # Notification Settings
@@ -2935,9 +2993,9 @@ function Show-SettingsDialog {
 
     $saveBtn = New-Object System.Windows.Controls.Button
     $saveBtn.Content = "Save"
-    $saveBtn.Padding = "14,6"
+    $saveBtn.Padding = "12,8"
     $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $saveBtn.Foreground = "White"
+    $saveBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $saveBtn.BorderThickness = 0
     $saveBtn.Margin = "0,0,8,0"
     $saveBtn.Add_Click({
@@ -2954,7 +3012,7 @@ function Show-SettingsDialog {
 
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
-    $cancelBtn.Padding = "14,6"
+    $cancelBtn.Padding = "12,8"
     $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $cancelBtn.BorderThickness = 0
@@ -3752,6 +3810,9 @@ if ($controls.BtnHistory) {
 if ($controls.BtnRefreshHistory) {
     $controls.BtnRefreshHistory.Add_Click({ Update-HistoryView })
 }
+if ($controls.HistoryFilter) {
+    $controls.HistoryFilter.Add_TextChanged({ Update-HistoryView }.GetNewClosure())
+}
 if ($controls.BtnClearHistory) {
     $controls.BtnClearHistory.Add_Click({
         if (Get-Command Clear-WsusOperationHistory -ErrorAction SilentlyContinue) {
@@ -3822,6 +3883,7 @@ $controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" 
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
+    $controls.QBtnStart.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#D29922")
     Set-Status "Starting services..."
 
     # Expand log panel
@@ -3849,6 +3911,7 @@ $controls.QBtnStart.Add_Click({
     Write-LogOutput "Service startup complete" -Level Success
     Set-Status "Ready"
     $controls.QBtnStart.Content = "Start Services"
+    $controls.QBtnStart.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
     $controls.QBtnStart.IsEnabled = $true
 })
 
@@ -3862,7 +3925,7 @@ $controls.BtnLiveTerminal.Add_Click({
     $script:LiveTerminalMode = -not $script:LiveTerminalMode
     if ($script:LiveTerminalMode) {
         $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
         $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
     } else {
         $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
@@ -3939,7 +4002,7 @@ $controls.AboutVersion.Text = "Version $script:AppVersion"
 # Initialize Live Terminal button state from saved settings
 if ($script:LiveTerminalMode) {
     $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#238636")
+    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
     $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
 }
 
