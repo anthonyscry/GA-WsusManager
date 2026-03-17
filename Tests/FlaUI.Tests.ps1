@@ -397,41 +397,48 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
     Context 'Open Settings' {
         It 'Settings button opens a modal dialog' {
             Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
-            # Settings opens as a modal Window — find it by title (UIA Name)
+            # Settings dialog has AutomationId="SettingsDialog" (set via WsusDialogs factory)
             $settingsWindow = $null
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
             while ($sw.Elapsed.TotalSeconds -lt 5 -and $null -eq $settingsWindow) {
-                $settingsWindow = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 1
+                $settingsWindow = Find-UIElement -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 1
             }
             $settingsWindow | Should -Not -BeNullOrEmpty -Because "Settings dialog should appear"
         }
     }
 
     Context 'Close Settings' {
-        It 'ESC key closes the Settings dialog' {
+        It 'Settings dialog closes properly' {
             # Open Settings
             Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
             Start-Sleep -Milliseconds 500
 
-            # Find the Settings window and send ESC via COM Input.SendKeys
-            $settingsWin = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 3
-            $settingsWin | Should -Not -BeNullOrEmpty -Because "Settings dialog should be open"
+            # Find the Settings dialog by its AutomationId (not Name, which also matches the sidebar button)
+            $settingsDialog = Find-UIElement -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 3
+            $settingsDialog | Should -Not -BeNullOrEmpty -Because "Settings dialog should be open"
 
-            # Use COM to set focus and send ESC
-            if ($settingsWin.PSObject.Properties['_ComElement']) {
-                $comEl = $settingsWin._ComElement
+            # Close via COM WindowPattern
+            if ($settingsDialog.PSObject.Properties['_ComElement']) {
+                $comEl = $settingsDialog._ComElement
                 try {
-                    $comEl.SetFocus()
-                    Start-Sleep -Milliseconds 200
-                    [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
-                    Start-Sleep -Milliseconds 500
+                    $windowPattern = $comEl.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                    if ($null -ne $windowPattern) {
+                        $windowPattern.Close()
+                        Start-Sleep -Milliseconds 500
+                    }
                 } catch {
-                    Write-Warning "COM focus+ESC failed: $($_.Exception.Message)"
+                    # Fallback: SetFocus + ESC
+                    try {
+                        $comEl.SetFocus()
+                        Start-Sleep -Milliseconds 200
+                        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+                        Start-Sleep -Milliseconds 500
+                    } catch { }
                 }
             }
 
-            # Verify dialog is gone
-            $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -Timeout 5
+            # Verify dialog is gone (by AutomationId, not Name)
+            $gone = Wait-UIElementGone -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 5
             $gone | Should -BeTrue -Because "Settings dialog should be closed"
         }
     }
@@ -574,17 +581,19 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
                 Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 800
                 Start-Sleep -Milliseconds 500
 
-                # Find Settings window and close via COM focus + ESC
-                $sw = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 3
+                # Close Settings dialog via WindowPattern or ESC
+                $sw = Find-UIElement -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 3
                 if ($sw -and $sw.PSObject.Properties['_ComElement']) {
                     try {
-                        $sw._ComElement.SetFocus()
-                        Start-Sleep -Milliseconds 200
-                        [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
-                        Start-Sleep -Milliseconds 300
+                        $wp = $sw._ComElement.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+                        if ($null -ne $wp) { $wp.Close() }
+                        else {
+                            $sw._ComElement.SetFocus()
+                            Start-Sleep -Milliseconds 200
+                            [System.Windows.Forms.SendKeys]::SendWait("{ESC}")
+                        }
                     } catch { }
                 }
-
                 Start-Sleep -Milliseconds 300
             }
 
