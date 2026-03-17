@@ -332,9 +332,9 @@ function Find-UIElement {
 
     $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
 
-    # Build condition tree (use PS array — generic List<ConditionFactory> fails in PS 5.1)
+    # Build condition tree using Automation's ConditionFactory directly
     $conditions = @()
-    $cf = [FlaUI.Core.Definitions.ConditionFactory]::new($ctx.Automation.ConditionFactory)
+    $cf = $ctx.Automation.ConditionFactory
 
     if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
         $conditions += $cf.ByAutomationId($AutomationId)
@@ -405,7 +405,7 @@ function Find-AllUIElements {
     if ($null -eq $ctx) { throw "No active application." }
 
     $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
-    $cf = [FlaUI.Core.Definitions.ConditionFactory]::new($ctx.Automation.ConditionFactory)
+    $cf = $ctx.Automation.ConditionFactory
 
     $conditions = @()  # PS array (generic List<object> fails in PS 5.1)
     if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
