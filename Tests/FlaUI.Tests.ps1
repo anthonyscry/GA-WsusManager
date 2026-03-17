@@ -409,13 +409,10 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
 
     Context 'Close Settings' {
         It 'Settings dialog closes properly' {
-            # Open Settings
-            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
-            Start-Sleep -Milliseconds 500
-
-            # Find the Settings dialog by its AutomationId (not Name, which also matches the sidebar button)
+            # The "Open Settings" test above left the dialog open.
+            # Find the Settings dialog by its AutomationId and close it.
             $settingsDialog = Find-UIElement -AppContext $script:AppContext -AutomationId "SettingsDialog" -Timeout 3
-            $settingsDialog | Should -Not -BeNullOrEmpty -Because "Settings dialog should be open"
+            $settingsDialog | Should -Not -BeNullOrEmpty -Because "Settings dialog should still be open from previous test"
 
             # Close via COM WindowPattern
             if ($settingsDialog.PSObject.Properties['_ComElement']) {
