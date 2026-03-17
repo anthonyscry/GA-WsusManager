@@ -208,14 +208,29 @@ function Start-GuiApplication {
         Write-Verbose "Using UIA3 automation"
     }
 
-    # Wait for main window
+    # Wait for main window using desktop search (more reliable than GetMainWindow for PS2EXE)
     $window = $null
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $desktop = $automation.GetDesktop()
+    $cf = $automation.ConditionFactory
+
     while ($sw.Elapsed.TotalSeconds -lt $Timeout) {
         try {
+            # Find all windows for this process
+            $allWindows = $desktop.FindAllChildren()
+            foreach ($w in $allWindows) {
+                if ($w.ProcessId -eq $app.ProcessId -and $w.ControlType -eq [FlaUI.Core.Definitions.ControlType]::Window) {
+                    $window = $w
+                    Write-Verbose "Main window found after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s: Name='$($w.Name)' Aid='$($w.AutomationId)'"
+                    break
+                }
+            }
+            if ($null -ne $window) { break }
+
+            # Fallback: try GetMainWindow
             $window = $app.GetMainWindow($automation)
             if ($null -ne $window) {
-                Write-Verbose "Main window found after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
+                Write-Verbose "Main window found via GetMainWindow after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
                 break
             }
         }
