@@ -64,7 +64,8 @@ function New-WsusDialog {
         Builds a configured System.Windows.Window with the GA dark theme applied,
         ESC-to-close behaviour, and a StackPanel as the root content area.
         The window is NOT shown by this function  - the caller must invoke
-        ShowDialog() when ready.
+        ShowDialog() when ready. An optional AutomationId can be set on the
+        window for UI automation testing.
 
     .PARAMETER Title
         Text displayed in the dialog title bar.
@@ -78,6 +79,10 @@ function New-WsusDialog {
     .PARAMETER Owner
         Optional parent System.Windows.Window. When supplied, the dialog is
         centred over the owner window; otherwise it is centred on screen.
+
+    .PARAMETER AutomationId
+        Optional automation identifier set via AutomationProperties.AutomationId
+        for UI automation testing. When omitted, no AutomationId is set.
 
     .OUTPUTS
         PSCustomObject with:
@@ -98,7 +103,9 @@ function New-WsusDialog {
 
         [int]$Height = 360,
 
-        [System.Windows.Window]$Owner
+        [System.Windows.Window]$Owner,
+
+        [string]$AutomationId = ''
     )
 
     $window = [System.Windows.Window]::new()
@@ -122,6 +129,10 @@ function New-WsusDialog {
         if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() }
     })
 
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $window.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, $AutomationId)
+    }
+
     $contentPanel = [System.Windows.Controls.StackPanel]::new()
     $contentPanel.Margin = ConvertTo-Thickness '20'
     $window.Content = $contentPanel
@@ -140,7 +151,8 @@ function New-WsusFolderBrowser {
     .DESCRIPTION
         Returns a DockPanel containing a right-docked Browse button and a
         fill TextBox. Clicking Browse opens a WinForms FolderBrowserDialog and
-        populates the TextBox with the selected path.
+        populates the TextBox with the selected path. An optional AutomationId
+        can be set on the DockPanel for UI automation testing.
 
     .PARAMETER LabelText
         Text for the label displayed above the browse row. Default is "Path:".
@@ -150,6 +162,11 @@ function New-WsusFolderBrowser {
 
     .PARAMETER Owner
         Optional parent window handle used to centre the FolderBrowserDialog.
+
+    .PARAMETER AutomationId
+        Optional automation identifier set via AutomationProperties.AutomationId
+        on the DockPanel for UI automation testing. When omitted, no
+        AutomationId is set.
 
     .OUTPUTS
         PSCustomObject with:
@@ -169,7 +186,9 @@ function New-WsusFolderBrowser {
 
         [string]$InitialPath = '',
 
-        [System.Windows.Window]$Owner
+        [System.Windows.Window]$Owner,
+
+        [string]$AutomationId = ''
     )
 
     $label = New-WsusDialogLabel -Text $LabelText -IsSecondary $true
@@ -182,6 +201,9 @@ function New-WsusFolderBrowser {
 
     $dockPanel = [System.Windows.Controls.DockPanel]::new()
     $dockPanel.LastChildFill = $true
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $dockPanel.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, $AutomationId)
+    }
     $textBox.Margin = ConvertTo-Thickness '0,0,8,0'
 
     $dockPanel.Children.Add($browseBtn) | Out-Null
@@ -242,6 +264,10 @@ function New-WsusDialogLabel {
     .PARAMETER Margin
         Thickness string (CSS-shorthand notation). Default "0,0,0,6".
 
+    .PARAMETER AutomationId
+        Optional automation identifier set via AutomationProperties.AutomationId
+        for UI automation testing. When omitted, no AutomationId is set.
+
     .OUTPUTS
         System.Windows.Controls.TextBlock
 
@@ -255,13 +281,18 @@ function New-WsusDialogLabel {
 
         [bool]$IsSecondary = $false,
 
-        [string]$Margin = '0,0,0,6'
+        [string]$Margin = '0,0,0,6',
+
+        [string]$AutomationId = ''
     )
 
     $tb = [System.Windows.Controls.TextBlock]::new()
     $tb.Text = $Text
     $tb.Foreground = if ($IsSecondary) { ConvertTo-Brush '#8B949E' } else { ConvertTo-Brush '#E6EDF3' }
     $tb.Margin = ConvertTo-Thickness $Margin
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $tb.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, $AutomationId)
+    }
     $tb
 }
 
@@ -279,6 +310,10 @@ function New-WsusDialogButton {
     .PARAMETER Margin
         Thickness string. Default "0".
 
+    .PARAMETER AutomationId
+        Optional automation identifier set via AutomationProperties.AutomationId
+        for UI automation testing. When omitted, no AutomationId is set.
+
     .OUTPUTS
         System.Windows.Controls.Button
 
@@ -293,7 +328,9 @@ function New-WsusDialogButton {
 
         [bool]$IsPrimary = $false,
 
-        [string]$Margin = '0'
+        [string]$Margin = '0',
+
+        [string]$AutomationId = ''
     )
 
     $btn = [System.Windows.Controls.Button]::new()
@@ -312,6 +349,9 @@ function New-WsusDialogButton {
         $btn.Foreground = ConvertTo-Brush '#E6EDF3'
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $btn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, $AutomationId)
+    }
     $btn
 }
 
@@ -326,6 +366,10 @@ function New-WsusDialogTextBox {
     .PARAMETER Padding
         Internal padding. Default "6,4".
 
+    .PARAMETER AutomationId
+        Optional automation identifier set via AutomationProperties.AutomationId
+        for UI automation testing. When omitted, no AutomationId is set.
+
     .OUTPUTS
         System.Windows.Controls.TextBox
 
@@ -336,7 +380,9 @@ function New-WsusDialogTextBox {
     param(
         [string]$InitialText = '',
 
-        [string]$Padding = '6,4'
+        [string]$Padding = '6,4',
+
+        [string]$AutomationId = ''
     )
 
     $tb = [System.Windows.Controls.TextBox]::new()
@@ -347,6 +393,9 @@ function New-WsusDialogTextBox {
     $tb.BorderBrush = ConvertTo-Brush '#30363D'
     $tb.BorderThickness = ConvertTo-Thickness '1'
     $tb.Padding = ConvertTo-Thickness $Padding
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $tb.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, $AutomationId)
+    }
     $tb
 }
 

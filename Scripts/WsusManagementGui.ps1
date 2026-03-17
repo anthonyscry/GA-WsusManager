@@ -1689,6 +1689,7 @@ function Show-ExportDialog {
     $result = @{ Cancelled = $true; ExportType = "Full"; DestinationPath = ""; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDialog")
     $dlg.Title = "Export to Media"
     $dlg.Width = 480
     $dlg.Height = 360
@@ -1739,6 +1740,7 @@ function Show-ExportDialog {
     $daysPanel.Children.Add($daysLbl)
 
     $daysTxt = New-Object System.Windows.Controls.TextBox
+    $daysTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDaysTextBox")
     $daysTxt.Text = "30"
     $daysTxt.Width = 50
     $daysTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -1769,6 +1771,7 @@ function Show-ExportDialog {
     $destPanel.Children.Add($destBtn)
 
     $destTxt = New-Object System.Windows.Controls.TextBox
+    $destTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDestinationTextBox")
     $destTxt.Margin = "0,0,8,0"
     $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
@@ -1787,6 +1790,7 @@ function Show-ExportDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $exportBtn = New-Object System.Windows.Controls.Button
+    $exportBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportButton")
     $exportBtn.Content = "Export"
     $exportBtn.Padding = "12,8"
     $exportBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
@@ -1830,6 +1834,7 @@ function Show-ImportDialog {
     $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = "C:\WSUS" }
 
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportDialog")
     $dlg.Title = "Import from Media"
     $dlg.Width = 480
     $dlg.Height = 320
@@ -1870,6 +1875,7 @@ function Show-ImportDialog {
     $srcPanel.Children.Add($srcBtn)
 
     $srcTxt = New-Object System.Windows.Controls.TextBox
+    $srcTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportSourceTextBox")
     $srcTxt.Margin = "0,0,8,0"
     $srcTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $srcTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
@@ -1904,6 +1910,7 @@ function Show-ImportDialog {
     $dstPanel.Children.Add($dstBtn)
 
     $dstTxt = New-Object System.Windows.Controls.TextBox
+    $dstTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportDestinationTextBox")
     $dstTxt.Text = "C:\WSUS"
     $dstTxt.Margin = "0,0,8,0"
     $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -1925,6 +1932,7 @@ function Show-ImportDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $importBtn = New-Object System.Windows.Controls.Button
+    $importBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportButton")
     $importBtn.Content = "Import"
     $importBtn.Padding = "12,8"
     $importBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
@@ -1974,6 +1982,7 @@ function Show-RestoreDialog {
     }
 
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreDialog")
     $dlg.Title = "Restore Database"
     $dlg.Width = 480
     $dlg.Height = 340
@@ -2022,6 +2031,7 @@ function Show-RestoreDialog {
     $filePanel.Children.Add($browseBtn)
 
     $fileTxt = New-Object System.Windows.Controls.TextBox
+    $fileTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreFileTextBox")
     $fileTxt.Margin = "0,0,8,0"
     $fileTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $fileTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
@@ -2090,6 +2100,7 @@ function Show-RestoreDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $restoreBtn = New-Object System.Windows.Controls.Button
+    $restoreBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreButton")
     $restoreBtn.Content = "Restore"
     $restoreBtn.Padding = "12,8"
     $restoreBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
@@ -2133,6 +2144,7 @@ function Show-MaintenanceDialog {
     $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; DifferentialPath = ""; ExportDays = 30 }
 
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "MaintenanceDialog")
     $dlg.Title = "Online Sync"
     $dlg.Width = 520
     $dlg.Height = 580
@@ -2224,6 +2236,7 @@ function Show-MaintenanceDialog {
     $exportPanel.Children.Add($exportBrowse)
 
     $exportBox = New-Object System.Windows.Controls.TextBox
+    $exportBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncFullExportTextBox")
     $exportBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $exportBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $exportBox.BorderThickness = 0
@@ -2254,6 +2267,7 @@ function Show-MaintenanceDialog {
     $diffPanel.Children.Add($diffBrowse)
 
     $diffBox = New-Object System.Windows.Controls.TextBox
+    $diffBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDiffExportTextBox")
     $diffBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $diffBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $diffBox.BorderThickness = 0
@@ -2276,6 +2290,7 @@ function Show-MaintenanceDialog {
     $daysPanel.Children.Add($daysLabel)
 
     $daysBox = New-Object System.Windows.Controls.TextBox
+    $daysBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDaysTextBox")
     $daysBox.Text = "30"
     $daysBox.Width = 50
     $daysBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -2322,6 +2337,7 @@ function Show-MaintenanceDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $runBtn = New-Object System.Windows.Controls.Button
+    $runBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RunSyncButton")
     $runBtn.Content = "Run Sync"
     $runBtn.Padding = "12,8"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
@@ -2391,9 +2407,11 @@ function Show-ScheduleTaskDialog {
     $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="Schedule Online Sync" Width="480" Height="560"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="#0D1117">
+        Background="#0D1117"
+        automation:AutomationProperties.AutomationId="ScheduleDialog">
     <Window.Resources>
         <!-- Dark theme colors -->
         <SolidColorBrush x:Key="BgDark" Color="#0D1117"/>
@@ -2498,7 +2516,8 @@ function Show-ScheduleTaskDialog {
 
         <!-- Schedule Type -->
         <TextBlock Text="Schedule:" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <ComboBox x:Name="ScheduleCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+        <ComboBox x:Name="ScheduleCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12"
+                  automation:AutomationProperties.AutomationId="ScheduleComboBox">
             <ComboBoxItem Content="Weekly" IsSelected="True"/>
             <ComboBoxItem Content="Monthly"/>
             <ComboBoxItem Content="Daily"/>
@@ -2526,11 +2545,13 @@ function Show-ScheduleTaskDialog {
 
         <!-- Start Time -->
         <TextBlock Text="Start Time (HH:mm):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="TimeBox" Text="02:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+        <TextBox x:Name="TimeBox" Text="02:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
+                 automation:AutomationProperties.AutomationId="ScheduleTimeTextBox"/>
 
         <!-- Maintenance Profile -->
         <TextBlock Text="Maintenance Profile:" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <ComboBox x:Name="ProfileCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12">
+        <ComboBox x:Name="ProfileCombo" Style="{StaticResource DarkComboBox}" Margin="0,0,0,12"
+                  automation:AutomationProperties.AutomationId="ScheduleProfileComboBox">
             <ComboBoxItem Content="Full" IsSelected="True"/>
             <ComboBoxItem Content="Quick"/>
             <ComboBoxItem Content="SyncOnly"/>
@@ -2541,17 +2562,21 @@ function Show-ScheduleTaskDialog {
                    FontSize="12" Margin="0,4,0,8"/>
 
         <TextBlock Text="Username (e.g., DoD_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+        <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
+                 automation:AutomationProperties.AutomationId="ScheduleUserTextBox"/>
 
         <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <PasswordBox x:Name="PassBox" Style="{StaticResource DarkPasswordBox}" Margin="0,0,0,16"/>
+        <PasswordBox x:Name="PassBox" Style="{StaticResource DarkPasswordBox}" Margin="0,0,0,16"
+                     automation:AutomationProperties.AutomationId="SchedulePasswordBox"/>
 
         <!-- Buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="BtnCreate" Content="Create Task" Padding="12,8"
-                    Background="#58A6FF" Foreground="#E6EDF3" BorderThickness="0" Margin="0,0,8,0"/>
+                    Background="#58A6FF" Foreground="#E6EDF3" BorderThickness="0" Margin="0,0,8,0"
+                    automation:AutomationProperties.AutomationId="CreateScheduleButton"/>
             <Button x:Name="BtnCancel" Content="Cancel" Padding="12,8"
-                    Background="#21262D" Foreground="#E6EDF3" BorderThickness="0"/>
+                    Background="#21262D" Foreground="#E6EDF3" BorderThickness="0"
+                    automation:AutomationProperties.AutomationId="CancelScheduleButton"/>
         </StackPanel>
     </StackPanel>
 </Window>
@@ -2659,6 +2684,7 @@ function Show-TransferDialog {
     $result = @{ Cancelled = $true; Direction = ""; Path = ""; SourcePath = ""; DestinationPath = "C:\WSUS"; ExportMode = "Full"; DaysOld = 30 }
 
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferDialog")
     $dlg.Title = "Transfer Data"
     $dlg.Width = 480
     $dlg.Height = 460
@@ -2766,6 +2792,7 @@ function Show-TransferDialog {
     $pathPanel.Children.Add($browseBtn)
 
     $pathTxt = New-Object System.Windows.Controls.TextBox
+    $pathTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferPathTextBox")
     $pathTxt.Margin = "0,0,8,0"
     $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
     $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
@@ -2803,6 +2830,7 @@ function Show-TransferDialog {
     $importDestDock.Children.Add($importDestBtn)
 
     $importDestTxt = New-Object System.Windows.Controls.TextBox
+    $importDestTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferImportDestTextBox")
     $importDestTxt.Text = "C:\WSUS"
     $importDestTxt.Margin = "0,0,8,0"
     $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -2846,6 +2874,7 @@ function Show-TransferDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $runBtn = New-Object System.Windows.Controls.Button
+    $runBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "StartTransferButton")
     $runBtn.Content = "Start Transfer"
     $runBtn.Padding = "12,8"
     $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
@@ -2908,6 +2937,7 @@ function Show-TransferDialog {
 
 function Show-SettingsDialog {
     $dlg = New-Object System.Windows.Window
+    $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsDialog")
     $dlg.Title = "Settings"
     $dlg.Width = 480
     $dlg.Height = 430
@@ -2932,6 +2962,7 @@ function Show-SettingsDialog {
     $stack.Children.Add($lbl1)
 
     $txt1 = New-Object System.Windows.Controls.TextBox
+    $txt1.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsContentPathTextBox")
     $txt1.Text = $script:ContentPath
     $txt1.Margin = "0,0,0,12"
     $txt1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -2946,6 +2977,7 @@ function Show-SettingsDialog {
     $stack.Children.Add($lbl2)
 
     $txt2 = New-Object System.Windows.Controls.TextBox
+    $txt2.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsSqlInstanceTextBox")
     $txt2.Text = $script:SqlInstance
     $txt2.Margin = "0,0,0,16"
     $txt2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
@@ -2967,6 +2999,7 @@ function Show-SettingsDialog {
     $stack.Children.Add($notifLbl)
 
     $chkNotif = New-Object System.Windows.Controls.CheckBox
+    $chkNotif.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsNotificationCheckBox")
     $chkNotif.Content = "Show notification when operation completes"
     $chkNotif.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
     $chkNotif.IsChecked = $script:NotificationsEnabled
@@ -2992,6 +3025,7 @@ function Show-SettingsDialog {
     $btnPanel.HorizontalAlignment = "Right"
 
     $saveBtn = New-Object System.Windows.Controls.Button
+    $saveBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SaveSettingsButton")
     $saveBtn.Content = "Save"
     $saveBtn.Padding = "12,8"
     $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")

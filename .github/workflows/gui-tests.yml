@@ -1,0 +1,77 @@
+name: GUI Tests (triton-ajt)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_unit_tests:
+        description: 'Also run Pester unit tests'
+        required: false
+        type: boolean
+        default: true
+      run_gui_tests:
+        description: 'Run FlaUI GUI automation tests'
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    # Run daily at 6 AM Pacific (14:00 UTC)
+    - cron: '0 14 * * 1-5'
+
+jobs:
+  gui-tests:
+    name: GUI Automation Tests
+    runs-on: [self-hosted, windows, triton-ajt]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Pester Unit Tests
+        if: ${{ github.event.inputs.run_unit_tests != 'false' }}
+        shell: powershell
+        run: |
+          Write-Host "Running Pester unit tests..."
+          Invoke-Pester -Path .\Tests -Output Detailed -ExcludeTag 'E2E','Navigation','Settings','About','History','Help','Performance','Resilience','Cleanup' -PassThru | Export-JUnit -Path .\TestResults\UnitTests.xml
+        continue-on-error: true
+
+      - name: Build EXE
+        shell: powershell
+        run: |
+          Write-Host "Building EXE..."
+          .\build.ps1 -SkipTests -SkipCodeReview
+
+      - name: Run FlaUI GUI Tests
+        if: ${{ github.event.inputs.run_gui_tests != 'false' }}
+        shell: powershell
+        run: |
+          Write-Host "Installing FlaUI packages..."
+          .\Tests\FlaUITestHarness\Install-FlaUI.ps1
+
+          Write-Host "Running FlaUI GUI automation tests..."
+          Invoke-Pester -Path .\Tests\FlaUI.Tests.ps1 -Output Detailed -PassThru | Export-JUnit -Path .\TestResults\GuiTests.xml
+        continue-on-error: true
+
+      - name: Run Startup E2E Probe
+        if: ${{ github.event.inputs.run_gui_tests != 'false' }}
+        shell: powershell
+        run: |
+          Write-Host "Running startup E2E probe..."
+          Invoke-Pester -Path .\Tests\StartupE2E.Tests.ps1 -Output Detailed -PassThru | Export-JUnit -Path .\TestResults\StartupE2E.xml
+        continue-on-error: true
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.sha }}
+          path: TestResults/
+          retention-days: 14
+
+      - name: Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ github.sha }}
+          path: Tests/Screenshots/
+          retention-days: 7
