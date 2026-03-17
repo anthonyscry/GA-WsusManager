@@ -14,7 +14,7 @@ on:
         type: boolean
         default: true
   schedule:
-    # Run daily at 6 AM Pacific (14:00 UTC)
+    # Run daily at 6 AM Pacific (14:00 UTC), weekdays only
     - cron: '0 14 * * 1-5'
 
 jobs:
@@ -32,6 +32,7 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Running Pester unit tests..."
+          New-Item -ItemType Directory -Path TestResults -Force | Out-Null
           Invoke-Pester -Path .\Tests -Output Detailed -ExcludeTag 'E2E','Navigation','Settings','About','History','Help','Performance','Resilience','Cleanup' -PassThru | Export-JUnit -Path .\TestResults\UnitTests.xml
         continue-on-error: true
 
@@ -41,23 +42,16 @@ jobs:
           Write-Host "Building EXE..."
           .\build.ps1 -SkipTests -SkipCodeReview
 
-      - name: Run FlaUI GUI Tests
+      # GUI tests require an interactive desktop session.
+      # The self-hosted runner may not have one if running as a service.
+      # Run-GuiTests.ps1 creates a scheduled task to run tests in the
+      # interactive console session (Session 1) where UI Automation works.
+      - name: Run FlaUI GUI Tests (via Interactive Session)
         if: ${{ github.event.inputs.run_gui_tests != 'false' }}
         shell: powershell
         run: |
-          Write-Host "Installing FlaUI packages..."
-          .\Tests\FlaUITestHarness\Install-FlaUI.ps1
-
-          Write-Host "Running FlaUI GUI automation tests..."
-          Invoke-Pester -Path .\Tests\FlaUI.Tests.ps1 -Output Detailed -PassThru | Export-JUnit -Path .\TestResults\GuiTests.xml
-        continue-on-error: true
-
-      - name: Run Startup E2E Probe
-        if: ${{ github.event.inputs.run_gui_tests != 'false' }}
-        shell: powershell
-        run: |
-          Write-Host "Running startup E2E probe..."
-          Invoke-Pester -Path .\Tests\StartupE2E.Tests.ps1 -Output Detailed -PassThru | Export-JUnit -Path .\TestResults\StartupE2E.xml
+          Write-Host "Running GUI tests via scheduled task..."
+          .\Tests\Run-GuiTests.ps1 -ResultsPath ".\Tests\flaui-test-results.txt" -TimeoutSeconds 300
         continue-on-error: true
 
       - name: Upload Test Results
@@ -65,7 +59,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ github.sha }}
-          path: TestResults/
+          path: |
+            TestResults/
+            Tests/flaui-test-results.txt
           retention-days: 14
 
       - name: Upload Screenshots
@@ -75,3 +71,4 @@ jobs:
           name: screenshots-${{ github.sha }}
           path: Tests/Screenshots/
           retention-days: 7
+          if-no-files-found: ignore
