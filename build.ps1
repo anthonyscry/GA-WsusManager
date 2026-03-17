@@ -42,6 +42,7 @@ param(
     [switch]$SkipCodeReview,
     [switch]$SkipTests,
     [switch]$TestOnly,
+    [switch]$GuiTests,
     [switch]$NoPush
 )
 
@@ -606,4 +607,60 @@ Author: Tony Tran, ISSO, GA-ASI
 catch {
     Write-Host "[!] Build failed: $_" -ForegroundColor Red
     exit 1
+}
+
+# ============================================
+# GUI AUTOMATION TESTS (optional)
+# ============================================
+
+if ($GuiTests) {
+    if (-not $env:OS -or $env:OS -ne "Windows_NT") {
+        Write-Host "`n[*] Skipping GUI tests - not running on Windows" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "  GUI Automation Tests" -ForegroundColor Cyan
+        Write-Host "========================================`n" -ForegroundColor Cyan
+
+        $harnessPath = Join-Path $ScriptRoot "Tests\FlaUITestHarness\FlaUITestHarness.psm1"
+        $installScript = Join-Path $ScriptRoot "Tests\FlaUITestHarness\Install-FlaUI.ps1"
+
+        if (-not (Test-Path $harnessPath)) {
+            Write-Host "[!] FlaUI Test Harness not found: $harnessPath" -ForegroundColor Red
+        }
+        elseif (-not (Get-Module -ListAvailable Pester -ErrorAction SilentlyContinue | Where-Object { $_.Version -ge [version]"5.0.0" })) {
+            Write-Host "[!] Pester 5+ not installed. GUI tests require Pester." -ForegroundColor Red
+        }
+        else {
+            if (Test-Path $installScript) {
+                Write-Host "[*] Installing FlaUI packages..." -ForegroundColor Yellow
+                & $installScript
+            }
+
+            Write-Host "[*] Running FlaUI GUI tests..." -ForegroundColor Yellow
+            Import-Module $harnessPath -Force
+
+            $guiTestsPath = Join-Path $ScriptRoot "Tests\FlaUI.Tests.ps1"
+            if (Test-Path $guiTestsPath) {
+                $guiConfig = New-PesterConfiguration
+                $guiConfig.Run.Path = $guiTestsPath
+                $guiConfig.Run.Exit = $false
+                $guiConfig.Output.Verbosity = 'Normal'
+                $guiResult = Invoke-Pester -Configuration $guiConfig
+
+                Write-Host ""
+                Write-Host "========================================" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
+                Write-Host "  GUI Test Results" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
+                Write-Host "========================================" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
+                Write-Host "  Passed:  $($guiResult.PassedCount)" -ForegroundColor Green
+                Write-Host "  Failed:  $($guiResult.FailedCount)" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Gray" })
+                Write-Host "  Skipped: $($guiResult.SkippedCount)" -ForegroundColor Yellow
+                Write-Host ""
+
+                if ($guiResult.FailedCount -gt 0) {
+                    Write-Host "[!] GUI tests failed. Check Tests\Screenshots\ for evidence." -ForegroundColor Red
+                }
+            }
+        }
+    }
 }

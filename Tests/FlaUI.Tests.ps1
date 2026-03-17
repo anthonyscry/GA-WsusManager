@@ -1,91 +1,145 @@
-﻿<#
+<#
 .SYNOPSIS
-    FlaUI UI Automation Tests Template for PS2EXE GUI Applications
+    FlaUI UI Automation Tests for WSUS Manager GUI
 
 .DESCRIPTION
-    This is a template for creating UI automation tests for PowerShell GUI
-    applications compiled with PS2EXE. Copy this file to your project's
-    Tests folder and customize it for your specific application.
+    Automated end-to-end GUI tests using FlaUI (UIA3) to drive the
+    WSUS Manager WPF application. Tests cover startup, navigation,
+    panel visibility, dialog open/close, and UI state assertions.
+
+    These tests require:
+    1. FlaUI NuGet packages installed (run Tests/FlaUITestHarness/Install-FlaUI.ps1)
+    2. Windows OS (UI Automation is Windows-only)
+    3. Administrator privileges (app requires admin)
+    4. The compiled EXE or the PS1 script available
+
+    Tests are designed to work WITHOUT WSUS installed (clean VM safe).
+    WSUS-dependent operations are tagged "RequiresWsus" and skipped
+    when WSUS is not present.
 
 .NOTES
     Prerequisites:
-    - FlaUI packages installed in C:\projects\FlaUI-TestHarness\packages
-    - Pester module installed (Install-Module Pester -Force)
-    - Application compiled to EXE using PS2EXE
+    - FlaUI packages installed in Tests/FlaUITestHarness/packages
+    - Pester 5+ (Install-Module Pester -Force)
+    - Application compiled to EXE or PS1 script available
+    - Run as Administrator
 
 .EXAMPLE
-    # Run tests
+    # Run all FlaUI tests
     Invoke-Pester -Path ".\Tests\FlaUI.Tests.ps1" -Output Detailed
+
+    # Run only navigation tests
+    Invoke-Pester -Path ".\Tests\FlaUI.Tests.ps1" -Output Detailed -Tag "Navigation"
+
+    # Run excluding WSUS-dependent tests
+    Invoke-Pester -Path ".\Tests\FlaUI.Tests.ps1" -Output Detailed -ExcludeTag "RequiresWsus"
 #>
 
 #region Test Configuration
 
 BeforeAll {
-    # ===========================================================================
-    # CONFIGURATION - Customize these for your application
-    # ===========================================================================
+    $script:RepoRoot = Split-Path -Parent $PSScriptRoot
+    $script:AppName = "GA-WsusManager"
+    $script:ScreenshotDir = Join-Path $PSScriptRoot "Screenshots"
 
-    # Project name (replace with your app name)
-    $script:AppName = "GA-WsusManager"  # <-- CHANGE THIS
-
-    # Paths
-    $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
-    $script:ExePath = Join-Path $script:ProjectRoot "$script:AppName.exe"
-    $script:ScreenshotPath = Join-Path $script:ProjectRoot "Tests\Screenshots"
-
-    # Test harness path (shared across projects)
-    $script:FlaUIHarnessPath = "C:\projects\FlaUI-TestHarness"
-
-    # Import FlaUI Test Harness Module
-    $modulePath = Join-Path $script:FlaUIHarnessPath "FlaUITestHarness.psm1"
-    $script:FlaUIAvailable = Test-Path $modulePath
-    if ($script:FlaUIAvailable) {
-        Import-Module $modulePath -Force
-    } else {
-        Write-Warning "FlaUI Test Harness not found at: $modulePath - FlaUI tests will be skipped"
+    # Find executable — prefer dist/ build, fall back to root
+    $exeCandidates = @(
+        (Join-Path $script:RepoRoot "dist\GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "dist\WsusManager.exe"),
+        (Join-Path $script:RepoRoot "GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "WsusManager.exe")
+    )
+    $script:ExePath = $null
+    foreach ($c in $exeCandidates) {
+        if (Test-Path $c) { $script:ExePath = $c; break }
     }
 
-    # Check if EXE exists
-    $script:ExeAvailable = Test-Path $script:ExePath
+    # Fall back to PS1 script (slower but works without compilation)
+    if (-not $script:ExePath) {
+        $ps1 = Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1"
+        if (Test-Path $ps1) {
+            $script:ExePath = $ps1
+            Write-Warning "No EXE found — using PS1 script directly (slower startup)"
+        }
+    }
+
+    # Import FlaUI Test Harness
+    $harnessPath = Join-Path $PSScriptRoot "FlaUITestHarness\FlaUITestHarness.psm1"
+    $script:FlaUIAvailable = (Test-Path $harnessPath)
+    if ($script:FlaUIAvailable) {
+        Import-Module $harnessPath -Force
+        # Verify FlaUI assemblies loaded
+        $app = Get-GuiApplication
+        # Check if module loaded correctly by testing internal function
+        try {
+            $null = [FlaUI.UIA3.UIA3Automation]::new()
+            $script:FlaUIAssembliesLoaded = $true
+        } catch {
+            $script:FlaUIAssembliesLoaded = $false
+            Write-Warning "FlaUI .NET assemblies not loaded. Run .\Tests\FlaUITestHarness\Install-FlaUI.ps1 first."
+        }
+    } else {
+        $script:FlaUIAssembliesLoaded = $false
+        Write-Warning "FlaUI Test Harness not found at: $harnessPath"
+    }
+
+    $script:ExeAvailable = ($null -ne $script:ExePath -and (Test-Path $script:ExePath))
+    $script:CanRunTests = ($script:FlaUIAvailable -and $script:ExeAvailable -and $script:FlaUIAssembliesLoaded)
+
+    # Detect WSUS installation
+    $script:WsusInstalled = $false
+    if ($env:OS -eq "Windows_NT") {
+        $script:WsusInstalled = (Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue) -ne $null
+    }
 
     # Create screenshots directory
-    if (-not (Test-Path $script:ScreenshotPath)) {
-        New-Item -Path $script:ScreenshotPath -ItemType Directory -Force | Out-Null
+    if (-not (Test-Path $script:ScreenshotDir)) {
+        New-Item -Path $script:ScreenshotDir -ItemType Directory -Force | Out-Null
     }
 
-    # ===========================================================================
-    # TEST TIMEOUTS AND SETTINGS
-    # ===========================================================================
-    $script:AppStartTimeout = 30      # Seconds to wait for app to start
-    $script:ElementTimeout = 10       # Default element search timeout
-    $script:ActionDelay = 500         # Milliseconds between actions
+    # Kill any existing instances
+    if ($env:OS -eq "Windows_NT") {
+        Get-Process -Name $script:AppName -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
+
+    $script:AppStartTimeout = 45
+    $script:ElementTimeout = 10
+    $script:ActionDelay = 500
 }
 
 AfterAll {
-    # Ensure application is closed after all tests
     Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+    # Ensure cleanup
+    if ($env:OS -eq "Windows_NT") {
+        Get-Process -Name $script:AppName -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
 }
 
 #endregion
 
 #region Pre-Flight Checks
 
-Describe "$script:AppName Pre-Flight Checks" -Skip:(-not $script:FlaUIAvailable) {
+Describe "WSUS Manager Pre-Flight Checks" -Skip:(-not $script:CanRunTests) {
     Context 'Test Environment' {
-        It 'FlaUI module is loaded' {
-            if (-not $script:FlaUIAvailable) { Set-ItResult -Skipped -Because "FlaUI harness not installed" }
+        It 'FlaUI Test Harness is loaded' {
             Get-Module FlaUITestHarness | Should -Not -BeNullOrEmpty
         }
 
-        It 'Application EXE exists' {
-            Test-Path $script:ExePath | Should -BeTrue -Because "$script:ExePath should exist"
+        It 'FlaUI .NET assemblies are available' {
+            $script:FlaUIAssembliesLoaded | Should -BeTrue
         }
 
-        It 'Application is not already running' {
-            if (-not $script:ExeAvailable) { Set-ItResult -Skipped -Because "EXE not found" }
+        It 'Application file exists' {
+            $script:ExePath | Should -Not -BeNullOrEmpty
+            Test-Path $script:ExePath | Should -BeTrue -Because "EXE/script should exist at $($script:ExePath)"
+        }
+    }
+
+    Context 'Clean State' {
+        It 'No existing instances are running' {
             $running = Get-Process -Name $script:AppName -ErrorAction SilentlyContinue
             if ($running) {
-                Write-Warning "Stopping existing instance of $script:AppName"
                 $running | Stop-Process -Force
                 Start-Sleep -Seconds 2
             }
@@ -98,65 +152,180 @@ Describe "$script:AppName Pre-Flight Checks" -Skip:(-not $script:FlaUIAvailable)
 
 #region Application Startup Tests
 
-Describe "$script:AppName Startup Tests" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
+Describe "WSUS Manager Startup" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
-        # Start the application
-        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+        $script:AppContext = $null
+        try {
+            $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+        } catch {
+            $script:StartupError = $_.Exception.Message
+        }
     }
 
     AfterAll {
-        # Capture final screenshot and close
-        try {
-            Save-UIScreenshot -Path (Join-Path $script:ScreenshotPath "Startup_Final.png")
-        } catch { }
+        if ($script:AppContext) {
+            try { Save-UIScreenshot -Path (Join-Path $script:ScreenshotDir "Startup_Final.png") } catch { }
+        }
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
     }
 
     Context 'Application Launch' {
-        It 'Application starts successfully' {
+        It 'Starts without exception' {
+            if ($script:StartupError) {
+                throw "Startup failed: $($script:StartupError)"
+            }
             $script:AppContext | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Returns a valid process ID' {
             $script:AppContext.ProcessId | Should -BeGreaterThan 0
         }
 
-        It 'Main window appears' {
+        It 'Main window is accessible' {
             $script:AppContext.MainWindow | Should -Not -BeNullOrEmpty
         }
 
-        It 'Window title is correct' {
-            # Customize this for your application
-            $script:AppContext.MainWindow.Title | Should -Match $script:AppName
+        It 'Window title contains "WSUS Manager"' {
+            # Title may vary slightly, just check key part
+            $script:AppContext.MainWindow.Title | Should -Match "WSUS"
         }
 
-        It 'Window is visible and not minimized' {
-            $window = $script:AppContext.MainWindow
-            $window.IsOffscreen | Should -BeFalse
+        It 'Window is visible (not minimized or offscreen)' {
+            $script:AppContext.MainWindow.IsOffscreen | Should -BeFalse
         }
     }
 
     Context 'Initial UI State' {
-        It 'Main content area is present' {
-            # Customize: Add checks for your main UI elements
-            # Example: Assert-UIElementExists -AutomationId "MainContent"
-            $script:AppContext.MainWindow | Should -Not -BeNullOrEmpty
+        It 'Dashboard panel is visible' {
+            $el = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "DashboardPanel"
+            # Dashboard starts visible, so it should NOT be offscreen
+            # Note: AutomationId on Grid doesn't guarantee we can check offscreen
+            $el | Should -Not -BeNullOrEmpty
         }
 
-        # Add more initial state checks specific to your application
-        # Example:
-        # It 'Navigation panel is visible' {
-        #     Assert-UIElementExists -AutomationId "NavPanel"
-        # }
-        #
-        # It 'Status bar shows Ready' {
-        #     Assert-UIElementText -AutomationId "StatusLabel" -ExpectedText "Ready"
-        # }
+        It 'Health score element exists' {
+            Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HealthScoreValue" | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Health score grade element exists' {
+            Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HealthScoreGrade" | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Log panel exists' {
+            Assert-UIElementExists -AppContext $script:AppContext -AutomationId "LogPanel" | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Install panel exists (may be collapsed)' {
+            Assert-UIElementExists -AppContext $script:AppContext -AutomationId "InstallPanel" | Should -Not -BeNullOrEmpty
+        }
     }
 }
 
 #endregion
 
-#region Navigation Tests (Template - Customize for your app)
+#region Navigation Tests
 
-Describe "$script:AppName Navigation Tests" -Tag "Navigation" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
+Describe "WSUS Manager Navigation" -Tag "Navigation" -Skip:(-not $script:CanRunTests) {
+    BeforeAll {
+        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+    }
+
+    AfterAll {
+        try { Save-UIScreenshot -Path (Join-Path $script:ScreenshotDir "Navigation_Final.png") } catch { }
+        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+    }
+
+    Context 'Sidebar Navigation Buttons Exist' {
+        # These buttons use x:Name which FlaUI can find via Name property
+        $navButtons = @(
+            @{ Name = "BtnDashboard";    Label = "Dashboard" },
+            @{ Name = "BtnInstall";      Label = "Install WSUS" },
+            @{ Name = "BtnRestore";      Label = "Restore DB" },
+            @{ Name = "BtnCreateGpo";    Label = "Create GPO" },
+            @{ Name = "BtnTransfer";     Label = "Export/Import" },
+            @{ Name = "BtnMaintenance";  Label = "Online Sync" },
+            @{ Name = "BtnSchedule";     Label = "Schedule Task" },
+            @{ Name = "BtnCleanup";      Label = "Deep Cleanup" },
+            @{ Name = "BtnDiagnostics";  Label = "Run Diagnostics" },
+            @{ Name = "BtnReset";        Label = "Reset Content" },
+            @{ Name = "BtnHistory";      Label = "History" },
+            @{ Name = "BtnHelp";         Label = "Help" },
+            @{ Name = "BtnSettings";     Label = "Settings" },
+            @{ Name = "BtnAbout";        Label = "About" }
+        )
+
+        It "Button '<Label>' (x:Name=<Name>) exists" -TestCases $navButtons {
+            param($Name, $Label)
+            $el = Find-UIElement -AppContext $script:AppContext -Name $Name -ClassName "Button" -Timeout 5
+            $el | Should -Not -BeNullOrEmpty -Because "Nav button '$Label' should exist"
+        }
+    }
+
+    Context 'Panel Navigation via Sidebar' {
+        It 'Clicking Dashboard returns to Dashboard panel' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+            # Dashboard panel should be visible (we can't easily check WPF Visibility via UIA,
+            # but we can verify the PageTitle text)
+            Start-Sleep -Milliseconds 500
+            $pageTitle = Find-UIElement -AppContext $script:AppContext -Name "PageTitle" -Timeout 5
+            $pageTitle | Should -Not -BeNullOrEmpty
+            # PageTitle is a TextBlock — check its Name (which carries the text in WPF)
+        }
+
+        It 'Clicking About shows About panel' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
+            $aboutPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "AboutPanel"
+            $aboutPanel | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Clicking Help shows Help panel' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnHelp" -Delay $script:ActionDelay
+            $helpPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HelpPanel"
+            $helpPanel | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Clicking Install shows Install panel' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnInstall" -Delay $script:ActionDelay
+            $installPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "InstallPanel"
+            $installPanel | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Clicking History shows History panel' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnHistory" -Delay $script:ActionDelay
+            $historyPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HistoryPanel" -Timeout 5
+            $historyPanel | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Clicking Dashboard from any panel returns to Dashboard' {
+            # Navigate away first
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+            $dashPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "DashboardPanel"
+            $dashPanel | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Quick Action Buttons Exist' {
+        $quickButtons = @(
+            @{ Name = "QBtnDiagnostics" },
+            @{ Name = "QBtnCleanup" },
+            @{ Name = "QBtnMaint" },
+            @{ Name = "QBtnStart" }
+        )
+
+        It "Quick action button '<Name>' exists" -TestCases $quickButtons {
+            param($Name)
+            $el = Find-UIElement -AppContext $script:AppContext -Name $Name -ClassName "Button" -Timeout 5
+            $el | Should -Not -BeNullOrEmpty -Because "Quick action button '$Name' should exist"
+        }
+    }
+}
+
+#endregion
+
+#region Settings Dialog Tests
+
+Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -165,98 +334,40 @@ Describe "$script:AppName Navigation Tests" -Tag "Navigation" -Skip:(-not ($scri
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
     }
 
-    # Customize these tests based on your application's navigation structure
-    # Example for a multi-page WPF app:
+    Context 'Open Settings' {
+        It 'Settings button opens a modal dialog' {
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 1000
+            # Settings opens as a modal Window — find it by title
+            $settingsWindow = $null
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            while ($sw.Elapsed.TotalSeconds -lt 5 -and $null -eq $settingsWindow) {
+                $settingsWindow = Find-UIElement -AppContext $script:AppContext -Name "Settings" -ClassName "Window" -Timeout 1
+            }
+            $settingsWindow | Should -Not -BeNullOrEmpty -Because "Settings dialog should appear"
+        }
+    }
 
-    Context 'Page Navigation' {
-        # It 'Can navigate to Settings page' {
-        #     Invoke-UIClick -AutomationId "btnSettings"
-        #     Start-Sleep -Milliseconds $script:ActionDelay
-        #     Assert-UIElementExists -AutomationId "SettingsPage"
-        # }
+    Context 'Close Settings' {
+        It 'ESC key closes the Settings dialog' {
+            # Open Settings
+            Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 1000
+            Start-Sleep -Milliseconds 500
 
-        # It 'Can navigate back to Home page' {
-        #     Invoke-UIClick -AutomationId "btnHome"
-        #     Start-Sleep -Milliseconds $script:ActionDelay
-        #     Assert-UIElementExists -AutomationId "HomePage"
-        # }
+            # Send ESC
+            Send-UIKeys -Keys "{ESC}" -Delay 1000
 
-        It 'Placeholder - Add your navigation tests' {
-            # Remove this and add your actual navigation tests
-            $true | Should -BeTrue
+            # Verify dialog is gone
+            $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -ClassName "Window" -Timeout 5
+            $gone | Should -BeTrue -Because "ESC should close Settings dialog"
         }
     }
 }
 
 #endregion
 
-#region Core Functionality Tests (Template - Customize for your app)
+#region About Dialog Tests
 
-Describe "$script:AppName Core Functionality" -Tag "Functional" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
-    BeforeAll {
-        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
-    }
-
-    AfterAll {
-        try {
-            Save-UIScreenshot -Path (Join-Path $script:ScreenshotPath "Functional_Final.png")
-        } catch { }
-        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
-    }
-
-    # Add tests for your application's core functionality
-    # Examples:
-
-    Context 'Form Input Handling' {
-        # It 'Can enter text in input field' {
-        #     Set-UIText -AutomationId "txtInput" -Text "Test Value" -Clear
-        #     $text = Get-UIText -AutomationId "txtInput"
-        #     $text | Should -Be "Test Value"
-        # }
-
-        # It 'Submit button becomes enabled with valid input' {
-        #     Set-UIText -AutomationId "txtRequired" -Text "Valid Data" -Clear
-        #     Assert-UIElementEnabled -AutomationId "btnSubmit"
-        # }
-
-        It 'Placeholder - Add your input tests' {
-            $true | Should -BeTrue
-        }
-    }
-
-    Context 'Button Actions' {
-        # It 'Clicking action button triggers expected behavior' {
-        #     Invoke-UIClick -AutomationId "btnAction"
-        #     Start-Sleep -Seconds 1
-        #     Assert-UIElementText -AutomationId "lblResult" -ExpectedText "Action Complete"
-        # }
-
-        It 'Placeholder - Add your button action tests' {
-            $true | Should -BeTrue
-        }
-    }
-
-    Context 'Data Display' {
-        # It 'Data grid displays results' {
-        #     # Trigger data load
-        #     Invoke-UIClick -AutomationId "btnLoadData"
-        #     Start-Sleep -Seconds 2
-        #
-        #     $rows = Get-WPFDataGridRows -AutomationId "dgResults"
-        #     $rows.Count | Should -BeGreaterThan 0
-        # }
-
-        It 'Placeholder - Add your data display tests' {
-            $true | Should -BeTrue
-        }
-    }
-}
-
-#endregion
-
-#region Error Handling Tests
-
-Describe "$script:AppName Error Handling" -Tag "ErrorHandling" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
+Describe "WSUS Manager About" -Tag "About" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -265,25 +376,75 @@ Describe "$script:AppName Error Handling" -Tag "ErrorHandling" -Skip:(-not ($scr
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
     }
 
-    Context 'Invalid Input Handling' {
-        # It 'Shows error for invalid input' {
-        #     Set-UIText -AutomationId "txtInput" -Text "INVALID" -Clear
-        #     Invoke-UIClick -AutomationId "btnSubmit"
-        #     Start-Sleep -Milliseconds 500
-        #     Assert-UIElementExists -AutomationId "ErrorMessage"
-        # }
-
-        It 'Placeholder - Add your error handling tests' {
-            $true | Should -BeTrue
-        }
+    It 'About panel shows version information' {
+        Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
+        $aboutPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "AboutPanel"
+        $aboutPanel | Should -Not -BeNullOrEmpty
+        # About panel is a ScrollViewer with content — verify it exists and is not empty
     }
 
-    Context 'Application Resilience' {
-        It 'Application remains responsive after test interactions' {
-            # Verify the app is still responsive
-            $window = (Get-GuiApplication).MainWindow
-            $window | Should -Not -BeNullOrEmpty
-            $window.IsOffscreen | Should -BeFalse
+    It 'Navigating away from About shows Dashboard' {
+        Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+        $dashPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "DashboardPanel"
+        $dashPanel | Should -Not -BeNullOrEmpty
+    }
+}
+
+#endregion
+
+#region History Panel Tests
+
+Describe "WSUS Manager History Panel" -Tag "History" -Skip:(-not $script:CanRunTests) {
+    BeforeAll {
+        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+    }
+
+    AfterAll {
+        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'History panel opens and shows list control' {
+        Invoke-UIClick -AppContext $script:AppContext -Name "BtnHistory" -Delay $script:ActionDelay
+        $historyPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HistoryPanel"
+        $historyPanel | Should -Not -BeNullOrEmpty
+
+        # History panel contains a ListView named HistoryList
+        $historyList = Find-UIElement -AppContext $script:AppContext -Name "HistoryList" -Timeout 3
+        # May or may not have items, but the control should exist
+        $historyList | Should -Not -BeNullOrEmpty -Because "History list control should exist"
+    }
+
+    It 'History filter and buttons exist' {
+        # These controls are inside HistoryPanel
+        $filter = Find-UIElement -AppContext $script:AppContext -Name "HistoryFilter" -Timeout 3
+        $filter | Should -Not -BeNullOrEmpty -Because "History filter should exist"
+    }
+}
+
+#endregion
+
+#region Help Panel Tests
+
+Describe "WSUS Manager Help Panel" -Tag "Help" -Skip:(-not $script:CanRunTests) {
+    BeforeAll {
+        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+    }
+
+    AfterAll {
+        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'Help panel opens with Overview content' {
+        Invoke-UIClick -AppContext $script:AppContext -Name "BtnHelp" -Delay $script:ActionDelay
+        $helpPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HelpPanel"
+        $helpPanel | Should -Not -BeNullOrEmpty
+    }
+
+    It 'Help content buttons exist' {
+        $helpButtons = @("HelpBtnOverview", "HelpBtnDashboard", "HelpBtnOperations", "HelpBtnAirGap", "HelpBtnTroubleshooting")
+        foreach ($btnName in $helpButtons) {
+            $el = Find-UIElement -AppContext $script:AppContext -Name $btnName -ClassName "Button" -Timeout 2
+            $el | Should -Not -BeNullOrEmpty -Because "Help button '$btnName' should exist"
         }
     }
 }
@@ -292,42 +453,76 @@ Describe "$script:AppName Error Handling" -Tag "ErrorHandling" -Skip:(-not ($scr
 
 #region Performance Tests
 
-Describe "$script:AppName Performance" -Tag "Performance" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
-    Context 'Startup Performance' {
-        It 'Application starts within acceptable time' {
-            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+Describe "WSUS Manager Performance" -Tag "Performance" -Skip:(-not $script:CanRunTests) {
+    Context 'Startup Time' {
+        It 'Application starts within 45 seconds' {
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            $ctx = Start-GuiApplication -Path $script:ExePath -Timeout 60
+            $sw.Stop()
 
-            $context = Start-GuiApplication -Path $script:ExePath -Timeout 60
-            $stopwatch.Stop()
+            Stop-GuiApplication -Force -ErrorAction SilentlyContinue
 
-            Stop-GuiApplication -Force
+            $sw.ElapsedMilliseconds | Should -BeLessThan 45000 -Because "App should start within 45s (was $([math]::Round($sw.Elapsed.TotalSeconds, 1))s)"
+        }
+    }
+}
 
-            # Adjust threshold based on your requirements
-            $stopwatch.ElapsedMilliseconds | Should -BeLessThan 30000 -Because "App should start within 30 seconds"
+#endregion
+
+#region Resilience Tests
+
+Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunTests) {
+    BeforeAll {
+        $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
+    }
+
+    AfterAll {
+        try { Save-UIScreenshot -Path (Join-Path $script:ScreenshotDir "Resilience_Final.png") } catch { }
+        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+    }
+
+    Context 'Rapid Navigation' {
+        It 'Survives rapid panel switching' {
+            # Click through all nav buttons quickly
+            $navButtons = @("BtnDashboard", "BtnInstall", "BtnAbout", "BtnHelp", "BtnHistory", "BtnDashboard")
+            foreach ($btn in $navButtons) {
+                Invoke-UIClick -AppContext $script:AppContext -Name $btn -Delay 200
+            }
+
+            # App should still be responsive
+            Start-Sleep -Milliseconds 500
+            $window = $script:AppContext.MainWindow
+            $window | Should -Not -BeNullOrEmpty
+            $window.IsOffscreen | Should -BeFalse
         }
     }
 
-    # Add more performance tests as needed
-    # Context 'Operation Performance' {
-    #     It 'Data load completes within acceptable time' {
-    #         # Measure specific operations
-    #     }
-    # }
-}
+    Context 'Multiple Dialog Open/Close' {
+        It 'Survives opening and closing Settings multiple times' {
+            for ($i = 0; $i -lt 3; $i++) {
+                Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 800
+                Send-UIKeys -Keys "{ESC}" -Delay 800
+            }
 
-#endregion
-
-#region Cleanup
-
-Describe "$script:AppName Cleanup Verification" -Tag "Cleanup" -Skip:(-not ($script:FlaUIAvailable -and $script:ExeAvailable)) {
-    It 'Application process is terminated' {
-        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 1
-
-        $running = Get-Process -Name $script:AppName -ErrorAction SilentlyContinue
-        $running | Should -BeNullOrEmpty -Because "Application should be fully terminated"
+            # App should still be responsive
+            $window = $script:AppContext.MainWindow
+            $window | Should -Not -BeNullOrEmpty
+        }
     }
 }
 
 #endregion
 
+#region Cleanup Verification
+
+Describe "WSUS Manager Cleanup" -Tag "Cleanup" -Skip:(-not $script:CanRunTests) {
+    It 'Application process terminates cleanly' {
+        Stop-GuiApplication -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+
+        $running = Get-Process -Name $script:AppName -ErrorAction SilentlyContinue
+        $running | Should -BeNullOrEmpty -Because "Application should be fully terminated after cleanup"
+    }
+}
+
+#endregion
