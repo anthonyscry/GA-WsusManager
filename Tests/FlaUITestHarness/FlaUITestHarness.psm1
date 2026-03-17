@@ -45,6 +45,7 @@ function Load-FlaUIAssemblies {
     <#
     .SYNOPSIS
         Loads FlaUI .NET assemblies from the packages directory.
+        Prefers UIA2 (COM-based) for PS2EXE WPF compatibility.
     #>
     if ($script:FlaUILoaded) { return $true }
 
@@ -57,10 +58,39 @@ function Load-FlaUIAssemblies {
     foreach ($basePath in $searchPaths) {
         if (-not (Test-Path $basePath)) { continue }
 
+        $uia2Dir = Get-ChildItem -Path $basePath -Directory -Filter "FlaUI.UIA2.*" -ErrorAction SilentlyContinue | Select-Object -First 1
         $uia3Dir = Get-ChildItem -Path $basePath -Directory -Filter "FlaUI.UIA3.*" -ErrorAction SilentlyContinue | Select-Object -First 1
         $coreDir = Get-ChildItem -Path $basePath -Directory -Filter "FlaUI.Core.*" -ErrorAction SilentlyContinue | Select-Object -First 1
         $interopDir = Get-ChildItem -Path $basePath -Directory -Filter "Interop.UIAutomationClient.*" -ErrorAction SilentlyContinue | Select-Object -First 1
 
+        # Try UIA2 first (COM-based, works with PS2EXE WPF apps)
+        if ($uia2Dir -and $coreDir) {
+            try {
+                $uia2Lib = Join-Path $uia2Dir.FullName "lib\net48\FlaUI.UIA2.dll"
+                $coreLib = Join-Path $coreDir.FullName "lib\net48\FlaUI.Core.dll"
+                $interopLib = Join-Path $interopDir.FullName "lib\netstandard2.0\Interop.UIAutomationClient.dll"
+                if (-not (Test-Path $interopLib)) {
+                    $interopLib = Join-Path $interopDir.FullName "lib\net48\Interop.UIAutomationClient.dll"
+                }
+
+                if ((Test-Path $uia2Lib) -and (Test-Path $coreLib)) {
+                    Add-Type -Path $coreLib -ErrorAction Stop
+                    if (Test-Path $interopLib) {
+                        Add-Type -Path $interopLib -ErrorAction Stop
+                    }
+                    Add-Type -Path $uia2Lib -ErrorAction Stop
+                    $script:FlaUILoaded = $true
+                    $script:FlaUIPackagePath = $basePath
+                    $script:FlaUIMode = "UIA2"
+                    return $true
+                }
+            }
+            catch {
+                Write-Warning "Failed to load FlaUI.UIA2 from $basePath : $($_.Exception.Message)"
+            }
+        }
+
+        # Fallback to UIA3
         if ($uia3Dir -and $coreDir) {
             try {
                 $uia3Lib = Join-Path $uia3Dir.FullName "lib\net48\FlaUI.UIA3.dll"
@@ -78,11 +108,12 @@ function Load-FlaUIAssemblies {
                     Add-Type -Path $uia3Lib -ErrorAction Stop
                     $script:FlaUILoaded = $true
                     $script:FlaUIPackagePath = $basePath
+                    $script:FlaUIMode = "UIA3"
                     return $true
                 }
             }
             catch {
-                Write-Warning "Failed to load FlaUI from $basePath : $($_.Exception.Message)"
+                Write-Warning "Failed to load FlaUI.UIA3 from $basePath : $($_.Exception.Message)"
             }
         }
     }
@@ -90,7 +121,13 @@ function Load-FlaUIAssemblies {
     # Fallback: try loading by name if already in GAC or AppDomain
     try {
         Add-Type -AssemblyName FlaUI.Core -ErrorAction Stop 2>$null
-        Add-Type -AssemblyName FlaUI.UIA3 -ErrorAction Stop 2>$null
+        try {
+            Add-Type -AssemblyName FlaUI.UIA2 -ErrorAction Stop 2>$null
+            $script:FlaUIMode = "UIA2"
+        } catch {
+            Add-Type -AssemblyName FlaUI.UIA3 -ErrorAction Stop 2>$null
+            $script:FlaUIMode = "UIA3"
+        }
         $script:FlaUILoaded = $true
         return $true
     }
@@ -162,7 +199,14 @@ function Start-GuiApplication {
     $app = [FlaUI.Core.Application]::Launch($Path, $Arguments)
     Start-Sleep -Seconds 1  # Give process a moment to start
 
-    $automation = [FlaUI.UIA3.UIA3Automation]::new()
+    # Use UIA2 (COM-based) for PS2EXE WPF compatibility, fallback to UIA3
+    if ($script:FlaUIMode -eq "UIA2") {
+        $automation = [FlaUI.UIA2.UIA2Automation]::new()
+        Write-Verbose "Using UIA2 automation"
+    } else {
+        $automation = [FlaUI.UIA3.UIA3Automation]::new()
+        Write-Verbose "Using UIA3 automation"
+    }
 
     # Wait for main window
     $window = $null
