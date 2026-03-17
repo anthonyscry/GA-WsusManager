@@ -295,6 +295,29 @@ function Start-GuiApplication {
         _App       = $app
     }
 
+    # Wait for child elements to be accessible (WPF visual tree may not be ready yet)
+    Write-Verbose "Waiting for WPF visual tree to populate..."
+    $treeReady = $false
+    $treeSw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($treeSw.Elapsed.TotalSeconds -lt 15) {
+        try {
+            # Try to find any known child element to confirm tree is ready
+            $childCheck = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.ProcessId)
+            $anyChild = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $childCheck)
+            if ($null -ne $anyChild -and $anyChild.Current.AutomationId -ne "WsusManagerMainWindow") {
+                Write-Verbose "Visual tree ready after $([math]::Round($treeSw.Elapsed.TotalSeconds, 1))s (found child with AId='$($anyChild.Current.AutomationId)')"
+                $treeReady = $true
+                break
+            }
+        }
+        catch { }
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not $treeReady) {
+        Write-Warning "Visual tree may not be fully populated after 15s wait"
+    }
+
     # Store globally for parameterless cmdlets
     $script:CurrentAutomation = $automation
 

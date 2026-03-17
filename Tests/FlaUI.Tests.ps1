@@ -284,70 +284,70 @@ Describe "WSUS Manager Navigation" -Tag "Navigation" -Skip:(-not $script:CanRunT
     }
 
     Context 'Sidebar Navigation Buttons Exist' {
-        # These buttons use x:Name which FlaUI can find via Name property
+        # x:Name in WPF maps to UIA AutomationId (NOT UIA Name property)
         $navButtons = @(
-            @{ Name = "BtnDashboard";    Label = "Dashboard" },
-            @{ Name = "BtnInstall";      Label = "Install WSUS" },
-            @{ Name = "BtnRestore";      Label = "Restore DB" },
-            @{ Name = "BtnCreateGpo";    Label = "Create GPO" },
-            @{ Name = "BtnTransfer";     Label = "Export/Import" },
-            @{ Name = "BtnMaintenance";  Label = "Online Sync" },
-            @{ Name = "BtnSchedule";     Label = "Schedule Task" },
-            @{ Name = "BtnCleanup";      Label = "Deep Cleanup" },
-            @{ Name = "BtnDiagnostics";  Label = "Run Diagnostics" },
-            @{ Name = "BtnReset";        Label = "Reset Content" },
-            @{ Name = "BtnHistory";      Label = "History" },
-            @{ Name = "BtnHelp";         Label = "Help" },
-            @{ Name = "BtnSettings";     Label = "Settings" },
-            @{ Name = "BtnAbout";        Label = "About" }
+            @{ AutomationId = "BtnDashboard";    Label = "Dashboard" },
+            @{ AutomationId = "BtnInstall";      Label = "Install WSUS" },
+            @{ AutomationId = "BtnRestore";      Label = "Restore DB" },
+            @{ AutomationId = "BtnCreateGpo";    Label = "Create GPO" },
+            @{ AutomationId = "BtnTransfer";     Label = "Export/Import" },
+            @{ AutomationId = "BtnMaintenance";  Label = "Online Sync" },
+            @{ AutomationId = "BtnSchedule";     Label = "Schedule Task" },
+            @{ AutomationId = "BtnCleanup";      Label = "Deep Cleanup" },
+            @{ AutomationId = "BtnDiagnostics";  Label = "Run Diagnostics" },
+            @{ AutomationId = "BtnReset";        Label = "Reset Content" },
+            @{ AutomationId = "BtnHistory";      Label = "History" },
+            @{ AutomationId = "BtnHelp";         Label = "Help" },
+            @{ AutomationId = "BtnSettings";     Label = "Settings" },
+            @{ AutomationId = "BtnAbout";        Label = "About" }
         )
 
-        It "Button '<Label>' (x:Name=<Name>) exists" -TestCases $navButtons {
-            param($Name, $Label)
-            $el = Find-UIElement -AppContext $script:AppContext -Name $Name -ClassName "Button" -Timeout 5
+        It "Button '<Label>' (x:Name=<AutomationId>) exists" -TestCases $navButtons {
+            param($AutomationId, $Label)
+            $el = Find-UIElement -AppContext $script:AppContext -AutomationId $AutomationId -Timeout 5
             $el | Should -Not -BeNullOrEmpty -Because "Nav button '$Label' should exist"
         }
     }
 
     Context 'Panel Navigation via Sidebar' {
         It 'Clicking Dashboard returns to Dashboard panel' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnDashboard" -Delay $script:ActionDelay
             # Dashboard panel should be visible (we can't easily check WPF Visibility via UIA,
             # but we can verify the PageTitle text)
             Start-Sleep -Milliseconds 500
-            $pageTitle = Find-UIElement -AppContext $script:AppContext -Name "PageTitle" -Timeout 5
+            $pageTitle = Find-UIElement -AppContext $script:AppContext -AutomationId "PageTitle" -Timeout 5
             $pageTitle | Should -Not -BeNullOrEmpty
             # PageTitle is a TextBlock — check its Name (which carries the text in WPF)
         }
 
         It 'Clicking About shows About panel' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnAbout" -Delay $script:ActionDelay
             $aboutPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "AboutPanel"
             $aboutPanel | Should -Not -BeNullOrEmpty
         }
 
         It 'Clicking Help shows Help panel' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnHelp" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnHelp" -Delay $script:ActionDelay
             $helpPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HelpPanel"
             $helpPanel | Should -Not -BeNullOrEmpty
         }
 
         It 'Clicking Install shows Install panel' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnInstall" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnInstall" -Delay $script:ActionDelay
             $installPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "InstallPanel"
             $installPanel | Should -Not -BeNullOrEmpty
         }
 
         It 'Clicking History shows History panel' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnHistory" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnHistory" -Delay $script:ActionDelay
             $historyPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HistoryPanel" -Timeout 5
             $historyPanel | Should -Not -BeNullOrEmpty
         }
 
         It 'Clicking Dashboard from any panel returns to Dashboard' {
             # Navigate away first
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnAbout" -Delay $script:ActionDelay
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnDashboard" -Delay $script:ActionDelay
             $dashPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "DashboardPanel"
             $dashPanel | Should -Not -BeNullOrEmpty
         }
@@ -355,16 +355,16 @@ Describe "WSUS Manager Navigation" -Tag "Navigation" -Skip:(-not $script:CanRunT
 
     Context 'Quick Action Buttons Exist' {
         $quickButtons = @(
-            @{ Name = "QBtnDiagnostics" },
-            @{ Name = "QBtnCleanup" },
-            @{ Name = "QBtnMaint" },
-            @{ Name = "QBtnStart" }
+            @{ AutomationId = "QBtnDiagnostics" },
+            @{ AutomationId = "QBtnCleanup" },
+            @{ AutomationId = "QBtnMaint" },
+            @{ AutomationId = "QBtnStart" }
         )
 
-        It "Quick action button '<Name>' exists" -TestCases $quickButtons {
-            param($Name)
-            $el = Find-UIElement -AppContext $script:AppContext -Name $Name -ClassName "Button" -Timeout 5
-            $el | Should -Not -BeNullOrEmpty -Because "Quick action button '$Name' should exist"
+        It "Quick action button '<AutomationId>' exists" -TestCases $quickButtons {
+            param($AutomationId)
+            $el = Find-UIElement -AppContext $script:AppContext -AutomationId $AutomationId -Timeout 5
+            $el | Should -Not -BeNullOrEmpty -Because "Quick action button '$AutomationId' should exist"
         }
     }
 }
@@ -384,12 +384,12 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
 
     Context 'Open Settings' {
         It 'Settings button opens a modal dialog' {
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 1000
-            # Settings opens as a modal Window — find it by title
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
+            # Settings opens as a modal Window — find it by title (UIA Name)
             $settingsWindow = $null
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
             while ($sw.Elapsed.TotalSeconds -lt 5 -and $null -eq $settingsWindow) {
-                $settingsWindow = Find-UIElement -AppContext $script:AppContext -Name "Settings" -ClassName "Window" -Timeout 1
+                $settingsWindow = Find-UIElement -AppContext $script:AppContext -Name "Settings" -Timeout 1
             }
             $settingsWindow | Should -Not -BeNullOrEmpty -Because "Settings dialog should appear"
         }
@@ -398,14 +398,14 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
     Context 'Close Settings' {
         It 'ESC key closes the Settings dialog' {
             # Open Settings
-            Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 1000
+            Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 1000
             Start-Sleep -Milliseconds 500
 
             # Send ESC
             Send-UIKeys -Keys "{ESC}" -Delay 1000
 
             # Verify dialog is gone
-            $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -ClassName "Window" -Timeout 5
+            $gone = Wait-UIElementGone -AppContext $script:AppContext -Name "Settings" -Timeout 5
             $gone | Should -BeTrue -Because "ESC should close Settings dialog"
         }
     }
@@ -425,14 +425,14 @@ Describe "WSUS Manager About" -Tag "About" -Skip:(-not $script:CanRunTests) {
     }
 
     It 'About panel shows version information' {
-        Invoke-UIClick -AppContext $script:AppContext -Name "BtnAbout" -Delay $script:ActionDelay
+        Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnAbout" -Delay $script:ActionDelay
         $aboutPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "AboutPanel"
         $aboutPanel | Should -Not -BeNullOrEmpty
         # About panel is a ScrollViewer with content — verify it exists and is not empty
     }
 
     It 'Navigating away from About shows Dashboard' {
-        Invoke-UIClick -AppContext $script:AppContext -Name "BtnDashboard" -Delay $script:ActionDelay
+        Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnDashboard" -Delay $script:ActionDelay
         $dashPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "DashboardPanel"
         $dashPanel | Should -Not -BeNullOrEmpty
     }
@@ -452,19 +452,19 @@ Describe "WSUS Manager History Panel" -Tag "History" -Skip:(-not $script:CanRunT
     }
 
     It 'History panel opens and shows list control' {
-        Invoke-UIClick -AppContext $script:AppContext -Name "BtnHistory" -Delay $script:ActionDelay
+        Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnHistory" -Delay $script:ActionDelay
         $historyPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HistoryPanel"
         $historyPanel | Should -Not -BeNullOrEmpty
 
-        # History panel contains a ListView named HistoryList
-        $historyList = Find-UIElement -AppContext $script:AppContext -Name "HistoryList" -Timeout 3
+        # History panel contains a ListView named HistoryList (x:Name → AutomationId)
+        $historyList = Find-UIElement -AppContext $script:AppContext -AutomationId "HistoryList" -Timeout 3
         # May or may not have items, but the control should exist
         $historyList | Should -Not -BeNullOrEmpty -Because "History list control should exist"
     }
 
     It 'History filter and buttons exist' {
-        # These controls are inside HistoryPanel
-        $filter = Find-UIElement -AppContext $script:AppContext -Name "HistoryFilter" -Timeout 3
+        # These controls are inside HistoryPanel (x:Name → AutomationId)
+        $filter = Find-UIElement -AppContext $script:AppContext -AutomationId "HistoryFilter" -Timeout 3
         $filter | Should -Not -BeNullOrEmpty -Because "History filter should exist"
     }
 }
@@ -483,7 +483,7 @@ Describe "WSUS Manager Help Panel" -Tag "Help" -Skip:(-not $script:CanRunTests) 
     }
 
     It 'Help panel opens with Overview content' {
-        Invoke-UIClick -AppContext $script:AppContext -Name "BtnHelp" -Delay $script:ActionDelay
+        Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnHelp" -Delay $script:ActionDelay
         $helpPanel = Assert-UIElementExists -AppContext $script:AppContext -AutomationId "HelpPanel"
         $helpPanel | Should -Not -BeNullOrEmpty
     }
@@ -491,7 +491,7 @@ Describe "WSUS Manager Help Panel" -Tag "Help" -Skip:(-not $script:CanRunTests) 
     It 'Help content buttons exist' {
         $helpButtons = @("HelpBtnOverview", "HelpBtnDashboard", "HelpBtnOperations", "HelpBtnAirGap", "HelpBtnTroubleshooting")
         foreach ($btnName in $helpButtons) {
-            $el = Find-UIElement -AppContext $script:AppContext -Name $btnName -ClassName "Button" -Timeout 2
+            $el = Find-UIElement -AppContext $script:AppContext -AutomationId $btnName -Timeout 2
             $el | Should -Not -BeNullOrEmpty -Because "Help button '$btnName' should exist"
         }
     }
@@ -534,7 +534,7 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
             # Click through all nav buttons quickly
             $navButtons = @("BtnDashboard", "BtnInstall", "BtnAbout", "BtnHelp", "BtnHistory", "BtnDashboard")
             foreach ($btn in $navButtons) {
-                Invoke-UIClick -AppContext $script:AppContext -Name $btn -Delay 200
+                Invoke-UIClick -AppContext $script:AppContext -AutomationId $btn -Delay 200
             }
 
             # App should still be responsive
@@ -548,7 +548,7 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
     Context 'Multiple Dialog Open/Close' {
         It 'Survives opening and closing Settings multiple times' {
             for ($i = 0; $i -lt 3; $i++) {
-                Invoke-UIClick -AppContext $script:AppContext -Name "BtnSettings" -Delay 800
+                Invoke-UIClick -AppContext $script:AppContext -AutomationId "BtnSettings" -Delay 800
                 Send-UIKeys -Keys "{ESC}" -Delay 800
             }
 
