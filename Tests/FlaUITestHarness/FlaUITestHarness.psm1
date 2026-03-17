@@ -208,29 +208,67 @@ function Start-GuiApplication {
         Write-Verbose "Using UIA3 automation"
     }
 
-    # Wait for main window using desktop search (more reliable than GetMainWindow for PS2EXE)
+    # Wait for main window using COM (reliable for PS2EXE WPF apps)
     $window = $null
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $desktop = $automation.GetDesktop()
-    $cf = $automation.ConditionFactory
+
+    # Pre-load COM assemblies for window search
+    try { Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes -ErrorAction Stop } catch { }
 
     while ($sw.Elapsed.TotalSeconds -lt $Timeout) {
         try {
-            # Find all windows for this process
-            $allWindows = $desktop.FindAllChildren()
-            foreach ($w in $allWindows) {
-                if ($w.ProcessId -eq $app.ProcessId -and $w.ControlType -eq [FlaUI.Core.Definitions.ControlType]::Window) {
-                    $window = $w
-                    Write-Verbose "Main window found after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s: Name='$($w.Name)' Aid='$($w.AutomationId)'"
-                    break
-                }
-            }
-            if ($null -ne $window) { break }
+            # COM Strategy 1: Find window by AutomationId "WsusManagerMainWindow" + ProcessId
+            $conditions = @(
+                (New-Object System.Windows.Automation.PropertyCondition(
+                    [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.ProcessId))
+                (New-Object System.Windows.Automation.PropertyCondition(
+                    [System.Windows.Automation.AutomationElement]::AutomationIdProperty, "WsusManagerMainWindow"))
+            )
+            $comCondition = New-Object System.Windows.Automation.AndCondition($conditions[0], $conditions[1])
+            $root = [System.Windows.Automation.AutomationElement]::RootElement
+            $comWindow = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $comCondition)
 
-            # Fallback: try GetMainWindow
-            $window = $app.GetMainWindow($automation)
-            if ($null -ne $window) {
-                Write-Verbose "Main window found via GetMainWindow after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
+            if ($null -ne $comWindow) {
+                # Wrap COM window in FlaUI-compatible PSObject
+                $window = [PSCustomObject]@{
+                    Name              = $comWindow.Current.Name
+                    Title             = $comWindow.Current.Name
+                    AutomationId      = $comWindow.Current.AutomationId
+                    ClassName         = $comWindow.Current.ClassName
+                    ProcessId         = $comWindow.Current.ProcessId
+                    IsOffscreen       = $comWindow.Current.IsOffscreen
+                    BoundingRectangle = $comWindow.Current.BoundingRectangle
+                    IsEnabled         = $comWindow.Current.IsEnabled
+                    _ComElement       = $comWindow
+                }
+                Write-Verbose "Main window found by COM+AutomationId after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s: Name='$($comWindow.Current.Name)'"
+                break
+            }
+
+            # COM Strategy 2: Any window for this process with non-empty name
+            $pidCondition = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.ProcessId)
+            $windowControl = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                [System.Windows.Automation.ControlType]::Window)
+            $notOffscreen = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::IsOffscreenProperty, $false)
+            $andCond = New-Object System.Windows.Automation.AndCondition($pidCondition, $windowControl, $notOffscreen)
+            $comWindow = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $andCond)
+
+            if ($null -ne $comWindow) {
+                $window = [PSCustomObject]@{
+                    Name              = $comWindow.Current.Name
+                    Title             = $comWindow.Current.Name
+                    AutomationId      = $comWindow.Current.AutomationId
+                    ClassName         = $comWindow.Current.ClassName
+                    ProcessId         = $comWindow.Current.ProcessId
+                    IsOffscreen       = $comWindow.Current.IsOffscreen
+                    BoundingRectangle = $comWindow.Current.BoundingRectangle
+                    IsEnabled         = $comWindow.Current.IsEnabled
+                    _ComElement       = $comWindow
+                }
+                Write-Verbose "Main window found by COM+ProcessId after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s: Name='$($comWindow.Current.Name)'"
                 break
             }
         }
@@ -296,7 +334,12 @@ function Stop-GuiApplication {
     try {
         if ($null -ne $ctx.MainWindow) {
             try {
-                $ctx.MainWindow.Close()
+                # COM-wrapped window: use SetWindowVisualState or just kill process
+                if ($ctx.MainWindow.PSObject.Properties['_ComElement']) {
+                    # Can't easily close WPF window via COM, so kill process
+                } else {
+                    $ctx.MainWindow.Close()
+                }
                 Start-Sleep -Seconds 2
             } catch { }
         }
@@ -334,12 +377,129 @@ function Get-GuiApplication {
 # Element finding
 # ---------------------------------------------------------------------------
 
-# COM-based element finder (fallback for PS2EXE WPF apps where FlaUI's tree walk fails)
+# ---------------------------------------------------------------------------
+# COM UI Automation helpers (primary for PS2EXE WPF apps)
+# ---------------------------------------------------------------------------
+
+# Ensure COM UIA assemblies are loaded
+try { Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes -ErrorAction Stop } catch { }
+
+function Get-ComRootElement {
+    <#
+    .SYNOPSIS
+        Returns the COM UI Automation RootElement (cached).
+    #>
+    if ($null -eq $script:ComRoot) {
+        $script:ComRoot = [System.Windows.Automation.AutomationElement]::RootElement
+    }
+    return $script:ComRoot
+}
+
+function New-ComCondition {
+    <#
+    .SYNOPSIS
+        Builds a COM UIA AndCondition from ProcessId + optional AutomationId/Name/ClassName filters.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [int]$ProcessId,
+        [string]$AutomationId,
+        [string]$Name,
+        [string]$ClassName
+    )
+
+    $conditions = @(
+        (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $ProcessId))
+    )
+    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $AutomationId))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Name)) {
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $Name))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ClassNameProperty, $ClassName))
+    }
+
+    $condition = $conditions[0]
+    for ($i = 1; $i -lt $conditions.Count; $i++) {
+        $condition = New-Object System.Windows.Automation.AndCondition($condition, $conditions[$i])
+    }
+    $condition
+}
+
+function Wrap-ComElement {
+    <#
+    .SYNOPSIS
+        Wraps a COM AutomationElement in a PSObject with FlaUI-compatible properties.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Automation.AutomationElement]$ComElement
+    )
+
+    $script:LastComElement = $ComElement
+    [PSCustomObject]@{
+        # FlaUI-compatible properties
+        Name              = $ComElement.Current.Name
+        AutomationId      = $ComElement.Current.AutomationId
+        ClassName         = $ComElement.Current.ClassName
+        IsEnabled         = $ComElement.Current.IsEnabled
+        IsOffscreen       = $ComElement.Current.IsOffscreen
+        Title             = $ComElement.Current.Name
+        BoundingRectangle = $ComElement.Current.BoundingRectangle
+        ProcessId         = $ComElement.Current.ProcessId
+        # Internal reference for interaction
+        _ComElement       = $ComElement
+    }
+}
+
+function Invoke-ComClick {
+    <#
+    .SYNOPSIS
+        Clicks a COM AutomationElement using InvokePattern or LegacyIAccessible.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.Automation.AutomationElement]$ComElement
+    )
+
+    # Try InvokePattern first (works for WPF buttons)
+    try {
+        $invokePattern = $ComElement.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+        $invokePattern.Invoke()
+        return
+    } catch { }
+
+    # Fallback: LegacyIAccessible DoDefaultAction (works for most controls)
+    try {
+        $legacyPattern = $ComElement.GetCurrentPattern([System.Windows.Automation.LegacyIAccessible.LegacyIAccessiblePattern]::Pattern)
+        $legacyPattern.DoDefaultAction()
+        return
+    } catch { }
+
+    throw "Failed to click element (AutomationId=$($ComElement.Current.AutomationId))"
+}
+
+# ---------------------------------------------------------------------------
+# Element finding (COM-based, primary for PS2EXE)
+# ---------------------------------------------------------------------------
+
 function Find-UIElementCom {
     <#
     .SYNOPSIS
-        Finds a UI element using COM UI Automation (TreeWalker).
-        Used as fallback when FlaUI's FindFirstDescendant returns nothing.
+        Finds a UI element using COM UI Automation. Returns wrapped PSObject.
+
+    .DESCRIPTION
+        Searches all descendants from RootElement with ProcessId + criteria.
+        Returns a PSObject wrapping the COM AutomationElement with
+        .AutomationId, .Name, .ClassName, .IsEnabled, .IsOffscreen properties.
     #>
     [CmdletBinding()]
     param(
@@ -350,157 +510,81 @@ function Find-UIElementCom {
         [int]$ProcessId
     )
 
-    try {
-        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes -ErrorAction Stop
-    } catch {
-        return $null
-    }
-
-    $root = [System.Windows.Automation.AutomationElement]::RootElement
-    $treeWalker = [System.Windows.Automation.TreeWalker]::ContentViewWalker
-
-    # Build condition: match by ProcessId
     $conditions = @()
     if ($ProcessId -gt 0) {
-        $conditions += New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $ProcessId)
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $ProcessId))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ParentAutomationId)) {
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $ParentAutomationId))
     }
     if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
-        $conditions += New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $AutomationId)
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $AutomationId))
     }
     if (-not [string]::IsNullOrWhiteSpace($Name)) {
-        $conditions += New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty, $Name)
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $Name))
     }
     if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
-        $conditions += New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::ClassNameProperty, $ClassName)
+        $conditions += (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ClassNameProperty, $ClassName))
     }
 
     if ($conditions.Count -eq 0) { return $null }
 
-    # Combine with AND
     $condition = $conditions[0]
     for ($i = 1; $i -lt $conditions.Count; $i++) {
         $condition = New-Object System.Windows.Automation.AndCondition($condition, $conditions[$i])
     }
 
-    # Search descendants of root
+    $root = Get-ComRootElement
     $found = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
-    return $found  # Returns COM AutomationElement (not FlaUI element)
+    if ($null -ne $found) {
+        return (Wrap-ComElement $found)
+    }
+    return $null
 }
 
 function Find-UIElement {
     <#
     .SYNOPSIS
-        Finds a UI element by AutomationId, Name, or control type.
-
-    .DESCRIPTION
-        Searches descendants of the main window (or a specified parent element)
-        for an element matching the given criteria. Returns null if not found.
-
-    .PARAMETER AppContext
-        Application context from Start-GuiApplication. Uses last started app if omitted.
-
-    .PARAMETER AutomationId
-        Find by AutomationProperties.AutomationId.
-
-    .PARAMETER Name
-        Find by element Name (x:Name in WPF XAML).
-
-    .PARAMETER ClassName
-        Find by element class name (e.g., "Button", "TextBox").
-
-    .PARAMETER ControlType
-        Find by FlaUI ControlType (e.g., [FlaUI.Core.Definitions.ControlType]::Button).
-
-    .PARAMETER Parent
-        Parent element to search under. Defaults to MainWindow.
-
-    .PARAMETER Timeout
-        Seconds to wait for element to appear. Default is 10.
+        Finds a UI element by AutomationId, Name, or ClassName.
+        Uses COM UI Automation (works with PS2EXE WPF apps).
 
     .OUTPUTS
-        FlaUI.Core.AutomationElements.AutomationElement (or null)
+        PSCustomObject wrapping COM AutomationElement with AutomationId, Name, ClassName, IsEnabled, IsOffscreen.
     #>
     [CmdletBinding()]
     param(
         [PSCustomObject]$AppContext,
-
         [string]$AutomationId,
-
         [string]$Name,
-
         [string]$ClassName,
-
         $ControlType,
-
         $Parent,
-
         [int]$Timeout = 10
     )
 
     $ctx = if ($AppContext) { $AppContext } else { $script:AppContext }
-    if ($null -eq $ctx -or $null -eq $ctx.MainWindow) {
+    if ($null -eq $ctx) {
         throw "No active application. Call Start-GuiApplication first."
     }
 
-    $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
-
-    # Build condition tree using Automation's ConditionFactory directly
-    $conditions = @()
-    $cf = $ctx.Automation.ConditionFactory
-
-    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
-        $conditions += $cf.ByAutomationId($AutomationId)
-    }
-    if (-not [string]::IsNullOrWhiteSpace($Name)) {
-        $conditions += $cf.ByName($Name)
-    }
-    if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
-        $conditions += $cf.ByClassName($ClassName)
-    }
-    if ($null -ne $ControlType) {
-        $conditions += $cf.ByControlType($ControlType)
-    }
-
-    if ($conditions.Count -eq 0) {
-        throw "Specify at least one search criterion: AutomationId, Name, ClassName, or ControlType."
-    }
-
-    # Combine conditions with AND
-    $condition = $conditions[0]
-    for ($i = 1; $i -lt $conditions.Count; $i++) {
-        $condition = $condition.And($conditions[$i])
-    }
+    $pid = if ($ctx.ProcessId) { $ctx.ProcessId } else { 0 }
+    if ($pid -eq 0 -and $ctx._App) { $pid = $ctx._App.ProcessId }
+    if ($pid -eq 0) { throw "No process ID available." }
 
     # Wait for element with timeout
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $element = $null
 
     while ($sw.Elapsed.TotalSeconds -lt $Timeout) {
         try {
-            # Try FlaUI's FindFirstDescendant
-            $element = $searchRoot.FindFirstDescendant($condition)
-            if ($null -ne $element) {
+            $el = Find-UIElementCom -ProcessId $pid -AutomationId $AutomationId -Name $Name -ClassName $ClassName
+            if ($null -ne $el) {
                 Write-Verbose "Found element (AutomationId=$AutomationId, Name=$Name) in $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
-                return $element
-            }
-
-            # Fallback: Use FindAllDescendants and manually filter (works when FindFirstDescendant fails)
-            $allElements = $searchRoot.FindAllDescendants()
-            if ($null -ne $allElements -and $allElements.Count -gt 0) {
-                foreach ($el in $allElements) {
-                    $match = $true
-                    if (-not [string]::IsNullOrWhiteSpace($AutomationId) -and $el.AutomationId -ne $AutomationId) { $match = $false }
-                    if (-not [string]::IsNullOrWhiteSpace($Name) -and $el.Name -ne $Name) { $match = $false }
-                    if (-not [string]::IsNullOrWhiteSpace($ClassName) -and $el.ClassName -ne $ClassName) { $match = $false }
-                    if ($match) {
-                        Write-Verbose "Found element via FindAllDescendants (AutomationId=$AutomationId, Name=$Name)"
-                        return $el
-                    }
-                }
+                return $el
             }
         }
         catch {
@@ -516,51 +600,34 @@ function Find-UIElement {
 function Find-AllUIElements {
     <#
     .SYNOPSIS
-        Finds all descendant elements matching the criteria.
+        Finds all descendant elements matching the criteria using COM UIA.
     #>
     [CmdletBinding()]
     param(
         [PSCustomObject]$AppContext,
-
         [string]$AutomationId,
-
         [string]$Name,
-
         [string]$ClassName,
-
         $ControlType,
-
         $Parent
     )
 
     $ctx = if ($AppContext) { $AppContext } else { $script:AppContext }
     if ($null -eq $ctx) { throw "No active application." }
 
-    $searchRoot = if ($Parent) { $Parent } else { $ctx.MainWindow }
-    $cf = $ctx.Automation.ConditionFactory
+    $pid = if ($ctx.ProcessId) { $ctx.ProcessId } else { 0 }
+    if ($pid -eq 0 -and $ctx._App) { $pid = $ctx._App.ProcessId }
+    if ($pid -eq 0) { return @() }
 
-    $conditions = @()  # PS array (generic List<object> fails in PS 5.1)
-    if (-not [string]::IsNullOrWhiteSpace($AutomationId)) {
-        $conditions += $cf.ByAutomationId($AutomationId)
-    }
-    if (-not [string]::IsNullOrWhiteSpace($Name)) {
-        $conditions += $cf.ByName($Name)
-    }
-    if (-not [string]::IsNullOrWhiteSpace($ClassName)) {
-        $conditions += $cf.ByClassName($ClassName)
-    }
-    if ($null -ne $ControlType) {
-        $conditions += $cf.ByControlType($ControlType)
-    }
+    $condition = New-ComCondition -ProcessId $pid -AutomationId $AutomationId -Name $Name -ClassName $ClassName
+    $root = Get-ComRootElement
+    $found = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
 
-    if ($conditions.Count -eq 0) { throw "Specify at least one search criterion." }
-
-    $condition = $conditions[0]
-    for ($i = 1; $i -lt $conditions.Count; $i++) {
-        $condition = $condition.And($conditions[$i])
+    $results = @()
+    foreach ($el in $found) {
+        $results += (Wrap-ComElement $el)
     }
-
-    $searchRoot.FindAllDescendants($condition)
+    return $results
 }
 
 # ---------------------------------------------------------------------------
@@ -571,21 +638,6 @@ function Invoke-UIClick {
     <#
     .SYNOPSIS
         Clicks a UI element found by AutomationId or Name.
-
-    .PARAMETER AppContext
-        Application context. Uses last started app if omitted.
-
-    .PARAMETER AutomationId
-        AutomationId of the element to click.
-
-    .PARAMETER Name
-        Name of the element to click.
-
-    .PARAMETER Element
-        Direct FlaUI element reference (skips finding).
-
-    .PARAMETER Delay
-        Milliseconds to wait after click. Default 300.
     #>
     [CmdletBinding()]
     param(
@@ -607,23 +659,40 @@ function Invoke-UIClick {
     }
 
     try {
-        $btn = $el.AsButton()
-        $btn.Invoke()
-        Write-Verbose "Clicked: AutomationId=$AutomationId Name=$Name"
-    }
-    catch {
-        # Fallback: try pattern invoke
-        try {
-            $invokePattern = $el.Patterns.Invoke
-            if ($null -ne $invokePattern) {
-                $invokePattern.Invoke.Invoke()
-            } else {
-                throw $_
+        # Check if this is a COM-wrapped element
+        $comEl = $null
+        if ($el.PSObject.Properties['_ComElement']) {
+            $comEl = $el._ComElement
+        }
+
+        if ($null -ne $comEl) {
+            # Use COM automation
+            Invoke-ComClick -ComElement $comEl
+            Write-Verbose "Clicked (COM): AutomationId=$AutomationId Name=$Name"
+        } else {
+            # FlaUI fallback
+            try {
+                $btn = $el.AsButton()
+                $btn.Invoke()
+                Write-Verbose "Clicked (FlaUI): AutomationId=$AutomationId Name=$Name"
+            }
+            catch {
+                try {
+                    $invokePattern = $el.Patterns.Invoke
+                    if ($null -ne $invokePattern) {
+                        $invokePattern.Invoke.Invoke()
+                    } else {
+                        throw $_
+                    }
+                }
+                catch {
+                    throw "Failed to click element (AutomationId=$AutomationId): $($_.Exception.Message)"
+                }
             }
         }
-        catch {
-            throw "Failed to click element (AutomationId=$AutomationId): $($_.Exception.Message)"
-        }
+    }
+    catch {
+        throw "Failed to click element (AutomationId=$AutomationId, Name=$Name): $($_.Exception.Message)"
     }
 
     if ($Delay -gt 0) {
@@ -635,14 +704,6 @@ function Get-UIText {
     <#
     .SYNOPSIS
         Gets the text content of a UI element.
-
-    .PARAMETER AutomationId
-    .PARAMETER Name
-    .PARAMETER Element
-    .PARAMETER AppContext
-
-    .OUTPUTS
-        String — the element's text/value content.
     #>
     [CmdletBinding()]
     param(
@@ -663,23 +724,34 @@ function Get-UIText {
     }
 
     try {
-        # Try ValuePattern (for TextBoxes)
-        $valPattern = $el.Patterns.Value
-        if ($null -ne $valPattern -and $null -ne $valPattern.Value) {
-            return $valPattern.Value.Value
+        $comEl = $null
+        if ($el.PSObject.Properties['_ComElement']) {
+            $comEl = $el._ComElement
         }
 
-        # Try TextPattern (for TextBlocks, Labels)
-        $txtPattern = $el.Patterns.Text
-        if ($null -ne $txtPattern -and $null -ne $txtPattern.Text) {
-            return $txtPattern.Text.Document.GetText(-1).TrimEnd("`r`n")
+        if ($null -ne $comEl) {
+            # COM: try ValuePattern first (TextBoxes), then Name property
+            try {
+                $valPattern = $comEl.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+                if ($null -ne $valPattern) {
+                    return $valPattern.Current.Value
+                }
+            } catch { }
+            return $comEl.Current.Name
+        } else {
+            # FlaUI fallback
+            $valPattern = $el.Patterns.Value
+            if ($null -ne $valPattern -and $null -ne $valPattern.Value) {
+                return $valPattern.Value.Value
+            }
+            $txtPattern = $el.Patterns.Text
+            if ($null -ne $txtPattern -and $null -ne $txtPattern.Text) {
+                return $txtPattern.Text.Document.GetText(-1).TrimEnd("`r`n")
+            }
+            return $el.Name
         }
-
-        # Fallback: Name property often contains the text
-        return $el.Name
     }
     catch {
-        # Final fallback
         return $el.Name
     }
 }
@@ -688,12 +760,76 @@ function Set-UIText {
     <#
     .SYNOPSIS
         Sets the text of a UI element (TextBox).
+    #>
+    [CmdletBinding()]
+    param(
+        [PSCustomObject]$AppContext,
+        [Parameter(Mandatory)]
+        [string]$AutomationId,
+        [string]$Name,
+        [Parameter(Mandatory)]
+        [string]$Text,
+        $Element,
+        [switch]$Clear
+    )
 
-    .PARAMETER Text
-        Text to set. If -Clear is specified, the field is cleared first.
+    $el = if ($Element) {
+        $Element
+    } else {
+        Find-UIElement -AppContext $AppContext -AutomationId $AutomationId -Name $Name -Timeout 5
+    }
 
-    .PARAMETER Clear
-        Clear existing text before setting new text.
+    if ($null -eq $el) {
+        throw "Element not found (AutomationId=$AutomationId, Name=$Name)"
+    }
+
+    try {
+        $comEl = $null
+        if ($el.PSObject.Properties['_ComElement']) {
+            $comEl = $el._ComElement
+        }
+
+        if ($null -ne $comEl) {
+            # COM: use ValuePattern
+            $valPattern = $comEl.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+            if ($null -ne $valPattern) {
+                if ($Clear) {
+                    $valPattern.SetValue("")
+                    Start-Sleep -Milliseconds 100
+                }
+                $valPattern.SetValue($Text)
+                Write-Verbose "Set text (COM) on AutomationId=$AutomationId to: $Text"
+            } else {
+                throw "ValuePattern not available for AutomationId=$AutomationId"
+            }
+        } else {
+            # FlaUI fallback
+            $valPattern = $el.Patterns.Value
+            if ($null -ne $valPattern -and $null -ne $valPattern.Value) {
+                if ($Clear) {
+                    $valPattern.Value.SetValue("")
+                    Start-Sleep -Milliseconds 100
+                }
+                $valPattern.Value.SetValue($Text)
+                Write-Verbose "Set text on AutomationId=$AutomationId to: $Text"
+            } else {
+                $el.Focus()
+                Start-Sleep -Milliseconds 100
+                if ($Clear) {
+                    [System.Windows.Forms.SendKeys]::SendWait("^a")
+                    Start-Sleep -Milliseconds 50
+                    [System.Windows.Forms.SendKeys]::SendWait("{DEL}")
+                    Start-Sleep -Milliseconds 100
+                }
+                [System.Windows.Forms.SendKeys]::SendWait($Text)
+                Write-Verbose "Set text via SendKeys on AutomationId=$AutomationId"
+            }
+        }
+    }
+    catch {
+        throw "Failed to set text on AutomationId=$AutomationId : $($_.Exception.Message)"
+    }
+}
     #>
     [CmdletBinding()]
     param(
@@ -948,15 +1084,6 @@ function Save-UIScreenshot {
     <#
     .SYNOPSIS
         Captures a screenshot of the GUI application window.
-
-    .PARAMETER Path
-        Output file path. Supports .png, .jpg, .bmp.
-
-    .PARAMETER AppContext
-        Application context. Uses last started app if omitted.
-
-    .OUTPUTS
-        Full path to the saved screenshot file.
     #>
     [CmdletBinding()]
     param(
@@ -967,8 +1094,8 @@ function Save-UIScreenshot {
     )
 
     $ctx = if ($AppContext) { $AppContext } else { $script:AppContext }
-    if ($null -eq $ctx -or $null -eq $ctx.MainWindow) {
-        Write-Warning "No active application window to screenshot."
+    if ($null -eq $ctx) {
+        Write-Warning "No active application context."
         return $null
     }
 
@@ -977,6 +1104,33 @@ function Save-UIScreenshot {
         $dir = Split-Path -Parent $Path
         if (-not [string]::IsNullOrWhiteSpace($dir) -and -not (Test-Path $dir)) {
             New-Item -Path $dir -ItemType Directory -Force | Out-Null
+        }
+
+        # Get bounds — prefer COM for accurate bounds on PS2EXE apps
+        $bounds = $null
+        $pid = if ($ctx.ProcessId) { $ctx.ProcessId } else { 0 }
+        if ($pid -gt 0) {
+            try {
+                $comCondition = New-Object System.Windows.Automation.PropertyCondition(
+                    [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $pid)
+                $comWindow = Get-ComRootElement.FindFirst(
+                    [System.Windows.Automation.TreeScope]::Descendants, $comCondition)
+                if ($null -ne $comWindow) {
+                    $bounds = $comWindow.Current.BoundingRectangle
+                }
+            } catch { }
+        }
+
+        # Fallback to FlaUI window bounds
+        if ($null -eq $bounds -or $bounds.Width -le 0 -or $bounds.Height -le 0) {
+            if ($null -ne $ctx.MainWindow) {
+                try { $bounds = $ctx.MainWindow.BoundingRectangle } catch { }
+            }
+        }
+
+        if ($null -eq $bounds -or $bounds.Width -le 0 -or $bounds.Height -le 0) {
+            Write-Warning "Could not determine window bounds for screenshot"
+            return $null
         }
 
         $bounds = $ctx.MainWindow.BoundingRectangle
@@ -1041,14 +1195,28 @@ function Get-UIElementInfo {
         return $null
     }
 
-    [PSCustomObject]@{
-        Name              = $el.Name
-        AutomationId      = if ($el.Properties.AutomationId.IsSupported) { $el.Properties.AutomationId.Value } else { '' }
-        ClassName         = if ($el.Properties.ClassName.IsSupported) { $el.Properties.ClassName.Value } else { '' }
-        ControlType       = $el.ControlType.ToString()
-        IsEnabled         = $el.IsEnabled
-        IsOffscreen       = $el.IsOffscreen
-        BoundingRectangle = "$($el.BoundingRectangle)"
+    # Handle both COM-wrapped and FlaUI elements
+    if ($el.PSObject.Properties['_ComElement']) {
+        $com = $el._ComElement
+        [PSCustomObject]@{
+            Name              = $com.Current.Name
+            AutomationId      = $com.Current.AutomationId
+            ClassName         = $com.Current.ClassName
+            ControlType       = $com.Current.ControlType.ProgrammaticName
+            IsEnabled         = $com.Current.IsEnabled
+            IsOffscreen       = $com.Current.IsOffscreen
+            BoundingRectangle = "$($com.Current.BoundingRectangle)"
+        }
+    } else {
+        [PSCustomObject]@{
+            Name              = $el.Name
+            AutomationId      = if ($el.Properties.AutomationId.IsSupported) { $el.Properties.AutomationId.Value } else { '' }
+            ClassName         = if ($el.Properties.ClassName.IsSupported) { $el.Properties.ClassName.Value } else { '' }
+            ControlType       = $el.ControlType.ToString()
+            IsEnabled         = $el.IsEnabled
+            IsOffscreen       = $el.IsOffscreen
+            BoundingRectangle = "$($el.BoundingRectangle)"
+        }
     }
 }
 
