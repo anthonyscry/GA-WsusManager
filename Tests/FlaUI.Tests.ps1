@@ -85,10 +85,29 @@ BeforeDiscovery {
 }
 
 BeforeAll {
+    # Re-assign discovery variables — BeforeDiscovery runs in a different scope
+    # and $script: variables may not carry over in Pester 5.x
+    $script:RepoRoot = Split-Path -Parent $PSScriptRoot
+    $script:AppName = "GA-WsusManager"
     $script:ScreenshotDir = Join-Path $PSScriptRoot "Screenshots"
 
-    if ($null -eq $script:ExePath) {
-        $script:ExePath = (Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1")
+    # Find executable (same logic as BeforeDiscovery for runtime use)
+    $exeCandidates = @(
+        (Join-Path $script:RepoRoot "dist\GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "dist\WsusManager.exe"),
+        (Join-Path $script:RepoRoot "GA-WsusManager.exe"),
+        (Join-Path $script:RepoRoot "WsusManager.exe"),
+        (Join-Path $script:RepoRoot "Scripts\WsusManagementGui.ps1")
+    )
+    $script:ExePath = $null
+    foreach ($c in $exeCandidates) {
+        if (Test-Path $c) { $script:ExePath = $c; break }
+    }
+
+    # Import FlaUI Test Harness (also needed at runtime for harness functions)
+    $harnessPath = Join-Path $PSScriptRoot "FlaUITestHarness\FlaUITestHarness.psm1"
+    if (Test-Path $harnessPath) {
+        Import-Module $harnessPath -Force
     }
 
     # Detect WSUS installation
