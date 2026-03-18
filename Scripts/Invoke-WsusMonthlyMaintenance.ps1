@@ -770,6 +770,15 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 }
 
                 $wsus.Save()
+
+                # Re-apply OOBE suppression in case Save() resets it
+                # Without this, the WSUS Configuration Wizard may appear on next launch
+                $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+                if (Test-Path $wsusRegSetup) {
+                    Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
+                }
+
                 Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
                 Write-Status "Products configured" -Type Success
             } catch {
