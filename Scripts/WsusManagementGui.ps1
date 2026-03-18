@@ -422,6 +422,7 @@ $script:StdinFlushTimer = $null
 
                         <TextBlock Text="SETUP" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnFixSqlLogin" Content="🔑 Fix SQL Login" Style="{StaticResource NavBtn}" ToolTip="Add current user as sysadmin to SQL Express"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCreateGpo" Content="☰ Create GPO" Style="{StaticResource NavBtn}"/>
 
@@ -1374,7 +1375,7 @@ function Update-HistoryView {
 
 function Set-ActiveNavButton {
     param([string]$Active)
-    $navBtns = @("BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp","BtnHistory")
+    $navBtns = @("BtnDashboard","BtnInstall","BtnFixSqlLogin","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnAbout","BtnHelp","BtnHistory")
     foreach ($b in $navBtns) {
         if ($controls[$b]) {
             $controls[$b].Background = if($b -eq $Active){"#21262D"}else{"Transparent"}
@@ -1386,7 +1387,7 @@ function Set-ActiveNavButton {
 }
 
 # Operation buttons that should be disabled during operations
-$script:OperationButtons = @("BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
+$script:OperationButtons = @("BtnInstall","BtnFixSqlLogin","BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart","BtnRunInstall","BtnBrowseInstallPath")
 # Input fields that should be disabled during operations
 $script:OperationInputs = @("InstallSaPassword","InstallSaPasswordConfirm","InstallPathBox")
 # Buttons that require WSUS to be installed (all except Install WSUS)
@@ -3101,6 +3102,40 @@ function Invoke-LogOperation {
         return
     }
 
+    # Preflight: check SQL connectivity for operations that need it
+    $dbOperations = @("restore", "cleanup", "diagnostics", "maintenance")
+    if ($Id -in $dbOperations) {
+        $sqlInstance = $script:SqlInstance
+        $sqlcmdPaths = @(
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+            "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
+            "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
+            "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
+        )
+        $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+        if (-not $sqlcmd) {
+            Show-WsusPopup -Message "sqlcmd.exe not found. SQL Server does not appear to be installed.`n`nRun 'Install WSUS' first, or use 'Fix SQL Login' to troubleshoot." -Title "SQL Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
+            Write-Log "PREFLIGHT FAIL: sqlcmd.exe not found for operation '$Id'"
+            return
+        }
+
+        try {
+            $testResult = & $sqlcmd -S $sqlInstance -E -C -Q "SELECT 1" -h -1 -W 2>$null
+            if ($testResult -ne 1) {
+                Show-WsusPopup -Message "Cannot connect to SQL Server at $sqlInstance using Windows Authentication.`n`nMake sure:`n- SQL Express service is running`n- You are a member of BUILTIN\Administrators or have sysadmin access`n`nUse 'Fix SQL Login' in the Setup menu to add your account." -Title "SQL Connection Failed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
+                Write-Log "PREFLIGHT FAIL: SQL connection test returned '$testResult' for operation '$Id'"
+                return
+            }
+            Write-Log "PREFLIGHT OK: SQL connectivity verified for operation '$Id'"
+        } catch {
+            Show-WsusPopup -Message "Cannot connect to SQL Server at $sqlInstance.`n`nError: $($_.Exception.Message)`n`nUse 'Fix SQL Login' in the Setup menu to add your account." -Title "SQL Connection Failed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
+            Write-Log "PREFLIGHT FAIL: $($_.Exception.Message)"
+            return
+        }
+    }
+
     # Guard Online-only operations
     if ($script:ServerMode -eq "Air-Gap" -and $Id -in @("maintenance", "schedule")) {
         Show-WsusPopup -Message "This operation is only available on the Online WSUS server." -Title "Online Only" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) -SuppressDuplicateSeconds 3 | Out-Null
@@ -3928,6 +3963,63 @@ $controls.BtnBrowseInstallPath.Add_Click({
 })
 
 $controls.BtnRunInstall.Add_Click({ Invoke-LogOperation "install" "Install WSUS" })
+
+# Fix SQL Login - add current user as sysadmin to SQL Express
+$controls.BtnFixSqlLogin.Add_Click({
+    if ($script:OperationRunning) {
+        Show-WsusPopup -Message "An operation is already running." -Title "Busy" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) -SuppressDuplicateSeconds 3 | Out-Null
+        return
+    }
+
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $currentUser = $identity.Name
+    $sqlInstance = $script:SqlInstance
+
+    Write-LogOutput "[Fix SQL Login] Adding sysadmin for: $currentUser"
+    Write-LogOutput "[Fix SQL Login] Target: $sqlInstance"
+
+    $sqlcmdPaths = @(
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
+    )
+    $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $sqlcmd) {
+        Write-LogOutput "[Fix SQL Login] ERROR: sqlcmd.exe not found. Is SQL Server installed?" -Level Error
+        Show-WsusPopup -Message "sqlcmd.exe not found. SQL Server does not appear to be installed.`n`nRun 'Install WSUS' first." -Title "SQL Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+        return
+    }
+
+    try {
+        $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
+
+        # Create login if not exists
+        $output = & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUser') CREATE LOGIN [$currentUser] FROM WINDOWS; PRINT 'Login created';" -b 2>&1
+        Write-LogOutput "[Fix SQL Login] $output"
+
+        # Add to sysadmin role
+        $output = & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]; PRINT 'sysadmin granted';" -b 2>&1
+        Write-LogOutput "[Fix SQL Login] $output"
+
+        # Verify
+        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
+        Write-LogOutput "[Fix SQL Login] Verification (1=sysadmin): $check"
+
+        if ($check -eq 1) {
+            Write-LogOutput "[Fix SQL Login] SUCCESS: $currentUser is now a sysadmin on $sqlInstance"
+            Show-WsusPopup -Message "$currentUser has been added as sysadmin on $sqlInstance.`n`nYou can now connect to SQL Server." -Title "SQL Login Fixed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
+        } else {
+            Write-LogOutput "[Fix SQL Login] WARNING: Verification returned $check" -Level Warning
+            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running SSMS and connecting manually." -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+        }
+    } catch {
+        Write-LogOutput "[Fix SQL Login] ERROR: $($_.Exception.Message)" -Level Error
+        Show-WsusPopup -Message "Failed to add SQL login: $($_.Exception.Message)`n`nMake sure SQL Express is running and you are a local administrator." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+    }
+})
 
 # Cancel operation button - uses centralized cleanup
 $controls.BtnCancelOp.Add_Click({
