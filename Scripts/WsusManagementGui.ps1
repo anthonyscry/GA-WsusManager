@@ -207,6 +207,18 @@ if ($script:ModulesDir) {
 }
 
 # Re-establish GUI's file-based Write-Log after module imports.
+
+# Configure a dialog to auto-size and stay within screen bounds.
+# Removes fixed Height, sets SizeToContent=Height, MaxHeight=90% of screen,
+# and allows vertical resize as fallback for very small screens.
+function Set-DialogAutoFit {
+    param([Parameter(Mandatory)][System.Windows.Window]$Window)
+    $screenH = [SystemParameters]::PrimaryScreenHeight
+    $Window.SizeToContent = [System.Windows.SizeToContent]::Height
+    $Window.MaxHeight = [math]::Floor($screenH * 0.9)
+    $Window.ResizeMode = "CanResizeWithGrip"
+    $Window.MinHeight = 200
+}
 # WsusUtilities.psm1 exports its own Write-Log (stdout-only) which shadows
 # the GUI's version defined earlier. The GUI needs file-based logging so
 # that log messages persist to C:\WSUS\Logs even when no console is attached.
@@ -1735,11 +1747,10 @@ function Show-ExportDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDialog")
     $dlg.Title = "Export to Media"
     $dlg.Width = 480
-    $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
@@ -1880,11 +1891,10 @@ function Show-ImportDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportDialog")
     $dlg.Title = "Import from Media"
     $dlg.Width = 480
-    $dlg.Height = 320
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
@@ -2028,11 +2038,10 @@ function Show-RestoreDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreDialog")
     $dlg.Title = "Restore Database"
     $dlg.Width = 480
-    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
@@ -2190,11 +2199,10 @@ function Show-MaintenanceDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "MaintenanceDialog")
     $dlg.Title = "Online Sync"
     $dlg.Width = 520
-    $dlg.Height = 580
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
@@ -2768,11 +2776,10 @@ function Show-TransferDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferDialog")
     $dlg.Title = "Transfer Data"
     $dlg.Width = 480
-    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
     $stack = New-Object System.Windows.Controls.StackPanel
@@ -2954,11 +2961,10 @@ function Show-SettingsDialog {
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsDialog")
     $dlg.Title = "Settings"
     $dlg.Width = 480
-    $dlg.Height = 430
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
-    $dlg.ResizeMode = "NoResize"
+    Set-DialogAutoFit $dlg
 
     # Close dialog on ESC key
     $dlg.Add_KeyDown({
