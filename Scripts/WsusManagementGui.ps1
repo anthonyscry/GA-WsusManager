@@ -426,13 +426,11 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCreateGpo" Content="☰ Create GPO" Style="{StaticResource NavBtn}"/>
 
-                        <TextBlock Text="TRANSFER" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
-                        <Button x:Name="BtnTransfer" Content="⇄ Robocopy" Style="{StaticResource NavBtn}"/>
-
                         <TextBlock Text="MAINTENANCE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="↻ Online Sync" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnSchedule" Content="⏱ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="✧ Deep Cleanup" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnTransfer" Content="⇄ Robocopy" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnDiagnostics" Content="⊘ Run Diagnostics" Style="{StaticResource NavBtn}"/>
@@ -2798,7 +2796,7 @@ function Show-TransferDialog {
     $dstPanel.Children.Add($dstBtn)
 
     $dstTxt = New-Object System.Windows.Controls.TextBox
-    $dstTxt.SetValue([System.Windows.Automation.Properties]::AutomationIdProperty, "TransferDestTextBox")
+    $dstTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferDestTextBox")
     $dstTxt.Background = $script:BrushBgCard
     $dstTxt.Foreground = $script:BrushText1
     $dstTxt.Padding = "8,4"
