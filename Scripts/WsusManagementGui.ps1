@@ -3122,13 +3122,23 @@ function Invoke-LogOperation {
         }
 
         try {
-            $testResult = & $sqlcmd -S $sqlInstance -E -C -Q "SELECT 1" -h -1 -W 2>$null
-            if ($testResult -ne 1) {
-                Show-WsusPopup -Message "Cannot connect to SQL Server at $sqlInstance using Windows Authentication.`n`nMake sure:`n- SQL Express service is running`n- You are a member of BUILTIN\Administrators or have sysadmin access`n`nUse 'Fix SQL Login' in the Setup menu to add your account." -Title "SQL Connection Failed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
-                Write-Log "PREFLIGHT FAIL: SQL connection test returned '$testResult' for operation '$Id'"
+            # Test SQL connectivity using exit code (reliable) instead of parsing output
+            # Redirect stderr to a temp file so we can show the actual error
+            $errFile = [System.IO.Path]::GetTempFileName()
+            & $sqlcmd -S $sqlInstance -E -C -Q "SELECT 1" 2>$errFile | Out-Null
+            $exitCode = $LASTEXITCODE
+
+            if ($exitCode -ne 0) {
+                $errContent = Get-Content $errFile -Raw -ErrorAction SilentlyContinue
+                if (-not $errContent) { $errContent = "Exit code: $exitCode" }
+                Remove-Item $errFile -Force -ErrorAction SilentlyContinue
+
+                Show-WsusPopup -Message "Cannot connect to SQL Server at $sqlInstance using Windows Authentication.`n`n$errContent`n`nMake sure:`n- SQL Express service is running`n- You are a member of BUILTIN\Administrators or have sysadmin access`n`nUse 'Fix SQL Login' in the Setup menu to add your account." -Title "SQL Connection Failed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
+                Write-Log "PREFLIGHT FAIL: SQL connection to $sqlInstance failed (exit $exitCode): $errContent"
                 return
             }
-            Write-Log "PREFLIGHT OK: SQL connectivity verified for operation '$Id'"
+            Remove-Item $errFile -Force -ErrorAction SilentlyContinue
+            Write-Log "PREFLIGHT OK: SQL connectivity verified ($sqlInstance) for operation '$Id'"
         } catch {
             Show-WsusPopup -Message "Cannot connect to SQL Server at $sqlInstance.`n`nError: $($_.Exception.Message)`n`nUse 'Fix SQL Login' in the Setup menu to add your account." -Title "SQL Connection Failed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
             Write-Log "PREFLIGHT FAIL: $($_.Exception.Message)"
