@@ -405,10 +405,19 @@ Click the **folder icon** next to "Open Log" in the sidebar to open the logs dir
 
 ## Keyboard Shortcuts
 
-Currently, WSUS Manager operates primarily via mouse. Keyboard navigation:
-- **Tab**: Navigate between controls
-- **Enter**: Activate selected button
-- **Escape**: Close dialogs
+WSUS Manager supports the following keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+D** | Run Diagnostics |
+| **Ctrl+S** | Run Online Sync |
+| **Ctrl+H** | Open History view |
+| **Ctrl+R** / **F5** | Refresh Dashboard |
+| **Tab** | Navigate between controls |
+| **Enter** | Activate selected button |
+| **Escape** | Close dialogs |
+
+The log panel also supports right-click context menu with **Copy All** and **Save to File** options.
 
 ---
 

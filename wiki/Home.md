@@ -96,10 +96,14 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 3.8.3 | Mar 2026 | Installer folder prompt, non-interactive air-gap import, maintenance UX notes |
-| 3.5.2 | Jan 2026 | Bug fixes, 323 unit tests, security hardening |
-| 3.5.1 | Jan 2026 | Performance optimizations |
-| 3.5.0 | Jan 2026 | Server mode toggle, modern GUI |
+| 4.0.1 | Mar 2026 | GUI automation tests, install script sync, version alignment |
+| 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score, history, notifications, trending, splash screen, keyboard shortcuts, system tray |
+| 3.9.0 | Mar 2026 | ARM64/25H2 auto-decline, PowerShell-only distribution restored |
+| 3.8.12 | Feb 2026 | TrustServerCertificate compatibility fix |
+| 3.8.10 | Feb 2026 | Deep Cleanup 6-step workflow, unified Diagnostics |
+| 3.8.9 | Feb 2026 | Online Sync rename, Definition Updates, Reset Content |
+| 3.8.7 | Jan 2026 | Live Terminal, Create GPO, WSUS install detection |
+| 3.5.2 | Jan 2026 | 323 unit tests, security hardening, performance |
 
 See [[Changelog]] for complete version history.
 
