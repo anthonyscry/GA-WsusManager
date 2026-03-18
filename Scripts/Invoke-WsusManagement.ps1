@@ -489,13 +489,23 @@ function Invoke-WsusRestore {
     $wsusutil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
     if (Test-Path $wsusutil) {
         & $wsusutil postinstall SQL_INSTANCE_NAME="$SqlInstance" CONTENT_DIR="$ContentPath" 2>$null
-        Write-Log "Running WSUS reset (15-30 minutes)..." "Yellow"
+    }
+
+    # Content reset — must stop WSUS before resetting so the service picks up
+    # the re-verification flags on startup (matches standalone Reset behavior)
+    Write-Log "Stopping WSUS for content reset..." "Yellow"
+    Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
+    if (Test-Path $wsusutil) {
         & $wsusutil reset 2>$null
     }
+    Write-Log "Starting WSUS..." "Yellow"
+    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
 
     Write-Banner "RESTORE COMPLETE"
     Write-Log "[OK] Database restored" "Green"
-    Write-Log "[OK] Services started" "Green"
+    Write-Log "[OK] Content reset flagged — WSUS will re-verify and re-download missing files" "Green"
 }
 
 # ============================================================================
