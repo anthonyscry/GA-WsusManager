@@ -30,13 +30,34 @@ param(
     [Parameter(HelpMessage = "SQL sa password (plain text)")]
     [string]$SaPassword,
     [Parameter(HelpMessage = "Run in non-interactive mode (no dialogs, fail on missing paths/passwords)")]
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [Parameter(HelpMessage = "Configure WSUS for HTTPS after install (default is HTTP on port 8530)")]
+    [switch]$EnableHttps,
+    [Parameter(HelpMessage = "Existing certificate thumbprint used when enabling HTTPS in non-interactive mode")]
+    [string]$CertificateThumbprint,
+    [Parameter(HelpMessage = "Hostname of the upstream WSUS server (makes this a downstream server)")]
+    [string]$UpstreamServerHostname,
+    [Parameter(HelpMessage = "Port of the upstream WSUS server (default 8530)")]
+    [int]$UpstreamServerPort = 8530,
+    [Parameter(HelpMessage = "Use SSL when connecting to the upstream server")]
+    [switch]$UpstreamServerUseSsl,
+    [Parameter(HelpMessage = "Configure as a replica of the upstream server (inherit approvals)")]
+    [switch]$IsReplica
 )
 
 # -------------------------
 # INSTALLER PATH VALIDATION
 # -------------------------
-$requiredInstaller = "SQLEXPRADV_x64_ENU.exe"
+$installerCandidates = @("SQLEXPRADV_x64_ENU.exe", "SQLEXPR_x64_ENU.exe")
+
+function Find-SqlInstaller {
+    param([string]$Dir)
+    foreach ($name in $script:installerCandidates) {
+        $p = Join-Path $Dir $name
+        if (Test-Path $p) { return $p }
+    }
+    return $null
+}
 
 function Resolve-InstallerPath {
     param(
@@ -45,8 +66,7 @@ function Resolve-InstallerPath {
     )
 
     if ($Path -and (Test-Path $Path)) {
-        $installerFile = Join-Path $Path $requiredInstaller
-        if (Test-Path $installerFile) {
+        if (Find-SqlInstaller $Path) {
             return $Path
         }
     }
@@ -58,14 +78,14 @@ function Resolve-InstallerPath {
         } elseif (-not (Test-Path $Path)) {
             Write-Host "    ERROR: InstallerPath does not exist: $Path" -ForegroundColor Red
         } else {
-            Write-Host "    ERROR: Required installer not found: $(Join-Path $Path $requiredInstaller)" -ForegroundColor Red
+            Write-Host "    ERROR: No SQL Express installer found in $Path. Expected one of: $($script:installerCandidates -join ', ')" -ForegroundColor Red
         }
         return $null
     }
 
     Add-Type -AssemblyName System.Windows.Forms
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = "Select folder containing SQL Server installers ($requiredInstaller, SSMS-Setup-ENU.exe)"
+    $dialog.Description = "Select folder containing SQL Server installers (SQLEXPR_x64_ENU.exe or SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
     $dialog.SelectedPath = "C:\WSUS"
 
     if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
@@ -74,9 +94,8 @@ function Resolve-InstallerPath {
     }
 
     $selectedPath = $dialog.SelectedPath
-    $installerFile = Join-Path $selectedPath $requiredInstaller
-    if (-not (Test-Path $installerFile)) {
-        Write-Host "    Installer not found in selected folder: $installerFile" -ForegroundColor Red
+    if (-not (Find-SqlInstaller $selectedPath)) {
+        Write-Host "    No SQL Express installer found in: $selectedPath" -ForegroundColor Red
         return $null
     }
 
@@ -93,7 +112,7 @@ if (-not $InstallerPath) {
 # CONFIGURATION
 # -------------------------
 $LogFile         = "C:\WSUS\Logs\install.log"
-$Extractor       = Join-Path $InstallerPath "SQLEXPRADV_x64_ENU.exe"
+$Extractor       = Find-SqlInstaller $InstallerPath
 $ExtractPath     = Join-Path $InstallerPath "SQL2022EXP"
 $SSMSInstaller   = Join-Path $InstallerPath "SSMS-Setup-ENU.exe"
 $WSUSRoot        = "C:\WSUS"
@@ -205,8 +224,47 @@ function Wait-WithHeartbeat {
         Write-Host "." -NoNewline
         [Console]::Out.Flush()
     }
+    # Ensure ExitCode is populated (Start-Process -PassThru can leave it null without this)
+    $Process.WaitForExit()
     Write-Host ""
     [Console]::Out.Flush()
+}
+
+function Invoke-WsusHttpsSetup {
+    param(
+        [string]$CertificateThumbprint,
+        [switch]$NonInteractive
+    )
+
+    $httpsScriptCandidates = @(
+        (Join-Path $PSScriptRoot "Set-WsusHttps.ps1"),
+        (Join-Path $PSScriptRoot "Scripts\Set-WsusHttps.ps1"),
+        (Join-Path (Split-Path $PSScriptRoot -Parent) "Scripts\Set-WsusHttps.ps1")
+    )
+
+    $httpsScript = $httpsScriptCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $httpsScript) {
+        throw "Set-WsusHttps.ps1 not found. Searched: $($httpsScriptCandidates -join '; ')"
+    }
+
+    if ($NonInteractive -and [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+        throw "-EnableHttps with -NonInteractive requires -CertificateThumbprint."
+    }
+
+    $powershellExe = Join-Path $PSHOME "powershell.exe"
+    if (-not (Test-Path $powershellExe)) {
+        $powershellExe = "powershell.exe"
+    }
+
+    $httpsArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $httpsScript)
+    if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+        $httpsArgs += @("-CertificateThumbprint", $CertificateThumbprint)
+    }
+
+    & $powershellExe @httpsArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Set-WsusHttps.ps1 exited with code $LASTEXITCODE."
+    }
 }
 
 # Get or retrieve password as SecureString
@@ -286,6 +344,7 @@ BROWSERSVCSTARTUPTYPE="Automatic"
 INSTALLSHAREDDIR="C:\Program Files\Microsoft SQL Server"
 INSTALLSHAREDWOWDIR="C:\Program Files (x86)\Microsoft SQL Server"
 INSTANCEDIR="C:\Program Files\Microsoft SQL Server"
+UPDATEENABLED="0"
 "@
 
     Set-Content -Path $ConfigFile -Value $configContent -Force
@@ -307,8 +366,13 @@ if ($sqlInstalled) {
     $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -PassThru -NoNewWindow
     Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
 
-    if ($setupProcess.ExitCode -ne 0 -and $setupProcess.ExitCode -ne 3010) {
-        throw "SQL installation failed with exit code $($setupProcess.ExitCode). Check log at C:\Program Files\Microsoft SQL Server\160\Setup Bootstrap\Log\Summary.txt"
+    $sqlExitCode = $setupProcess.ExitCode
+    if ($null -ne $sqlExitCode -and $sqlExitCode -ne 0 -and $sqlExitCode -ne 3010) {
+        $logRoot = "C:\Program Files\Microsoft SQL Server"
+        $summaryPath = Get-ChildItem "$logRoot\*\Setup Bootstrap\Log\Summary.txt" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
+        if (-not $summaryPath) { $summaryPath = "$logRoot\Setup Bootstrap\Log\Summary.txt" }
+        throw "SQL installation failed with exit code $sqlExitCode. Check log at $summaryPath"
     }
 
     Write-Host "    SQL installation complete."
@@ -458,8 +522,9 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 
 # Find sqlcmd.exe (multiple possible locations)
 $sqlcmdPaths = @(
-    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
     "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
     "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
     "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
 )
@@ -486,10 +551,26 @@ if ($sqlcmd) {
 }
 
 # =====================================================================
-# 10. WSUS POSTINSTALL
+# 10. PRE-CONFIGURE WSUS REGISTRY (before postinstall)
+# =====================================================================
+# Set OobeInitialized/OobeComplete before postinstall to prevent the
+# WSUS Configuration Wizard from launching when the console opens.
+# These are re-applied in step 12 in case postinstall overwrites them.
+$wsusRegPreSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+if (!(Test-Path $wsusRegPreSetup)) {
+    New-Item -Path $wsusRegPreSetup -Force | Out-Null
+}
+Set-ItemProperty -Path $wsusRegPreSetup -Name OobeInitialized -Value 1 -Force
+Set-ItemProperty -Path $wsusRegPreSetup -Name OobeComplete -Value 1 -Force
+Write-Host "[+] Pre-configured WSUS wizard suppression registry keys."
+
+# =====================================================================
+# 11. WSUS POSTINSTALL
 # =====================================================================
 Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
-# TODO: Add optional HTTP/HTTPS configuration flag (default remains HTTP on port 8530).
+
+$wsusProtocol = "HTTP"
+$wsusPort = 8530
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 
@@ -499,13 +580,29 @@ if (Test-Path $wsusUtil) {
     $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -PassThru -NoNewWindow
     Wait-WithHeartbeat -Process $wsusProcess -Message "Configuring WSUS post-install steps (this can take several minutes)..."
 
-    if ($wsusProcess.ExitCode -eq 0) {
+    $exitCode = $wsusProcess.ExitCode
+    if ($null -eq $exitCode -or $exitCode -eq 0) {
         Write-Host "    WSUS postinstall complete."
     } else {
-        Write-Host "    Warning: WSUS postinstall exited with code $($wsusProcess.ExitCode)"
+        Write-Host "    Warning: WSUS postinstall exited with code $exitCode"
     }
 } else {
     Write-Host "    Warning: wsusutil.exe not found at $wsusUtil"
+}
+
+if ($EnableHttps) {
+    Write-Host "[+] HTTPS mode requested. Configuring WSUS for SSL (port 8531)..."
+    try {
+        Invoke-WsusHttpsSetup -CertificateThumbprint $CertificateThumbprint -NonInteractive:$NonInteractive
+        $wsusProtocol = "HTTPS"
+        $wsusPort = 8531
+        Write-Host "    WSUS HTTPS configuration complete."
+    } catch {
+        Write-Host "    ERROR: HTTPS configuration failed: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "    WSUS configured for HTTP on port 8530 (default)."
 }
 
 # =====================================================================
@@ -563,7 +660,7 @@ New-NetFirewallRule -DisplayName "WSUS API Remoting (Port 8531)" `
 Write-Host "    Firewall rules configured."
 
 # =====================================================================
-# 12. CONFIGURE WSUS REGISTRY SETTINGS
+# 12. CONFIGURE WSUS REGISTRY SETTINGS & SUPPRESS CONFIGURATION WIZARD
 # =====================================================================
 Write-Host "[+] Configuring WSUS registry settings..."
 
@@ -578,10 +675,12 @@ if (!(Test-Path $wsusRegSetupInstalled)) {
     New-Item -Path $wsusRegSetupInstalled -Force | Out-Null
 }
 
-# Set content directory in registry (from Repair-WsusContentPath.ps1)
+# Set content directory in registry
 Set-ItemProperty -Path $wsusRegSetup -Name ContentDir -Value $WSUSContent -Force
 
-# Disable the initial configuration wizard
+# Suppress the WSUS Configuration Wizard (OOBE)
+# These must be set AFTER postinstall completes, as postinstall may reset them.
+# OobeInitialized=1 + OobeComplete=1 tells the WSUS console the wizard has already run.
 $setupFlags = @{
     OobeInitialized          = 1
     OobeComplete             = 1
@@ -595,12 +694,52 @@ foreach ($key in $setupFlags.Keys) {
     Set-ItemProperty -Path $wsusRegSetup -Name $key -Value $setupFlags[$key] -Force
 }
 
-# Mark role services as installed to prevent wizard
+# Mark role services as installed
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-WidDatabase" -Value 2 -Force
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-Services" -Value 2 -Force
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-UI" -Value 2 -Force
 
 Write-Host "    WSUS registry configured."
+
+# Restart WSUS service so it reads the updated registry values
+Write-Host "    Restarting WSUS service to apply configuration..."
+Restart-Service WsusService -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 5
+Write-Host "    WSUS service restarted."
+
+# =====================================================================
+# 12b. CONFIGURE UPSTREAM/DOWNSTREAM SERVER ROLE
+# =====================================================================
+if ($UpstreamServerHostname) {
+    Write-Host "[+] Configuring as downstream server..."
+    Write-Host "    Upstream: $UpstreamServerHostname`:$UpstreamServerPort (SSL: $UpstreamServerUseSsl)"
+    Write-Host "    Mode: $(if ($IsReplica) { 'Replica' } else { 'Autonomous' })"
+
+    try {
+        [reflection.assembly]::LoadWithPartialName("Microsoft.UpdateServices.Administration") | Out-Null
+        $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer('localhost', $false, 8530)
+        $config = $wsus.GetConfiguration()
+
+        $config.SyncFromMicrosoftUpdate = $false
+        $config.UpstreamWsusServerName = $UpstreamServerHostname
+        $config.UpstreamWsusServerPortNumber = $UpstreamServerPort
+        $config.UpstreamWsusServerUseSsl = [bool]$UpstreamServerUseSsl
+        $config.IsReplicaServer = [bool]$IsReplica
+
+        $config.Save()
+        Write-Host "    Downstream configuration applied."
+
+        # Set registry to match
+        Set-ItemProperty -Path $wsusRegSetup -Name SyncFromMicrosoftUpdate -Value 0 -Force
+    } catch {
+        Write-Host "    Warning: Failed to configure downstream settings: $($_.Exception.Message)"
+        Write-Host "    You can configure this manually in the WSUS console."
+    }
+} else {
+    Write-Host "[+] Server role: Upstream (syncs from Microsoft Update)"
+    # SyncFromMicrosoftUpdate is already set to 0 in registry flags above.
+    # The first sync from the app/console will connect to Microsoft Update by default.
+}
 
 # =====================================================================
 # 13. CONFIGURE SQL SERVER FIREWALL RULES
@@ -728,6 +867,8 @@ Write-Host "==============================================================="
 Write-Host ""
 Write-Host " SQL Server Instance: .\SQLEXPRESS"
 Write-Host " TCP Port: 1433"
+Write-Host " WSUS Protocol: $wsusProtocol"
+Write-Host " WSUS Port: $wsusPort"
 Write-Host " WSUS Content: $WSUSContent"
 Write-Host " Full log: $LogFile"
 Write-Host ""
