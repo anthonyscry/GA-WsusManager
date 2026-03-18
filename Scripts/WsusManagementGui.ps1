@@ -2712,13 +2712,13 @@ function Show-ScheduleTaskDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; Direction = ""; Path = ""; SourcePath = ""; DestinationPath = "C:\WSUS"; ExportMode = "Full"; DaysOld = 30 }
+    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = ""; DaysOld = 0; UseDateFilter = $false }
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferDialog")
     $dlg.Title = "Transfer Data"
     $dlg.Width = 480
-    $dlg.Height = 460
+    $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
     $dlg.Background = $script:BrushBgDark
@@ -2736,63 +2736,92 @@ function Show-TransferDialog {
     $title.Margin = "0,0,0,16"
     $stack.Children.Add($title)
 
-    # Direction selection
-    $dirLbl = New-Object System.Windows.Controls.TextBlock
-    $dirLbl.Text = "Transfer Direction:"
-    $dirLbl.Foreground = $script:BrushText2
-    $dirLbl.Margin = "0,0,0,8"
-    $stack.Children.Add($dirLbl)
+    $desc = New-Object System.Controls.TextBlock
+    $desc.Text = "Uses robocopy to copy WSUS content between folders. Non-destructive — only copies files, never deletes."
+    $desc.FontSize = 12
+    $desc.Foreground = $script:BrushText2
+    $desc.TextWrapping = "Wrap"
+    $desc.Margin = "0,0,0,16"
+    $stack.Children.Add($desc)
 
-    $radioExport = New-Object System.Windows.Controls.RadioButton
-    $radioExport.Content = "Export (Online server to media)"
-    $radioExport.Foreground = $script:BrushText1
-    $radioExport.Margin = "0,0,0,4"
-    $radioExport.IsChecked = $true
-    $radioExport.GroupName = "TransferDirection"
-    $stack.Children.Add($radioExport)
+    # Source folder
+    $srcLbl = New-Object System.Windows.Controls.TextBlock
+    $srcLbl.Text = "Source folder:"
+    $srcLbl.Foreground = $script:BrushText2
+    $srcLbl.Margin = "0,0,0,4"
+    $stack.Children.Add($srcLbl)
 
-    $radioImport = New-Object System.Windows.Controls.RadioButton
-    $radioImport.Content = "Import (Media to air-gapped server)"
-    $radioImport.Foreground = $script:BrushText1
-    $radioImport.Margin = "0,0,0,12"
-    $radioImport.GroupName = "TransferDirection"
-    $stack.Children.Add($radioImport)
+    $srcPanel = New-Object System.Windows.Controls.DockPanel
+    $srcPanel.Margin = "0,0,0,12"
 
-    # Export Mode section (only visible when Export is selected)
-    $exportModePanel = New-Object System.Windows.Controls.StackPanel
-    $exportModePanel.Margin = "0,0,0,12"
+    $srcBtn = New-Object System.Windows.Controls.Button
+    $srcBtn.Content = "Browse"
+    $srcBtn.Padding = "10,4"
+    $srcBtn.Background = $script:BrushBgCard
+    $srcBtn.Foreground = $script:BrushText1
+    $srcBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($srcBtn, "Right")
+    $srcPanel.Children.Add($srcBtn)
 
-    $modeLbl = New-Object System.Windows.Controls.TextBlock
-    $modeLbl.Text = "Export Mode:"
-    $modeLbl.Foreground = $script:BrushText2
-    $modeLbl.Margin = "0,0,0,8"
-    $exportModePanel.Children.Add($modeLbl)
+    $srcTxt = New-Object System.Windows.Controls.TextBox
+    $srcTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferSourceTextBox")
+    $srcTxt.Background = $script:BrushBgCard
+    $srcTxt.Foreground = $script:BrushText1
+    $srcTxt.Padding = "8,4"
+    $srcPanel.Children.Add($srcTxt)
 
-    $radioFull = New-Object System.Windows.Controls.RadioButton
-    $radioFull.Content = "Full copy (all files)"
-    $radioFull.Foreground = $script:BrushText1
-    $radioFull.Margin = "0,0,0,4"
-    $radioFull.GroupName = "ExportMode"
-    $exportModePanel.Children.Add($radioFull)
+    $srcBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select source folder (e.g. C:\WSUS\WsusContent)"
+        try { if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
+    }.GetNewClosure())
+    $stack.Children.Add($srcPanel)
 
-    $radioDiff30 = New-Object System.Windows.Controls.RadioButton
-    $radioDiff30.Content = "Differential (files from last 30 days)"
-    $radioDiff30.Foreground = $script:BrushText1
-    $radioDiff30.Margin = "0,0,0,4"
-    $radioDiff30.GroupName = "ExportMode"
-    $radioDiff30.IsChecked = $true
-    $exportModePanel.Children.Add($radioDiff30)
+    # Destination folder
+    $dstLbl = New-Object System.Windows.Controls.TextBlock
+    $dstLbl.Text = "Destination folder:"
+    $dstLbl.Foreground = $script:BrushText2
+    $dstLbl.Margin = "0,0,0,4"
+    $stack.Children.Add($dstLbl)
 
-    $diffCustomPanel = New-Object System.Windows.Controls.StackPanel
-    $diffCustomPanel.Orientation = "Horizontal"
-    $diffCustomPanel.Margin = "0,0,0,4"
+    $dstPanel = New-Object System.Windows.Controls.DockPanel
+    $dstPanel.Margin = "0,0,0,12"
 
-    $radioDiffCustom = New-Object System.Windows.Controls.RadioButton
-    $radioDiffCustom.Content = "Differential (custom days):"
-    $radioDiffCustom.Foreground = $script:BrushText1
-    $radioDiffCustom.GroupName = "ExportMode"
-    $radioDiffCustom.Margin = "0,0,8,0"
-    $diffCustomPanel.Children.Add($radioDiffCustom)
+    $dstBtn = New-Object System.Windows.Controls.Button
+    $dstBtn.Content = "Browse"
+    $dstBtn.Padding = "10,4"
+    $dstBtn.Background = $script:BrushBgCard
+    $dstBtn.Foreground = $script:BrushText1
+    $dstBtn.BorderThickness = 0
+    [System.Windows.Controls.DockPanel]::SetDock($dstBtn, "Right")
+    $dstPanel.Children.Add($dstBtn)
+
+    $dstTxt = New-Object System.Windows.Controls.TextBox
+    $dstTxt.SetValue([System.Windows.Automation.Properties]::AutomationIdProperty, "TransferDestTextBox")
+    $dstTxt.Background = $script:BrushBgCard
+    $dstTxt.Foreground = $script:BrushText1
+    $dstTxt.Padding = "8,4"
+    $dstPanel.Children.Add($dstTxt)
+
+    $dstBtn.Add_Click({
+        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
+        $fbd.Description = "Select destination folder (e.g. D:\WsusContent)"
+        try { if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath } }
+        finally { $fbd.Dispose() }
+    }.GetNewClosure())
+    $stack.Children.Add($dstPanel)
+
+    # Differential date filter option
+    $diffPanel = New-Object System.Windows.Controls.StackPanel
+    $diffPanel.Orientation = "Horizontal"
+    $diffPanel.Margin = "0,0,0,16"
+
+    $chkDiff = New-Object System.Windows.Controls.CheckBox
+    $chkDiff.Content = "Only copy files modified in the last"
+    $chkDiff.Foreground = $script:BrushText1
+    $chkDiff.VerticalAlignment = "Center"
+    $diffPanel.Children.Add($chkDiff)
 
     $txtDays = New-Object System.Windows.Controls.TextBox
     $txtDays.Text = "30"
@@ -2800,108 +2829,18 @@ function Show-TransferDialog {
     $txtDays.Background = $script:BrushBgCard
     $txtDays.Foreground = $script:BrushText1
     $txtDays.Padding = "4,2"
-    $diffCustomPanel.Children.Add($txtDays)
+    $txtDays.Margin = "4,0,0,0"
+    $diffPanel.Children.Add($txtDays)
 
-    $exportModePanel.Children.Add($diffCustomPanel)
-    $stack.Children.Add($exportModePanel)
+    $daysLbl = New-Object System.Windows.Controls.TextBlock
+    $daysLbl.Text = "days"
+    $daysLbl.Foreground = $script:BrushText2
+    $daysLbl.VerticalAlignment = "Center"
+    $diffPanel.Children.Add($daysLbl)
 
-    # Path selection - Export destination / Import source
-    $pathLbl = New-Object System.Windows.Controls.TextBlock
-    $pathLbl.Text = "Destination folder:"
-    $pathLbl.Foreground = $script:BrushText2
-    $pathLbl.Margin = "0,0,0,6"
-    $stack.Children.Add($pathLbl)
+    $stack.Children.Add($diffPanel)
 
-    $pathPanel = New-Object System.Windows.Controls.DockPanel
-    $pathPanel.Margin = "0,0,0,12"
-
-    $browseBtn = New-Object System.Windows.Controls.Button
-    $browseBtn.Content = "Browse"
-    $browseBtn.Padding = "10,4"
-    $browseBtn.Background = $script:BrushBgCard
-    $browseBtn.Foreground = $script:BrushText1
-    $browseBtn.BorderThickness = 0
-    [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
-    $pathPanel.Children.Add($browseBtn)
-
-    $pathTxt = New-Object System.Windows.Controls.TextBox
-    $pathTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferPathTextBox")
-    $pathTxt.Margin = "0,0,8,0"
-    $pathTxt.Background = $script:BrushBgCard
-    $pathTxt.Foreground = $script:BrushText1
-    $pathTxt.Padding = "8,4"
-    $pathPanel.Children.Add($pathTxt)
-
-    $browseBtn.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = if ($radioExport.IsChecked) { "Select destination folder for export" } else { "Select source folder (external media)" }
-        try { if ($fbd.ShowDialog() -eq "OK") { $pathTxt.Text = $fbd.SelectedPath } }
-        finally { $fbd.Dispose() }
-    }.GetNewClosure())
-    $stack.Children.Add($pathPanel)
-
-    # Import destination panel (only visible when Import is selected)
-    $importDestPanel = New-Object System.Windows.Controls.StackPanel
-    $importDestPanel.Visibility = "Collapsed"
-    $importDestPanel.Margin = "0,0,0,12"
-
-    $importDestLbl = New-Object System.Windows.Controls.TextBlock
-    $importDestLbl.Text = "WSUS destination folder:"
-    $importDestLbl.Foreground = $script:BrushText2
-    $importDestLbl.Margin = "0,0,0,6"
-    $importDestPanel.Children.Add($importDestLbl)
-
-    $importDestDock = New-Object System.Windows.Controls.DockPanel
-
-    $importDestBtn = New-Object System.Windows.Controls.Button
-    $importDestBtn.Content = "Browse"
-    $importDestBtn.Padding = "10,4"
-    $importDestBtn.Background = $script:BrushBgCard
-    $importDestBtn.Foreground = $script:BrushText1
-    $importDestBtn.BorderThickness = 0
-    [System.Windows.Controls.DockPanel]::SetDock($importDestBtn, "Right")
-    $importDestDock.Children.Add($importDestBtn)
-
-    $importDestTxt = New-Object System.Windows.Controls.TextBox
-    $importDestTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferImportDestTextBox")
-    $importDestTxt.Text = "C:\WSUS"
-    $importDestTxt.Margin = "0,0,8,0"
-    $importDestTxt.Background = $script:BrushBgCard
-    $importDestTxt.Foreground = $script:BrushText1
-    $importDestTxt.Padding = "8,4"
-    $importDestDock.Children.Add($importDestTxt)
-
-    $importDestBtn.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select WSUS destination folder"
-        $fbd.SelectedPath = $importDestTxt.Text
-        try { if ($fbd.ShowDialog() -eq "OK") { $importDestTxt.Text = $fbd.SelectedPath } }
-        finally { $fbd.Dispose() }
-    }.GetNewClosure())
-    $importDestPanel.Children.Add($importDestDock)
-    $stack.Children.Add($importDestPanel)
-
-    # Show/hide panels based on direction (must be AFTER $importDestPanel and $pathLbl are created)
-    $radioExport.Add_Checked({
-        $exportModePanel.Visibility = "Visible"
-        $importDestPanel.Visibility = "Collapsed"
-        $pathLbl.Text = "Destination folder:"
-    }.GetNewClosure())
-    $radioImport.Add_Checked({
-        $exportModePanel.Visibility = "Collapsed"
-        $importDestPanel.Visibility = "Visible"
-        $pathLbl.Text = "Source folder (external media):"
-    }.GetNewClosure())
-
-    # Auto-select mode based on detected server mode
-    if ($script:ServerMode -eq "Air-Gap") {
-        $radioExport.IsEnabled = $false
-        $radioImport.IsChecked = $true
-        $exportModePanel.Visibility = "Collapsed"
-        $importDestPanel.Visibility = "Visible"
-        $pathLbl.Text = "Source folder (external media):"
-    }
-
+    # Buttons
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
@@ -2915,39 +2854,31 @@ function Show-TransferDialog {
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
-        if ([string]::IsNullOrWhiteSpace($pathTxt.Text)) {
-            $msg = if ($radioExport.IsChecked) { "Select destination folder." } else { "Select source folder." }
-            Show-WsusPopup -Message $msg -Title "Transfer" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+        if ([string]::IsNullOrWhiteSpace($srcTxt.Text)) {
+            Show-WsusPopup -Message "Select a source folder." -Title "Transfer" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
-        # Validate import destination
-        if ($radioImport.IsChecked -and [string]::IsNullOrWhiteSpace($importDestTxt.Text)) {
-            Show-WsusPopup -Message "Select WSUS destination folder." -Title "Transfer" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+        if (-not (Test-Path $srcTxt.Text)) {
+            Show-WsusPopup -Message "Source folder not found: $($srcTxt.Text)" -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+            return
+        }
+        if ([string]::IsNullOrWhiteSpace($dstTxt.Text)) {
+            Show-WsusPopup -Message "Select a destination folder." -Title "Transfer" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
         $result.Cancelled = $false
-        $result.Direction = if ($radioExport.IsChecked) { "Export" } else { "Import" }
-        $result.Path = $pathTxt.Text
-        # For Import, also set SourcePath and DestinationPath
-        if ($radioImport.IsChecked) {
-            $result.SourcePath = $pathTxt.Text
-            $result.DestinationPath = $importDestTxt.Text
-        }
-        # Determine export mode
-        if ($radioFull.IsChecked) {
-            $result.ExportMode = "Full"
-            $result.DaysOld = 0
-        } elseif ($radioDiff30.IsChecked) {
-            $result.ExportMode = "Differential"
-            $result.DaysOld = 30
-        } else {
-            $result.ExportMode = "Differential"
+        $result.SourcePath = $srcTxt.Text
+        $result.DestinationPath = $dstTxt.Text
+        $result.UseDateFilter = $chkDiff.IsChecked
+        if ($chkDiff.IsChecked) {
             $daysVal = 30
             if ([int]::TryParse($txtDays.Text, [ref]$daysVal) -and $daysVal -gt 0) {
                 $result.DaysOld = $daysVal
             } else {
                 $result.DaysOld = 30
             }
+        } else {
+            $result.DaysOld = 0
         }
         $dlg.Close()
     }.GetNewClosure())
@@ -3285,26 +3216,23 @@ function Invoke-LogOperation {
         "transfer" {
             $opts = Show-TransferDialog
             if ($opts.Cancelled) { return }
-            if (-not (Test-SafePath $opts.Path)) {
-                Show-WsusPopup -Message "Invalid path." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+            if (-not (Test-SafePath $opts.SourcePath)) {
+                Show-WsusPopup -Message "Invalid source path." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
                 return
             }
-            $path = Get-EscapedPath $opts.Path
-            if ($opts.Direction -eq "Export") {
-                # Build title with export mode info
-                $modeDesc = if ($opts.ExportMode -eq "Full") { "Full" } else { "Differential, $($opts.DaysOld) days" }
-                $Title = "Export ($modeDesc)"
-                "& '$mgmtSafe' -Export -ContentPath '$cp' -DestinationPath '$path' -CopyMode '$($opts.ExportMode)' -DaysOld $($opts.DaysOld)"
+            if (-not (Test-SafePath $opts.DestinationPath)) {
+                Show-WsusPopup -Message "Invalid destination path." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+                return
+            }
+            $src = Get-EscapedPath $opts.SourcePath
+            $dst = Get-EscapedPath $opts.DestinationPath
+            $Title = "Transfer ($($src) -> $($dst))"
+            if ($opts.UseDateFilter -and $opts.DaysOld -gt 0) {
+                $Title = "Transfer (differential, $($opts.DaysOld) days)"
+                "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL /MAXAGE:$($opts.DaysOld)"
             } else {
-                # Import - validate destination path too
-                if (-not (Test-SafePath $opts.DestinationPath)) {
-                    Show-WsusPopup -Message "Invalid destination path." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
-                    return
-                }
-                $srcPath = Get-EscapedPath $opts.SourcePath
-                $destPath = Get-EscapedPath $opts.DestinationPath
-                $Title = "Import"
-                "& '$mgmtSafe' -Import -ContentPath '$cp' -SourcePath '$srcPath' -DestinationPath '$destPath' -NonInteractive"
+                $Title = "Transfer (full)"
+                "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL"
             }
         }
         "maintenance" {
