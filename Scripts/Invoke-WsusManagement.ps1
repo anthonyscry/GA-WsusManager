@@ -733,7 +733,7 @@ function Invoke-BrowseArchive {
         $i = 1
         foreach ($year in $years) {
             $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-            Write-Host "  [$i] $($year.Name) (${backupCount} backups)" -ForegroundColor White
+            Write-Host ('  [{0}] {1} ({2} backups)' -f $i, $year.Name, $backupCount) -ForegroundColor White
             $i++
         }
 
@@ -774,7 +774,7 @@ function Invoke-BrowseArchive {
                 $i = 1
                 foreach ($month in $months) {
                     $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-                    Write-Host "  [$i] $($month.Name) (${backupCount} backups)" -ForegroundColor White
+                    Write-Host ('  [{0}] {1} ({2} backups)' -f $i, $month.Name, $backupCount) -ForegroundColor White
                     $i++
                 }
 
