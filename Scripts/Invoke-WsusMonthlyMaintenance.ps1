@@ -781,6 +781,30 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
                 Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
                 Write-Status "Products configured" -Type Success
+
+                # Clean up stale updates from non-selected products
+                # This removes old update metadata from previously-synced products
+                Write-Log "Cleaning up updates from non-selected products..."
+                $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+                $cleanupScope.IncludedInstallationStates = [Microsoft.UpdateServices.Administration.UpdateInstallationStates]::All
+                $staleUpdates = $wsus.GetUpdates($cleanupScope) | Where-Object { -not $_.IsDeclined }
+                $staleCount = 0
+
+                if ($staleUpdates.Count -gt 0) {
+                    $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+                    foreach ($update in $staleUpdates) {
+                        $updateProductString = $update.ProductTitles -join ","
+                        if ($updateProductString -notmatch $productPattern) {
+                            try {
+                                $update.Decline() | Out-Null
+                                $staleCount++
+                            } catch {
+                                # Ignore individual decline failures
+                            }
+                        }
+                    }
+                }
+                Write-Log "Declined $staleCount updates from non-selected products"
             } catch {
                 Write-Warning "Failed to configure products: $($_.Exception.Message)"
                 Write-Log "WARNING: Product configuration failed, syncing with current WSUS settings"
