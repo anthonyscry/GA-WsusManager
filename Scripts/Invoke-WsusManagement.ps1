@@ -148,7 +148,7 @@ $sessionMarker = @"
 
 ================================================================================
 SESSION START: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-================================================================================
+ ================================================================================
 "@
 Add-Content -Path $script:LogFilePath -Value $sessionMarker -ErrorAction SilentlyContinue
 
@@ -283,7 +283,7 @@ function Test-ValidPath {
 
     # Must start with valid drive letter or UNC path
     if ($Path -notmatch '^[A-Za-z]:\\' -and $Path -notmatch '^\\\\[^\\]+\\') {
-        $result.Message = "Path must be a valid Windows path (e.g., C:\folder or \\server\share)"
+        $result.Message = 'Path must be a valid Windows path (e.g., C:\folder or \\server\share)'
         return $result
     }
 
