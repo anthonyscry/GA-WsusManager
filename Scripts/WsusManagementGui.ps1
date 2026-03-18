@@ -427,7 +427,7 @@ $script:StdinFlushTimer = $null
                         <Button x:Name="BtnCreateGpo" Content="☰ Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
-                        <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnTransfer" Content="⇄ Robocopy" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="↻ Online Sync" Style="{StaticResource NavBtn}"/>
@@ -2736,7 +2736,7 @@ function Show-TransferDialog {
     $title.Margin = "0,0,0,16"
     $stack.Children.Add($title)
 
-    $desc = New-Object System.Controls.TextBlock
+    $desc = New-Object System.Windows.Controls.TextBlock
     $desc.Text = "Uses robocopy to copy WSUS content between folders. Non-destructive — only copies files, never deletes."
     $desc.FontSize = 12
     $desc.Foreground = $script:BrushText2
