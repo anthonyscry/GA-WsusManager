@@ -134,8 +134,7 @@ $ErrorActionPreference = 'Continue'
 # CENTRALIZED LOGGING SETUP
 # ============================================================================
 # Single daily log file - all operations append to same file
-$script:AppDirectory = Split-Path -Parent $ScriptRoot
-$script:LogDirectory = Join-Path $script:AppDirectory "logs"
+$script:LogDirectory = "C:\WSUS\Logs"
 $script:LogFileName = "WsusManagement_$(Get-Date -Format 'yyyy-MM-dd').log"
 $script:LogFilePath = Join-Path $script:LogDirectory $script:LogFileName
 
@@ -498,9 +497,7 @@ function Invoke-WsusRestore {
     Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 3
     Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
-    if (Test-Path $wsusutil) {
-        & $wsusutil reset 2>$null
-    }
+    & $wsusutil reset 2>$null
     Write-Log "Starting WSUS..." "Yellow"
     Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
 

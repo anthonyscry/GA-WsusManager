@@ -225,6 +225,18 @@ function Get-EscapedPath { param([string]$Path)
     return $Path -replace "'", "''"
 }
 
+function Get-SqlCmdPath {
+    # Search common sqlcmd.exe locations (ODBC 18, 17, and legacy paths)
+    $sqlcmdPaths = @(
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
+    )
+    return $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+
 function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     if ($Path -match '[`$;|&<>]') { return $false }
@@ -3037,14 +3049,7 @@ function Invoke-LogOperation {
     $dbOperations = @("restore", "cleanup", "diagnostics", "maintenance")
     if ($Id -in $dbOperations) {
         $sqlInstance = $script:SqlInstance
-        $sqlcmdPaths = @(
-            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
-            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
-            "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
-            "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
-            "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
-        )
-        $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+        $sqlcmd = Get-SqlCmdPath
 
         if (-not $sqlcmd) {
             Show-WsusPopup -Message "sqlcmd.exe not found. SQL Server does not appear to be installed.`n`nRun 'Install WSUS' first, or use 'Fix SQL Login' to troubleshoot." -Title "SQL Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
@@ -3916,14 +3921,7 @@ $controls.BtnFixSqlLogin.Add_Click({
     Write-LogOutput "[Fix SQL Login] Adding sysadmin for: $currentUser"
     Write-LogOutput "[Fix SQL Login] Target: $sqlInstance"
 
-    $sqlcmdPaths = @(
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
-    )
-    $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $sqlcmd = Get-SqlCmdPath
 
     if (-not $sqlcmd) {
         Write-LogOutput "[Fix SQL Login] ERROR: sqlcmd.exe not found. Is SQL Server installed?" -Level Error
