@@ -100,6 +100,7 @@ $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented — remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
+$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Office 2016", "Office 2024", "SQL Server 2022")
 
 function Write-Log { param([string]$Msg)
     try {
@@ -169,6 +170,7 @@ function Import-WsusSettings {
             if ($null -ne $s.NotificationBeep) { $script:NotificationBeep = $s.NotificationBeep }
             if ($null -ne $s.TrayMinimize) { $script:TrayMinimize = $s.TrayMinimize }
             if ($null -ne $s.HistoryEnabled) { $script:HistoryEnabled = $s.HistoryEnabled }
+            if ($null -ne $s.SyncProducts) { $script:SyncProducts = @($s.SyncProducts) }
         }
     } catch { Write-Log "Failed to load settings: $_" }
 }
@@ -177,7 +179,7 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled } |
+            @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled; SyncProducts=@($script:SyncProducts) } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
@@ -2182,7 +2184,7 @@ function Show-RestoreDialog {
 }
 
 function Show-MaintenanceDialog {
-    $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; DifferentialPath = ""; ExportDays = 30 }
+    $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; DifferentialPath = ""; ExportDays = 30; SelectedProducts = @() }
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "MaintenanceDialog")
@@ -2244,8 +2246,36 @@ function Show-MaintenanceDialog {
     $syncDesc.Text = "Synchronize and approve updates only (no export)"
     $syncDesc.Foreground = $script:BrushText2
     $syncDesc.FontSize = 12
-    $syncDesc.Margin = "20,0,0,12"
+    $syncDesc.Margin = "20,0,0,16"
     $stack.Children.Add($syncDesc)
+
+    # Products to Sync Section
+    $prodTitle = New-Object System.Windows.Controls.TextBlock
+    $prodTitle.Text = "Products to Sync"
+    $prodTitle.FontSize = 12
+    $prodTitle.FontWeight = "SemiBold"
+    $prodTitle.Foreground = $script:BrushText1
+    $prodTitle.Margin = "0,0,0,8"
+    $stack.Children.Add($prodTitle)
+
+    $productNames = @("Windows 11", "Windows Server 2019", "Office 2016", "Office 2024", "SQL Server 2022")
+    $productCheckBoxes = @{}
+
+    foreach ($prod in $productNames) {
+        $cb = New-Object System.Windows.Controls.CheckBox
+        $cb.Content = $prod
+        $cb.Foreground = $script:BrushText1
+        $cb.Margin = "0,0,0,4"
+        $cb.IsChecked = ($prod -in $script:SyncProducts)
+        $productCheckBoxes[$prod] = $cb
+        $stack.Children.Add($cb)
+    }
+
+    # Spacer before Export Settings
+    $spacer = New-Object System.Windows.Controls.TextBlock
+    $spacer.Text = ""
+    $spacer.Margin = "0,0,0,8"
+    $stack.Children.Add($spacer)
 
     # Export Settings Section
     $exportTitle = New-Object System.Windows.Controls.TextBlock
@@ -2394,6 +2424,16 @@ function Show-MaintenanceDialog {
         $result.DifferentialPath = $diffBox.Text.Trim()
         $days = 30
         if ([int]::TryParse($daysBox.Text, [ref]$days)) { $result.ExportDays = $days }
+        $result.SelectedProducts = @()
+        foreach ($prod in $productNames) {
+            if ($productCheckBoxes[$prod].IsChecked) { $result.SelectedProducts += $prod }
+        }
+        if ($result.SelectedProducts.Count -eq 0) {
+            Show-WsusPopup -Message "Select at least one product to sync." -Title "Validation" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            return
+        }
+        $script:SyncProducts = $result.SelectedProducts
+        Save-Settings
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -3243,6 +3283,10 @@ function Invoke-LogOperation {
             if ($opts.Cancelled) { return }
             $Title = "$Title ($($opts.Profile))"
             $maintCmd = "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
+            if ($opts.SelectedProducts -and $opts.SelectedProducts.Count -gt 0) {
+                $productsCsv = $opts.SelectedProducts -join "','"
+                $maintCmd += " -SelectedProducts '$productsCsv'"
+            }
             if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
                 $maintCmd += " -ExportPath '$exportPathSafe'"
