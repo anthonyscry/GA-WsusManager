@@ -120,7 +120,10 @@ param(
     [switch]$NoTranscript,
 
     # Force Windows Authentication (logged-in user) for all DB operations
-    [switch]$UseWindowsAuth
+    [switch]$UseWindowsAuth,
+
+    # Products to sync (enables only these in WSUS, disables others)
+    [string[]]$SelectedProducts = @()
 )
 
 # Import shared modules
@@ -744,6 +747,37 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
         }
 
+        # Configure products if a selection was provided
+        if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
+            Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
+            try {
+                $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+                $enabledCount = 0
+                $disabledCount = 0
+
+                foreach ($prod in $allProducts) {
+                    if ($prod.Title -in $SelectedProducts) {
+                        if (-not $prod.IsEnabled) {
+                            $prod.SetEnabled($true)
+                            $enabledCount++
+                        }
+                    } else {
+                        if ($prod.IsEnabled) {
+                            $prod.SetEnabled($false)
+                            $disabledCount++
+                        }
+                    }
+                }
+
+                $wsus.Save()
+                Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
+                Write-Status "Products configured" -Type Success
+            } catch {
+                Write-Warning "Failed to configure products: $($_.Exception.Message)"
+                Write-Log "WARNING: Product configuration failed, syncing with current WSUS settings"
+            }
+        }
+
         $subscription.StartSynchronization()
         Write-Log "Sync triggered, waiting for it to start..."
         # Split sleep into smaller chunks with heartbeat to keep output flowing
@@ -911,6 +945,7 @@ $supersededCount = 0
 $oldCount = 0
 $arm64Count = 0
 $h25Count = 0
+$legacyBuildCount = 0
 $approvedCount = 0
 
 if ($allUpdates.Count -gt 0) {
@@ -923,8 +958,9 @@ if ($allUpdates.Count -gt 0) {
     $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.CreationDate -lt $cutoff })
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
+    $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds (21H2/22H2/23H2)=$($legacyBuildUpdates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -981,7 +1017,18 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count"
+    if ($legacyBuildUpdates.Count -gt 0) {
+        $legacyBuildUpdates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $legacyBuildCount++
+            } catch {
+                Write-Warning "Failed to decline legacy build update: $($_.Title)"
+            }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -999,6 +1046,7 @@ if ($allUpdates.Count -gt 0) {
             $_.Title -notlike "*Beta*" -and
             $_.Title -notmatch '(?i)\bARM64\b' -and
             $_.Title -notmatch '(?i)\b25H2\b' -and
+            $_.Title -notmatch '(?i)\b(21H2|22H2|23H2)\b' -and
             (
                 $_.UpdateClassificationTitle -eq "Critical Updates" -or
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
@@ -1010,9 +1058,17 @@ if ($allUpdates.Count -gt 0) {
             )
         })
         
+        # Additional filter: only approve updates from selected products (if specified)
+        if ($SelectedProducts -and $SelectedProducts.Count -gt 0 -and $pendingUpdates.Count -gt 0) {
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                ($_.ProductTitles -join ",") -match '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+            })
+            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products"
+        }
+        
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
         Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
-        Write-Log "  Excluded: Upgrades, ARM64, 25H2, Preview/Beta updates"
+        Write-Log "  Excluded: Upgrades, ARM64, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
             # Safety check - don't auto-approve more than 200 updates
