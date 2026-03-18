@@ -2787,7 +2787,7 @@ function Show-TransferDialog {
     $stack.Children.Add($title)
 
     $desc = New-Object System.Windows.Controls.TextBlock
-    $desc.Text = "Uses robocopy to copy WSUS content between folders. Non-destructive — only copies files, never deletes."
+    $desc.Text = "Uses robocopy to copy WSUS content between folders. Non-destructive -- only copies files, never deletes."
     $desc.FontSize = 12
     $desc.Foreground = $script:BrushText2
     $desc.TextWrapping = "Wrap"
