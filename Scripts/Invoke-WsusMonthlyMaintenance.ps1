@@ -747,70 +747,6 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
         }
 
-        # Configure products if a selection was provided
-        if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
-            Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
-            try {
-                $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
-                $enabledCount = 0
-                $disabledCount = 0
-
-                foreach ($prod in $allProducts) {
-                    if ($prod.Title -in $SelectedProducts) {
-                        if (-not $prod.IsEnabled) {
-                            $prod.SetEnabled($true)
-                            $enabledCount++
-                        }
-                    } else {
-                        if ($prod.IsEnabled) {
-                            $prod.SetEnabled($false)
-                            $disabledCount++
-                        }
-                    }
-                }
-
-                $wsus.Save()
-
-                # Re-apply OOBE suppression in case Save() resets it
-                # Without this, the WSUS Configuration Wizard may appear on next launch
-                $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
-                if (Test-Path $wsusRegSetup) {
-                    Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
-                    Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
-                }
-
-                Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
-                Write-Status "Products configured" -Type Success
-
-                # Clean up stale updates from non-selected products
-                # This removes old update metadata from previously-synced products
-                Write-Log "Cleaning up updates from non-selected products..."
-                $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
-                $cleanupScope.IncludedInstallationStates = [Microsoft.UpdateServices.Administration.UpdateInstallationStates]::All
-                $staleUpdates = $wsus.GetUpdates($cleanupScope) | Where-Object { -not $_.IsDeclined }
-                $staleCount = 0
-
-                if ($staleUpdates.Count -gt 0) {
-                    $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
-                    foreach ($update in $staleUpdates) {
-                        $updateProductString = $update.ProductTitles -join ","
-                        if ($updateProductString -notmatch $productPattern) {
-                            try {
-                                $update.Decline() | Out-Null
-                                $staleCount++
-                            } catch {
-                                # Ignore individual decline failures
-                            }
-                        }
-                    }
-                }
-                Write-Log "Declined $staleCount updates from non-selected products"
-            } catch {
-                Write-Warning "Failed to configure products: $($_.Exception.Message)"
-                Write-Log "WARNING: Product configuration failed, syncing with current WSUS settings"
-            }
-        }
-
         $subscription.StartSynchronization()
         Write-Log "Sync triggered, waiting for it to start..."
         # Split sleep into smaller chunks with heartbeat to keep output flowing
@@ -910,6 +846,72 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 } else {
     Write-Status "Skipping synchronization" -Type Info
     $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
+}
+
+# === CONFIGURE PRODUCTS (after sync, when categories are available) ===
+if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
+    Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
+    try {
+        $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+
+        if ($allProducts.Count -eq 0) {
+            Write-Log "No product categories available yet (first sync may still be running). Products will be configured on next sync."
+        } else {
+            $enabledCount = 0
+            $disabledCount = 0
+
+            foreach ($prod in $allProducts) {
+                if ($prod.Title -in $SelectedProducts) {
+                    if (-not $prod.IsEnabled) {
+                        $prod.SetEnabled($true)
+                        $enabledCount++
+                    }
+                } else {
+                    if ($prod.IsEnabled) {
+                        $prod.SetEnabled($false)
+                        $disabledCount++
+                    }
+                }
+            }
+
+            $wsus.Save()
+
+            # Re-apply OOBE suppression in case Save() resets it
+            $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+            if (Test-Path $wsusRegSetup) {
+                Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
+                Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
+            }
+
+            Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
+
+            # Decline updates from non-selected products
+            Write-Log "Cleaning up updates from non-selected products..."
+            $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+            $cleanupScope.IncludedInstallationStates = [Microsoft.UpdateServices.Administration.UpdateInstallationStates]::All
+            $staleUpdates = $wsus.GetUpdates($cleanupScope) | Where-Object { -not $_.IsDeclined }
+            $staleCount = 0
+
+            if ($staleUpdates.Count -gt 0) {
+                $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+                foreach ($update in $staleUpdates) {
+                    $updateProductString = $update.ProductTitles -join ","
+                    if ($updateProductString -notmatch $productPattern) {
+                        try {
+                            $update.Decline() | Out-Null
+                            $staleCount++
+                        } catch {
+                            # Ignore individual decline failures
+                        }
+                    }
+                }
+            }
+            Write-Log "Declined $staleCount updates from non-selected products"
+        }
+    } catch {
+        Write-Warning "Failed to configure products: $($_.Exception.Message)"
+        Write-Log "WARNING: Product configuration failed"
+    }
 }
 
 # === CONFIGURATION CHECK ===
