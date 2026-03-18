@@ -371,3 +371,167 @@ Write a deploy script that handles everything in one shot:
 | Check service | `Get-Service 'Name' -ErrorAction SilentlyContinue \| Select Status` |
 | Snapshot VM | `Checkpoint-VM -VMName VM -SnapshotName "Pre-Test"` |
 | Revert VM | `Restore-VM -VMName VM -SnapshotName "Pre-Test" -Confirm:\$false` |
+
+---
+
+## 11. WPF Grid Panels Don't Expose AutomationId to UIA
+
+### The Problem
+WPF `Grid` elements with `AutomationProperties.AutomationId` set in XAML are NOT findable by COM UIA. Searching for `DashboardPanel`, `InstallPanel`, `HelpPanel`, `HistoryPanel`, `OperationPanel`, or `LogPanel` by AutomationId always returns null — despite the attribute being set in XAML.
+
+### The Exception
+`ScrollViewer` elements DO work. `AboutPanel` (which is a `ScrollViewer`) is the only panel reliably found by AutomationId.
+
+### The Solution
+Verify panel visibility by probing for a unique child element instead:
+
+```powershell
+# WRONG — Grid AutomationId not exposed to COM UIA
+$panel = Find-El $mw "DashboardPanel"
+
+# RIGHT — probe for a unique child
+$panelVisible = $null -ne (Find-El $mw "Card1Value")    # Dashboard
+$panelVisible = $null -ne (Find-El $mw "InstallPathBox") # Install
+$panelVisible = $null -ne (Find-El $mw "HelpText")       # Help
+$panelVisible = $null -ne (Find-El $mw "BtnRefreshHistory") # History
+$panelVisible = $null -ne (Find-El $mw "AboutPanel")     # About (ScrollViewer — works)
+```
+
+### Root Cause
+WPF's `Grid` control does not implement `AutomationPeer` for AutomationId by default. `ScrollViewer` does. If you need UIA-discoverable panels, wrap them in `ScrollViewer` or use `UserControl` with explicit `AutomationPeer`.
+
+---
+
+## 12. SendKeys Hangs in Scheduled Tasks
+
+### The Problem
+`[System.Windows.Forms.SendKeys]::SendWait("^d")` hangs indefinitely when called from a scheduled task context, even with `/IT` flag and an active desktop session. `SetForegroundWindow` succeeds (returns true), but `SendKeys` blocks forever.
+
+### Impact
+Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, etc.) **cannot be tested from scheduled tasks**. Only UIA `InvokePattern` and `ValuePattern` interactions work.
+
+### Workaround
+If you must test keyboard shortcuts, use a local PowerShell session (not a scheduled task). For automated CI pipelines, skip keyboard shortcut tests or use a framework that supports raw input injection (e.g., `InputSimulator` via C# interop).
+
+---
+
+## 13. Dialog Interactions Corrupt the UIA Tree
+
+### The Problem
+Opening and closing WPF dialogs (especially Settings) from a scheduled task's UIA session permanently corrupts the UIA tree. After closing a dialog via `WindowPattern.Close()`, ALL subsequent `Find-Element` calls fail — even with fresh `Get-MainWindow()` calls from `RootElement`. May also trigger VM shutdown.
+
+### The Solution
+**Test order matters.** Structure your test suite so that destructive interactions happen last:
+
+1. **Read-only tests first** — dashboard data, element visibility, enabled states
+2. **Panel navigation second** — click nav buttons, verify child elements, return to dashboard
+3. **Dialog state-only checks third** — find buttons, verify enabled/disabled, but DON'T click
+4. **Any dialog open/close LAST** — or skip entirely if not critical
+
+```powershell
+# Test order in production:
+# CAT 1: Dashboard cards (read-only)
+# CAT 2: Panel navigation (click nav, verify child, return)
+# CAT 3: Dialog buttons (state check only — no clicking)
+# CAT 4-8: Deep panel checks
+# CAT 9: Settings (SKIPPED — known to corrupt UIA tree)
+# CAT 10: Button inventory (read-only)
+```
+
+---
+
+## 14. Active Desktop Session Required
+
+### The Problem
+After a VM reboot, `RootElement.Children` returns 0 items without an active user session. Scheduled tasks run but cannot see any desktop windows.
+
+### The Solution
+Establish an RDP session (even briefly) before running tests. Disconnected sessions (`Disc` state) work fine — you don't need to keep the RDP window open.
+
+```powershell
+# Check sessions
+query user
+
+# If no active session, reconnect
+ssh -fN -L 13390:192.168.50.21:3389 triton-ajt
+DISPLAY=:0 xfreerdp /v:127.0.0.1:13390 /u:"SRV02\Install" /p:"P@ssw0rd!" /cert:ignore /size:1024x768 /bpp:16
+# Close after login — session stays active in "Disc" state
+```
+
+---
+
+## 15. Phantom Window Detection
+
+### The Problem
+When searching for modal dialogs, you'll find windows that aren't your app's dialogs: `ConsoleWindowClass` (the test script's own PowerShell window), `Shell_TrayWnd` (taskbar), `Progman` (desktop), and windows with empty `Name` properties.
+
+### The Solution
+Filter aggressively when enumerating top-level windows:
+
+```powershell
+$allWindows = $root.FindAll([TreeScope]::Children, [Condition]::TrueCondition)
+$dialogs = $allWindows | Where-Object {
+    $_.Current.ClassName -ne "ConsoleWindowClass" -and
+    $_.Current.ClassName -ne "Shell_TrayWnd" -and
+    $_.Current.ClassName -ne "Progman" -and
+    -not [string]::IsNullOrEmpty($_.Current.Name)
+}
+```
+
+---
+
+## 16. Test Suite Design Patterns
+
+### Pattern: Return-to-Dashboard After Each Test
+Always return to a known state (dashboard) after each navigation test. This prevents cascading failures where a test expects Dashboard but the app is showing Install.
+
+```powershell
+function Go-Dash {
+    $mw = Get-MainWindow -timeout 10
+    if ($mw) {
+        $b = Find-El $mw "BtnDashboard" -timeout 5
+        if ($b) { Click-El $b }
+    }
+    Start-Sleep -Seconds 2
+    return (Get-MainWindow -timeout 10)
+}
+```
+
+### Pattern: State-Only vs Interactive Tests
+Split your test catalog into two tiers:
+
+| Tier | What | Risk |
+|------|------|------|
+| **State checks** | Element found, enabled, value readable | Zero risk |
+| **Interactive** | Click button, set text, close dialog | May corrupt UIA tree |
+
+Run all state checks first. Run interactive tests last, and only if needed.
+
+### Pattern: Graceful Degradation with Warnings
+Not every element must be found. Use WARN for non-critical missing elements and FAIL for critical ones:
+
+```powershell
+# Critical — app is broken without this
+if (-not (Find-El $mw "Card1Value")) { TF "Services card" "not found" }
+
+# Non-critical — nice to have
+if (-not (Find-El $mw "InternetStatusText")) { TW "Internet status" "not found" }
+```
+
+### Pattern: Timeouts and Retries
+COM UIA is inherently asynchronous. Never assume an element exists immediately after a click. Use polling with timeouts:
+
+```powershell
+function Find-El($parent, $automationId, $timeout = 10) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $timeout) {
+        try {
+            $el = $parent.FindFirst([TreeScope]::Descendants,
+                [PropertyCondition]::new([AutomationElement]::AutomationIdProperty, $automationId))
+            if ($null -ne $el) { return $el }
+        } catch {}
+        Start-Sleep -Milliseconds 300
+    }
+    return $null
+}
+```
