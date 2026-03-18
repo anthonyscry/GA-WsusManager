@@ -421,7 +421,23 @@ Write-Host "    IFI enabled."
 # =====================================================================
 Write-Host "[+] Configuring SQL networking..."
 
-$root = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib"
+# Dynamically find the MSSQL registry key (MSSQL16 for 2022, MSSQL15 for 2019, etc.)
+$instanceKey = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
+$mssqlRoot = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server"
+$instanceId = $null
+if (Test-Path $instanceKey) {
+    $instanceId = (Get-ItemProperty -Path $instanceKey -ErrorAction SilentlyContinue).SQLEXPRESS
+}
+if (-not $instanceId) {
+    # Fallback: scan for the instance directory
+    $instanceId = (Get-ChildItem "$mssqlRoot\MSSQL*.SQLEXPRESS" -ErrorAction SilentlyContinue |
+        Select-Object -First 1).PSChildName
+}
+if (-not $instanceId) {
+    $instanceId = "MSSQL16.SQLEXPRESS"  # Default to SQL 2022
+    Write-Host "    Warning: Could not detect SQL instance registry key, using default: $instanceId" -ForegroundColor Yellow
+}
+$root = "$mssqlRoot\$instanceId\MSSQLServer\SuperSocketNetLib"
 
 # Ensure TCP path exists
 if (!(Test-Path "$root\Tcp\IPAll")) {
@@ -533,11 +549,14 @@ $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if ($sqlcmd) {
     try {
+        # ODBC Driver 18+ requires TrustServerCertificate to connect without a trusted cert
+        $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
+
         # Create NETWORK SERVICE login if not exists
-        & $sqlcmd -S $sqlInstance -E -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
         
         # Grant dbcreator role to NETWORK SERVICE
-        & $sqlcmd -S $sqlInstance -E -Q "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -b
+        & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -b
         
         Write-Host "    SQL permissions granted."
     } catch {
@@ -546,8 +565,8 @@ if ($sqlcmd) {
 } else {
     Write-Host "    Warning: sqlcmd.exe not found. SQL permissions must be set manually."
     Write-Host "    Run these commands after SSMS finishes installing:"
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
 }
 
 # =====================================================================
