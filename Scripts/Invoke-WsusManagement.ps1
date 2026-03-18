@@ -123,7 +123,7 @@ param(
     [switch]$NonInteractive,
 
     # Common
-    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
+    [string]$ExportRoot = '\\lab-hyperv\d\WSUS-Exports',
     [string]$ContentPath = "C:\WSUS",
     [string]$SqlInstance = ".\SQLEXPRESS"
 )
@@ -926,7 +926,7 @@ function Invoke-CopyForAirGap {
         Skip all interactive prompts - requires SourcePath and DestinationPath
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath,
         [string]$SourcePath,
         [string]$DestinationPath,
@@ -1043,7 +1043,7 @@ function Invoke-ExportToDvd {
         Zips source data and splits into 4.3GB chunks for single-layer DVD burning
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath = "C:\WSUS"
     )
 
@@ -1203,7 +1203,7 @@ function Invoke-ExportToMedia {
         When DestinationPath is provided, runs in non-interactive mode (for GUI).
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath = "C:\WSUS",
         [string]$SourcePath,
         [string]$DestinationPath,
@@ -1864,7 +1864,7 @@ if ($Restore) {
     # - Otherwise, if ExportRoot differs from default, interpret it as the destination
     $actualDestination = $DestinationPath
     $actualSource = $SourcePath
-    $defaultExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+    $defaultExportRoot = '\\lab-hyperv\d\WSUS-Exports'
 
     if ([string]::IsNullOrWhiteSpace($actualDestination) -and $ExportRoot -ne $defaultExportRoot) {
         # GUI is passing destination as ExportRoot - use it as destination, use ContentPath as source
