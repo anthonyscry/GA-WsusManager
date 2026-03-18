@@ -1,8 +1,8 @@
-h1. WSUS Manager v3.8.10 - Standard Operating Procedure
+h1. WSUS Manager v4.0.1 - Standard Operating Procedure
 
-*Version:* 3.8.10
+*Version:* 4.0.1
 *Author:* Tony Tran, ISSO, GA-ASI
-*Last Updated:* January 2026
+*Last Updated:* March 2026
 
 ----
 
@@ -368,12 +368,15 @@ Configures Windows Update client behavior via registry settings.
 |AcceptTrustedPublisherCerts|Enabled|Accept signed updates from intranet|
 |ElevateNonAdmins|Disabled|Only admins receive update notifications|
 |SetDisablePauseUXAccess|Enabled|Remove "Pause updates" option from users|
-|AUPowerManagement|Enabled|Wake system from sleep for scheduled updates|
-|Configure Automatic Updates|2 - Notify for download and auto install|Users notified before download|
-|AlwaysAutoRebootAtScheduledTime|15 minutes|Auto-restart warning time|
-|ScheduledInstallDay|0 - Every day|Check for updates daily|
-|ScheduledInstallTime|00:00|Install time (midnight)|
-|NoAUShutdownOption|Disabled|Show "Install Updates and Shut Down" option|
+|AUOptions|4 - Auto download and schedule the install|Auto-download and install on schedule|
+|ScheduledInstallDay|0 - Every day|Check for and install updates daily|
+|ScheduledInstallTime|22:00 (10 PM)|Install time|
+|SetComplianceDeadline|Enabled|Enable update deadline enforcement|
+|ConfigureDeadlineForQualityUpdates|7 days|Quality updates must install within 7 days|
+|ConfigureDeadlineForFeatureUpdates|7 days|Feature updates must install within 7 days|
+|ConfigureDeadlineGracePeriod|0 days|No grace period after deadline|
+|ConfigureDeadlineNoAutoReboot|Disabled|Auto-reboot after update installation|
+|AlwaysAutoRebootAtScheduledTime|Enabled|Auto-restart at scheduled time|
 
 h4. 2. WSUS Inbound Allow (Firewall)
 

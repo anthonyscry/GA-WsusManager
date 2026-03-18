@@ -1,7 +1,7 @@
 {
   "name": "GA-WsusManager",
   "description": "PowerShell WPF WSUS Management Suite",
-  "version": "3.9.0",
+  "version": "4.0.1",
   "environment": "Desktop/Win32",
   "requestFramePermissions": []
 }

@@ -4,8 +4,8 @@
 ===============================================================================
 Script: Set-WsusGroupPolicy.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.4.0
-Date: 2026-01-10
+Version: 1.5.0
+Date: 2026-03-18
 ===============================================================================
 
 .SYNOPSIS
@@ -234,6 +234,32 @@ function Import-WsusGpo {
             -ValueName "WUStatusServer" -Type String -Value $WsusUrl -ErrorAction Stop
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
             -ValueName "UseWUServer" -Type DWord -Value 1 -ErrorAction Stop
+        Write-Host " OK" -ForegroundColor Green
+
+        # Schedule: auto-download and install daily at 22:00
+        Write-Host "  Setting install schedule (daily 22:00)..." -NoNewline
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "AUOptions" -Type DWord -Value 4 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "ScheduledInstallDay" -Type DWord -Value 0 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "ScheduledInstallTime" -Type DWord -Value 22 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "ScheduledInstallEveryWeek" -Type DWord -Value 0 -ErrorAction Stop
+        Write-Host " OK" -ForegroundColor Green
+
+        # Deadline: 7 days to install, auto-restart
+        Write-Host "  Setting 7-day deadline with auto-restart..." -NoNewline
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "SetComplianceDeadline" -Type DWord -Value 1 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineForQualityUpdates" -Type DWord -Value 7 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineForFeatureUpdates" -Type DWord -Value 7 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineGracePeriod" -Type DWord -Value 0 -ErrorAction Stop
+        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineNoAutoReboot" -Type DWord -Value 0 -ErrorAction Stop
         Write-Host " OK" -ForegroundColor Green
     }
 
