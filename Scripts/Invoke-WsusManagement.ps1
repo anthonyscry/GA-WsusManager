@@ -134,7 +134,8 @@ $ErrorActionPreference = 'Continue'
 # CENTRALIZED LOGGING SETUP
 # ============================================================================
 # Single daily log file - all operations append to same file
-$script:LogDirectory = "C:\WSUS\Logs"
+$script:AppDirectory = Split-Path -Parent $ScriptRoot
+$script:LogDirectory = Join-Path $script:AppDirectory "logs"
 $script:LogFileName = "WsusManagement_$(Get-Date -Format 'yyyy-MM-dd').log"
 $script:LogFilePath = Join-Path $script:LogDirectory $script:LogFileName
 
@@ -735,7 +736,7 @@ function Invoke-BrowseArchive {
         $i = 1
         foreach ($year in $years) {
             $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-            Write-Host "  [$i] $($year.Name) ($backupCount backups)" -ForegroundColor White
+            Write-Host "  [$i] $($year.Name) (${backupCount} backups)" -ForegroundColor White
             $i++
         }
 
@@ -776,7 +777,7 @@ function Invoke-BrowseArchive {
                 $i = 1
                 foreach ($month in $months) {
                     $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-                    Write-Host "  [$i] $($month.Name) ($backupCount backups)" -ForegroundColor White
+                    Write-Host "  [$i] $($month.Name) (${backupCount} backups)" -ForegroundColor White
                     $i++
                 }
 
