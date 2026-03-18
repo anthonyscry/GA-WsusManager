@@ -302,21 +302,22 @@ $script:StdinFlushTimer = $null
         <SolidColorBrush x:Key="Red" Color="#F85149"/>
         <SolidColorBrush x:Key="Text1" Color="#E6EDF3"/>
         <SolidColorBrush x:Key="Text2" Color="#8B949E"/>
-        <SolidColorBrush x:Key="Text3" Color="#484F58"/>
+        <SolidColorBrush x:Key="Text3" Color="#6E7681"/>
         <SolidColorBrush x:Key="TextDisabled" Color="#6E7681"/>
 
         <!-- Focus indicator for keyboard navigation (accessibility) -->
-        <Style x:Key="FocusStyle">
+                <Style x:Key="FocusVisual">
             <Setter Property="Control.Template">
                 <Setter.Value>
                     <ControlTemplate>
-                        <Border BorderBrush="{StaticResource Blue}" BorderThickness="2" CornerRadius="2" Margin="-2"/>
+                        <Border BorderBrush="#58A6FF" BorderThickness="1" CornerRadius="4" Margin="-2" SnapsToDevicePixels="True"/>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
         <Style x:Key="NavBtn" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource Text2}"/>
             <Setter Property="Padding" Value="12,10"/>
@@ -349,7 +350,7 @@ $script:StdinFlushTimer = $null
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusStyle}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -371,16 +372,19 @@ $script:StdinFlushTimer = $null
         </Style>
 
         <Style x:Key="BtnSec" TargetType="Button" BasedOn="{StaticResource Btn}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Background" Value="{StaticResource BgCard}"/>
             <Setter Property="Foreground" Value="{StaticResource Text1}"/>
             <Setter Property="FontWeight" Value="Normal"/>
         </Style>
 
         <Style x:Key="BtnGreen" TargetType="Button" BasedOn="{StaticResource Btn}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Background" Value="{StaticResource Green}"/>
         </Style>
 
         <Style x:Key="BtnRed" TargetType="Button" BasedOn="{StaticResource Btn}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Background" Value="{StaticResource Red}"/>
         </Style>
     </Window.Resources>
@@ -406,7 +410,7 @@ $script:StdinFlushTimer = $null
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="4,0,4,12">
-                    <Button x:Name="BtnHistory" Content="📜 History" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnHistory" Content="☰ History" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnHelp" Content="? Help" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnSettings" Content="⚙ Settings" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnAbout" Content="ℹ About" Style="{StaticResource NavBtn}"/>
@@ -419,19 +423,19 @@ $script:StdinFlushTimer = $null
                         <TextBlock Text="SETUP" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnInstall" Content="▶ Install WSUS" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnRestore" Content="↻ Restore DB" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCreateGpo" Content="📋 Create GPO" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCreateGpo" Content="☰ Create GPO" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="TRANSFER" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Export/Import" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="MAINTENANCE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
-                        <Button x:Name="BtnMaintenance" Content="🔄 Online Sync" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnSchedule" Content="⏰ Schedule Task" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnCleanup" Content="🧹 Deep Cleanup" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnMaintenance" Content="↻ Online Sync" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSchedule" Content="⏱ Schedule Task" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnCleanup" Content="✧ Deep Cleanup" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
-                        <Button x:Name="BtnDiagnostics" Content="🔍 Run Diagnostics" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnReset" Content="🔄 Reset Content" Style="{StaticResource NavBtn}" ToolTip="Re-verify all downloaded content files against the database"/>
+                        <Button x:Name="BtnDiagnostics" Content="⊘ Run Diagnostics" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnReset" Content="↺ Reset Content" Style="{StaticResource NavBtn}" ToolTip="Re-verify all downloaded content files against the database"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -473,7 +477,7 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
                             <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card1Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card1Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -483,7 +487,7 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
                             <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card2Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card2Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -493,7 +497,7 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
                             <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card3Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card3Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -503,7 +507,7 @@ $script:StdinFlushTimer = $null
                             <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
                             <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
-                                <TextBlock x:Name="Card4Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card4Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -583,19 +587,19 @@ $script:StdinFlushTimer = $null
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="InstallPathBox" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
-                            <Button x:Name="BtnBrowseInstallPath" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="8,4" Margin="8,0,0,0"/>
+                            <TextBox x:Name="InstallPathBox" TabIndex="1" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                            <Button x:Name="BtnBrowseInstallPath" TabIndex="2" Grid.Column="1" Content="Browse" Style="{StaticResource BtnSec}" Padding="8,4" Margin="8,0,0,0"/>
                         </Grid>
                         <TextBlock Text="SQL Admin Password (SA):" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
-                        <PasswordBox x:Name="InstallSaPassword" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                        <PasswordBox x:Name="InstallSaPassword" TabIndex="3" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
                         <TextBlock Text="Confirm SA Password:" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,12,0,4"/>
-                        <PasswordBox x:Name="InstallSaPasswordConfirm" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
-                        <ProgressBar x:Name="PasswordStrength" Height="6" Margin="0,4,0,0" Visibility="Collapsed" Maximum="100"/>
+                        <PasswordBox x:Name="InstallSaPasswordConfirm" TabIndex="4" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4"/>
+                        <ProgressBar x:Name="PasswordStrength" Height="8" Margin="0,4,0,0" Visibility="Collapsed" Maximum="100"/>
                         <TextBlock x:Name="PasswordError" Foreground="{StaticResource Red}" FontSize="12" Margin="0,4,0,0" Visibility="Collapsed"/>
                         <TextBlock Text="Password must be 15+ chars with a number and special character." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
-                        <ProgressBar x:Name="InstallProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
+                        <ProgressBar x:Name="InstallProgress" Height="8" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                            <Button x:Name="BtnRunInstall" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnRunInstall" TabIndex="5" Content="Install WSUS" Style="{StaticResource BtnGreen}" Margin="0,0,8,0"/>
                             <TextBlock Text="Requires admin rights" FontSize="10" Foreground="{StaticResource Text3}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
@@ -610,12 +614,12 @@ $script:StdinFlushTimer = $null
                 </Grid.RowDefinitions>
                 <Border Background="{StaticResource BgCard}" CornerRadius="4">
                     <ScrollViewer x:Name="ConsoleScroller" VerticalScrollBarVisibility="Auto" Margin="12">
-                        <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="12" Foreground="{StaticResource Text2}" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
 <StackPanel Grid.Row="1" Margin="0,4,0,0">
-                    <ProgressBar x:Name="CleanupProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
-                    <ProgressBar x:Name="DiagnosticsProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
+                    <ProgressBar x:Name="CleanupProgress" Height="8" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
+                    <ProgressBar x:Name="DiagnosticsProgress" Height="8" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
                         <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
@@ -706,9 +710,22 @@ $script:StdinFlushTimer = $null
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="HistoryFilter" Background="{StaticResource BgDark}" Foreground="{StaticResource Text1}" BorderThickness="1" BorderBrush="{StaticResource Border}" Padding="8,4" FontSize="12" Margin="0,0,8,0" ToolTip="Filter by operation type, result, or keyword"/>
                             <Button x:Name="BtnRefreshHistory" Grid.Column="1" Content="↻ Refresh" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
-                            <Button x:Name="BtnClearHistory" Grid.Column="2" Content="🗑 Clear History" Style="{StaticResource BtnSec}" Padding="8,4"/>
+                            <Button x:Name="BtnClearHistory" Grid.Column="2" Content="✕ Clear History" Style="{StaticResource BtnSec}" Padding="8,4"/>
                         </Grid>
-                        <ListBox x:Name="HistoryList" Grid.Row="1" Background="{StaticResource BgDark}" BorderThickness="0" Foreground="{StaticResource Text1}" FontFamily="Consolas" FontSize="11" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                        <ListBox x:Name="HistoryList" Grid.Row="1" AlternationCount="2" Background="{StaticResource BgDark}" BorderThickness="0" Foreground="{StaticResource Text1}" FontFamily="Consolas" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="8,4"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                            <Setter Property="Background" Value="#161B22"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
                     </Grid>
                 </Border>
             </Grid>
@@ -741,7 +758,7 @@ $script:StdinFlushTimer = $null
                     </Border>
                     <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Consolas" FontSize="11" Background="{StaticResource BgDark}"
+                             FontFamily="Consolas" FontSize="12" Background="{StaticResource BgDark}"
                              Foreground="{StaticResource Text2}" BorderThickness="0" Padding="12,8"/>
                 </Grid>
             </Border>
@@ -760,6 +777,19 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
     if ($_.Name) { $script:controls[$_.Name] = $script:window.FindName($_.Name) }
 }
 #endregion
+
+# Palette brush variables for programmatic UI
+$script:BrushBgDark = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+$script:BrushBgSidebar = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#161B22")
+$script:BrushBgCard = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+$script:BrushBorder = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+$script:BrushBlue = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+$script:BrushGreen = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+$script:BrushOrange = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#D29922")
+$script:BrushRed = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+$script:BrushText1 = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+$script:BrushText2 = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+$script:BrushText3 = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#6E7681")
 
 #region Keyboard Shortcuts
 $script:window.Add_KeyDown({
@@ -807,14 +837,14 @@ function Show-SplashScreen {
         $splash.Height = 220
         $splash.WindowStartupLocation = "CenterScreen"
         $splash.WindowStyle = "None"
-        $splash.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+        $splash.Background = $script:BrushBgDark
         $splash.ResizeMode = "NoResize"
         $splash.Topmost = $true
         $splash.AllowsTransparency = $false
 
         $border = New-Object System.Windows.Controls.Border
-        $border.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#161B22")
-        $border.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+        $border.Background = $script:BrushBgSidebar
+        $border.BorderBrush = $script:BrushBorder
         $border.BorderThickness = "1"
 
         $grid = New-Object System.Windows.Controls.Grid
@@ -833,7 +863,7 @@ function Show-SplashScreen {
         $titleText.Text = "WSUS Manager"
         $titleText.FontSize = 20
         $titleText.FontWeight = "Bold"
-        $titleText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+        $titleText.Foreground = $script:BrushText1
         $titleText.HorizontalAlignment = "Center"
         $titleText.Margin = "0,0,0,4"
         [System.Windows.Controls.Grid]::SetRow($titleText, 0)
@@ -842,7 +872,7 @@ function Show-SplashScreen {
         $versionText = New-Object System.Windows.Controls.TextBlock
         $versionText.Text = "v$script:AppVersion"
         $versionText.FontSize = 10
-        $versionText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $versionText.Foreground = $script:BrushText2
         $versionText.HorizontalAlignment = "Center"
         $versionText.Margin = "0,0,0,20"
         [System.Windows.Controls.Grid]::SetRow($versionText, 1)
@@ -852,9 +882,9 @@ function Show-SplashScreen {
         $progressBar.Minimum = 0
         $progressBar.Maximum = 100
         $progressBar.Value = 0
-        $progressBar.Height = 4
-        $progressBar.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-        $progressBar.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
+        $progressBar.Height = 8
+        $progressBar.Background = $script:BrushBgCard
+        $progressBar.Foreground = $script:BrushBlue
         $progressBar.BorderThickness = "0"
         $progressBar.Margin = "0,0,0,8"
         [System.Windows.Controls.Grid]::SetRow($progressBar, 2)
@@ -863,7 +893,7 @@ function Show-SplashScreen {
         $statusText = New-Object System.Windows.Controls.TextBlock
         $statusText.Text = "Initializing..."
         $statusText.FontSize = 10
-        $statusText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $statusText.Foreground = $script:BrushText2
         $statusText.HorizontalAlignment = "Center"
         [System.Windows.Controls.Grid]::SetRow($statusText, 3)
         $null = $grid.Children.Add($statusText)
@@ -1235,7 +1265,7 @@ function Update-Dashboard {
                     $controls.LastSyncText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($syncColor)
                 } else {
                     $controls.LastSyncText.Text = "Last sync: Never"
-                    $controls.LastSyncText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                    $controls.LastSyncText.Foreground = $script:BrushRed
                 }
             }
         } catch {
@@ -1291,9 +1321,9 @@ function Update-HistoryView {
                 $item = New-Object System.Windows.Controls.ListBoxItem
                 $item.Content = $line
                 $item.Foreground = if ($entry.Result -eq "Pass") {
-                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+                    $script:BrushGreen
                 } else {
-                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                    $script:BrushRed
                 }
                 $null = $controls.HistoryList.Items.Add($item)
             }
@@ -1325,11 +1355,11 @@ function Update-HistoryView {
                 $item = New-Object System.Windows.Controls.ListBoxItem
                 $item.Content = $line
                 $item.Foreground = if ($line -match "ERROR|FAIL|Failed") {
-                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+                    $script:BrushRed
                 } elseif ($line -match "SUCCESS|PASS|\[\+\]|Starting v") {
-                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+                    $script:BrushGreen
                 } else {
-                    [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+                    $script:BrushText2
                 }
                 $null = $controls.HistoryList.Items.Add($item)
             }
@@ -1338,7 +1368,7 @@ function Update-HistoryView {
     }
     $item = New-Object System.Windows.Controls.ListBoxItem
     $item.Content = "No operation history yet. Run an operation to start tracking."
-    $item.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $item.Foreground = $script:BrushText2
     $null = $controls.HistoryList.Items.Add($item)
 }
 
@@ -1695,7 +1725,7 @@ function Show-ExportDialog {
     $dlg.Height = 360
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
@@ -1706,7 +1736,7 @@ function Show-ExportDialog {
     $title.Text = "Export WSUS Data"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Foreground = $script:BrushText1
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
@@ -1716,14 +1746,14 @@ function Show-ExportDialog {
 
     $radioFull = New-Object System.Windows.Controls.RadioButton
     $radioFull.Content = "Full Export"
-    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Foreground = $script:BrushText1
     $radioFull.IsChecked = $true
     $radioFull.Margin = "0,0,20,0"
     $radioPanel.Children.Add($radioFull)
 
     $radioDiff = New-Object System.Windows.Controls.RadioButton
     $radioDiff.Content = "Differential"
-    $radioDiff.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiff.Foreground = $script:BrushText1
     $radioPanel.Children.Add($radioDiff)
     $stack.Children.Add($radioPanel)
 
@@ -1734,7 +1764,7 @@ function Show-ExportDialog {
 
     $daysLbl = New-Object System.Windows.Controls.TextBlock
     $daysLbl.Text = "Days:"
-    $daysLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $daysLbl.Foreground = $script:BrushText2
     $daysLbl.VerticalAlignment = "Center"
     $daysLbl.Margin = "0,0,8,0"
     $daysPanel.Children.Add($daysLbl)
@@ -1743,8 +1773,8 @@ function Show-ExportDialog {
     $daysTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDaysTextBox")
     $daysTxt.Text = "30"
     $daysTxt.Width = 50
-    $daysTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $daysTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysTxt.Background = $script:BrushBgCard
+    $daysTxt.Foreground = $script:BrushText1
     $daysTxt.Padding = "4"
     $daysPanel.Children.Add($daysTxt)
     $stack.Children.Add($daysPanel)
@@ -1754,7 +1784,7 @@ function Show-ExportDialog {
 
     $destLbl = New-Object System.Windows.Controls.TextBlock
     $destLbl.Text = "Destination:"
-    $destLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $destLbl.Foreground = $script:BrushText2
     $destLbl.Margin = "0,0,0,6"
     $stack.Children.Add($destLbl)
 
@@ -1764,8 +1794,8 @@ function Show-ExportDialog {
     $destBtn = New-Object System.Windows.Controls.Button
     $destBtn.Content = "Browse"
     $destBtn.Padding = "10,4"
-    $destBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $destBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destBtn.Background = $script:BrushBgCard
+    $destBtn.Foreground = $script:BrushText1
     $destBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($destBtn, "Right")
     $destPanel.Children.Add($destBtn)
@@ -1773,8 +1803,8 @@ function Show-ExportDialog {
     $destTxt = New-Object System.Windows.Controls.TextBox
     $destTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDestinationTextBox")
     $destTxt.Margin = "0,0,8,0"
-    $destTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $destTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $destTxt.Background = $script:BrushBgCard
+    $destTxt.Foreground = $script:BrushText1
     $destTxt.Padding = "8,4"
     $destPanel.Children.Add($destTxt)
 
@@ -1793,8 +1823,8 @@ function Show-ExportDialog {
     $exportBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportButton")
     $exportBtn.Content = "Export"
     $exportBtn.Padding = "12,8"
-    $exportBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $exportBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportBtn.Background = $script:BrushBlue
+    $exportBtn.Foreground = $script:BrushText1
     $exportBtn.BorderThickness = 0
     $exportBtn.Margin = "0,0,8,0"
     $exportBtn.Add_Click({
@@ -1818,8 +1848,8 @@ function Show-ExportDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -1840,7 +1870,7 @@ function Show-ImportDialog {
     $dlg.Height = 320
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
@@ -1851,14 +1881,14 @@ function Show-ImportDialog {
     $title.Text = "Import WSUS Data"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Foreground = $script:BrushText1
     $title.Margin = "0,0,0,12"
     $stack.Children.Add($title)
 
     # Source folder section
     $srcLbl = New-Object System.Windows.Controls.TextBlock
     $srcLbl.Text = "Source folder (external media):"
-    $srcLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $srcLbl.Foreground = $script:BrushText2
     $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
 
@@ -1868,8 +1898,8 @@ function Show-ImportDialog {
     $srcBtn = New-Object System.Windows.Controls.Button
     $srcBtn.Content = "Browse"
     $srcBtn.Padding = "10,4"
-    $srcBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $srcBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $srcBtn.Background = $script:BrushBgCard
+    $srcBtn.Foreground = $script:BrushText1
     $srcBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($srcBtn, "Right")
     $srcPanel.Children.Add($srcBtn)
@@ -1877,8 +1907,8 @@ function Show-ImportDialog {
     $srcTxt = New-Object System.Windows.Controls.TextBox
     $srcTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportSourceTextBox")
     $srcTxt.Margin = "0,0,8,0"
-    $srcTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $srcTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $srcTxt.Background = $script:BrushBgCard
+    $srcTxt.Foreground = $script:BrushText1
     $srcTxt.Padding = "8,4"
     $srcPanel.Children.Add($srcTxt)
 
@@ -1893,7 +1923,7 @@ function Show-ImportDialog {
     # Destination folder section
     $dstLbl = New-Object System.Windows.Controls.TextBlock
     $dstLbl.Text = "Destination folder (WSUS server):"
-    $dstLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dstLbl.Foreground = $script:BrushText2
     $dstLbl.Margin = "0,0,0,6"
     $stack.Children.Add($dstLbl)
 
@@ -1903,8 +1933,8 @@ function Show-ImportDialog {
     $dstBtn = New-Object System.Windows.Controls.Button
     $dstBtn.Content = "Browse"
     $dstBtn.Padding = "10,4"
-    $dstBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $dstBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstBtn.Background = $script:BrushBgCard
+    $dstBtn.Foreground = $script:BrushText1
     $dstBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($dstBtn, "Right")
     $dstPanel.Children.Add($dstBtn)
@@ -1913,8 +1943,8 @@ function Show-ImportDialog {
     $dstTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportDestinationTextBox")
     $dstTxt.Text = "C:\WSUS"
     $dstTxt.Margin = "0,0,8,0"
-    $dstTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $dstTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $dstTxt.Background = $script:BrushBgCard
+    $dstTxt.Foreground = $script:BrushText1
     $dstTxt.Padding = "8,4"
     $dstPanel.Children.Add($dstTxt)
 
@@ -1935,8 +1965,8 @@ function Show-ImportDialog {
     $importBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportButton")
     $importBtn.Content = "Import"
     $importBtn.Padding = "12,8"
-    $importBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $importBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importBtn.Background = $script:BrushBlue
+    $importBtn.Foreground = $script:BrushText1
     $importBtn.BorderThickness = 0
     $importBtn.Margin = "0,0,8,0"
     $importBtn.Add_Click({
@@ -1958,8 +1988,8 @@ function Show-ImportDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -1988,7 +2018,7 @@ function Show-RestoreDialog {
     $dlg.Height = 340
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
@@ -1999,14 +2029,14 @@ function Show-RestoreDialog {
     $title.Text = "Restore WSUS Database"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Foreground = $script:BrushText1
     $title.Margin = "0,0,0,8"
     $stack.Children.Add($title)
 
     $restoreWarning = New-Object System.Windows.Controls.TextBlock
     $restoreWarning.Text = "This will permanently replace the current SUSDB database. Create a backup first."
     $restoreWarning.FontSize = 12
-    $restoreWarning.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+    $restoreWarning.Foreground = $script:BrushRed
     $restoreWarning.TextWrapping = "Wrap"
     $restoreWarning.Margin = "0,0,0,12"
     $stack.Children.Add($restoreWarning)
@@ -2014,7 +2044,7 @@ function Show-RestoreDialog {
     # Backup file selection
     $fileLbl = New-Object System.Windows.Controls.TextBlock
     $fileLbl.Text = "Backup file:"
-    $fileLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $fileLbl.Foreground = $script:BrushText2
     $fileLbl.Margin = "0,0,0,4"
     $stack.Children.Add($fileLbl)
 
@@ -2024,8 +2054,8 @@ function Show-RestoreDialog {
     $browseBtn = New-Object System.Windows.Controls.Button
     $browseBtn.Content = "Browse"
     $browseBtn.Padding = "10,4"
-    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.Background = $script:BrushBgCard
+    $browseBtn.Foreground = $script:BrushText1
     $browseBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
     $filePanel.Children.Add($browseBtn)
@@ -2033,8 +2063,8 @@ function Show-RestoreDialog {
     $fileTxt = New-Object System.Windows.Controls.TextBox
     $fileTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreFileTextBox")
     $fileTxt.Margin = "0,0,8,0"
-    $fileTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $fileTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $fileTxt.Background = $script:BrushBgCard
+    $fileTxt.Foreground = $script:BrushText1
     $fileTxt.Padding = "8,4"
     # Pre-fill with most recent backup if found
     if ($backupFiles.Count -gt 0) {
@@ -2054,14 +2084,14 @@ function Show-RestoreDialog {
     if ($backupFiles.Count -gt 0) {
         $recentLbl = New-Object System.Windows.Controls.TextBlock
         $recentLbl.Text = "Recent backups found in C:\WSUS:"
-        $recentLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+        $recentLbl.Foreground = $script:BrushText2
         $recentLbl.Margin = "0,0,0,6"
         $stack.Children.Add($recentLbl)
 
         $listBox = New-Object System.Windows.Controls.ListBox
         $listBox.MaxHeight = 100
-        $listBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-        $listBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+        $listBox.Background = $script:BrushBgCard
+        $listBox.Foreground = $script:BrushText1
         $listBox.BorderThickness = 0
         $listBox.Margin = "0,0,0,12"
 
@@ -2081,7 +2111,7 @@ function Show-RestoreDialog {
     } else {
         $noFilesLbl = New-Object System.Windows.Controls.TextBlock
         $noFilesLbl.Text = "No backup files found in C:\WSUS. Use Browse to select a backup file."
-        $noFilesLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#D29922")
+        $noFilesLbl.Foreground = $script:BrushOrange
         $noFilesLbl.TextWrapping = "Wrap"
         $noFilesLbl.Margin = "0,0,0,12"
         $stack.Children.Add($noFilesLbl)
@@ -2090,7 +2120,7 @@ function Show-RestoreDialog {
     # Warning message
     $warnLbl = New-Object System.Windows.Controls.TextBlock
     $warnLbl.Text = "Warning: This will replace the current SUSDB database!"
-    $warnLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
+    $warnLbl.Foreground = $script:BrushRed
     $warnLbl.FontWeight = "SemiBold"
     $warnLbl.Margin = "0,0,0,16"
     $stack.Children.Add($warnLbl)
@@ -2103,8 +2133,8 @@ function Show-RestoreDialog {
     $restoreBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RestoreButton")
     $restoreBtn.Content = "Restore"
     $restoreBtn.Padding = "12,8"
-    $restoreBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#F85149")
-    $restoreBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $restoreBtn.Background = $script:BrushRed
+    $restoreBtn.Foreground = $script:BrushText1
     $restoreBtn.BorderThickness = 0
     $restoreBtn.Margin = "0,0,8,0"
     $restoreBtn.Add_Click({
@@ -2128,8 +2158,8 @@ function Show-RestoreDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -2150,7 +2180,7 @@ function Show-MaintenanceDialog {
     $dlg.Height = 580
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
@@ -2161,47 +2191,47 @@ function Show-MaintenanceDialog {
     $title.Text = "Select Sync Profile"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Foreground = $script:BrushText1
     $title.Margin = "0,0,0,16"
     $stack.Children.Add($title)
 
     # Radio buttons for sync options
     $radioFull = New-Object System.Windows.Controls.RadioButton
     $radioFull.Content = "Full Sync"
-    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Foreground = $script:BrushText1
     $radioFull.Margin = "0,0,0,4"
     $radioFull.IsChecked = $true
     $stack.Children.Add($radioFull)
 
     $fullDesc = New-Object System.Windows.Controls.TextBlock
     $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup > Export"
-    $fullDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $fullDesc.Foreground = $script:BrushText2
     $fullDesc.FontSize = 12
     $fullDesc.Margin = "20,0,0,12"
     $stack.Children.Add($fullDesc)
 
     $radioQuick = New-Object System.Windows.Controls.RadioButton
     $radioQuick.Content = "Quick Sync"
-    $radioQuick.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioQuick.Foreground = $script:BrushText1
     $radioQuick.Margin = "0,0,0,4"
     $stack.Children.Add($radioQuick)
 
     $quickDesc = New-Object System.Windows.Controls.TextBlock
     $quickDesc.Text = "Sync > Cleanup > Backup (skip heavy cleanup)"
-    $quickDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $quickDesc.Foreground = $script:BrushText2
     $quickDesc.FontSize = 12
     $quickDesc.Margin = "20,0,0,12"
     $stack.Children.Add($quickDesc)
 
     $radioSync = New-Object System.Windows.Controls.RadioButton
     $radioSync.Content = "Sync Only"
-    $radioSync.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioSync.Foreground = $script:BrushText1
     $radioSync.Margin = "0,0,0,4"
     $stack.Children.Add($radioSync)
 
     $syncDesc = New-Object System.Windows.Controls.TextBlock
     $syncDesc.Text = "Synchronize and approve updates only (no export)"
-    $syncDesc.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $syncDesc.Foreground = $script:BrushText2
     $syncDesc.FontSize = 12
     $syncDesc.Margin = "20,0,0,12"
     $stack.Children.Add($syncDesc)
@@ -2211,14 +2241,14 @@ function Show-MaintenanceDialog {
     $exportTitle.Text = "Export Settings (optional)"
     $exportTitle.FontSize = 12
     $exportTitle.FontWeight = "SemiBold"
-    $exportTitle.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportTitle.Foreground = $script:BrushText1
     $exportTitle.Margin = "0,0,0,12"
     $stack.Children.Add($exportTitle)
 
     # Full Export Path
     $exportLabel = New-Object System.Windows.Controls.TextBlock
     $exportLabel.Text = "Full Export Path (backup + all content):"
-    $exportLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $exportLabel.Foreground = $script:BrushText2
     $exportLabel.FontSize = 12
     $exportLabel.Margin = "0,0,0,4"
     $stack.Children.Add($exportLabel)
@@ -2229,16 +2259,16 @@ function Show-MaintenanceDialog {
     $exportBrowse = New-Object System.Windows.Controls.Button
     $exportBrowse.Content = "..."
     $exportBrowse.Width = 30
-    $exportBrowse.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $exportBrowse.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportBrowse.Background = $script:BrushBgCard
+    $exportBrowse.Foreground = $script:BrushText1
     $exportBrowse.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($exportBrowse, "Right")
     $exportPanel.Children.Add($exportBrowse)
 
     $exportBox = New-Object System.Windows.Controls.TextBox
     $exportBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncFullExportTextBox")
-    $exportBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $exportBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $exportBox.Background = $script:BrushBgCard
+    $exportBox.Foreground = $script:BrushText1
     $exportBox.BorderThickness = 0
     $exportBox.Padding = "8,6"
     $exportBox.Margin = "0,0,4,0"
@@ -2249,7 +2279,7 @@ function Show-MaintenanceDialog {
     # Differential Export Path
     $diffLabel = New-Object System.Windows.Controls.TextBlock
     $diffLabel.Text = "Differential Export Path (recent changes only):"
-    $diffLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $diffLabel.Foreground = $script:BrushText2
     $diffLabel.FontSize = 12
     $diffLabel.Margin = "0,0,0,4"
     $stack.Children.Add($diffLabel)
@@ -2260,16 +2290,16 @@ function Show-MaintenanceDialog {
     $diffBrowse = New-Object System.Windows.Controls.Button
     $diffBrowse.Content = "..."
     $diffBrowse.Width = 30
-    $diffBrowse.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $diffBrowse.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $diffBrowse.Background = $script:BrushBgCard
+    $diffBrowse.Foreground = $script:BrushText1
     $diffBrowse.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($diffBrowse, "Right")
     $diffPanel.Children.Add($diffBrowse)
 
     $diffBox = New-Object System.Windows.Controls.TextBox
     $diffBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDiffExportTextBox")
-    $diffBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $diffBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $diffBox.Background = $script:BrushBgCard
+    $diffBox.Foreground = $script:BrushText1
     $diffBox.BorderThickness = 0
     $diffBox.Padding = "8,6"
     $diffBox.Margin = "0,0,4,0"
@@ -2284,7 +2314,7 @@ function Show-MaintenanceDialog {
 
     $daysLabel = New-Object System.Windows.Controls.TextBlock
     $daysLabel.Text = "Differential includes files from last"
-    $daysLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $daysLabel.Foreground = $script:BrushText2
     $daysLabel.FontSize = 12
     $daysLabel.VerticalAlignment = "Center"
     $daysPanel.Children.Add($daysLabel)
@@ -2293,8 +2323,8 @@ function Show-MaintenanceDialog {
     $daysBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDaysTextBox")
     $daysBox.Text = "30"
     $daysBox.Width = 50
-    $daysBox.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $daysBox.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $daysBox.Background = $script:BrushBgCard
+    $daysBox.Foreground = $script:BrushText1
     $daysBox.BorderThickness = 0
     $daysBox.Padding = "8,4"
     $daysBox.Margin = "8,0,8,0"
@@ -2303,7 +2333,7 @@ function Show-MaintenanceDialog {
 
     $daysLabel2 = New-Object System.Windows.Controls.TextBlock
     $daysLabel2.Text = "days"
-    $daysLabel2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $daysLabel2.Foreground = $script:BrushText2
     $daysLabel2.FontSize = 12
     $daysLabel2.VerticalAlignment = "Center"
     $daysPanel.Children.Add($daysLabel2)
@@ -2340,8 +2370,8 @@ function Show-MaintenanceDialog {
     $runBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "RunSyncButton")
     $runBtn.Content = "Run Sync"
     $runBtn.Padding = "12,8"
-    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $runBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $runBtn.Background = $script:BrushBlue
+    $runBtn.Foreground = $script:BrushText1
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
@@ -2360,8 +2390,8 @@ function Show-MaintenanceDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -2690,7 +2720,7 @@ function Show-TransferDialog {
     $dlg.Height = 460
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
     $dlg.Add_KeyDown({ param($s,$e) if ($e.Key -eq [System.Windows.Input.Key]::Escape) { $s.Close() } })
 
@@ -2701,27 +2731,27 @@ function Show-TransferDialog {
     $title.Text = "Transfer WSUS Data"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
-    $title.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $title.Foreground = $script:BrushText1
     $title.Margin = "0,0,0,16"
     $stack.Children.Add($title)
 
     # Direction selection
     $dirLbl = New-Object System.Windows.Controls.TextBlock
     $dirLbl.Text = "Transfer Direction:"
-    $dirLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $dirLbl.Foreground = $script:BrushText2
     $dirLbl.Margin = "0,0,0,8"
     $stack.Children.Add($dirLbl)
 
     $radioExport = New-Object System.Windows.Controls.RadioButton
     $radioExport.Content = "Export (Online server to media)"
-    $radioExport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioExport.Foreground = $script:BrushText1
     $radioExport.Margin = "0,0,0,4"
     $radioExport.IsChecked = $true
     $stack.Children.Add($radioExport)
 
     $radioImport = New-Object System.Windows.Controls.RadioButton
     $radioImport.Content = "Import (Media to air-gapped server)"
-    $radioImport.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioImport.Foreground = $script:BrushText1
     $radioImport.Margin = "0,0,0,12"
     $stack.Children.Add($radioImport)
 
@@ -2731,20 +2761,20 @@ function Show-TransferDialog {
 
     $modeLbl = New-Object System.Windows.Controls.TextBlock
     $modeLbl.Text = "Export Mode:"
-    $modeLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $modeLbl.Foreground = $script:BrushText2
     $modeLbl.Margin = "0,0,0,8"
     $exportModePanel.Children.Add($modeLbl)
 
     $radioFull = New-Object System.Windows.Controls.RadioButton
     $radioFull.Content = "Full copy (all files)"
-    $radioFull.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioFull.Foreground = $script:BrushText1
     $radioFull.Margin = "0,0,0,4"
     $radioFull.GroupName = "ExportMode"
     $exportModePanel.Children.Add($radioFull)
 
     $radioDiff30 = New-Object System.Windows.Controls.RadioButton
     $radioDiff30.Content = "Differential (files from last 30 days)"
-    $radioDiff30.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiff30.Foreground = $script:BrushText1
     $radioDiff30.Margin = "0,0,0,4"
     $radioDiff30.GroupName = "ExportMode"
     $radioDiff30.IsChecked = $true
@@ -2756,7 +2786,7 @@ function Show-TransferDialog {
 
     $radioDiffCustom = New-Object System.Windows.Controls.RadioButton
     $radioDiffCustom.Content = "Differential (custom days):"
-    $radioDiffCustom.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $radioDiffCustom.Foreground = $script:BrushText1
     $radioDiffCustom.GroupName = "ExportMode"
     $radioDiffCustom.Margin = "0,0,8,0"
     $diffCustomPanel.Children.Add($radioDiffCustom)
@@ -2764,8 +2794,8 @@ function Show-TransferDialog {
     $txtDays = New-Object System.Windows.Controls.TextBox
     $txtDays.Text = "30"
     $txtDays.Width = 50
-    $txtDays.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $txtDays.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txtDays.Background = $script:BrushBgCard
+    $txtDays.Foreground = $script:BrushText1
     $txtDays.Padding = "4,2"
     $diffCustomPanel.Children.Add($txtDays)
 
@@ -2775,7 +2805,7 @@ function Show-TransferDialog {
     # Path selection - Export destination / Import source
     $pathLbl = New-Object System.Windows.Controls.TextBlock
     $pathLbl.Text = "Destination folder:"
-    $pathLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $pathLbl.Foreground = $script:BrushText2
     $pathLbl.Margin = "0,0,0,6"
     $stack.Children.Add($pathLbl)
 
@@ -2785,8 +2815,8 @@ function Show-TransferDialog {
     $browseBtn = New-Object System.Windows.Controls.Button
     $browseBtn.Content = "Browse"
     $browseBtn.Padding = "10,4"
-    $browseBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $browseBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $browseBtn.Background = $script:BrushBgCard
+    $browseBtn.Foreground = $script:BrushText1
     $browseBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($browseBtn, "Right")
     $pathPanel.Children.Add($browseBtn)
@@ -2794,8 +2824,8 @@ function Show-TransferDialog {
     $pathTxt = New-Object System.Windows.Controls.TextBox
     $pathTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferPathTextBox")
     $pathTxt.Margin = "0,0,8,0"
-    $pathTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $pathTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $pathTxt.Background = $script:BrushBgCard
+    $pathTxt.Foreground = $script:BrushText1
     $pathTxt.Padding = "8,4"
     $pathPanel.Children.Add($pathTxt)
 
@@ -2814,7 +2844,7 @@ function Show-TransferDialog {
 
     $importDestLbl = New-Object System.Windows.Controls.TextBlock
     $importDestLbl.Text = "WSUS destination folder:"
-    $importDestLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $importDestLbl.Foreground = $script:BrushText2
     $importDestLbl.Margin = "0,0,0,6"
     $importDestPanel.Children.Add($importDestLbl)
 
@@ -2823,8 +2853,8 @@ function Show-TransferDialog {
     $importDestBtn = New-Object System.Windows.Controls.Button
     $importDestBtn.Content = "Browse"
     $importDestBtn.Padding = "10,4"
-    $importDestBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $importDestBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestBtn.Background = $script:BrushBgCard
+    $importDestBtn.Foreground = $script:BrushText1
     $importDestBtn.BorderThickness = 0
     [System.Windows.Controls.DockPanel]::SetDock($importDestBtn, "Right")
     $importDestDock.Children.Add($importDestBtn)
@@ -2833,8 +2863,8 @@ function Show-TransferDialog {
     $importDestTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferImportDestTextBox")
     $importDestTxt.Text = "C:\WSUS"
     $importDestTxt.Margin = "0,0,8,0"
-    $importDestTxt.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $importDestTxt.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $importDestTxt.Background = $script:BrushBgCard
+    $importDestTxt.Foreground = $script:BrushText1
     $importDestTxt.Padding = "8,4"
     $importDestDock.Children.Add($importDestTxt)
 
@@ -2877,8 +2907,8 @@ function Show-TransferDialog {
     $runBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "StartTransferButton")
     $runBtn.Content = "Start Transfer"
     $runBtn.Padding = "12,8"
-    $runBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $runBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $runBtn.Background = $script:BrushBlue
+    $runBtn.Foreground = $script:BrushText1
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
     $runBtn.Add_Click({
@@ -2923,8 +2953,8 @@ function Show-TransferDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -2943,7 +2973,7 @@ function Show-SettingsDialog {
     $dlg.Height = 430
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
-    $dlg.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#0D1117")
+    $dlg.Background = $script:BrushBgDark
     $dlg.ResizeMode = "NoResize"
 
     # Close dialog on ESC key
@@ -2957,7 +2987,7 @@ function Show-SettingsDialog {
 
     $lbl1 = New-Object System.Windows.Controls.TextBlock
     $lbl1.Text = "WSUS Content Path:"
-    $lbl1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $lbl1.Foreground = $script:BrushText2
     $lbl1.Margin = "0,0,0,4"
     $stack.Children.Add($lbl1)
 
@@ -2965,14 +2995,14 @@ function Show-SettingsDialog {
     $txt1.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsContentPathTextBox")
     $txt1.Text = $script:ContentPath
     $txt1.Margin = "0,0,0,12"
-    $txt1.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $txt1.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txt1.Background = $script:BrushBgCard
+    $txt1.Foreground = $script:BrushText1
     $txt1.Padding = "8,4"
     $stack.Children.Add($txt1)
 
     $lbl2 = New-Object System.Windows.Controls.TextBlock
     $lbl2.Text = "SQL Instance:"
-    $lbl2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $lbl2.Foreground = $script:BrushText2
     $lbl2.Margin = "0,0,0,4"
     $stack.Children.Add($lbl2)
 
@@ -2980,42 +3010,42 @@ function Show-SettingsDialog {
     $txt2.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsSqlInstanceTextBox")
     $txt2.Text = $script:SqlInstance
     $txt2.Margin = "0,0,0,16"
-    $txt2.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $txt2.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $txt2.Background = $script:BrushBgCard
+    $txt2.Foreground = $script:BrushText1
     $txt2.Padding = "8,4"
     $stack.Children.Add($txt2)
 
     # Notification Settings
     $notifSep = New-Object System.Windows.Controls.Separator
     $notifSep.Margin = "0,4,0,12"
-    $notifSep.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#30363D")
+    $notifSep.Background = $script:BrushBorder
     $stack.Children.Add($notifSep)
 
     $notifLbl = New-Object System.Windows.Controls.TextBlock
     $notifLbl.Text = "Notifications & Sound"
     $notifLbl.FontWeight = "SemiBold"
-    $notifLbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#8B949E")
+    $notifLbl.Foreground = $script:BrushText2
     $notifLbl.Margin = "0,0,0,8"
     $stack.Children.Add($notifLbl)
 
     $chkNotif = New-Object System.Windows.Controls.CheckBox
     $chkNotif.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SettingsNotificationCheckBox")
     $chkNotif.Content = "Show notification when operation completes"
-    $chkNotif.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkNotif.Foreground = $script:BrushText1
     $chkNotif.IsChecked = $script:NotificationsEnabled
     $chkNotif.Margin = "0,0,0,6"
     $stack.Children.Add($chkNotif)
 
     $chkBeep = New-Object System.Windows.Controls.CheckBox
     $chkBeep.Content = "Play beep sound on completion"
-    $chkBeep.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkBeep.Foreground = $script:BrushText1
     $chkBeep.IsChecked = $script:NotificationBeep
     $chkBeep.Margin = "0,0,0,4"
     $stack.Children.Add($chkBeep)
 
     $chkTray = New-Object System.Windows.Controls.CheckBox
     $chkTray.Content = "Minimize to system tray"
-    $chkTray.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $chkTray.Foreground = $script:BrushText1
     $chkTray.IsChecked = $script:TrayMinimize
     $chkTray.Margin = "0,0,0,16"
     $stack.Children.Add($chkTray)
@@ -3028,8 +3058,8 @@ function Show-SettingsDialog {
     $saveBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SaveSettingsButton")
     $saveBtn.Content = "Save"
     $saveBtn.Padding = "12,8"
-    $saveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#58A6FF")
-    $saveBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $saveBtn.Background = $script:BrushBlue
+    $saveBtn.Foreground = $script:BrushText1
     $saveBtn.BorderThickness = 0
     $saveBtn.Margin = "0,0,8,0"
     $saveBtn.Add_Click({
@@ -3047,8 +3077,8 @@ function Show-SettingsDialog {
     $cancelBtn = New-Object System.Windows.Controls.Button
     $cancelBtn.Content = "Cancel"
     $cancelBtn.Padding = "12,8"
-    $cancelBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
-    $cancelBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#E6EDF3")
+    $cancelBtn.Background = $script:BrushBgCard
+    $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
     $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
     $btnPanel.Children.Add($cancelBtn)
@@ -3922,7 +3952,7 @@ $controls.QBtnMaint.Add_Click({ Invoke-LogOperation "maintenance" "Online Sync" 
 $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.IsEnabled = $false
     $controls.QBtnStart.Content = "Starting..."
-    $controls.QBtnStart.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#D29922")
+    $controls.QBtnStart.Background = $script:BrushOrange
     Set-Status "Starting services..."
 
     # Expand log panel
@@ -3950,7 +3980,7 @@ $controls.QBtnStart.Add_Click({
     Write-LogOutput "Service startup complete" -Level Success
     Set-Status "Ready"
     $controls.QBtnStart.Content = "Start Services"
-    $controls.QBtnStart.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+    $controls.QBtnStart.Background = $script:BrushGreen
     $controls.QBtnStart.IsEnabled = $true
 })
 
@@ -3964,11 +3994,11 @@ $controls.BtnLiveTerminal.Add_Click({
     $script:LiveTerminalMode = -not $script:LiveTerminalMode
     if ($script:LiveTerminalMode) {
         $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+        $controls.BtnLiveTerminal.Background = $script:BrushGreen
         $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
     } else {
         $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
-        $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#21262D")
+        $controls.BtnLiveTerminal.Background = $script:BrushBgCard
         $controls.LogOutput.Clear()
     }
     Save-Settings
@@ -4041,7 +4071,7 @@ $controls.AboutVersion.Text = "Version $script:AppVersion"
 # Initialize Live Terminal button state from saved settings
 if ($script:LiveTerminalMode) {
     $controls.BtnLiveTerminal.Content = "Live Terminal: On"
-    $controls.BtnLiveTerminal.Background = [System.Windows.Media.BrushConverter]::new().ConvertFrom("#3FB950")
+    $controls.BtnLiveTerminal.Background = $script:BrushGreen
     $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
 }
 
