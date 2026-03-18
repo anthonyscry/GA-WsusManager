@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Invoke-WsusManagement.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 3.8.3
+Version: 4.0.1
 Date: 2026-01-10
 ===============================================================================
 
@@ -1774,7 +1774,7 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host ("=" * 88) -ForegroundColor Cyan
-    Write-Host "              WSUS Management v3.3.0" -ForegroundColor Cyan
+    Write-Host "              WSUS Management v4.0.1" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host ""
