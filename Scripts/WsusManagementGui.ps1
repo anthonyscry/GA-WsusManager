@@ -213,7 +213,7 @@ if ($script:ModulesDir) {
 # and allows vertical resize as fallback for very small screens.
 function Set-DialogAutoFit {
     param([Parameter(Mandatory)][System.Windows.Window]$Window)
-    $screenH = [SystemParameters]::PrimaryScreenHeight
+    $screenH = [System.Windows.SystemParameters]::PrimaryScreenHeight
     $Window.SizeToContent = [System.Windows.SizeToContent]::Height
     $Window.MaxHeight = [math]::Floor($screenH * 0.9)
     $Window.ResizeMode = "CanResizeWithGrip"
