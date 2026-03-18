@@ -475,11 +475,14 @@ Write-Host "    Networking configured."
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
-$wsusFeatures = Get-WindowsFeature -Name UpdateServices-DB, UpdateServices-UI
+# Use UpdateServices (not UpdateServices-DB) so WSUS accepts an external SQL
+# instance during postinstall. UpdateServices-DB locks WSUS to WID and causes
+# the "SQL_INSTANCE_NAME has no effect" warning.
+$wsusFeatures = Get-WindowsFeature -Name UpdateServices, UpdateServices-UI
 $needsInstall = $wsusFeatures | Where-Object { $_.InstallState -ne 'Installed' }
 
 if ($needsInstall) {
-    Install-WindowsFeature -Name UpdateServices-DB, UpdateServices-UI -IncludeManagementTools | Out-Null
+    Install-WindowsFeature -Name UpdateServices, UpdateServices-UI -IncludeManagementTools | Out-Null
     Write-Host "    WSUS role installed."
 } else {
     Write-Host "    WSUS role already installed."
@@ -552,6 +555,19 @@ if ($sqlcmd) {
         # ODBC Driver 18+ requires TrustServerCertificate to connect without a trusted cert
         $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
 
+        # Add current logged-in user as sysadmin
+        # Use [System.Security.Principal] to reliably get DOMAIN\USER even in workgroup
+        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $currentUser = "$($identity.Name)"
+        Write-Host "    Adding sysadmin for: $currentUser"
+
+        & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUser') CREATE LOGIN [$currentUser] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser];" -b
+
+        # Verify
+        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
+        Write-Host "    sysadmin check: $check"
+
         # Create NETWORK SERVICE login if not exists
         & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
         
@@ -564,7 +580,11 @@ if ($sqlcmd) {
     }
 } else {
     Write-Host "    Warning: sqlcmd.exe not found. SQL permissions must be set manually."
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $currentUser = "$($identity.Name)"
     Write-Host "    Run these commands after SSMS finishes installing:"
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [$currentUser] FROM WINDOWS`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]`""
     Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
     Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
 }
