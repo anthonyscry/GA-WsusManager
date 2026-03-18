@@ -297,7 +297,7 @@ function Test-ValidPath {
         if ($PathType -ne 'Any') {
             if (-not (Test-Path $Path -PathType $PathType)) {
                 $typeDesc = if ($PathType -eq 'Container') { 'directory' } else { 'file' }
-                $result.Message = "Path is not a $typeDesc`: $Path"
+                $result.Message = "Path is not a $typeDesc': $Path"
                 return $result
             }
         }
