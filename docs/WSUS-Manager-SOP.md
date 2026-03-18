@@ -1,8 +1,8 @@
-# WSUS Manager v3.8.10 - Standard Operating Procedure
+# WSUS Manager v4.0.1 - Standard Operating Procedure
 
-**Version:** 3.8.10
+**Version:** 4.0.1
 **Author:** Tony Tran, ISSO, GA-ASI
-**Last Updated:** January 2026
+**Last Updated:** March 2026
 
 ---
 
@@ -38,14 +38,14 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v3.8.10.zip | Complete distribution package |
+| WsusManager-v4.0.1.zip | Complete distribution package |
 
 **Package Contents:**
 
 ```
 WsusManager.exe           # Main GUI application
 Scripts/                  # Required - operation scripts
-Modules/                  # Required - PowerShell modules (11 modules)
+Modules/                  # Required - PowerShell modules (16 modules)
 DomainController/         # Optional - GPO deployment scripts
 QUICK-START.txt           # Quick reference guide
 README.md                 # Full documentation
@@ -141,7 +141,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v3.8.10.zip` to `C:\WSUS\` |
+| 2 | Extract `WsusManager-v4.0.1.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `WsusManager.exe` → Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
@@ -164,7 +164,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v3.8.10 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v4.0.1 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
 
 - **Dashboard** with auto-refresh (30-second interval)
 - **Server Mode** toggle (Online vs Air-Gap)
@@ -418,12 +418,15 @@ Configures Windows Update client behavior via registry settings.
 | AcceptTrustedPublisherCerts | Enabled | Accept signed updates from intranet |
 | ElevateNonAdmins | Disabled | Only admins receive update notifications |
 | SetDisablePauseUXAccess | Enabled | Remove "Pause updates" option from users |
-| AUPowerManagement | Enabled | Wake system from sleep for scheduled updates |
-| Configure Automatic Updates | 2 - Notify for download and auto install | Users notified before download |
-| AlwaysAutoRebootAtScheduledTime | 15 minutes | Auto-restart warning time |
-| ScheduledInstallDay | 0 - Every day | Check for updates daily |
-| ScheduledInstallTime | 00:00 | Install time (midnight) |
-| NoAUShutdownOption | Disabled | Show "Install Updates and Shut Down" option |
+| AUOptions | 4 - Auto download and schedule the install | Auto-download and install on schedule |
+| ScheduledInstallDay | 0 - Every day | Check for and install updates daily |
+| ScheduledInstallTime | 22:00 (10 PM) | Install time |
+| SetComplianceDeadline | Enabled | Enable update deadline enforcement |
+| ConfigureDeadlineForQualityUpdates | 7 days | Quality updates must install within 7 days |
+| ConfigureDeadlineForFeatureUpdates | 7 days | Feature updates must install within 7 days |
+| ConfigureDeadlineGracePeriod | 0 days | No grace period after deadline |
+| ConfigureDeadlineNoAutoReboot | Disabled | Auto-reboot after update installation |
+| AlwaysAutoRebootAtScheduledTime | Enabled | Auto-restart warning time |
 
 #### 2. WSUS Inbound Allow (Firewall)
 
@@ -648,7 +651,7 @@ SESSION START: 2026-01-19 10:30:00
 | Scripts/Set-WsusHttps.ps1 | Optional HTTPS configuration |
 | DomainController/Set-WsusGroupPolicy.ps1 | GPO import script |
 | DomainController/WSUS GPOs/ | Pre-configured GPO backups |
-| Modules/*.psm1 | 11 shared PowerShell modules |
+| Modules/*.psm1 | 16 shared PowerShell modules |
 
 ### PowerShell Modules
 
@@ -656,14 +659,19 @@ SESSION START: 2026-01-19 10:30:00
 |--------|---------|
 | WsusUtilities.psm1 | Logging, colors, helpers |
 | WsusDatabase.psm1 | Database operations |
-| WsusHealth.psm1 | Health checks and repair |
+| WsusHealth.psm1 | Health checks, repair, health score |
 | WsusServices.psm1 | Service management |
 | WsusFirewall.psm1 | Firewall rules |
 | WsusPermissions.psm1 | Directory permissions |
-| WsusConfig.psm1 | Configuration |
+| WsusConfig.psm1 | Configuration, timeouts, health weights |
 | WsusExport.psm1 | Export/import |
 | WsusScheduledTask.psm1 | Scheduled tasks |
-| WsusAutoDetection.psm1 | Server detection and auto-recovery |
+| WsusAutoDetection.psm1 | Server detection, auto-recovery, dashboard data |
+| WsusDialogs.psm1 | Dialog factory for WPF GUI |
+| WsusOperationRunner.psm1 | Unified operation lifecycle |
+| WsusHistory.psm1 | Operation history (JSON) |
+| WsusNotification.psm1 | Toast/balloon notifications |
+| WsusTrending.psm1 | DB size trending |
 | AsyncHelpers.psm1 | Async/background operation helpers for WPF |
 
 ---
@@ -683,7 +691,7 @@ SESSION START: 2026-01-19 10:30:00
 | Server Mode Toggle | Online vs Air-Gap mode switching |
 | Auto-Refresh Dashboard | 30-second interval status updates |
 | DPI Awareness | Crisp rendering on high-DPI displays |
-| Modular Architecture | 11 reusable PowerShell modules |
+| Modular Architecture | 16 reusable PowerShell modules |
 
 ---
 

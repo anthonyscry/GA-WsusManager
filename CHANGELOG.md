@@ -5,7 +5,21 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.9.0] - 2026-03-15
+## [4.0.1] - 2026-03-18
+
+### Added
+- **Tests/GuiFullTest.ps1** — Full GUI automation test (49 tests, 10 categories) using COM
+  UI Automation via scheduled tasks; covers dashboard, panels, dialogs, buttons, log panel
+- **docs/GUI-TESTING-LESSONS.md** — 16-section lessons learned document from GUI testing
+  on headless Windows Server VMs via SSH tunnels and RDP sessions
+- **Tests/FlaUI.Tests.ps1** — 71 FlaUI-based unit tests for AutomationId coverage
+
+### Changed
+- Install script synced with Pro version: flexible installer detection, `UPDATEENABLED="0"`
+- GUI-tests CI workflow replaces old build.yml (self-hosted runner on triton-ajt)
+- `.planning/` C#-era plans archived to `.planning-archive-reverted-c#-era/`
+
+## [4.0.0] - 2026-03-15
 
 ### Added
 - **WsusDialogs.psm1** — Dialog factory module (`New-WsusDialog`, `New-WsusFolderBrowser`,
@@ -47,7 +61,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - `WsusHealth.psm1`: new `Get-WsusHealthScore` function with weighted composite scoring
 - GUI operations now record to history and fire completion notifications
 - Settings dialog height increased to 430px to accommodate new options
-- `.planning/` C#-era phase plans archived to `.planning-archive-reverted-c#-era/`
 - `CLAUDE.md` updated for v4.0 module architecture and new GUI features
 
 ### Fixed
@@ -56,13 +69,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   hashtable instead of outer-scope variable (incorrect closure capture)
 - `WsusManagementGui.ps1`: `ContextMenuStrip` disposed before `NotifyIcon` on window close
 
-
-
-### Changed
-- Restored PowerShell-only distribution by removing C# source/workflow/documentation tracks
+## [3.9.0] - 2026-03-15
 
 ### Added
 - Monthly maintenance policy now auto-declines ARM64 and 25H2 updates and excludes them from auto-approval
+
+### Changed
+- Restored PowerShell-only distribution by removing C# source/workflow/documentation tracks
 
 ## [3.8.12] - 2026-02-14
 
@@ -103,6 +116,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Shrink retry behavior while backups are active
 - Reduced expected noisy purge output errors
 
+[4.0.1]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.0...v4.0.1
+[4.0.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.9.0...v4.0.0
+[3.9.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.12...v3.9.0
 [3.8.13]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.12...v3.8.13
 [3.8.12]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.11...v3.8.12
 [3.8.11]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.10...v3.8.11

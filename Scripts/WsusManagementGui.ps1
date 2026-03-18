@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 3.8.7
+Version: 4.0.1
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management

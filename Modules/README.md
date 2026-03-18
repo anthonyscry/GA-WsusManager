@@ -2,7 +2,7 @@
 
 **Author:** Tony Tran, ISSO, GA-ASI
 **Last Updated:** 2026-01-14
-**Module Count:** 11 modules
+**Module Count:** 16 modules
 
 This directory contains shared PowerShell modules used by the WSUS Manager application and CLI scripts to eliminate code duplication and improve maintainability.
 
