@@ -327,7 +327,7 @@ $script:StdinFlushTimer = $null
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4" Margin="4,1">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4" Margin="4,0">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -396,7 +396,7 @@ $script:StdinFlushTimer = $null
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="12,16,12,0">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
                             <TextBlock x:Name="VersionLabel" Text="v4.0.1" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
@@ -450,7 +450,7 @@ $script:StdinFlushTimer = $null
                 <Border x:Name="InternetStatusBorder" DockPanel.Dock="Right" Background="{StaticResource BgCard}" CornerRadius="4" Padding="8,4" Cursor="Hand">
                     <Border.ToolTip>Click to toggle Online/Offline mode manually</Border.ToolTip>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,6,0"/>
+                        <Ellipse x:Name="InternetStatusDot" Width="8" Height="8" Fill="{StaticResource Red}" Margin="0,0,8,0"/>
                         <TextBlock x:Name="InternetStatusText" Text="Offline" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource Text2}"/>
                     </StackPanel>
                 </Border>
@@ -471,7 +471,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,14,12,12">
+                            <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card1Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
@@ -481,7 +481,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
-                            <StackPanel Margin="12,14,12,12">
+                            <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card2Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
@@ -491,7 +491,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
-                            <StackPanel Margin="12,14,12,12">
+                            <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card3Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
@@ -501,7 +501,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,14,12,12">
+                            <StackPanel Margin="12,16,12,12">
                                 <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card4Value" Text="Loading..." FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
@@ -534,9 +534,9 @@ $script:StdinFlushTimer = $null
                 <StackPanel Grid.Row="2" Margin="0,0,0,16">
                     <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
-                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,6,0"/>
-                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
-                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,6,0"/>
+                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,8,0"/>
+                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
+                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
@@ -609,11 +609,11 @@ $script:StdinFlushTimer = $null
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Border Background="{StaticResource BgCard}" CornerRadius="4">
-                    <ScrollViewer x:Name="ConsoleScroller" VerticalScrollBarVisibility="Auto" Margin="10">
+                    <ScrollViewer x:Name="ConsoleScroller" VerticalScrollBarVisibility="Auto" Margin="12">
                         <TextBlock x:Name="ConsoleOutput" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Text2}" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
-<StackPanel Grid.Row="1" Margin="0,2,0,0">
+<StackPanel Grid.Row="1" Margin="0,4,0,0">
                     <ProgressBar x:Name="CleanupProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                     <ProgressBar x:Name="DiagnosticsProgress" Height="6" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
@@ -666,13 +666,13 @@ $script:StdinFlushTimer = $null
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="12" Margin="0,0,0,12">
                     <WrapPanel>
-                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap" Style="{StaticResource BtnSec}" Padding="10,5" Margin="0,0,6,0"/>
-                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource BtnSec}" Padding="10,5"/>
+                        <Button x:Name="HelpBtnOverview" Content="Overview" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
+                        <Button x:Name="HelpBtnDashboard" Content="Dashboard" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
+                        <Button x:Name="HelpBtnOperations" Content="Operations" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
+                        <Button x:Name="HelpBtnAirGap" Content="Air-Gap" Style="{StaticResource BtnSec}" Padding="8,4" Margin="0,0,8,0"/>
+                        <Button x:Name="HelpBtnTroubleshooting" Content="Troubleshooting" Style="{StaticResource BtnSec}" Padding="8,4"/>
                     </WrapPanel>
                 </Border>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -720,7 +720,7 @@ $script:StdinFlushTimer = $null
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Border Background="{StaticResource BgCard}" Padding="10,6" CornerRadius="4,4,0,0">
+                    <Border Background="{StaticResource BgCard}" Padding="12,8" CornerRadius="4,4,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -742,7 +742,7 @@ $script:StdinFlushTimer = $null
                     <TextBox x:Name="LogOutput" Grid.Row="1" IsReadOnly="True" TextWrapping="NoWrap"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas" FontSize="11" Background="{StaticResource BgDark}"
-                             Foreground="{StaticResource Text2}" BorderThickness="0" Padding="10,8"/>
+                             Foreground="{StaticResource Text2}" BorderThickness="0" Padding="12,8"/>
                 </Grid>
             </Border>
         </Grid>
