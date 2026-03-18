@@ -3160,9 +3160,14 @@ function Invoke-LogOperation {
                 Show-WsusPopup -Message "Installer folder not found: $installerPath" -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
                 return
             }
-            $sqlInstaller = Join-Path $installerPath "SQLEXPRADV_x64_ENU.exe"
-            if (-not (Test-Path $sqlInstaller)) {
-                Show-WsusPopup -Message "SQLEXPRADV_x64_ENU.exe not found in $installerPath.`n`nPlease select the folder containing the SQL Server installation files." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+            $installerCandidates = @("SQLEXPRADV_x64_ENU.exe", "SQLEXPR_x64_ENU.exe")
+            $sqlInstaller = $null
+            foreach ($name in $installerCandidates) {
+                $candidate = Join-Path $installerPath $name
+                if (Test-Path $candidate) { $sqlInstaller = $candidate; break }
+            }
+            if (-not $sqlInstaller) {
+                Show-WsusPopup -Message "SQL Express installer not found in $installerPath.`n`nExpected one of: $($installerCandidates -join ', ')" -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
                 return
             }
             $script:InstallPath = $installerPath
