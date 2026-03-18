@@ -2748,12 +2748,14 @@ function Show-TransferDialog {
     $radioExport.Foreground = $script:BrushText1
     $radioExport.Margin = "0,0,0,4"
     $radioExport.IsChecked = $true
+    $radioExport.GroupName = "TransferDirection"
     $stack.Children.Add($radioExport)
 
     $radioImport = New-Object System.Windows.Controls.RadioButton
     $radioImport.Content = "Import (Media to air-gapped server)"
     $radioImport.Foreground = $script:BrushText1
     $radioImport.Margin = "0,0,0,12"
+    $radioImport.GroupName = "TransferDirection"
     $stack.Children.Add($radioImport)
 
     # Export Mode section (only visible when Export is selected)
