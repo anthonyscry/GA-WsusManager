@@ -549,7 +549,8 @@ function Copy-ToDestination {
         foreach ($bak in $bakFiles) {
             $destBakPath = Join-Path $Destination $bak.Name
             Copy-Item -Path $bak.FullName -Destination $destBakPath -Force
-            Write-Host ("  Copied: {0} ({1})" -f $bak.Name, (Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2))) -ForegroundColor Cyan
+            $copiedMsg = "  Copied: {0} ({1})" -f $bak.Name, (Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2)))
+            Write-Host $copiedMsg -ForegroundColor Cyan
         }
         Write-Log "[OK] Database copied" "Green"
         $step++
@@ -657,7 +658,7 @@ function Invoke-FullCopy {
 
     if ($rootBak) {
         Write-Host "Database:" -ForegroundColor Yellow
-        Write-Host "  $($rootBak.Name) ($(Format-SizeDisplay ([math]::Round($rootBak.Length / 1GB, 2)))"
+        Write-Host "  $($rootBak.Name) ($(Format-SizeDisplay ([math]::Round($rootBak.Length / 1GB, 2))))"
         Write-Host "  Modified: $($rootBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
     }
 
@@ -733,7 +734,8 @@ function Invoke-BrowseArchive {
         $i = 1
         foreach ($year in $years) {
             $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-            Write-Host ('  [{0}] {1} ({2} backups)' -f $i, $year.Name, $backupCount) -ForegroundColor White
+            $yearMsg = '  [{0}] {1} ({2} backups)' -f $i, $year.Name, $backupCount
+            Write-Host $yearMsg -ForegroundColor White
             $i++
         }
 
@@ -774,7 +776,8 @@ function Invoke-BrowseArchive {
                 $i = 1
                 foreach ($month in $months) {
                     $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-                    Write-Host ('  [{0}] {1} ({2} backups)' -f $i, $month.Name, $backupCount) -ForegroundColor White
+                    $monthMsg = '  [{0}] {1} ({2} backups)' -f $i, $month.Name, $backupCount
+                    Write-Host $monthMsg -ForegroundColor White
                     $i++
                 }
 
@@ -877,7 +880,7 @@ function Invoke-BrowseArchive {
 
                             if ($selected.BakFile) {
                                 Write-Host "Database:" -ForegroundColor Yellow
-                                Write-Host "  $($selected.BakFile.Name) ($(Format-SizeDisplay ([math]::Round($selected.BakFile.Length / 1GB, 2)))"
+                                Write-Host "  $($selected.BakFile.Name) ($(Format-SizeDisplay ([math]::Round($selected.BakFile.Length / 1GB, 2))))"
                             }
 
                             if ($selected.HasContent) {
@@ -1178,7 +1181,7 @@ function Invoke-ExportToDvd {
     $createdFiles = Get-ChildItem -Path $outputPath -Filter "$archiveName.*" | Sort-Object Name
     $totalParts = $createdFiles.Count
     foreach ($file in $createdFiles) {
-        Write-Host "  $($file.Name) ($(Format-SizeDisplay ([math]::Round($file.Length / 1GB, 2)))"
+        Write-Host "  $($file.Name) ($(Format-SizeDisplay ([math]::Round($file.Length / 1GB, 2))))"
     }
 
     Write-Banner "DVD EXPORT COMPLETE"
@@ -1320,7 +1323,7 @@ function Invoke-ExportToMedia {
     Write-Host ""
     Write-Host "Source: $source" -ForegroundColor Cyan
     if ($sourceBak) {
-        Write-Host "  Database: $($sourceBak.Name) ($(Format-SizeDisplay ([math]::Round($sourceBak.Length / 1GB, 2)))"
+        Write-Host "  Database: $($sourceBak.Name) ($(Format-SizeDisplay ([math]::Round($sourceBak.Length / 1GB, 2))))"
         Write-Host "  Modified: $($sourceBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
     } else {
         Write-Host "  Database: None found" -ForegroundColor Yellow
