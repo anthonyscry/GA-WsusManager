@@ -852,7 +852,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
     Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
     try {
-        $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+        $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
 
         if ($allProducts.Count -eq 0) {
             Write-Log "No product categories available yet (first sync may still be running). Products will be configured on next sync."

@@ -2316,7 +2316,7 @@ function Show-MaintenanceDialog {
         Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
         $wsusApi = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
         if ($wsusApi) {
-            $wsusProducts = $wsusApi.GetSubscription().GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+            $wsusProducts = $wsusApi.GetSubscription().GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
             if ($wsusProducts.Count -gt 0) {
                 $productNames = @($wsusProducts | ForEach-Object { $_.Title } | Sort-Object -Unique)
                 $productsFromWsus = $true
