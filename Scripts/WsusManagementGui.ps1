@@ -2208,63 +2208,88 @@ function Show-MaintenanceDialog {
     $stack = New-Object System.Windows.Controls.StackPanel
     $stack.Margin = "20"
 
-    $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Select Sync Profile"
-    $title.FontSize = 14
-    $title.FontWeight = "Bold"
-    $title.Foreground = $script:BrushText1
-    $title.Margin = "0,0,0,16"
-    $stack.Children.Add($title)
+    # === TabControl with dark theme ===
+    $tabControl = New-Object System.Windows.Controls.TabControl
+    $tabControl.Background = $script:BrushBgDark
+    $tabControl.BorderBrush = $script:BrushBorder
+    $tabControl.Margin = "0,0,0,16"
 
-    # Radio buttons for sync options
+    # --- Tab 1: Profile ---
+    $tabProfile = New-Object System.Windows.Controls.TabItem
+    $tabProfile.Header = "Profile"
+    $tabProfile.Background = $script:BrushBgCard
+    $tabProfile.Foreground = $script:BrushText2
+
+    $profileStack = New-Object System.Windows.Controls.StackPanel
+    $profileStack.Margin = "12"
+
+    $profileTitle = New-Object System.Windows.Controls.TextBlock
+    $profileTitle.Text = "Select Sync Profile"
+    $profileTitle.FontSize = 14
+    $profileTitle.FontWeight = "Bold"
+    $profileTitle.Foreground = $script:BrushText1
+    $profileTitle.Margin = "0,0,0,16"
+    $profileStack.Children.Add($profileTitle)
+
     $radioFull = New-Object System.Windows.Controls.RadioButton
     $radioFull.Content = "Full Sync"
     $radioFull.Foreground = $script:BrushText1
     $radioFull.Margin = "0,0,0,4"
     $radioFull.IsChecked = $true
-    $stack.Children.Add($radioFull)
+    $profileStack.Children.Add($radioFull)
 
     $fullDesc = New-Object System.Windows.Controls.TextBlock
     $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup > Export"
     $fullDesc.Foreground = $script:BrushText2
     $fullDesc.FontSize = 12
     $fullDesc.Margin = "20,0,0,12"
-    $stack.Children.Add($fullDesc)
+    $profileStack.Children.Add($fullDesc)
 
     $radioQuick = New-Object System.Windows.Controls.RadioButton
     $radioQuick.Content = "Quick Sync"
     $radioQuick.Foreground = $script:BrushText1
     $radioQuick.Margin = "0,0,0,4"
-    $stack.Children.Add($radioQuick)
+    $profileStack.Children.Add($radioQuick)
 
     $quickDesc = New-Object System.Windows.Controls.TextBlock
     $quickDesc.Text = "Sync > Cleanup > Backup (skip heavy cleanup)"
     $quickDesc.Foreground = $script:BrushText2
     $quickDesc.FontSize = 12
     $quickDesc.Margin = "20,0,0,12"
-    $stack.Children.Add($quickDesc)
+    $profileStack.Children.Add($quickDesc)
 
     $radioSync = New-Object System.Windows.Controls.RadioButton
     $radioSync.Content = "Sync Only"
     $radioSync.Foreground = $script:BrushText1
     $radioSync.Margin = "0,0,0,4"
-    $stack.Children.Add($radioSync)
+    $profileStack.Children.Add($radioSync)
 
     $syncDesc = New-Object System.Windows.Controls.TextBlock
     $syncDesc.Text = "Synchronize and approve updates only (no export)"
     $syncDesc.Foreground = $script:BrushText2
     $syncDesc.FontSize = 12
     $syncDesc.Margin = "20,0,0,16"
-    $stack.Children.Add($syncDesc)
+    $profileStack.Children.Add($syncDesc)
 
-    # Products to Sync Section
+    $tabProfile.Content = $profileStack
+    $tabControl.Items.Add($tabProfile)
+
+    # --- Tab 2: Products ---
+    $tabProducts = New-Object System.Windows.Controls.TabItem
+    $tabProducts.Header = "Products"
+    $tabProducts.Background = $script:BrushBgCard
+    $tabProducts.Foreground = $script:BrushText2
+
+    $productsStack = New-Object System.Windows.Controls.StackPanel
+    $productsStack.Margin = "12"
+
     $prodTitle = New-Object System.Windows.Controls.TextBlock
     $prodTitle.Text = "Products to Sync"
-    $prodTitle.FontSize = 12
-    $prodTitle.FontWeight = "SemiBold"
+    $prodTitle.FontSize = 14
+    $prodTitle.FontWeight = "Bold"
     $prodTitle.Foreground = $script:BrushText1
     $prodTitle.Margin = "0,0,0,8"
-    $stack.Children.Add($prodTitle)
+    $productsStack.Children.Add($prodTitle)
 
     # Dynamically read products from WSUS, fall back to saved defaults
     $productNames = $script:SyncProducts
@@ -2281,6 +2306,13 @@ function Show-MaintenanceDialog {
         }
     } catch { }
 
+    # ScrollViewer for large product lists
+    $productScroll = New-Object System.Windows.Controls.ScrollViewer
+    $productScroll.MaxHeight = 280
+    $productScroll.VerticalScrollBarVisibility = "Auto"
+    $productScroll.Margin = "0,0,0,8"
+
+    $productInnerStack = New-Object System.Windows.Controls.StackPanel
     $productCheckBoxes = @{}
     foreach ($prod in $productNames) {
         $cb = New-Object System.Windows.Controls.CheckBox
@@ -2289,8 +2321,10 @@ function Show-MaintenanceDialog {
         $cb.Margin = "0,0,0,4"
         $cb.IsChecked = ($prod -in $script:SyncProducts)
         $productCheckBoxes[$prod] = $cb
-        $stack.Children.Add($cb)
+        $productInnerStack.Children.Add($cb)
     }
+    $productScroll.Content = $productInnerStack
+    $productsStack.Children.Add($productScroll)
 
     if (-not $productsFromWsus) {
         $prodNote = New-Object System.Windows.Controls.TextBlock
@@ -2299,7 +2333,7 @@ function Show-MaintenanceDialog {
         $prodNote.FontSize = 11
         $prodNote.Margin = "0,4,0,0"
         $prodNote.TextWrapping = "Wrap"
-        $stack.Children.Add($prodNote)
+        $productsStack.Children.Add($prodNote)
     }
 
     $prodSubNote = New-Object System.Windows.Controls.TextBlock
@@ -2308,22 +2342,27 @@ function Show-MaintenanceDialog {
     $prodSubNote.FontSize = 11
     $prodSubNote.Margin = "0,4,0,0"
     $prodSubNote.TextWrapping = "Wrap"
-    $stack.Children.Add($prodSubNote)
+    $productsStack.Children.Add($prodSubNote)
 
-    # Spacer before Export Settings
-    $spacer = New-Object System.Windows.Controls.TextBlock
-    $spacer.Text = ""
-    $spacer.Margin = "0,0,0,8"
-    $stack.Children.Add($spacer)
+    $tabProducts.Content = $productsStack
+    $tabControl.Items.Add($tabProducts)
 
-    # Export Settings Section
+    # --- Tab 3: Export ---
+    $tabExport = New-Object System.Windows.Controls.TabItem
+    $tabExport.Header = "Export"
+    $tabExport.Background = $script:BrushBgCard
+    $tabExport.Foreground = $script:BrushText2
+
+    $exportStack = New-Object System.Windows.Controls.StackPanel
+    $exportStack.Margin = "12"
+
     $exportTitle = New-Object System.Windows.Controls.TextBlock
     $exportTitle.Text = "Export Settings (optional)"
-    $exportTitle.FontSize = 12
-    $exportTitle.FontWeight = "SemiBold"
+    $exportTitle.FontSize = 14
+    $exportTitle.FontWeight = "Bold"
     $exportTitle.Foreground = $script:BrushText1
     $exportTitle.Margin = "0,0,0,12"
-    $stack.Children.Add($exportTitle)
+    $exportStack.Children.Add($exportTitle)
 
     # Full Export Path
     $exportLabel = New-Object System.Windows.Controls.TextBlock
@@ -2331,7 +2370,7 @@ function Show-MaintenanceDialog {
     $exportLabel.Foreground = $script:BrushText2
     $exportLabel.FontSize = 12
     $exportLabel.Margin = "0,0,0,4"
-    $stack.Children.Add($exportLabel)
+    $exportStack.Children.Add($exportLabel)
 
     $exportPanel = New-Object System.Windows.Controls.DockPanel
     $exportPanel.Margin = "0,0,0,12"
@@ -2354,7 +2393,7 @@ function Show-MaintenanceDialog {
     $exportBox.Margin = "0,0,4,0"
     $exportPanel.Children.Add($exportBox)
 
-    $stack.Children.Add($exportPanel)
+    $exportStack.Children.Add($exportPanel)
 
     # Differential Export Path
     $diffLabel = New-Object System.Windows.Controls.TextBlock
@@ -2362,7 +2401,7 @@ function Show-MaintenanceDialog {
     $diffLabel.Foreground = $script:BrushText2
     $diffLabel.FontSize = 12
     $diffLabel.Margin = "0,0,0,4"
-    $stack.Children.Add($diffLabel)
+    $exportStack.Children.Add($diffLabel)
 
     $diffPanel = New-Object System.Windows.Controls.DockPanel
     $diffPanel.Margin = "0,0,0,12"
@@ -2385,12 +2424,12 @@ function Show-MaintenanceDialog {
     $diffBox.Margin = "0,0,4,0"
     $diffPanel.Children.Add($diffBox)
 
-    $stack.Children.Add($diffPanel)
+    $exportStack.Children.Add($diffPanel)
 
     # Export Days
     $daysPanel = New-Object System.Windows.Controls.StackPanel
     $daysPanel.Orientation = "Horizontal"
-    $daysPanel.Margin = "0,0,0,20"
+    $daysPanel.Margin = "0,0,0,12"
 
     $daysLabel = New-Object System.Windows.Controls.TextBlock
     $daysLabel.Text = "Differential includes files from last"
@@ -2418,7 +2457,20 @@ function Show-MaintenanceDialog {
     $daysLabel2.VerticalAlignment = "Center"
     $daysPanel.Children.Add($daysLabel2)
 
-    $stack.Children.Add($daysPanel)
+    $exportStack.Children.Add($daysPanel)
+
+    # Export info note
+    $exportNote = New-Object System.Windows.Controls.TextBlock
+    $exportNote.Text = "Leave paths empty to skip export after sync."
+    $exportNote.Foreground = $script:BrushText2
+    $exportNote.FontSize = 11
+    $exportNote.TextWrapping = "Wrap"
+    $exportStack.Children.Add($exportNote)
+
+    $tabExport.Content = $exportStack
+    $tabControl.Items.Add($tabExport)
+
+    $stack.Children.Add($tabControl)
 
     # Browse button handlers
     $exportBrowse.Add_Click({
@@ -2441,7 +2493,7 @@ function Show-MaintenanceDialog {
         } finally { $fbd.Dispose() }
     }.GetNewClosure())
 
-    # Button panel
+    # Button panel (outside tabs)
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
     $btnPanel.HorizontalAlignment = "Right"
