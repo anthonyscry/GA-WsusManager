@@ -13,11 +13,22 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **docs/GUI-TESTING-LESSONS.md** — 16-section lessons learned document from GUI testing
   on headless Windows Server VMs via SSH tunnels and RDP sessions
 - **Tests/FlaUI.Tests.ps1** — 71 FlaUI-based unit tests for AutomationId coverage
+- **Tests/ProductFilter.Tests.ps1** — 31 Pester tests for product decline/approval logic,
+  Office 365 LTSC exception handling, ARM64/25H2 exclusion, and SQL injection safety
 
 ### Changed
 - Install script synced with Pro version: flexible installer detection, `UPDATEENABLED="0"`
 - GUI-tests CI workflow replaces old build.yml (self-hosted runner on triton-ajt)
 - `.planning/` C#-era plans archived to `.planning-archive-reverted-c#-era/`
+
+### Fixed
+- **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v`
+  variable instead of string interpolation to prevent SQL injection in sysadmin creation
+- **Security:** `Invoke-WsusMonthlyMaintenance.ps1` — add word-boundary `\b` to product
+  decline regex to prevent false-positive substring matches (e.g., "Server 2019" matching
+  "Windows Server 2019 22H2")
+- **Safety:** `WsusTrending.psm1` — add timestamp to corrupt backup filename to prevent
+  silent overwrite of diagnostic data
 
 ## [4.0.0] - 2026-03-15
 
