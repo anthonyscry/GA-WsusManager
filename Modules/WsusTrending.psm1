@@ -34,7 +34,8 @@ function Read-TrendData {
         # Corrupt JSON  - back up and reset
         Write-Verbose "WsusTrending: Corrupt trends file, backing up and resetting  - $($_.Exception.Message)"
         try {
-            $backupPath = "$path.bak"
+            $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+            $backupPath = "$path.corrupt.$timestamp"
             Copy-Item -Path $path -Destination $backupPath -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
         } catch {

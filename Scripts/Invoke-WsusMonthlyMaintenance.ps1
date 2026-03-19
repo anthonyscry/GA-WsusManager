@@ -892,7 +892,9 @@ if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
             $staleCount = 0
 
             if ($staleUpdates.Count -gt 0) {
-                $productPattern = '(?i)(' + (($toEnable | ForEach-Object { [regex]::Escape($_.Title) }) -join "|") + ')'
+                # Build word-boundary pattern from enabled product titles for exact matching
+                $enabledTitles = @($toEnable | ForEach-Object { [regex]::Escape($_.Title) })
+                $productPattern = '(?i)\b(' + ($enabledTitles -join "|") + ')\b'
                 foreach ($update in $staleUpdates) {
                     $updateProductString = $update.ProductTitles -join ","
                     if ($updateProductString -notmatch $productPattern) {

@@ -557,12 +557,13 @@ if ($sqlcmd) {
 
         # Add current logged-in user as sysadmin
         # Use [System.Security.Principal] to reliably get DOMAIN\USER even in workgroup
+        # Pass via sqlcmd -v variable to avoid string interpolation in SQL
         $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
         $currentUser = "$($identity.Name)"
         Write-Host "    Adding sysadmin for: $currentUser"
 
-        & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUser') CREATE LOGIN [$currentUser] FROM WINDOWS;" -b
-        & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser];" -b
+        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$(CurrentUser)') CREATE LOGIN [$(CurrentUser)] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$(CurrentUser)];" -b
 
         # Verify
         $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
