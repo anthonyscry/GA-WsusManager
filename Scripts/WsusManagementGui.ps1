@@ -2302,6 +2302,14 @@ function Show-MaintenanceDialog {
         $stack.Children.Add($prodNote)
     }
 
+    $prodSubNote = New-Object System.Windows.Controls.TextBlock
+    $prodSubNote.Text = "Note: Microsoft 365 Apps includes Office 2024 LTSC updates."
+    $prodSubNote.Foreground = $script:BrushText2
+    $prodSubNote.FontSize = 11
+    $prodSubNote.Margin = "0,4,0,0"
+    $prodSubNote.TextWrapping = "Wrap"
+    $stack.Children.Add($prodSubNote)
+
     # Spacer before Export Settings
     $spacer = New-Object System.Windows.Controls.TextBlock
     $spacer.Text = ""
