@@ -2209,33 +2209,31 @@ function Show-MaintenanceDialog {
     $stack.Margin = "20"
 
     # === TabControl with dark theme ===
-    $tabControl = New-Object System.Windows.Controls.TabControl
-    $tabControl.Background = $script:BrushBgDark
-    $tabControl.BorderBrush = $script:BrushBorder
-    $tabControl.Margin = "0,0,0,16"
-
-    # Dark theme style for tab headers
-    $tabStyle = New-Object System.Windows.Style([System.Windows.Controls.TabItem])
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::BackgroundProperty, $script:BrushBgCard)
-    $tabStyle.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::ForegroundProperty, $script:BrushText2)
-    $tabStyle.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::BorderBrushProperty, $script:BrushBorder)
-    $tabStyle.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::PaddingProperty, "16,8")
-    $tabStyle.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::FontSizeProperty, 13.0)
-    $tabStyle.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::FontWeightProperty, "SemiBold")
-    $tabStyle.Setters.Add($setter)
-    # Active tab (when selected)
-    $tabTrigger = New-Object System.Windows.Trigger([System.Windows.Controls.TabItem]::IsSelectedProperty, $true)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::BackgroundProperty, $script:BrushBgDark)
-    $tabTrigger.Setters.Add($setter)
-    $setter = New-Object System.Windows.Setter([System.Windows.Controls.Control]::ForegroundProperty, $script:BrushText1)
-    $tabTrigger.Setters.Add($setter)
-    $tabStyle.Triggers.Add($tabTrigger)
-    $tabControl.ItemContainerStyle = $tabStyle
+    # Build TabControl via XAML for reliable PS5.1 dark theme styling
+    $tabXaml = @'
+<TabControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            Background="#0D1117" BorderBrush="#30363D" BorderThickness="1" Margin="0,0,0,16">
+    <TabControl.Resources>
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="#21262D"/>
+            <Setter Property="Foreground" Value="#8B949E"/>
+            <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#0D1117"/>
+                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                    <Setter Property="BorderBrush" Value="#58A6FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </TabControl.Resources>
+</TabControl>
+'@
+    $tabControl = [System.Windows.Markup.XamlReader]::Parse($tabXaml)
 
     # --- Tab 1: Profile ---
     $tabProfile = New-Object System.Windows.Controls.TabItem
