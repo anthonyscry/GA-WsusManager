@@ -857,33 +857,32 @@ if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
         if ($allProducts.Count -eq 0) {
             Write-Log "No product categories available yet (first sync may still be running). Products will be configured on next sync."
         } else {
-            $enabledCount = 0
-            $disabledCount = 0
-
+            # Find matching products (case-insensitive substring match)
+            $toEnable = @()
             foreach ($prod in $allProducts) {
-                if ($prod.Title -in $SelectedProducts) {
-                    if (-not $prod.IsEnabled) {
-                        $prod.SetEnabled($true)
-                        $enabledCount++
-                    }
-                } else {
-                    if ($prod.IsEnabled) {
-                        $prod.SetEnabled($false)
-                        $disabledCount++
+                foreach ($sel in $SelectedProducts) {
+                    if ($prod.Title -like "*$sel*") {
+                        $toEnable += $prod
+                        break
                     }
                 }
             }
 
-            $wsus.Save()
+            # Build UpdateCategoryCollection and apply
+            $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
+            foreach ($p in $toEnable) { $coll.Add($p) }
+            $subscription.SetUpdateCategories($coll)
+            $subscription.Save()
 
-            # Re-apply OOBE suppression in case Save() resets it
+            # Re-apply OOBE suppression
             $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
             if (Test-Path $wsusRegSetup) {
                 Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
                 Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
             }
 
-            Write-Log "Products configured: $enabledCount enabled, $disabledCount disabled"
+            $enabledNames = ($toEnable | ForEach-Object { $_.Title }) -join ", "
+            Write-Log "Products enabled: $enabledNames"
 
             # Decline updates from non-selected products
             Write-Log "Cleaning up updates from non-selected products..."
@@ -893,10 +892,15 @@ if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
             $staleCount = 0
 
             if ($staleUpdates.Count -gt 0) {
-                $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+                $productPattern = '(?i)(' + (($toEnable | ForEach-Object { [regex]::Escape($_.Title) }) -join "|") + ')'
                 foreach ($update in $staleUpdates) {
                     $updateProductString = $update.ProductTitles -join ","
                     if ($updateProductString -notmatch $productPattern) {
+                        # Extra filter: decline Office 365 updates that are NOT Office 2024 LTSC
+                        if ($updateProductString -like "*Microsoft 365*" -and $update.Title -notlike "*LTSC*" -and $update.Title -notlike "*2024*") {
+                            try { $update.Decline() | Out-Null; $staleCount++ } catch {}
+                            continue
+                        }
                         try {
                             $update.Decline() | Out-Null
                             $staleCount++
@@ -1095,10 +1099,19 @@ if ($allUpdates.Count -gt 0) {
         
         # Additional filter: only approve updates from selected products (if specified)
         if ($SelectedProducts -and $SelectedProducts.Count -gt 0 -and $pendingUpdates.Count -gt 0) {
+            $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
             $pendingUpdates = @($pendingUpdates | Where-Object {
-                ($_.ProductTitles -join ",") -match '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+                ($_.ProductTitles -join ",") -match $productPattern
             })
-            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products"
+            # Extra filter: skip Office 365 updates that are NOT Office 2024 LTSC
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                $prodStr = $_.ProductTitles -join ","
+                if ($prodStr -like "*Microsoft 365*" -and $_.Title -notlike "*LTSC*" -and $_.Title -notlike "*2024*") {
+                    return $false
+                }
+                return $true
+            })
+            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products (Office 365 filtered to LTSC 2024 only)"
         }
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"

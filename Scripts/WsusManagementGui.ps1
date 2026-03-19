@@ -100,7 +100,7 @@ $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented — remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
-$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Office 2016", "Office 2024", "SQL Server 2022")
+$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps")
 
 function Write-Log { param([string]$Msg)
     try {
@@ -2266,9 +2266,22 @@ function Show-MaintenanceDialog {
     $prodTitle.Margin = "0,0,0,8"
     $stack.Children.Add($prodTitle)
 
-    $productNames = @("Windows 11", "Windows Server 2019", "Office 2016", "Office 2024", "SQL Server 2022")
-    $productCheckBoxes = @{}
+    # Dynamically read products from WSUS, fall back to saved defaults
+    $productNames = $script:SyncProducts
+    $productsFromWsus = $false
+    try {
+        Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
+        $wsusApi = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,8530)
+        if ($wsusApi) {
+            $wsusProducts = $wsusApi.GetSubscription().GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+            if ($wsusProducts.Count -gt 0) {
+                $productNames = @($wsusProducts | ForEach-Object { $_.Title }) | Sort-Object
+                $productsFromWsus = $true
+            }
+        }
+    } catch { }
 
+    $productCheckBoxes = @{}
     foreach ($prod in $productNames) {
         $cb = New-Object System.Windows.Controls.CheckBox
         $cb.Content = $prod
@@ -2277,6 +2290,16 @@ function Show-MaintenanceDialog {
         $cb.IsChecked = ($prod -in $script:SyncProducts)
         $productCheckBoxes[$prod] = $cb
         $stack.Children.Add($cb)
+    }
+
+    if (-not $productsFromWsus) {
+        $prodNote = New-Object System.Windows.Controls.TextBlock
+        $prodNote.Text = "Note: Product list will mirror WSUS after first sync completes."
+        $prodNote.Foreground = $script:BrushText2
+        $prodNote.FontSize = 11
+        $prodNote.Margin = "0,4,0,0"
+        $prodNote.TextWrapping = "Wrap"
+        $stack.Children.Add($prodNote)
     }
 
     # Spacer before Export Settings
