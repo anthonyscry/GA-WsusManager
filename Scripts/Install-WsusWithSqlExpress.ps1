@@ -748,6 +748,21 @@ Start-Sleep -Seconds 5
 Write-Host "    WSUS service restarted."
 
 # =====================================================================
+# 12a. CONFIGURE UPDATE LANGUAGE (English only)
+# =====================================================================
+Write-Host "[+] Configuring update language to English..."
+try {
+    Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
+    $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
+    $config = $wsus.GetConfiguration()
+    $config.SetUpdateLanguages(@("en"))
+    $config.Save()
+    Write-Host "    Language set to English."
+} catch {
+    Write-Host "    Warning: Failed to set language: $($_.Exception.Message)"
+}
+
+# =====================================================================
 # 12b. CONFIGURE UPSTREAM/DOWNSTREAM SERVER ROLE
 # =====================================================================
 if ($UpstreamServerHostname) {
@@ -777,8 +792,7 @@ if ($UpstreamServerHostname) {
     }
 } else {
     Write-Host "[+] Server role: Upstream (syncs from Microsoft Update)"
-    # SyncFromMicrosoftUpdate is already set to 0 in registry flags above.
-    # The first sync from the app/console will connect to Microsoft Update by default.
+    # SyncFromMicrosoftUpdate=1 is set in registry flags above (step 12).
 }
 
 # =====================================================================
