@@ -2214,11 +2214,24 @@ function Show-MaintenanceDialog {
     $tabControl.BorderBrush = $script:BrushBorder
     $tabControl.Margin = "0,0,0,16"
 
+    # Dark theme style for tab headers
+    $tabStyle = [System.Windows.Style]::new([System.Windows.Controls.TabItem]::new().GetType())
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::BackgroundProperty), -Value $script:BrushBgCard))
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::ForegroundProperty), -Value $script:BrushText2))
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::BorderBrushProperty), -Value $script:BrushBorder))
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::PaddingProperty), -Value "16,8"))
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::FontSizeProperty), -Value 13.0))
+    $tabStyle.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::FontWeightProperty), -Value "SemiBold"))
+    # Active tab (when selected)
+    $tabTrigger = [System.Windows.Trigger]::new([System.Windows.Controls.SelectedItem]::new().GetType().GetProperty("IsSelected").Property, $true)
+    $tabTrigger.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::BackgroundProperty), -Value $script:BrushBgDark))
+    $tabTrigger.Setters.Add((New-Object System.Windows.Setter -PropertyList @([System.Windows.Controls.Control]::ForegroundProperty), -Value $script:BrushText1))
+    $tabStyle.Triggers.Add($tabTrigger)
+    $tabControl.ItemContainerStyle = $tabStyle
+
     # --- Tab 1: Profile ---
     $tabProfile = New-Object System.Windows.Controls.TabItem
     $tabProfile.Header = "Profile"
-    $tabProfile.Background = $script:BrushBgCard
-    $tabProfile.Foreground = $script:BrushText2
 
     $profileStack = New-Object System.Windows.Controls.StackPanel
     $profileStack.Margin = "12"
@@ -2277,8 +2290,6 @@ function Show-MaintenanceDialog {
     # --- Tab 2: Products ---
     $tabProducts = New-Object System.Windows.Controls.TabItem
     $tabProducts.Header = "Products"
-    $tabProducts.Background = $script:BrushBgCard
-    $tabProducts.Foreground = $script:BrushText2
 
     $productsStack = New-Object System.Windows.Controls.StackPanel
     $productsStack.Margin = "12"
@@ -2350,8 +2361,6 @@ function Show-MaintenanceDialog {
     # --- Tab 3: Export ---
     $tabExport = New-Object System.Windows.Controls.TabItem
     $tabExport.Header = "Export"
-    $tabExport.Background = $script:BrushBgCard
-    $tabExport.Foreground = $script:BrushText2
 
     $exportStack = New-Object System.Windows.Controls.StackPanel
     $exportStack.Margin = "12"
@@ -3373,8 +3382,9 @@ function Invoke-LogOperation {
             $Title = "$Title ($($opts.Profile))"
             $maintCmd = "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
             if ($opts.SelectedProducts -and $opts.SelectedProducts.Count -gt 0) {
-                $productsCsv = $opts.SelectedProducts -join "','"
-                $maintCmd += " -SelectedProducts '$productsCsv'"
+                foreach ($prod in $opts.SelectedProducts) {
+                    $maintCmd += " -SelectedProducts '$prod'"
+                }
             }
             if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
