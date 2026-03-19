@@ -2215,9 +2215,10 @@ function Show-MaintenanceDialog {
             Background="#0D1117" BorderBrush="#30363D" BorderThickness="1" Margin="0,0,0,16">
     <TabControl.Resources>
         <Style TargetType="TabItem">
-            <Setter Property="Background" Value="#21262D"/>
-            <Setter Property="Foreground" Value="#8B949E"/>
+            <Setter Property="Background" Value="#161B22"/>
+            <Setter Property="Foreground" Value="#6E7681"/>
             <Setter Property="BorderBrush" Value="#30363D"/>
+            <Setter Property="BorderThickness" Value="1,1,1,0"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -2225,7 +2226,7 @@ function Show-MaintenanceDialog {
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="#0D1117"/>
-                    <Setter Property="Foreground" Value="#E6EDF3"/>
+                    <Setter Property="Foreground" Value="#58A6FF"/>
                     <Setter Property="BorderBrush" Value="#58A6FF"/>
                 </Trigger>
             </Style.Triggers>
@@ -2317,7 +2318,7 @@ function Show-MaintenanceDialog {
         if ($wsusApi) {
             $wsusProducts = $wsusApi.GetSubscription().GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
             if ($wsusProducts.Count -gt 0) {
-                $productNames = @($wsusProducts | ForEach-Object { $_.Title }) | Sort-Object
+                $productNames = @($wsusProducts | ForEach-Object { $_.Title } | Sort-Object -Unique)
                 $productsFromWsus = $true
             }
         }
