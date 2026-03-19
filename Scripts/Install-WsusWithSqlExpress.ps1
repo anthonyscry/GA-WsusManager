@@ -720,10 +720,11 @@ Set-ItemProperty -Path $wsusRegSetup -Name ContentDir -Value $WSUSContent -Force
 # Suppress the WSUS Configuration Wizard (OOBE)
 # These must be set AFTER postinstall completes, as postinstall may reset them.
 # OobeInitialized=1 + OobeComplete=1 tells the WSUS console the wizard has already run.
+# SyncFromMicrosoftUpdate=1 is REQUIRED for WSUS to actually sync with Microsoft.
 $setupFlags = @{
     OobeInitialized          = 1
     OobeComplete             = 1
-    SyncFromMicrosoftUpdate  = 0
+    SyncFromMicrosoftUpdate  = 1
     AllProductsEnabled       = 0
     AllClassificationsEnabled= 0
     AllLanguagesEnabled      = 0
