@@ -330,6 +330,9 @@ Required for database operations (Restore, Deep Cleanup, Maintenance).
 
 ## 14. Domain Controller Configuration
 
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
+
 Run on the Domain Controller, not the WSUS server.
 
 ### 14.1 GPO Deployment

@@ -406,7 +406,7 @@ The Health Check verifies:
    WsusManager.exe      # Main application
    Scripts/             # REQUIRED - operation scripts
    Modules/             # REQUIRED - PowerShell modules
-   DomainController/    # Optional - GPO scripts
+    DomainController/    # Optional - Air-gap GPO deployment scripts
    ```
 3. Run `WsusManager.exe` from this folder
 

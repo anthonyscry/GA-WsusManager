@@ -122,6 +122,9 @@ Installs WSUS with SQL Server Express from scratch.
 
 ### Create GPO
 
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
+
 Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Controller.
 
 **Steps:**
@@ -138,9 +141,6 @@ Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Contr
 ```powershell
 # On individual clients:
 gpupdate /force
-
-# From DC (all domain computers):
-Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force }
 
 # Verify on clients:
 gpresult /r | findstr WSUS

@@ -361,6 +361,9 @@ Monthly maintenance exports to the configured export path:
 ## Domain Controller Setup
 
 > **Warning:** Run on Domain Controller, NOT on WSUS server!
+>
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
 
 ### Prerequisites
 
@@ -413,7 +416,6 @@ Configures Windows Update client behavior via registry settings.
 | ConfigureDeadlineForQualityUpdates | 7 days | Quality updates must install within 7 days |
 | ConfigureDeadlineForFeatureUpdates | 7 days | Feature updates must install within 7 days |
 | ConfigureDeadlineGracePeriod | 0 days | No grace period after deadline |
-| ConfigureDeadlineNoAutoReboot | Disabled | Auto-reboot after update installation |
 | AlwaysAutoRebootAtScheduledTime | Enabled | Auto-restart warning time |
 
 #### 2. WSUS Inbound Allow (Firewall)
