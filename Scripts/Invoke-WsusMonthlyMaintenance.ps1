@@ -9,8 +9,7 @@
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
-    - Exports full backup + content to root export folder
-    - Creates differential archive copy in year/month subfolder
+    - Exports full backup + content to export folder
 
     Excludes "Upgrades", ARM64, and 25H2 updates from auto-approval.
 
@@ -36,14 +35,6 @@
 .PARAMETER ExportPath
     Root path for full exports. Full backup + complete content mirror goes here.
     Default: \\lab-hyperv\d\WSUS-Exports
-
-.PARAMETER DifferentialExportPath
-    Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive).
-    If not specified, defaults to ExportPath\Year\Month subfolder.
-
-.PARAMETER ExportDays
-    Number of days to include in differential export (files modified within this many days).
-    Default: 30 days.
 
 .PARAMETER SkipExport
     Skip the export step entirely.
@@ -101,14 +92,6 @@ param(
     # Root path for full exports (e.g., "\\server\share\WSUS-Full")
     # Full backup + complete content mirror goes here
     [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
-
-    # Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive)
-    # If not specified, defaults to ExportPath\Year\Month subfolder
-    [string]$DifferentialExportPath = "",
-
-    # Number of days to include in differential export (files modified within this many days)
-    # If not specified via command line, user will be prompted (default: 30)
-    [int]$ExportDays = 0,
 
     # Skip the export step entirely
     [switch]$SkipExport,
@@ -315,7 +298,6 @@ function Stop-Heartbeat {
 function Test-Prerequisites {
     param(
         [string]$ExportPath,
-        [string]$DifferentialExportPath,
         [bool]$SkipExport
     )
 
@@ -374,18 +356,6 @@ function Test-Prerequisites {
         } else {
             Write-Host "FAILED" -ForegroundColor Red
             $results.Warnings += "Cannot access export path: $ExportPath"
-        }
-    }
-
-    # Check 4b: Differential export path accessibility (if specified)
-    if (-not $SkipExport -and $DifferentialExportPath) {
-        Write-Host "  Differential Path " -NoNewline -ForegroundColor DarkGray
-        $diffAccessible = Test-ExportPathAccess -ExportPath $DifferentialExportPath
-        if ($diffAccessible) {
-            Write-Host "OK" -ForegroundColor Green
-        } else {
-            Write-Host "FAILED" -ForegroundColor Red
-            $results.Warnings += "Cannot access differential export path: $DifferentialExportPath"
         }
     }
 
@@ -491,17 +461,14 @@ function Set-ProfileSettings {
         Operations = @("All")
         SkipUltimateCleanup = $false
         SkipExport = $false
-        ExportDays = 30
     }
 
     switch ($ProfileName) {
         "Quick" {
             $settings.SkipUltimateCleanup = $true
-            $settings.ExportDays = 7
         }
         "Full" {
             $settings.SkipUltimateCleanup = $false
-            $settings.ExportDays = 30
         }
         "SyncOnly" {
             $settings.Operations = @("Sync")
@@ -530,8 +497,6 @@ function Show-OperationSummary {
         [bool]$SkipUltimateCleanup,
         [bool]$SkipExport,
         [string]$ExportPath,
-        [string]$DifferentialExportPath,
-        [int]$ExportDays,
         [bool]$Unattended
     )
 
@@ -553,23 +518,9 @@ function Show-OperationSummary {
     Write-Host "  Operations:   " -NoNewline -ForegroundColor DarkGray
     Write-Host ($flow -join " > ") -ForegroundColor White
 
-    if (-not $SkipExport -and ($ExportPath -or $DifferentialExportPath)) {
-        if ($ExportPath) {
-            Write-Host "  Full Export:  " -NoNewline -ForegroundColor DarkGray
-            Write-Host $ExportPath -ForegroundColor White
-        }
-        if ($DifferentialExportPath) {
-            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
-            Write-Host $DifferentialExportPath -ForegroundColor White
-        } elseif ($ExportPath) {
-            $year = (Get-Date).ToString("yyyy")
-            $month = (Get-Date).ToString("MMM")
-            $archivePath = [System.IO.Path]::Combine($ExportPath, $year, $month)
-            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
-            Write-Host "$archivePath (auto)" -ForegroundColor White
-        }
-        Write-Host "  Export Days:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "$ExportDays days" -ForegroundColor White
+    if (-not $SkipExport -and $ExportPath) {
+        Write-Host "  Export Path:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host $ExportPath -ForegroundColor White
     }
 
     Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
@@ -640,17 +591,9 @@ if ($MaintenanceProfile) {
     if (-not $PSBoundParameters.ContainsKey('SkipExport')) {
         $SkipExport = $profileSettings.SkipExport
     }
-    if ($ExportDays -eq 0) {
-        $ExportDays = $profileSettings.ExportDays
-    }
     if ($profileSettings.Operations[0] -ne "All") {
         $Operations = $profileSettings.Operations
     }
-}
-
-# Apply unattended defaults
-if ($Unattended) {
-    if ($ExportDays -eq 0) { $ExportDays = 30 }
 }
 
 # Setup logging using module function
@@ -670,11 +613,10 @@ Write-Status "Heads-up: some maintenance phases can take several minutes with mi
 
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
-    -SkipExport $SkipExport -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath `
-    -ExportDays $ExportDays -Unattended $Unattended
+    -SkipExport $SkipExport -ExportPath $ExportPath -Unattended $Unattended
 
 # === PRE-FLIGHT CHECKS ===
-$preflightResults = Test-Prerequisites -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath -SkipExport $SkipExport
+$preflightResults = Test-Prerequisites -ExportPath $ExportPath -SkipExport $SkipExport
 
 if (-not $preflightResults.Success) {
     Write-Status "Pre-flight checks failed!" -Type Error
@@ -1542,8 +1484,7 @@ if ($allUpdates.Count -eq 0) {
 Write-Host ""
 
 # === EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
-# Step 1: Full backup + content to root folder
-# Step 2: Differential copy to year/month archive folder
+# Full backup + content to export folder
 if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
     Write-Status "Starting export to network share..." -Type Phase
     Write-Log "Starting export to network share..."
@@ -1552,20 +1493,6 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
     Start-Heartbeat "Export running... this may take several minutes."
 
     try {
-        # Prompt for days if not specified via command line (skip in unattended mode)
-        if ($ExportDays -eq 0) {
-            if ($Unattended) {
-                $ExportDays = 30
-            } else {
-                Write-Host ""
-                Write-Host "Differential Export Configuration" -ForegroundColor Yellow
-                Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
-                $daysInput = Read-Host "Days"
-                $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
-            }
-        }
-        Write-Log "Differential export will include files modified within last $ExportDays days"
-
     Write-Log "Export path: $ExportPath"
 
     # Check if export path is accessible using improved test
@@ -1576,9 +1503,9 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         $exportPhase.Status = "Failed"
     } else {
         # =====================================================================
-        # STEP 1: Full backup + content to ROOT folder
+        # STEP 1: Copy database backup to export folder
         # =====================================================================
-        Write-Log "[1/4] Copying full database backup to root..."
+        Write-Log "[1/2] Copying database backup to export folder..."
 
         # If backup file doesn't exist or wasn't set, find the most recent backup
         if (-not $backupFile -or -not (Test-Path $backupFile)) {
@@ -1595,13 +1522,13 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
         if ($backupFile -and (Test-Path $backupFile)) {
             Copy-Item -Path $backupFile -Destination $ExportPath -Force
-            Write-Log "Database copied to root: $(Split-Path $backupFile -Leaf)"
+            Write-Log "Database copied: $(Split-Path $backupFile -Leaf)"
         } else {
             Write-Warning "No database backup found in C:\WSUS"
         }
 
-        # Full content sync to root (mirror mode)
-        Write-Log "[2/4] Syncing full content to root folder..."
+        # STEP 2: Sync content to export folder
+        Write-Log "[2/2] Syncing content to export folder..."
         $wsusContentSource = "C:\WSUS\WsusContent"
         $rootContentPath = Join-Path $ExportPath "WsusContent"
 
@@ -1612,7 +1539,7 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             }
             $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
-            # /E = include subdirs, /XO = exclude older (differential), /MT:16 = 16 threads
+            # /E = include subdirs, /XO = exclude older, /MT:16 = 16 threads
             $robocopyArgs = @(
                 $wsusContentSource,
                 $rootContentPath,
@@ -1624,17 +1551,17 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
             $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
             if ($robocopyResult.ExitCode -lt 8) {
-                Write-Log "Full content sync to root completed successfully"
+                Write-Log "Content sync completed successfully"
             } else {
                 Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
-                $MaintenanceResults.Warnings += "Root sync robocopy exit code: $($robocopyResult.ExitCode)"
+                $MaintenanceResults.Warnings += "Content sync robocopy exit code: $($robocopyResult.ExitCode)"
             }
 
-            # Show root export stats
+            # Show export stats
             if (Test-Path $rootContentPath) {
                 $rootFiles = Get-ChildItem -Path $rootContentPath -Recurse -File -ErrorAction SilentlyContinue
                 $rootSize = [math]::Round(($rootFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                Write-Log "Root content: $($rootFiles.Count) files ($rootSize GB)"
+                Write-Log "Exported content: $($rootFiles.Count) files ($rootSize GB)"
             }
         } else {
             Write-Warning "WsusContent folder not found: $wsusContentSource"
@@ -1644,7 +1571,7 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         $MaintenanceResults.ExportPath = $ExportPath
         $exportPhase.Status = "Completed"
         $exportPhase.Duration = "$exportDuration min"
-        Write-Log "Export complete: Root=$ExportPath, Archive=$archiveDestination"
+        Write-Log "Export complete: $ExportPath"
         Write-Status "Export completed ($exportDuration min)" -Type Success
     }
     } finally {

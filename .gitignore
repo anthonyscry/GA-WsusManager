@@ -54,6 +54,7 @@ package.ps1
 # Build artifacts
 /*.exe
 SQLDB/*.exe
+installers/*.exe
 /WsusManager-v*.zip
 /GA-WsusManager-v*.zip
 /dist/
@@ -80,3 +81,20 @@ node_modules/
 /playwright/.auth/
 test-logs/
 tmp/
+
+# AI tool state
+.claude-octopus/
+
+# AI planning artifacts
+docs/superpowers/
+
+# One-off dev/debug scripts
+fix_colors.py
+debug-flaui.ps1
+uia-debug.ps1
+run-debug.bat
+run-flaui-tests-interactive.ps1
+
+# Scratch/versioned GUI test iterations
+Tests/GuiTest-v*.ps1
+Tests/ExeTest.ps1

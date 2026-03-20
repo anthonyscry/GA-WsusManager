@@ -269,10 +269,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 ```powershell
 # Export with full parameters
-.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport" -CopyMode "Full"
-
-# Export differential (files from last N days)
-.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport" -CopyMode "Differential" -DaysOld 30
+.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport"
 
 # Import
 .\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\WsusExport" -DestinationPath "C:\WSUS"
@@ -283,7 +280,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | Command | Description |
 |---------|-------------|
 | `.\Invoke-WsusMonthlyMaintenance.ps1` | Interactive mode |
-| `.\Invoke-WsusMonthlyMaintenance.ps1 -Unattended -ExportDays 30` | Unattended mode (scheduled tasks) |
+| `.\Invoke-WsusMonthlyMaintenance.ps1 -Unattended` | Unattended mode (scheduled tasks) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Light` | Decline superseded, basic cleanup (15-30 min) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Standard` | Light + index rebuild, statistics (1-2 hours) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Deep` | Standard + obsolete removal, full optimization (2-4 hours) |
@@ -324,30 +321,21 @@ The Transfer dialog provides:
 - **Direction selector**: Export or Import
 - **Source folder browser**: Select source path
 - **Destination folder browser**: Select destination path
-- **Export mode** (Export only):
-  - Full copy (all files)
-  - Differential copy (files from last N days)
-  - Custom days option
 
 ### Export Folder Structure
 
-Monthly maintenance exports to two locations:
+Monthly maintenance exports to the configured export path:
 
 | Location | Contents | Purpose |
 |----------|----------|---------|
 | Root folder | SUSDB_YYYYMMDD.bak + WsusContent\ | Latest backup + full content mirror |
-| YYYY\Mon\ subfolder | SUSDB_YYYYMMDD.bak + WsusContent\ | Archive by year/month with differential content |
 
 **Example structure:**
 
 ```
 \\server\WSUS-Exports\
 ├── SUSDB_20260119.bak           (latest backup)
-├── WsusContent\                 (full mirror)
-└── 2026\
-    └── Jan\
-        ├── SUSDB_20260119.bak   (archived)
-        └── WsusContent\         (differential)
+└── WsusContent\                 (full mirror)
 ```
 
 ### Robocopy Commands
@@ -682,7 +670,7 @@ SESSION START: 2026-01-19 10:30:00
 |---------|-------------|
 | GUI Application | WPF-based dark theme interface with dashboard |
 | Automated Installation | One-click deployment of SQL Server Express 2022 + SSMS + WSUS |
-| Air-Gap Support | Full and differential content export/import for offline networks |
+| Air-Gap Support | Full content export/import for offline networks |
 | Database Management | Backup, restore, cleanup, and optimization |
 | Health Monitoring | Automated diagnostics and repair capabilities |
 | Scheduled Maintenance | GUI and CLI support for Windows Task Scheduler |

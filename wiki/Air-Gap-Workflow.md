@@ -127,34 +127,6 @@ E:\WSUS_Export_2026-01-11\
 
 **Time estimate:** 30 minutes to several hours (depending on content size)
 
-### Differential Export
-
-Use for regular update transfers.
-
-**When to use:**
-- Regular monthly updates
-- Incremental transfers
-- Limited USB capacity
-
-**Steps:**
-
-1. On the **Online** server, run **Monthly Maintenance**
-2. Click **Export to Media**
-3. Select **Differential Export**
-4. Enter days to include (default: 30)
-5. Choose destination
-6. Wait for export to complete
-
-**Export Contents:**
-```
-E:\WSUS_Export_Diff_2026-01-11\
-├── SUSDB_diff_20260111.bak      # Differential backup (smaller)
-├── WsusContent\                  # Only recent update files
-└── export_manifest.json          # Export metadata
-```
-
-**Time estimate:** 5-30 minutes
-
 ---
 
 ## Physical Transfer
@@ -213,18 +185,12 @@ Record the hash for verification on the air-gap side.
 
 ### Post-Import Steps
 
-#### For Full Imports
+#### Post-Import Steps
 
 1. Click **Restore Database**
 2. Confirm the warning
 3. Wait for restore to complete
 4. Restart WSUS services
-
-#### For Differential Imports
-
-1. Import completes automatically
-2. New updates are available
-3. No database restore needed
 
 ### Verification
 
@@ -278,8 +244,6 @@ Register-ScheduledTask -TaskName "WSUS Monthly Maintenance" -Action $action -Tri
 ### Export Best Practices
 
 - Run **Monthly Maintenance** before every export
-- Use **Differential** for routine updates
-- Use **Full** only when necessary
 - Verify export before disconnecting drive
 
 ### Import Best Practices
@@ -320,7 +284,6 @@ Maintain backups on both servers:
 │                                                    │             │
 │                                       ┌────────────▼───────────┐ │
 │                                       │   Export to Media      │ │
-│                                       │   (Full/Differential)  │ │
 │                                       └────────────┬───────────┘ │
 └────────────────────────────────────────────────────┼────────────┘
                                                      │
