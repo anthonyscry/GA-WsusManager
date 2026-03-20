@@ -253,7 +253,7 @@ function Get-SqlCmdPath {
 
 function Test-SafePath { param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
-    if ($Path -match '[`$;|&<>]') { return $false }
+    if ($Path -match '[`$;|&<>"%]') { return $false }
     # Accept both local paths (C:\) and UNC paths (\\server\share or \\server\share$)
     # UNC pattern: \\server\share where share can include $ for admin shares
     if ($Path -notmatch '^([A-Za-z]:\\|\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_.$-]+)') { return $false }
@@ -1305,7 +1305,7 @@ function Update-Dashboard {
 function Invoke-DashboardRefreshSafe {
     param([string]$Source = "Unknown")
 
-    if ($script:RefreshInProgress) { return }
+    if ($script:RefreshInProgress -or $script:OperationRunning) { return }
 
     $script:RefreshInProgress = $true
     try {
@@ -3230,8 +3230,12 @@ function Invoke-LogOperation {
             $Title = "$Title ($($opts.Profile))"
             $maintCmd = "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
             if ($opts.SelectedProducts -and $opts.SelectedProducts.Count -gt 0) {
-                $prodList = ($opts.SelectedProducts | ForEach-Object { "'$_'" }) -join ','
-                $maintCmd += " -SelectedProducts $prodList"
+                # Sanitize product names: reject any containing characters that could break command string
+                $safeProdNames = @($opts.SelectedProducts | Where-Object { $_ -match '^[A-Za-z0-9 .\-_()/,+]+$' })
+                if ($safeProdNames.Count -gt 0) {
+                    $prodList = ($safeProdNames | ForEach-Object { "'$($_ -replace "'","''")'" }) -join ','
+                    $maintCmd += " -SelectedProducts $prodList"
+                }
             }
             if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
@@ -3394,12 +3398,13 @@ while ($countdown -gt 0) {
 
             $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
 
-            $script:CurrentProcess.Start() | Out-Null
-
-            # Security: Clear password environment variables from parent process immediately after child starts
-            # The child process has already inherited these values, so we can safely remove them here
-            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
-            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+            try {
+                $script:CurrentProcess.Start() | Out-Null
+            } finally {
+                # Security: Clear password environment variables from parent process immediately
+                Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue
+                Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue
+            }
 
             # Give the process a moment to create its window
             Start-Sleep -Milliseconds 500
@@ -3614,12 +3619,13 @@ while ($countdown -gt 0) {
             $script:ErrorEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName ErrorDataReceived -Action $outputHandler -MessageData $eventData
             $script:ExitEventJob = Register-ObjectEvent -InputObject $script:CurrentProcess -EventName Exited -Action $exitHandler -MessageData $eventData
 
-            $script:CurrentProcess.Start() | Out-Null
-
-            # Security: Clear password environment variables from parent process immediately after child starts
-            # The child process has already inherited these values, so we can safely remove them here
-            if ($env:WSUS_INSTALL_SA_PASSWORD) { Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue }
-            if ($env:WSUS_TASK_PASSWORD) { Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue }
+            try {
+                $script:CurrentProcess.Start() | Out-Null
+            } finally {
+                # Security: Clear password environment variables from parent process immediately
+                Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue
+                Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue
+            }
 
             $script:CurrentProcess.BeginOutputReadLine()
             $script:CurrentProcess.BeginErrorReadLine()
