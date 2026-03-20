@@ -50,10 +50,6 @@
 - **Priority:** P2 | **Effort:** S | **Status:** ✅ Done
 - **Delivered:** `Modules/WsusTrending.psm1` (3 exported functions), linear regression, Critical <90 days / Warning <180 days
 
-### TODO: Air-Gap "Create USB Package" Workflow
-- **Priority:** P2 | **Effort:** M | **Status:** ✅ Done
-- **Delivered:** "Create USB Package" button in GUI, `Invoke-CreateUsbPackage` function, manifest with checksums
-
 ### TODO: Add Operation Timeouts to Prevent Hung Operations
 - **Priority:** P2 | **Effort:** S | **Status:** ✅ Done
 - **Delivered:** `Get-WsusOperationTimeout` in `WsusConfig.psm1` (Cleanup=60min, Sync=120min, Default=30min), watchdog in `WsusOperationRunner.psm1`

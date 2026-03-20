@@ -9,8 +9,7 @@
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
-    - Exports full backup + content to root export folder
-    - Creates differential archive copy in year/month subfolder
+    - Exports full backup + content to export folder
 
     Excludes "Upgrades", ARM64, and 25H2 updates from auto-approval.
 
@@ -36,14 +35,6 @@
 .PARAMETER ExportPath
     Root path for full exports. Full backup + complete content mirror goes here.
     Default: \\lab-hyperv\d\WSUS-Exports
-
-.PARAMETER DifferentialExportPath
-    Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive).
-    If not specified, defaults to ExportPath\Year\Month subfolder.
-
-.PARAMETER ExportDays
-    Number of days to include in differential export (files modified within this many days).
-    Default: 30 days.
 
 .PARAMETER SkipExport
     Skip the export step entirely.
@@ -102,14 +93,6 @@ param(
     # Full backup + complete content mirror goes here
     [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
 
-    # Separate path for differential exports (e.g., "E:\WSUS-Differential" for USB drive)
-    # If not specified, defaults to ExportPath\Year\Month subfolder
-    [string]$DifferentialExportPath = "",
-
-    # Number of days to include in differential export (files modified within this many days)
-    # If not specified via command line, user will be prompted (default: 30)
-    [int]$ExportDays = 0,
-
     # Skip the export step entirely
     [switch]$SkipExport,
 
@@ -120,7 +103,10 @@ param(
     [switch]$NoTranscript,
 
     # Force Windows Authentication (logged-in user) for all DB operations
-    [switch]$UseWindowsAuth
+    [switch]$UseWindowsAuth,
+
+    # Products to sync (enables only these in WSUS, disables others)
+    [string[]]$SelectedProducts = @()
 )
 
 # Import shared modules
@@ -219,7 +205,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "3.0.6"
+$ScriptVersion = "4.0.2"
 
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
@@ -312,7 +298,6 @@ function Stop-Heartbeat {
 function Test-Prerequisites {
     param(
         [string]$ExportPath,
-        [string]$DifferentialExportPath,
         [bool]$SkipExport
     )
 
@@ -371,18 +356,6 @@ function Test-Prerequisites {
         } else {
             Write-Host "FAILED" -ForegroundColor Red
             $results.Warnings += "Cannot access export path: $ExportPath"
-        }
-    }
-
-    # Check 4b: Differential export path accessibility (if specified)
-    if (-not $SkipExport -and $DifferentialExportPath) {
-        Write-Host "  Differential Path " -NoNewline -ForegroundColor DarkGray
-        $diffAccessible = Test-ExportPathAccess -ExportPath $DifferentialExportPath
-        if ($diffAccessible) {
-            Write-Host "OK" -ForegroundColor Green
-        } else {
-            Write-Host "FAILED" -ForegroundColor Red
-            $results.Warnings += "Cannot access differential export path: $DifferentialExportPath"
         }
     }
 
@@ -488,17 +461,14 @@ function Set-ProfileSettings {
         Operations = @("All")
         SkipUltimateCleanup = $false
         SkipExport = $false
-        ExportDays = 30
     }
 
     switch ($ProfileName) {
         "Quick" {
             $settings.SkipUltimateCleanup = $true
-            $settings.ExportDays = 7
         }
         "Full" {
             $settings.SkipUltimateCleanup = $false
-            $settings.ExportDays = 30
         }
         "SyncOnly" {
             $settings.Operations = @("Sync")
@@ -527,8 +497,6 @@ function Show-OperationSummary {
         [bool]$SkipUltimateCleanup,
         [bool]$SkipExport,
         [string]$ExportPath,
-        [string]$DifferentialExportPath,
-        [int]$ExportDays,
         [bool]$Unattended
     )
 
@@ -550,23 +518,9 @@ function Show-OperationSummary {
     Write-Host "  Operations:   " -NoNewline -ForegroundColor DarkGray
     Write-Host ($flow -join " > ") -ForegroundColor White
 
-    if (-not $SkipExport -and ($ExportPath -or $DifferentialExportPath)) {
-        if ($ExportPath) {
-            Write-Host "  Full Export:  " -NoNewline -ForegroundColor DarkGray
-            Write-Host $ExportPath -ForegroundColor White
-        }
-        if ($DifferentialExportPath) {
-            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
-            Write-Host $DifferentialExportPath -ForegroundColor White
-        } elseif ($ExportPath) {
-            $year = (Get-Date).ToString("yyyy")
-            $month = (Get-Date).ToString("MMM")
-            $archivePath = [System.IO.Path]::Combine($ExportPath, $year, $month)
-            Write-Host "  Differential: " -NoNewline -ForegroundColor DarkGray
-            Write-Host "$archivePath (auto)" -ForegroundColor White
-        }
-        Write-Host "  Export Days:  " -NoNewline -ForegroundColor DarkGray
-        Write-Host "$ExportDays days" -ForegroundColor White
+    if (-not $SkipExport -and $ExportPath) {
+        Write-Host "  Export Path:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host $ExportPath -ForegroundColor White
     }
 
     Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
@@ -637,17 +591,9 @@ if ($MaintenanceProfile) {
     if (-not $PSBoundParameters.ContainsKey('SkipExport')) {
         $SkipExport = $profileSettings.SkipExport
     }
-    if ($ExportDays -eq 0) {
-        $ExportDays = $profileSettings.ExportDays
-    }
     if ($profileSettings.Operations[0] -ne "All") {
         $Operations = $profileSettings.Operations
     }
-}
-
-# Apply unattended defaults
-if ($Unattended) {
-    if ($ExportDays -eq 0) { $ExportDays = 30 }
 }
 
 # Setup logging using module function
@@ -667,11 +613,10 @@ Write-Status "Heads-up: some maintenance phases can take several minutes with mi
 
 # === SHOW OPERATION SUMMARY ===
 Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
-    -SkipExport $SkipExport -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath `
-    -ExportDays $ExportDays -Unattended $Unattended
+    -SkipExport $SkipExport -ExportPath $ExportPath -Unattended $Unattended
 
 # === PRE-FLIGHT CHECKS ===
-$preflightResults = Test-Prerequisites -ExportPath $ExportPath -DifferentialExportPath $DifferentialExportPath -SkipExport $SkipExport
+$preflightResults = Test-Prerequisites -ExportPath $ExportPath -SkipExport $SkipExport
 
 if (-not $preflightResults.Success) {
     Write-Status "Pre-flight checks failed!" -Type Error
@@ -845,6 +790,78 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
     $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
 }
 
+# === CONFIGURE PRODUCTS (after sync, when categories are available) ===
+if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
+    Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
+    try {
+        $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
+
+        if ($allProducts.Count -eq 0) {
+            Write-Log "No product categories available yet (first sync may still be running). Products will be configured on next sync."
+        } else {
+            # Find matching products (case-insensitive substring match)
+            $toEnable = @()
+            foreach ($prod in $allProducts) {
+                foreach ($sel in $SelectedProducts) {
+                    if ($prod.Title -like "*$sel*") {
+                        $toEnable += $prod
+                        break
+                    }
+                }
+            }
+
+            # Build UpdateCategoryCollection and apply
+            $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
+            foreach ($p in $toEnable) { $coll.Add($p) }
+            $subscription.SetUpdateCategories($coll)
+            $subscription.Save()
+
+            # Re-apply OOBE suppression
+            $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+            if (Test-Path $wsusRegSetup) {
+                Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
+                Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
+            }
+
+            $enabledNames = ($toEnable | ForEach-Object { $_.Title }) -join ", "
+            Write-Log "Products enabled: $enabledNames"
+
+            # Decline updates from non-selected products
+            Write-Log "Cleaning up updates from non-selected products..."
+            $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+            $cleanupScope.IncludedInstallationStates = [Microsoft.UpdateServices.Administration.UpdateInstallationStates]::All
+            $staleUpdates = $wsus.GetUpdates($cleanupScope) | Where-Object { -not $_.IsDeclined }
+            $staleCount = 0
+
+            if ($staleUpdates.Count -gt 0) {
+                # Build word-boundary pattern from enabled product titles for exact matching
+                $enabledTitles = @($toEnable | ForEach-Object { [regex]::Escape($_.Title) })
+                $productPattern = '(?i)\b(' + ($enabledTitles -join "|") + ')\b'
+                foreach ($update in $staleUpdates) {
+                    $updateProductString = $update.ProductTitles -join ","
+                    if ($updateProductString -notmatch $productPattern) {
+                        # Extra filter: decline Office 365 updates that are NOT Office 2024 LTSC
+                        if ($updateProductString -like "*Microsoft 365*" -and $update.Title -notlike "*LTSC*" -and $update.Title -notlike "*2024*") {
+                            try { $update.Decline() | Out-Null; $staleCount++ } catch {}
+                            continue
+                        }
+                        try {
+                            $update.Decline() | Out-Null
+                            $staleCount++
+                        } catch {
+                            # Ignore individual decline failures
+                        }
+                    }
+                }
+            }
+            Write-Log "Declined $staleCount updates from non-selected products"
+        }
+    } catch {
+        Write-Warning "Failed to configure products: $($_.Exception.Message)"
+        Write-Log "WARNING: Product configuration failed"
+    }
+}
+
 # === CONFIGURATION CHECK ===
 Write-Log "Checking configuration..."
 
@@ -911,6 +928,7 @@ $supersededCount = 0
 $oldCount = 0
 $arm64Count = 0
 $h25Count = 0
+$legacyBuildCount = 0
 $approvedCount = 0
 
 if ($allUpdates.Count -gt 0) {
@@ -923,8 +941,9 @@ if ($allUpdates.Count -gt 0) {
     $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.CreationDate -lt $cutoff })
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
+    $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds (21H2/22H2/23H2)=$($legacyBuildUpdates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -981,7 +1000,18 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count"
+    if ($legacyBuildUpdates.Count -gt 0) {
+        $legacyBuildUpdates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $legacyBuildCount++
+            } catch {
+                Write-Warning "Failed to decline legacy build update: $($_.Title)"
+            }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -999,6 +1029,7 @@ if ($allUpdates.Count -gt 0) {
             $_.Title -notlike "*Beta*" -and
             $_.Title -notmatch '(?i)\bARM64\b' -and
             $_.Title -notmatch '(?i)\b25H2\b' -and
+            $_.Title -notmatch '(?i)\b(21H2|22H2|23H2)\b' -and
             (
                 $_.UpdateClassificationTitle -eq "Critical Updates" -or
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
@@ -1010,9 +1041,26 @@ if ($allUpdates.Count -gt 0) {
             )
         })
         
+        # Additional filter: only approve updates from selected products (if specified)
+        if ($SelectedProducts -and $SelectedProducts.Count -gt 0 -and $pendingUpdates.Count -gt 0) {
+            $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                ($_.ProductTitles -join ",") -match $productPattern
+            })
+            # Extra filter: skip Office 365 updates that are NOT Office 2024 LTSC
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                $prodStr = $_.ProductTitles -join ","
+                if ($prodStr -like "*Microsoft 365*" -and $_.Title -notlike "*LTSC*" -and $_.Title -notlike "*2024*") {
+                    return $false
+                }
+                return $true
+            })
+            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products (Office 365 filtered to LTSC 2024 only)"
+        }
+        
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
         Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
-        Write-Log "  Excluded: Upgrades, ARM64, 25H2, Preview/Beta updates"
+        Write-Log "  Excluded: Upgrades, ARM64, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
             # Safety check - don't auto-approve more than 200 updates
@@ -1436,8 +1484,7 @@ if ($allUpdates.Count -eq 0) {
 Write-Host ""
 
 # === EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
-# Step 1: Full backup + content to root folder
-# Step 2: Differential copy to year/month archive folder
+# Full backup + content to export folder
 if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
     Write-Status "Starting export to network share..." -Type Phase
     Write-Log "Starting export to network share..."
@@ -1446,34 +1493,7 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
     Start-Heartbeat "Export running... this may take several minutes."
 
     try {
-        # Prompt for days if not specified via command line (skip in unattended mode)
-        if ($ExportDays -eq 0) {
-            if ($Unattended) {
-                $ExportDays = 30
-            } else {
-                Write-Host ""
-                Write-Host "Differential Export Configuration" -ForegroundColor Yellow
-                Write-Host "Export files modified within how many days? (default: 30)" -ForegroundColor Cyan
-                $daysInput = Read-Host "Days"
-                $ExportDays = if ($daysInput -match '^\d+$') { [int]$daysInput } else { 30 }
-            }
-        }
-        Write-Log "Differential export will include files modified within last $ExportDays days"
-
-    # Determine differential export destination
-    # If DifferentialExportPath is specified, use it directly
-    # Otherwise, create year/month structure under ExportPath
-    $year = (Get-Date).ToString("yyyy")
-    $month = (Get-Date).ToString("MMM")
-    if ($DifferentialExportPath) {
-        $archiveDestination = $DifferentialExportPath
-        Write-Log "Using separate differential export path: $DifferentialExportPath"
-    } else {
-        $archiveDestination = [System.IO.Path]::Combine($ExportPath, $year, $month)
-    }
-
-    Write-Log "Root export path: $ExportPath"
-    Write-Log "Differential path: $archiveDestination"
+    Write-Log "Export path: $ExportPath"
 
     # Check if export path is accessible using improved test
     if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
@@ -1483,9 +1503,9 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         $exportPhase.Status = "Failed"
     } else {
         # =====================================================================
-        # STEP 1: Full backup + content to ROOT folder
+        # STEP 1: Copy database backup to export folder
         # =====================================================================
-        Write-Log "[1/4] Copying full database backup to root..."
+        Write-Log "[1/2] Copying database backup to export folder..."
 
         # If backup file doesn't exist or wasn't set, find the most recent backup
         if (-not $backupFile -or -not (Test-Path $backupFile)) {
@@ -1502,13 +1522,13 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
         if ($backupFile -and (Test-Path $backupFile)) {
             Copy-Item -Path $backupFile -Destination $ExportPath -Force
-            Write-Log "Database copied to root: $(Split-Path $backupFile -Leaf)"
+            Write-Log "Database copied: $(Split-Path $backupFile -Leaf)"
         } else {
             Write-Warning "No database backup found in C:\WSUS"
         }
 
-        # Full content sync to root (mirror mode)
-        Write-Log "[2/4] Syncing full content to root folder..."
+        # STEP 2: Sync content to export folder
+        Write-Log "[2/2] Syncing content to export folder..."
         $wsusContentSource = "C:\WSUS\WsusContent"
         $rootContentPath = Join-Path $ExportPath "WsusContent"
 
@@ -1519,7 +1539,7 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             }
             $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
-            # /E = include subdirs, /XO = exclude older (differential), /MT:16 = 16 threads
+            # /E = include subdirs, /XO = exclude older, /MT:16 = 16 threads
             $robocopyArgs = @(
                 $wsusContentSource,
                 $rootContentPath,
@@ -1531,80 +1551,27 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
             $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
             if ($robocopyResult.ExitCode -lt 8) {
-                Write-Log "Full content sync to root completed successfully"
+                Write-Log "Content sync completed successfully"
             } else {
                 Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
-                $MaintenanceResults.Warnings += "Root sync robocopy exit code: $($robocopyResult.ExitCode)"
+                $MaintenanceResults.Warnings += "Content sync robocopy exit code: $($robocopyResult.ExitCode)"
             }
 
-            # Show root export stats
+            # Show export stats
             if (Test-Path $rootContentPath) {
                 $rootFiles = Get-ChildItem -Path $rootContentPath -Recurse -File -ErrorAction SilentlyContinue
                 $rootSize = [math]::Round(($rootFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                Write-Log "Root content: $($rootFiles.Count) files ($rootSize GB)"
+                Write-Log "Exported content: $($rootFiles.Count) files ($rootSize GB)"
             }
         } else {
             Write-Warning "WsusContent folder not found: $wsusContentSource"
         }
 
-        # =====================================================================
-        # STEP 2: Differential copy to ARCHIVE folder (year/month)
-        # =====================================================================
-        Write-Log "[3/4] Creating archive directory..."
-        if (-not (Test-Path $archiveDestination)) {
-            New-Item -Path $archiveDestination -ItemType Directory -Force | Out-Null
-            Write-Log "Created archive directory: $archiveDestination"
-        }
-
-        # Copy database backup to archive
-        Write-Log "[4/4] Copying differential to archive ($year/$month)..."
-        if ($backupFile -and (Test-Path $backupFile)) {
-            Copy-Item -Path $backupFile -Destination $archiveDestination -Force
-            Write-Log "Database copied to archive: $(Split-Path $backupFile -Leaf)"
-        } else {
-            Write-Warning "No database backup to copy to archive"
-        }
-
-        # Differential copy of content to archive using robocopy with MAXAGE
-        $archiveContentPath = Join-Path $archiveDestination "WsusContent"
-
-        if (Test-Path $wsusContentSource) {
-            $robocopyLogArchive = "$robocopyLogDir\Export_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-
-            # /E = include subdirs, /MAXAGE:N = only files modified within N days
-            # /XO = exclude older files (differential), /MT:16 = 16 threads
-            $robocopyArgs = @(
-                $wsusContentSource,
-                $archiveContentPath,
-                "/E", "/MAXAGE:$ExportDays", "/XO", "/MT:16", "/R:2", "/W:5",
-                "/XF", "*.bak", "*.log",
-                "/XD", "Logs", "SQLDB", "Backup",
-                "/LOG:$robocopyLogArchive", "/TEE", "/NP", "/NDL"
-            )
-
-            $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-            if ($robocopyResult.ExitCode -lt 8) {
-                Write-Log "Differential archive export completed successfully"
-            } else {
-                Write-Warning "Archive robocopy exit code: $($robocopyResult.ExitCode)"
-                $MaintenanceResults.Warnings += "Archive robocopy exit code: $($robocopyResult.ExitCode)"
-            }
-
-            # Show archive export stats
-            if (Test-Path $archiveContentPath) {
-                $exportedFiles = Get-ChildItem -Path $archiveContentPath -Recurse -File -ErrorAction SilentlyContinue
-                $exportedSize = [math]::Round(($exportedFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                Write-Log "Archive content: $($exportedFiles.Count) files ($exportedSize GB)"
-                $MaintenanceResults.ExportedFiles = $exportedFiles.Count
-                $MaintenanceResults.ExportSize = $exportedSize
-            }
-        }
-
         $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
-        $MaintenanceResults.ExportPath = "$ExportPath (root) + $archiveDestination (archive)"
+        $MaintenanceResults.ExportPath = $ExportPath
         $exportPhase.Status = "Completed"
         $exportPhase.Duration = "$exportDuration min"
-        Write-Log "Export complete: Root=$ExportPath, Archive=$archiveDestination"
+        Write-Log "Export complete: $ExportPath"
         Write-Status "Export completed ($exportDuration min)" -Type Success
     }
     } finally {

@@ -1,7 +1,7 @@
 # WSUS PowerShell Modules
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-03-18
 **Module Count:** 16 modules
 
 This directory contains shared PowerShell modules used by the WSUS Manager application and CLI scripts to eliminate code duplication and improve maintainability.
@@ -11,10 +11,10 @@ This directory contains shared PowerShell modules used by the WSUS Manager appli
 The WSUS Manager uses a modular architecture where common functionality has been extracted into reusable modules. This provides:
 - **Code Reusability**: Functions can be imported into any script or used interactively
 - **Maintainability**: Fix bugs once in the module rather than in multiple scripts
-- **Testability**: 323 Pester unit tests across all modules
+- **Testability**: 490+ Pester unit tests across 18 test files
 - **Documentation**: Centralized, standardized documentation
 
-## Available Modules (11 Total)
+## Available Modules (16 Total)
 
 ### WsusUtilities.psm1
 **Common utility functions**
@@ -304,6 +304,56 @@ if (Test-AsyncComplete -AsyncHandle $handle) {
 Close-AsyncRunspacePool
 ```
 
+### WsusDialogs.psm1 *(v4.0)*
+**Dialog factory for WPF GUI**
+
+Provides:
+- Window shell factory (`New-WsusDialog`) with ESC-close, owner, dark theme
+- Folder browser panel (`New-WsusFolderBrowser`) with DockPanel + TextBox + Browse button
+- Styled UI helpers (`New-WsusDialogLabel`, `New-WsusDialogButton`, `New-WsusDialogTextBox`)
+
+Eliminates 6 copy-pasted dialog boilerplate patterns across the GUI.
+
+### WsusOperationRunner.psm1 *(v4.0)*
+**Unified operation lifecycle**
+
+Provides:
+- Operation start/stop/complete (`Start-WsusOperation`, `Stop-WsusOperation`, `Complete-WsusOperation`)
+- Script path resolution (`Find-WsusScript`)
+- Timeout watchdog per operation type
+- Terminal and Embedded mode support
+
+Replaces ~200 lines of duplicated operation execution logic.
+
+### WsusHistory.psm1 *(v4.0)*
+**Operation history tracking**
+
+Provides:
+- Write history (`Write-WsusOperationHistory`)
+- Read history (`Get-WsusOperationHistory`)
+- Clear history (`Clear-WsusOperationHistory`)
+
+JSON storage at `%APPDATA%\WsusManager\history.json`, trimmed to 100 entries, with file-lock retry.
+
+### WsusNotification.psm1 *(v4.0)*
+**Completion notifications**
+
+Provides:
+- Toast/balloon notifications (`Show-WsusNotification`)
+- System tray icon management (`New-WsusNotificationIcon`, `Remove-WsusNotificationIcon`)
+
+3-tier fallback: Windows 10 toast → balloon tip → log-only. Configurable in Settings.
+
+### WsusTrending.psm1 *(v4.0)*
+**Database size trending**
+
+Provides:
+- Trend snapshot recording (`Add-WsusTrendSnapshot`)
+- Trend analysis with linear regression (`Get-WsusTrendSummary`)
+- Trend data management (`Clear-WsusTrendData`)
+
+Estimates days-until-full based on 30-day trend. Alerts at <90 days (Critical) or <180 days (Warning) to the 10GB SQL Express limit.
+
 ## Scripts That Use These Modules
 
 The following scripts use these modules:
@@ -345,7 +395,7 @@ AsyncHelpers.psm1
 1. **Reduced Code Duplication**: Common functionality shared across all scripts
 2. **Easier Maintenance**: Fix bugs once in the module rather than in multiple scripts
 3. **Consistency**: Standardized behavior across all scripts
-4. **Testability**: 323 Pester unit tests across 10 test files
+4. **Testability**: 490+ Pester unit tests across 18 test files
 5. **Reusability**: Functions can be imported into any script or used interactively
 6. **Documentation**: Centralized documentation with comment-based help
 
@@ -363,10 +413,15 @@ When extending these modules:
 
 ## Version History
 
+- **v2.0.0** (2026-03-18): v4.0 module expansion
+  - Added 5 new modules: WsusDialogs, WsusOperationRunner, WsusHistory, WsusNotification, WsusTrending
+  - 490+ Pester unit tests across 18 test files
+  - Documented all 16 modules
+
 - **v1.1.0** (2026-01-14): Documentation update and module expansion
   - Updated all module documentation
   - Added comprehensive examples
-  - Documented all 11 modules
+  - Documented all 11 original modules
   - Updated dependency diagram
 
 - **v1.0.0** (2026-01-09): Initial module extraction from consolidated scripts

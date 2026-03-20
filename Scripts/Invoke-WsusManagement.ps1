@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Invoke-WsusManagement.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 3.8.3
+Version: 4.0.2
 Date: 2026-01-10
 ===============================================================================
 
@@ -110,20 +110,13 @@ param(
     [Parameter(ParameterSetName = 'Import')]
     [string]$DestinationPath,
 
-    [Parameter(ParameterSetName = 'Export')]
-    [ValidateSet('Full', 'Differential')]
-    [string]$CopyMode = "Full",
-
-    [Parameter(ParameterSetName = 'Export')]
-    [int]$DaysOld = 30,
-
     # Non-interactive mode (skip prompts, fail on missing required paths)
     [Parameter(ParameterSetName = 'Export')]
     [Parameter(ParameterSetName = 'Import')]
     [switch]$NonInteractive,
 
     # Common
-    [string]$ExportRoot = "\\lab-hyperv\d\WSUS-Exports",
+    [string]$ExportRoot = '\\lab-hyperv\d\WSUS-Exports',
     [string]$ContentPath = "C:\WSUS",
     [string]$SqlInstance = ".\SQLEXPRESS"
 )
@@ -148,7 +141,7 @@ $sessionMarker = @"
 
 ================================================================================
 SESSION START: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-================================================================================
+ ================================================================================
 "@
 Add-Content -Path $script:LogFilePath -Value $sessionMarker -ErrorAction SilentlyContinue
 
@@ -283,7 +276,7 @@ function Test-ValidPath {
 
     # Must start with valid drive letter or UNC path
     if ($Path -notmatch '^[A-Za-z]:\\' -and $Path -notmatch '^\\\\[^\\]+\\') {
-        $result.Message = "Path must be a valid Windows path (e.g., C:\folder or \\server\share)"
+        $result.Message = 'Path must be a valid Windows path (e.g., C:\folder or \\server\share)'
         return $result
     }
 
@@ -297,7 +290,7 @@ function Test-ValidPath {
         if ($PathType -ne 'Any') {
             if (-not (Test-Path $Path -PathType $PathType)) {
                 $typeDesc = if ($PathType -eq 'Container') { 'directory' } else { 'file' }
-                $result.Message = "Path is not a $typeDesc`: $Path"
+                $result.Message = "Path is not a $typeDesc': $Path"
                 return $result
             }
         }
@@ -489,13 +482,26 @@ function Invoke-WsusRestore {
     $wsusutil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
     if (Test-Path $wsusutil) {
         & $wsusutil postinstall SQL_INSTANCE_NAME="$SqlInstance" CONTENT_DIR="$ContentPath" 2>$null
-        Write-Log "Running WSUS reset (15-30 minutes)..." "Yellow"
+    }
+
+    # Content reset -- must stop WSUS before resetting so the service picks up
+    # the re-verification flags on startup (matches standalone Reset behavior)
+    if (Test-Path $wsusutil) {
+        Write-Log "Stopping WSUS for content reset..." "Yellow"
+        Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
         & $wsusutil reset 2>$null
+        Write-Log "Starting WSUS..." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    } else {
+        Write-Log "wsusutil.exe not found - skipping content reset. Start WSUS manually." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
     }
 
     Write-Banner "RESTORE COMPLETE"
     Write-Log "[OK] Database restored" "Green"
-    Write-Log "[OK] Services started" "Green"
+    Write-Log "[OK] Content reset flagged -- WSUS will re-verify and re-download missing files" "Green"
 }
 
 # ============================================================================
@@ -541,17 +547,18 @@ function Copy-ToDestination {
         foreach ($bak in $bakFiles) {
             $destBakPath = Join-Path $Destination $bak.Name
             Copy-Item -Path $bak.FullName -Destination $destBakPath -Force
-            Write-Host "  Copied: $($bak.Name) ($(Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2))))" -ForegroundColor Cyan
+            $copiedMsg = "  Copied: {0} ({1})" -f $bak.Name, (Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2)))
+            Write-Host $copiedMsg -ForegroundColor Cyan
         }
         Write-Log "[OK] Database copied" "Green"
         $step++
     }
 
-    # Differential copy of content using robocopy
+    # Copy content using robocopy
     if ($IncludeContent) {
         $wsusContentSource = Join-Path $SourceFolder "WsusContent"
         if (Test-Path $wsusContentSource) {
-            Write-Log "[$step/$totalSteps] Differential copy of content (this may take a while)..." "Yellow"
+            Write-Log "[$step/$totalSteps] Copying content (this may take a while)..." "Yellow"
             $destContent = Join-Path $Destination "WsusContent"
 
             # /E = include subdirs, /XO = exclude older files, /MT:16 = 16 threads
@@ -673,7 +680,7 @@ function Invoke-FullCopy {
     Write-Host "Configuration:" -ForegroundColor Yellow
     Write-Host "  Source: $ExportSource"
     Write-Host "  Destination: $destination"
-    Write-Host "  Mode: Differential copy (only newer/missing files)"
+    Write-Host "  Mode: Copy (only newer/missing files)"
     Write-Host ""
 
     # Skip confirmation if DestinationPath was provided (non-interactive mode)
@@ -725,7 +732,8 @@ function Invoke-BrowseArchive {
         $i = 1
         foreach ($year in $years) {
             $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-            Write-Host "  [$i] $($year.Name) ($backupCount backups)" -ForegroundColor White
+            $yearMsg = '  [{0}] {1} ({2} backups)' -f $i, $year.Name, $backupCount
+            Write-Host $yearMsg -ForegroundColor White
             $i++
         }
 
@@ -766,7 +774,8 @@ function Invoke-BrowseArchive {
                 $i = 1
                 foreach ($month in $months) {
                     $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
-                    Write-Host "  [$i] $($month.Name) ($backupCount backups)" -ForegroundColor White
+                    $monthMsg = '  [{0}] {1} ({2} backups)' -f $i, $month.Name, $backupCount
+                    Write-Host $monthMsg -ForegroundColor White
                     $i++
                 }
 
@@ -918,7 +927,7 @@ function Invoke-CopyForAirGap {
         Skip all interactive prompts - requires SourcePath and DestinationPath
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath,
         [string]$SourcePath,
         [string]$DestinationPath,
@@ -1035,7 +1044,7 @@ function Invoke-ExportToDvd {
         Zips source data and splits into 4.3GB chunks for single-layer DVD burning
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath = "C:\WSUS"
     )
 
@@ -1191,17 +1200,14 @@ function Invoke-ExportToMedia {
     .SYNOPSIS
         Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
-        Prompts for source and destination, supports full or differential copy modes.
+        Prompts for source and destination, copies all content.
         When DestinationPath is provided, runs in non-interactive mode (for GUI).
     #>
     param(
-        [string]$DefaultSource = "\\lab-hyperv\d\WSUS-Exports",
+        [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath = "C:\WSUS",
         [string]$SourcePath,
-        [string]$DestinationPath,
-        [ValidateSet('Full', 'Differential')]
-        [string]$ExportCopyMode = "Full",
-        [int]$ExportDaysOld = 30
+        [string]$DestinationPath
     )
 
     # Determine if running in non-interactive mode (GUI mode)
@@ -1211,9 +1217,6 @@ function Invoke-ExportToMedia {
 
     Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
-    if ($nonInteractive) {
-        Write-Host "Copy mode: $ExportCopyMode$(if($ExportCopyMode -eq 'Differential'){" (last $ExportDaysOld days)"})" -ForegroundColor Cyan
-    }
     Write-Host ""
 
     # Validate paths - use defaults if empty
@@ -1222,47 +1225,6 @@ function Invoke-ExportToMedia {
     }
     if ([string]::IsNullOrWhiteSpace($ContentPath)) {
         $ContentPath = "C:\WSUS"
-    }
-
-    # Set copy mode variables
-    $copyMode = $ExportCopyMode
-    $maxAgeDays = $ExportDaysOld
-
-    if (-not $nonInteractive) {
-        # Interactive mode: Prompt for copy mode
-        Write-Host "Copy mode:" -ForegroundColor Cyan
-        Write-Host "  1. Full copy (all files)"
-        Write-Host "  2. Differential copy (files from last 30 days) [Default]"
-        Write-Host "  3. Differential copy (custom days)"
-        Write-Host ""
-        $modeChoice = Read-Host "Select mode (1/2/3) [2]"
-        if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
-
-        switch ($modeChoice) {
-            "1" {
-                $copyMode = "Full"
-                $maxAgeDays = 0
-            }
-            "2" {
-                $copyMode = "Differential"
-                $maxAgeDays = 30
-            }
-            "3" {
-                $copyMode = "Differential"
-                $daysInput = Read-Host "Enter number of days [30]"
-                if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
-                if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
-                    if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
-                } else {
-                    $maxAgeDays = 30
-                }
-            }
-            default {
-                $copyMode = "Differential"
-                $maxAgeDays = 30
-            }
-        }
-        Write-Host ""
     }
 
     # Determine source path
@@ -1362,11 +1324,7 @@ function Invoke-ExportToMedia {
     Write-Host "Configuration:" -ForegroundColor Yellow
     Write-Host "  Source:      $source"
     Write-Host "  Destination: $destination"
-    if ($copyMode -eq "Full") {
-        Write-Host "  Mode:        Full (all files)"
-    } else {
-        Write-Host "  Mode:        Differential (files from last $maxAgeDays days)"
-    }
+    Write-Host "  Mode:        Full (all files)"
     Write-Host ""
 
     # Skip confirmation in non-interactive mode
@@ -1395,11 +1353,6 @@ function Invoke-ExportToMedia {
             "`"$sourceContent`"", "`"$destContent`"",
             "/E", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
         )
-
-        if ($copyMode -eq "Differential") {
-            # /MAXAGE:n = exclude files older than n days
-            $robocopyArgs += "/MAXAGE:$maxAgeDays"
-        }
 
         $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
         if ($proc.ExitCode -lt 8) {
@@ -1774,7 +1727,7 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host ("=" * 88) -ForegroundColor Cyan
-    Write-Host "              WSUS Management v3.3.0" -ForegroundColor Cyan
+    Write-Host "              WSUS Management v4.0.2" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host ("=" * 88) -ForegroundColor Cyan
     Write-Host ""
@@ -1856,7 +1809,7 @@ if ($Restore) {
     # - Otherwise, if ExportRoot differs from default, interpret it as the destination
     $actualDestination = $DestinationPath
     $actualSource = $SourcePath
-    $defaultExportRoot = "\\lab-hyperv\d\WSUS-Exports"
+    $defaultExportRoot = '\\lab-hyperv\d\WSUS-Exports'
 
     if ([string]::IsNullOrWhiteSpace($actualDestination) -and $ExportRoot -ne $defaultExportRoot) {
         # GUI is passing destination as ExportRoot - use it as destination, use ContentPath as source
@@ -1865,8 +1818,7 @@ if ($Restore) {
     }
 
     Invoke-ExportToMedia -DefaultSource $defaultExportRoot -ContentPath $ContentPath `
-        -SourcePath $actualSource -DestinationPath $actualDestination `
-        -ExportCopyMode $CopyMode -ExportDaysOld $DaysOld
+        -SourcePath $actualSource -DestinationPath $actualDestination
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

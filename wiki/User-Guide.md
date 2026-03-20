@@ -11,8 +11,11 @@ This guide explains how to use the WSUS Manager GUI application for day-to-day o
 3. [Server Mode Toggle](#server-mode-toggle)
 4. [Operations Menu](#operations-menu)
 5. [Quick Actions](#quick-actions)
-6. [Settings](#settings)
-7. [Viewing Logs](#viewing-logs)
+6. [Operation History](#operation-history)
+7. [Notifications](#notifications)
+8. [Settings](#settings)
+9. [Viewing Logs](#viewing-logs)
+10. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -42,7 +45,7 @@ The dashboard is your main monitoring view, showing the health of your WSUS infr
 
 ### Status Cards
 
-The dashboard displays four color-coded status cards:
+The dashboard displays color-coded status cards plus a Health Score band:
 
 #### Services Card
 | Color | Meaning |
@@ -71,9 +74,49 @@ The dashboard displays four color-coded status cards:
 | Green | Scheduled task configured and ready |
 | Orange | No scheduled task configured |
 
+### Health Score
+
+The dashboard displays a **Health Score** band (0-100) that combines multiple indicators into a single weighted score:
+
+| Component | Weight | What It Measures |
+|-----------|--------|------------------|
+| Services | 30 | SQL Server, WSUS, IIS running status |
+| Database | 20 | SUSDB size relative to 10GB limit |
+| Sync Recency | 20 | Time since last successful sync |
+| Disk Space | 20 | Available storage for updates |
+| Last Operation | 10 | Result of most recent operation |
+
+**Grading:**
+| Grade | Score Range | Color |
+|-------|------------|-------|
+| Green | 80-100 | Healthy |
+| Yellow | 50-79 | Needs attention |
+| Red | 0-49 | Critical issues |
+| Unknown | N/A | All data sources failed |
+
+### DB Size Trend Indicator
+
+The database card includes a **trend indicator** showing the projected days until the database reaches the 10GB SQL Express limit. This uses linear regression over the last 30 days of size snapshots.
+
+| Alert Level | Days Until Full | Action |
+|-------------|-----------------|--------|
+| Normal | > 180 days | No action needed |
+| Warning | 90-180 days | Plan a cleanup |
+| Critical | < 90 days | Run Deep Cleanup immediately |
+
+### Last Successful Sync
+
+A timestamp showing when the last successful sync completed:
+
+| Color | Time Since Sync | Meaning |
+|-------|-----------------|---------|
+| Green | < 7 days | Up to date |
+| Yellow | 7-30 days | Sync soon |
+| Red | > 30 days | Overdue -- sync immediately |
+
 ### Auto-Refresh
 
-The dashboard automatically refreshes every **30 seconds**. A refresh guard prevents overlapping operations that could hang the UI.
+The dashboard automatically refreshes every **30 seconds**. A refresh guard prevents overlapping operations that could hang the UI. Dashboard refresh is also skipped while an operation is running to prevent log output stutter.
 
 ---
 
@@ -122,6 +165,9 @@ Installs WSUS with SQL Server Express from scratch.
 
 ### Create GPO
 
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
+
 Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Controller.
 
 **Steps:**
@@ -138,9 +184,6 @@ Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Contr
 ```powershell
 # On individual clients:
 gpupdate /force
-
-# From DC (all domain computers):
-Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer $_.Name -Force }
 
 # Verify on clients:
 gpresult /r | findstr WSUS
@@ -176,16 +219,15 @@ Exports database and update files for transfer to air-gapped servers.
 1. Click **Export to Media**
 2. Choose export type:
    - **Full Export**: Complete database and all files
-   - **Differential Export**: Only recent updates (N days)
 3. Select destination folder (USB drive)
 4. Wait for export to complete
 
 **Output:**
 ```
 [Destination]\
-├── SUSDB_backup_[date].bak     # Database backup
-├── WsusContent\                 # Update files
-└── export_manifest.json         # Export metadata
++-- SUSDB_backup_[date].bak     # Database backup
++-- WsusContent\                 # Update files
++-- export_manifest.json         # Export metadata
 ```
 
 ### Import from Media
@@ -223,8 +265,8 @@ Runs comprehensive sync and maintenance tasks.
 **Sync Profiles:**
 | Profile | Operations | Use When |
 |---------|------------|----------|
-| **Full Sync** | Sync → Cleanup → Ultimate Cleanup → Backup → Export | Monthly maintenance |
-| **Quick Sync** | Sync → Cleanup → Backup (skip heavy cleanup) | Weekly quick sync |
+| **Full Sync** | Sync -> Cleanup -> Ultimate Cleanup -> Backup -> Export | Monthly maintenance |
+| **Quick Sync** | Sync -> Cleanup -> Backup (skip heavy cleanup) | Weekly quick sync |
 | **Sync Only** | Synchronize and approve updates only | Just need updates |
 
 **What Full Sync does:**
@@ -241,10 +283,8 @@ Runs comprehensive sync and maintenance tasks.
 | Field | Description |
 |-------|-------------|
 | **Full Export Path** | Network share for complete backup + content mirror |
-| **Differential Export Path** | Destination for recent changes only (e.g., USB drive for air-gap) |
-| **Export Days** | Age filter for differential export (default: 30 days) |
 
-> **Note:** Export fields are optional. If not specified, the export step is skipped.
+> **Note:** Export path is optional. If not specified, the export step is skipped.
 
 **When to run:**
 - Monthly (Full Sync recommended)
@@ -354,6 +394,48 @@ The **Start Services** button starts services in dependency order:
 
 ---
 
+## Operation History
+
+Click the **History** button in the sidebar (or press **Ctrl+H**) to view a list of past operations.
+
+### What It Shows
+
+The History view displays the last **50 operations** with:
+- Operation type (Diagnostics, Online Sync, Deep Cleanup, etc.)
+- Duration
+- Result (Success, Failed, Cancelled)
+- Summary text
+
+### Storage
+
+History is stored in JSON format at:
+```
+%APPDATA%\WsusManager\history.json
+```
+
+The file is automatically trimmed to 100 entries. File-lock retry logic prevents corruption if multiple processes access the file simultaneously.
+
+---
+
+## Notifications
+
+WSUS Manager displays a notification when an operation completes. This is useful when running long operations (Deep Cleanup, Online Sync) while working in other applications.
+
+### Notification Fallback
+
+The notification system uses a 3-tier fallback:
+1. **Windows 10 Toast** -- native toast notification (preferred)
+2. **Balloon Tip** -- system tray balloon notification (fallback)
+3. **Log Only** -- writes to the application log if neither UI method is available
+
+### Configuration
+
+Notifications can be enabled or disabled in the **Settings** dialog:
+- **Enable Notifications** -- toggle completion notifications on/off
+- **Enable Beep** -- play a sound on operation completion
+
+---
+
 ## Settings
 
 Access settings via the **Settings** button in the sidebar.
@@ -364,6 +446,9 @@ Access settings via the **Settings** button in the sidebar.
 |---------|---------|-------------|
 | WSUS Content Path | `C:\WSUS` | Root directory for WSUS |
 | SQL Instance | `.\SQLEXPRESS` | SQL Server instance name |
+| Notifications | Enabled | Show toast/balloon on operation completion |
+| Beep on Completion | Disabled | Play sound when operations finish |
+| Minimize to Tray | Disabled | Minimize to system tray instead of taskbar |
 
 ### Settings Storage
 
@@ -405,10 +490,19 @@ Click the **folder icon** next to "Open Log" in the sidebar to open the logs dir
 
 ## Keyboard Shortcuts
 
-Currently, WSUS Manager operates primarily via mouse. Keyboard navigation:
-- **Tab**: Navigate between controls
-- **Enter**: Activate selected button
-- **Escape**: Close dialogs
+WSUS Manager supports the following keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+D** | Run Diagnostics |
+| **Ctrl+S** | Run Online Sync |
+| **Ctrl+H** | Open History view |
+| **Ctrl+R** / **F5** | Refresh Dashboard |
+| **Tab** | Navigate between controls |
+| **Enter** | Activate selected button |
+| **Escape** | Close dialogs |
+
+The log panel also supports right-click context menu with **Copy All** and **Save to File** options.
 
 ---
 
