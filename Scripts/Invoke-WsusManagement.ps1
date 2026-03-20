@@ -495,7 +495,7 @@ function Invoke-WsusRestore {
         Write-Log "Starting WSUS..." "Yellow"
         Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
     } else {
-        Write-Log "wsusutil.exe not found — skipping content reset. Start WSUS manually." "Yellow"
+        Write-Log "wsusutil.exe not found - skipping content reset. Start WSUS manually." "Yellow"
         Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
     }
 
