@@ -3452,7 +3452,7 @@ function Invoke-LogOperation {
     # Branch based on Live Terminal mode
     if ($script:LiveTerminalMode) {
         # LIVE TERMINAL MODE: Launch in visible console window
-        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press any key to close it."
+        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press ESC or Q to close it."
 
         try {
             $psi = New-Object System.Diagnostics.ProcessStartInfo
