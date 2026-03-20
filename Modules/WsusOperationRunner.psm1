@@ -375,7 +375,9 @@ function Start-WsusOperation {
             $psi.RedirectStandardError   = $true
             $psi.RedirectStandardInput   = $true
             $psi.CreateNoWindow          = $true
-            $psi.Arguments               = "-NoProfile -ExecutionPolicy Bypass -Command `"$Command`""
+            # Wrap command so all PS streams (Warning/Verbose/Debug/Info) flow to stdout
+            $wrappedCmd = "`$VerbosePreference='Continue'; `$WarningPreference='Continue'; `$InformationPreference='Continue'; & { $Command } *>&1"
+            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
         }
     }
     #endregion
