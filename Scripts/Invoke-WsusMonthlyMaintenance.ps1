@@ -1566,20 +1566,7 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
         }
         Write-Log "Differential export will include files modified within last $ExportDays days"
 
-    # Determine differential export destination
-    # If DifferentialExportPath is specified, use it directly
-    # Otherwise, create year/month structure under ExportPath
-    $year = (Get-Date).ToString("yyyy")
-    $month = (Get-Date).ToString("MMM")
-    if ($DifferentialExportPath) {
-        $archiveDestination = $DifferentialExportPath
-        Write-Log "Using separate differential export path: $DifferentialExportPath"
-    } else {
-        $archiveDestination = [System.IO.Path]::Combine($ExportPath, $year, $month)
-    }
-
-    Write-Log "Root export path: $ExportPath"
-    Write-Log "Differential path: $archiveDestination"
+    Write-Log "Export path: $ExportPath"
 
     # Check if export path is accessible using improved test
     if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
@@ -1653,61 +1640,8 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             Write-Warning "WsusContent folder not found: $wsusContentSource"
         }
 
-        # =====================================================================
-        # STEP 2: Differential copy to ARCHIVE folder (year/month)
-        # =====================================================================
-        Write-Log "[3/4] Creating archive directory..."
-        if (-not (Test-Path $archiveDestination)) {
-            New-Item -Path $archiveDestination -ItemType Directory -Force | Out-Null
-            Write-Log "Created archive directory: $archiveDestination"
-        }
-
-        # Copy database backup to archive
-        Write-Log "[4/4] Copying differential to archive ($year/$month)..."
-        if ($backupFile -and (Test-Path $backupFile)) {
-            Copy-Item -Path $backupFile -Destination $archiveDestination -Force
-            Write-Log "Database copied to archive: $(Split-Path $backupFile -Leaf)"
-        } else {
-            Write-Warning "No database backup to copy to archive"
-        }
-
-        # Differential copy of content to archive using robocopy with MAXAGE
-        $archiveContentPath = Join-Path $archiveDestination "WsusContent"
-
-        if (Test-Path $wsusContentSource) {
-            $robocopyLogArchive = "$robocopyLogDir\Export_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-
-            # /E = include subdirs, /MAXAGE:N = only files modified within N days
-            # /XO = exclude older files (differential), /MT:16 = 16 threads
-            $robocopyArgs = @(
-                $wsusContentSource,
-                $archiveContentPath,
-                "/E", "/MAXAGE:$ExportDays", "/XO", "/MT:16", "/R:2", "/W:5",
-                "/XF", "*.bak", "*.log",
-                "/XD", "Logs", "SQLDB", "Backup",
-                "/LOG:$robocopyLogArchive", "/TEE", "/NP", "/NDL"
-            )
-
-            $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-            if ($robocopyResult.ExitCode -lt 8) {
-                Write-Log "Differential archive export completed successfully"
-            } else {
-                Write-Warning "Archive robocopy exit code: $($robocopyResult.ExitCode)"
-                $MaintenanceResults.Warnings += "Archive robocopy exit code: $($robocopyResult.ExitCode)"
-            }
-
-            # Show archive export stats
-            if (Test-Path $archiveContentPath) {
-                $exportedFiles = Get-ChildItem -Path $archiveContentPath -Recurse -File -ErrorAction SilentlyContinue
-                $exportedSize = [math]::Round(($exportedFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-                Write-Log "Archive content: $($exportedFiles.Count) files ($exportedSize GB)"
-                $MaintenanceResults.ExportedFiles = $exportedFiles.Count
-                $MaintenanceResults.ExportSize = $exportedSize
-            }
-        }
-
         $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
-        $MaintenanceResults.ExportPath = "$ExportPath (root) + $archiveDestination (archive)"
+        $MaintenanceResults.ExportPath = $ExportPath
         $exportPhase.Status = "Completed"
         $exportPhase.Duration = "$exportDuration min"
         Write-Log "Export complete: Root=$ExportPath, Archive=$archiveDestination"
