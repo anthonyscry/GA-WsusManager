@@ -22,23 +22,27 @@ WSUS Manager is a PowerShell-based automation suite for Windows Server Update Se
 - **Modern GUI Application** - Dark-themed WPF interface with auto-refresh dashboard
 - **Air-Gap Support** - Export/import operations for disconnected networks
 - **Automated Maintenance** - Scheduled cleanup and optimization tasks
-- **Health Monitoring** - Real-time status of services, database, and disk space
-- **One-Click Operations** - Install, backup, restore, and repair WSUS
+- **Health Monitoring** - Health Score (0-100), service/database/disk status
+- **One-Click Operations** - Install, backup, restore, diagnostics
+- **Operation History** - Track past operations with completion notifications
+- **DB Size Trending** - Linear regression with days-until-full estimate
 
 ---
 
 ## Features
 
 ### Dashboard
-Real-time monitoring with color-coded status cards:
+Real-time monitoring with color-coded status cards and 30-second auto-refresh:
+- **Health Score** - 0-100 weighted composite (Green/Yellow/Red grading)
 - **Services** - SQL Server, WSUS, IIS status
-- **Database** - SUSDB size vs 10GB SQL Express limit
+- **Database** - SUSDB size vs 10GB SQL Express limit with trend indicator
 - **Disk Space** - Available storage for updates
 - **Automation** - Scheduled task status
+- **Last Sync** - Last successful sync timestamp
 
 ### Server Modes
 Server Mode auto-detects Online vs Air-Gap based on internet connectivity to show only relevant operations:
-- **Online Mode** - Export, Monthly Maintenance
+- **Online Mode** - Export, Online Sync
 - **Air-Gap Mode** - Import from media
 
 ### Operations
@@ -48,13 +52,14 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 | Restore Database | Restore SUSDB from backup |
 | Export to Media | Full export to USB |
 | Import from Media | Import updates to air-gapped server |
-| Monthly Maintenance | Sync, cleanup, and backup |
-| Schedule Task | Create or update the maintenance scheduled task |
+| Online Sync | Sync, cleanup, and backup |
+| Schedule Task | Create or update the sync scheduled task |
 | Deep Cleanup | Aggressive space recovery |
-| Health Check | Verify configuration |
-| Health + Repair | Auto-fix common issues |
+| Diagnostics | Comprehensive health check with auto-repair |
+| Reset Content | Re-verify content files after import |
+| Create USB Package | Air-gap differential export with SHA-256 manifest |
 
-> **Note:** Monthly Maintenance and Schedule Task should run on the **Online** WSUS server only.
+> **Note:** Online Sync and Schedule Task should run on the **Online** WSUS server only.
 
 ---
 
@@ -96,6 +101,7 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, robocopy fix, removed differential export, stream piping fix |
 | 4.0.1 | Mar 2026 | GUI automation tests, install script sync, version alignment |
 | 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score, history, notifications, trending, splash screen, keyboard shortcuts, system tray |
 | 3.9.0 | Mar 2026 | ARM64/25H2 auto-decline, PowerShell-only distribution restored |

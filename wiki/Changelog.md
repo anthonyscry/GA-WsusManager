@@ -4,6 +4,38 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [4.0.2] - March 2026
+
+### Changed
+- GPO deployment v1.6.0 - replaced Invoke-GPUpdate (WinRM) with schtasks.exe RPC-based push
+- GPO import strategy - delete-and-reimport instead of merge (fixes stale registry values)
+- Removed differential export feature - simplified to full export only
+- Removed .GetNewClosure() from all WPF click handlers
+- Install script - dynamic SQL instance registry detection, TrustServerCertificate, English language
+
+### Security
+- SQL-escape apostrophes in N'...' contexts for Fix SQL Login and installer
+- Sanitize WSUS product names before command string interpolation
+- Block double-quote and percent in Test-SafePath to prevent robocopy injection
+- Scrub SA password from ConfigurationFile.ini immediately after SQL setup
+- Guaranteed password env var cleanup via try/finally
+
+### Fixed
+- Robocopy exit codes 1-7 normalized to 0 (success) in GUI transfers
+- ICMP ping made advisory in GPO push (hardened domains still get GP updates via RPC)
+- wsusutil reset guarded behind Test-Path (prevents WSUS service stranding)
+- Dashboard refresh skipped during active operations (prevents log stutter)
+- Unicode em dash replaced with ASCII (PS 5.1 parse fix)
+- Integration test version check and broken workflow test fixed
+
+### Documentation
+- Full README rewrite with detailed GPO reference and step-by-step workflows
+- SOP updated to v4.0.2 with all current features
+- Air-gap warnings added across all documentation
+- Removed all differential export references
+
+---
+
 ## [4.0.1] - March 2026
 
 ### Features

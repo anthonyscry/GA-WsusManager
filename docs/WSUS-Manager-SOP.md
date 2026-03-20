@@ -1,6 +1,6 @@
-# WSUS Manager v4.0.1 - Standard Operating Procedure
+# WSUS Manager v4.0.2 - Standard Operating Procedure
 
-**Version:** 4.0.1
+**Version:** 4.0.2
 **Author:** Tony Tran, ISSO, GA-ASI
 **Last Updated:** March 2026
 
@@ -38,7 +38,7 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v4.0.1.zip | Complete distribution package |
+| WsusManager-v4.0.2.zip | Complete distribution package |
 
 **Package Contents:**
 
@@ -141,7 +141,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v4.0.1.zip` to `C:\WSUS\` |
+| 2 | Extract `WsusManager-v4.0.2.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `WsusManager.exe` → Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
@@ -156,7 +156,9 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | C:\WSUS\WsusManager.exe | GUI application |
 | C:\WSUS\Scripts\ | PowerShell scripts |
 | C:\WSUS\Modules\ | PowerShell modules |
-| %APPDATA%\WsusManager\ | User settings (settings.json) |
+| %APPDATA%\WsusManager\settings.json | User settings |
+| %APPDATA%\WsusManager\history.json | Operation history |
+| %APPDATA%\WsusManager\trending.json | Database size trend data |
 
 ---
 
@@ -164,13 +166,17 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v4.0.1 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v4.0.2 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
 
-- **Dashboard** with auto-refresh (30-second interval)
-- **Server Mode** toggle (Online vs Air-Gap)
+- **Dashboard** with auto-refresh (30-second interval) and Health Score (0-100)
+- **Server Mode** toggle (Online vs Air-Gap) with context-aware menus
 - **Live Terminal Mode** for external PowerShell window output
 - **Operation buttons** that disable during execution
-- **Log panel** showing real-time operation output
+- **Log panel** showing real-time operation output with right-click context menu
+- **History view** showing last 50 operations
+- **Desktop notifications** on operation completion (toast/balloon/log fallback)
+- **Startup splash screen** with progress bar
+- **Keyboard shortcuts** -- Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R/F5 (Refresh)
 
 ### Launching the GUI
 
@@ -183,10 +189,13 @@ WSUS Manager v4.0.1 includes a full GUI application (`WsusManager.exe`) built wi
 | Metric | Description |
 |--------|-------------|
 | Server Status | WSUS service state |
-| Database Size | Current SUSDB size (alerts at 8GB+) |
-| Last Sync | Most recent synchronization timestamp |
+| Database Size | Current SUSDB size (alerts at 8GB+) with trend indicator |
+| DB Trend | Days-until-full estimate using linear regression over 30 days |
+| Last Sync | Most recent synchronization timestamp (green <7d, yellow 7-30d, red >30d) |
+| Health Score | Weighted composite score 0-100 (Green 80+, Yellow 50-79, Red <50) |
 | Update Count | Total updates in database |
 | Clients | Number of registered WSUS clients |
+| Scheduled Task | Next scheduled sync task status |
 
 ### GUI Operations
 
@@ -197,11 +206,13 @@ WSUS Manager v4.0.1 includes a full GUI application (`WsusManager.exe`) built wi
 | **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
 | **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
 | **Transfer** | Export/Import dialog for air-gap operations |
+| **Create USB Package** | Air-gap export with SHA-256 transfer manifest and checksums |
 | **Restore Database** | Restore SUSDB from backup file |
 | **Reset Content** | Re-verify content files after DB import (air-gap) |
 | **Schedule Task** | Create scheduled online sync task |
 | **Create GPO** | Copy GPO files to C:\WSUS\WSUS GPO |
-| **Settings** | Configure server mode, paths, preferences |
+| **History** | View last 50 operations with duration, result, and summary |
+| **Settings** | Configure server mode, paths, notifications, and preferences |
 
 ### Update Classifications
 
@@ -223,6 +234,32 @@ Excluded (require manual review): Upgrades
 | **Air-Gap** | No internet, uses Export/Import for update transfer |
 
 Toggle via **Settings** dialog or mode indicator in GUI.
+
+### Health Score
+
+The dashboard displays a weighted health score from 0 to 100:
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| Services | 30 | SQL Server, IIS, and WSUS service status |
+| Database | 20 | SUSDB size relative to 10GB SQL Express limit |
+| Sync Recency | 20 | Time since last successful synchronization |
+| Disk Space | 20 | Free disk space on WSUS content drive |
+| Last Operation | 10 | Result of the most recent operation |
+
+**Grade scale:** Green (80+), Yellow (50-79), Red (below 50), Unknown (all sources failed).
+
+### Operation Timeouts
+
+Operations are protected by a per-type timeout watchdog:
+
+| Operation | Timeout |
+|-----------|---------|
+| Cleanup / Deep Cleanup | 60 minutes |
+| Sync / Online Sync | 120 minutes |
+| All other operations | 30 minutes |
+
+If an operation exceeds its timeout, the watchdog terminates the hung process and logs the timeout.
 
 ### Live Terminal Mode
 
@@ -248,12 +285,11 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | 2 | Restore Database from C:\WSUS |
 | 3 | Copy Data from External Media (import to air-gap server) |
 | 4 | Copy Data to External Media (export for air-gap transfer) |
-| 5 | Monthly Maintenance (Sync, Cleanup, Backup, Export) |
+| 5 | Online Sync (Sync, Cleanup, Backup, Export) |
 | 6 | Deep Cleanup (Aggressive DB cleanup) |
-| 7 | Health Check |
-| 8 | Health Check + Repair |
-| 9 | Reset Content Download |
-| 10 | Force Client Check-In |
+| 7 | Diagnostics (Health Check + Auto-Repair) |
+| 8 | Reset Content Download |
+| 9 | Force Client Check-In |
 
 ### Command-Line Switches
 
@@ -275,7 +311,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 .\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\WsusExport" -DestinationPath "C:\WSUS"
 ```
 
-### Monthly Maintenance Options
+### Online Sync Options
 
 | Command | Description |
 |---------|-------------|
@@ -285,7 +321,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Standard` | Light + index rebuild, statistics (1-2 hours) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Deep` | Standard + obsolete removal, full optimization (2-4 hours) |
 
-### Maintenance Profile Comparison
+### Sync Profile Comparison
 
 | Profile | Duration | Actions |
 |---------|----------|---------|
@@ -307,8 +343,8 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 | Step | Location | Action |
 |------|----------|--------|
-| 1 | Online WSUS Server | Run **Monthly Maintenance** - Syncs, cleans up, exports to network share |
-| 2 | Online WSUS Server | Run **Transfer → Export** - Copy to USB/Apricorn |
+| 1 | Online WSUS Server | Run **Online Sync** - Syncs, cleans up, exports to network share |
+| 2 | Online WSUS Server | Run **Transfer > Export** - Copy to USB/Apricorn |
 | 3 | Physical Transfer | Transport USB/Apricorn drive to air-gapped network |
 | 4 | Air-Gapped WSUS Server | Run **Transfer → Import** - Copy from external media |
 | 5 | Air-Gapped WSUS Server | Run **Restore Database** |
@@ -324,26 +360,25 @@ The Transfer dialog provides:
 
 ### Export Folder Structure
 
-Monthly maintenance exports to the configured export path:
+Online Sync exports to the configured export path:
 
 | Location | Contents | Purpose |
 |----------|----------|---------|
-| Root folder | SUSDB_YYYYMMDD.bak + WsusContent\ | Latest backup + full content mirror |
+| Export root | SUSDB_YYYYMMDD.bak + WsusContent\ | Latest backup + full content mirror |
 
 **Example structure:**
 
 ```
-\\server\WSUS-Exports\
-├── SUSDB_20260119.bak           (latest backup)
-└── WsusContent\                 (full mirror)
+E:\WSUS-Export\
++-- SUSDB_20260320.bak           (latest backup)
++-- WsusContent\                 (full content mirror)
 ```
 
 ### Robocopy Commands
 
 | Purpose | Command |
 |---------|---------|
-| Copy latest to USB | `robocopy "\\server\WSUS-Exports" "E:\" /E /MT:16 /R:2 /W:5` |
-| Copy specific month | `robocopy "\\server\WSUS-Exports\2026\Jan" "E:\2026\Jan" /E /MT:16 /R:2 /W:5` |
+| Copy export to USB | `robocopy "\\server\WSUS-Export" "E:\" /E /MT:16 /R:2 /W:5` |
 | Import to air-gap server | `robocopy "E:\" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO` |
 
 **Robocopy Flags:**
@@ -389,10 +424,10 @@ Monthly maintenance exports to the configured export path:
 | Step | Action |
 |------|--------|
 | 1 | Auto-detect the domain |
-| 2 | Import all 3 GPOs from backup |
+| 2 | Delete and reimport all 3 GPOs from backup (removes stale registry values) |
 | 3 | Create required OUs if they don't exist |
 | 4 | Link each GPO to appropriate OUs |
-| 5 | Push policy update to all domain computers |
+| 5 | Push policy update to all domain computers via schtasks RPC (no WinRM required) |
 
 ### Imported GPOs
 
@@ -582,6 +617,7 @@ SESSION START: 2026-01-19 10:30:00
 - Auto-expands when operations start
 - Clear button to reset output
 - Live Terminal toggle for external window
+- Right-click context menu: Copy All / Save to File
 
 ---
 
@@ -653,15 +689,15 @@ SESSION START: 2026-01-19 10:30:00
 | WsusServices.psm1 | Service management |
 | WsusFirewall.psm1 | Firewall rules |
 | WsusPermissions.psm1 | Directory permissions |
-| WsusConfig.psm1 | Configuration, timeouts, health weights |
+| WsusConfig.psm1 | Configuration, operation timeouts, health weights, GUI settings |
 | WsusExport.psm1 | Export/import |
 | WsusScheduledTask.psm1 | Scheduled tasks |
-| WsusAutoDetection.psm1 | Server detection, auto-recovery, dashboard data |
-| WsusDialogs.psm1 | Dialog factory for WPF GUI |
-| WsusOperationRunner.psm1 | Unified operation lifecycle |
-| WsusHistory.psm1 | Operation history (JSON) |
-| WsusNotification.psm1 | Toast/balloon notifications |
-| WsusTrending.psm1 | DB size trending |
+| WsusAutoDetection.psm1 | Server detection, auto-recovery, dashboard data, 30s TTL cache |
+| WsusDialogs.psm1 | Dialog factory for WPF GUI (dark-themed windows, folder browsers) |
+| WsusOperationRunner.psm1 | Unified operation lifecycle with timeout watchdog |
+| WsusHistory.psm1 | Operation history (JSON at %APPDATA%\WsusManager\history.json) |
+| WsusNotification.psm1 | Toast/balloon/log-only completion notifications |
+| WsusTrending.psm1 | DB size trending with linear regression and days-until-full |
 | AsyncHelpers.psm1 | Async/background operation helpers for WPF |
 
 ---
@@ -670,16 +706,22 @@ SESSION START: 2026-01-19 10:30:00
 
 | Feature | Description |
 |---------|-------------|
-| GUI Application | WPF-based dark theme interface with dashboard |
+| GUI Application | WPF-based dark theme interface with dashboard and splash screen |
+| Health Score | Weighted composite 0-100 (Services, DB, Sync, Disk, LastOp) with color-coded grade |
+| DB Size Trending | Linear regression over 30 days with days-until-full estimate |
+| Operation History | Last 50 operations with duration, result, and summary |
+| Desktop Notifications | Toast/balloon/log-only fallback on operation completion |
+| Operation Timeouts | Per-operation watchdog (Cleanup=60min, Sync=120min, Default=30min) |
 | Automated Installation | One-click deployment of SQL Server Express 2022 + SSMS + WSUS |
-| Air-Gap Support | Full content export/import for offline networks |
+| Air-Gap Support | Full content export/import for offline networks with USB package and manifest |
 | Database Management | Backup, restore, cleanup, and optimization |
-| Health Monitoring | Automated diagnostics and repair capabilities |
-| Scheduled Maintenance | GUI and CLI support for Windows Task Scheduler |
-| GPO Deployment | Pre-configured Group Policy Objects for domain-wide client configuration |
+| Unified Diagnostics | Combined health check and auto-repair in a single operation |
+| Scheduled Sync | GUI and CLI support for Windows Task Scheduler |
+| GPO Deployment | Pre-configured GPOs with schtasks-based push (no WinRM required) |
 | Live Terminal Mode | External PowerShell window for operation output |
-| Server Mode Toggle | Online vs Air-Gap mode switching |
-| Auto-Refresh Dashboard | 30-second interval status updates |
+| Server Mode Toggle | Online vs Air-Gap mode switching with context-aware menus |
+| Auto-Refresh Dashboard | 30-second interval status updates with operation skip |
+| Keyboard Shortcuts | Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R/F5 for quick navigation |
 | DPI Awareness | Crisp rendering on high-DPI displays |
 | Modular Architecture | 16 reusable PowerShell modules |
 
