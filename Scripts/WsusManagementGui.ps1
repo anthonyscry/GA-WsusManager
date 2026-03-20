@@ -2522,6 +2522,7 @@ function Show-MaintenanceDialog {
     $runBtn.Foreground = $script:BrushText1
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
+    $saveSettingsCmd = Get-Command Save-Settings
     $runBtn.Add_Click({
         $result.Cancelled = $false
         if ($radioFull.IsChecked) { $result.Profile = "Full" }
@@ -2540,7 +2541,7 @@ function Show-MaintenanceDialog {
             return
         }
         $script:SyncProducts = $result.SelectedProducts
-        Save-Settings
+        & $saveSettingsCmd
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($runBtn)
@@ -3151,14 +3152,16 @@ function Show-SettingsDialog {
     $saveBtn.Foreground = $script:BrushText1
     $saveBtn.BorderThickness = 0
     $saveBtn.Margin = "0,0,8,0"
+    $saveSettingsCmd2 = Get-Command Save-Settings
+    $refreshCmd = Get-Command Invoke-DashboardRefreshSafe
     $saveBtn.Add_Click({
         $script:ContentPath = if($txt1.Text){$txt1.Text}else{"C:\WSUS"}
         $script:SqlInstance = if($txt2.Text){$txt2.Text}else{".\SQLEXPRESS"}
         $script:NotificationsEnabled = $chkNotif.IsChecked -eq $true
         $script:NotificationBeep = $chkBeep.IsChecked -eq $true
         $script:TrayMinimize = $chkTray.IsChecked -eq $true
-        Save-Settings
-        Invoke-DashboardRefreshSafe -Source "Settings Save"
+        & $saveSettingsCmd2
+        & $refreshCmd -Source "Settings Save"
         $dlg.Close()
     }.GetNewClosure())
     $btnPanel.Children.Add($saveBtn)
@@ -3389,9 +3392,8 @@ function Invoke-LogOperation {
             $Title = "$Title ($($opts.Profile))"
             $maintCmd = "& '$maintSafe' -Unattended -MaintenanceProfile '$($opts.Profile)' -NoTranscript -UseWindowsAuth"
             if ($opts.SelectedProducts -and $opts.SelectedProducts.Count -gt 0) {
-                foreach ($prod in $opts.SelectedProducts) {
-                    $maintCmd += " -SelectedProducts '$prod'"
-                }
+                $prodList = ($opts.SelectedProducts | ForEach-Object { "'$_'" }) -join ','
+                $maintCmd += " -SelectedProducts $prodList"
             }
             if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
@@ -4090,8 +4092,8 @@ $controls.BtnFixSqlLogin.Add_Click({
         $output = & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]; PRINT 'sysadmin granted';" -b 2>&1
         Write-LogOutput "[Fix SQL Login] $output"
 
-        # Verify
-        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
+        # Verify via sys.server_role_members (IS_SRVROLEMEMBER caches per-connection)
+        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = SUSER_SNAME()" -h -1 -W 2>$null
         Write-LogOutput "[Fix SQL Login] Verification (1=sysadmin): $check"
 
         if ($check -eq 1) {
