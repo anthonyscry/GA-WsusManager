@@ -842,7 +842,7 @@ if ($controls.BtnMaintenance) { $controls.BtnMaintenance.ToolTip = "Online Sync 
 
 #region Helper Functions
 $script:LogExpanded = $true
-$script:FullLogContent = ""
+$script:FullLogContent = [System.Text.StringBuilder]::new()
 
 function Show-SplashScreen {
 <#
@@ -967,7 +967,7 @@ function Write-LogOutput {
     $prefix = switch ($Level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
     $controls.LogOutput.Dispatcher.Invoke([Action]{
         $line = "[$timestamp] $prefix $Message`r`n"
-        $script:FullLogContent += $line
+        $null = $script:FullLogContent.Append($line)
         $controls.LogOutput.AppendText($line)
         $controls.LogOutput.ScrollToEnd()
     })
@@ -994,6 +994,7 @@ function Show-WsusPopup {
     }
 
     if ($SuppressDuplicateSeconds -gt 0) {
+        if ($script:PopupHistory.Count -gt 100) { $script:PopupHistory.Clear() }
         $popupKey = "$Title|$Button|$Icon|$Message"
         $now = Get-Date
         if ($script:PopupHistory.ContainsKey($popupKey)) {
@@ -3561,7 +3562,7 @@ while ($countdown -gt 0) {
                 $logOutput = $data.Controls.LogOutput
                 # Use BeginInvoke with closure to capture formatted values
                 $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
-                    $script:FullLogContent += $formattedLine
+                    $null = $script:FullLogContent.Append($formattedLine)
                     $logOutput.AppendText($formattedLine)
                     $logOutput.ScrollToEnd()
                 })
@@ -3579,7 +3580,7 @@ while ($countdown -gt 0) {
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $line = "[$timestamp] [+] $($data.Title) completed`r`n"
-                    $script:FullLogContent += $line
+                    $null = $script:FullLogContent.Append($line)
                     $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
                     # Show completion notification if enabled

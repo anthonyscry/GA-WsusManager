@@ -168,9 +168,6 @@ function Export-WsusContent {
     .PARAMETER IncludeDatabase
         Include database backup file in export
 
-    .PARAMETER CreateArchive
-        Create year/month archive structure
-
     .OUTPUTS
         Hashtable with export results
     #>
@@ -182,9 +179,7 @@ function Export-WsusContent {
 
         [int]$MaxAgeDays = 0,
 
-        [switch]$IncludeDatabase,
-
-        [switch]$CreateArchive
+        [switch]$IncludeDatabase
     )
 
     $result = @{
@@ -215,18 +210,6 @@ function Export-WsusContent {
         }
     }
 
-    # Create archive structure if requested
-    $archivePath = $null
-    if ($CreateArchive) {
-        $year = (Get-Date).ToString("yyyy")
-        $month = (Get-Date).ToString("MMM")
-        $archivePath = Join-Path $DestinationPath "$year\$month"
-
-        if (-not (Test-Path $archivePath)) {
-            New-Item -Path $archivePath -ItemType Directory -Force | Out-Null
-        }
-    }
-
     # Copy database backup if requested
     if ($IncludeDatabase) {
         $bakFiles = Get-ChildItem -Path $SourcePath -Filter "*.bak" -File -ErrorAction SilentlyContinue |
@@ -239,11 +222,6 @@ function Export-WsusContent {
             try {
                 Copy-Item -Path $newestBak.FullName -Destination $DestinationPath -Force
                 $result.DatabaseCopied = $true
-
-                # Also copy to archive if specified
-                if ($archivePath) {
-                    Copy-Item -Path $newestBak.FullName -Destination $archivePath -Force
-                }
             } catch {
                 $result.Errors += "Failed to copy database: $($_.Exception.Message)"
             }

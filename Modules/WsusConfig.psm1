@@ -64,7 +64,6 @@ $script:WsusConfig = @{
     # Maintenance Settings
     Maintenance = @{
         BackupRetentionDays = 90
-        DefaultExportDays = 30
         UpdateAgeCutoffMonths = 6
         MaxAutoApproveCount = 200
         IndexFragmentationThreshold = 10
@@ -361,7 +360,7 @@ function Get-WsusMaintenanceSetting {
     #>
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('BackupRetentionDays', 'DefaultExportDays', 'UpdateAgeCutoffMonths',
+        [ValidateSet('BackupRetentionDays', 'UpdateAgeCutoffMonths',
                      'MaxAutoApproveCount', 'IndexFragmentationThreshold', 'IndexRebuildThreshold',
                      'BatchSize', 'SupersessionBatchSize')]
         [string]$Setting
