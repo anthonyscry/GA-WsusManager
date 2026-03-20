@@ -225,9 +225,9 @@ Exports database and update files for transfer to air-gapped servers.
 **Output:**
 ```
 [Destination]\
-├── SUSDB_backup_[date].bak     # Database backup
-├── WsusContent\                 # Update files
-└── export_manifest.json         # Export metadata
++-- SUSDB_backup_[date].bak     # Database backup
++-- WsusContent\                 # Update files
++-- export_manifest.json         # Export metadata
 ```
 
 ### Import from Media
@@ -265,8 +265,8 @@ Runs comprehensive sync and maintenance tasks.
 **Sync Profiles:**
 | Profile | Operations | Use When |
 |---------|------------|----------|
-| **Full Sync** | Sync → Cleanup → Ultimate Cleanup → Backup → Export | Monthly maintenance |
-| **Quick Sync** | Sync → Cleanup → Backup (skip heavy cleanup) | Weekly quick sync |
+| **Full Sync** | Sync -> Cleanup -> Ultimate Cleanup -> Backup -> Export | Monthly maintenance |
+| **Quick Sync** | Sync -> Cleanup -> Backup (skip heavy cleanup) | Weekly quick sync |
 | **Sync Only** | Synchronize and approve updates only | Just need updates |
 
 **What Full Sync does:**

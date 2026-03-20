@@ -206,7 +206,6 @@ WSUS Manager v4.0.2 includes a full GUI application (`WsusManager.exe`) built wi
 | **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
 | **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
 | **Transfer** | Export/Import dialog for air-gap operations |
-| **Create USB Package** | Air-gap export with SHA-256 transfer manifest and checksums |
 | **Restore Database** | Restore SUSDB from backup file |
 | **Reset Content** | Re-verify content files after DB import (air-gap) |
 | **Schedule Task** | Create scheduled online sync task |
