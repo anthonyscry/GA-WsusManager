@@ -39,38 +39,38 @@ All notable changes to WSUS Manager are documented here.
 ## [4.0.1] - March 2026
 
 ### Features
-- **GUI Automation Testing** — 49-test full-feature test suite using COM UI Automation via scheduled tasks; covers dashboard, panels, dialogs, buttons, log panel
-- **FlaUI Test Coverage** — 71 FlaUI-based unit tests for AutomationId coverage
-- **Install Script Sync** — Flexible installer detection (SQLEXPRADV and SQLEXPR_x64), UPDATEENABLED="0" for unmanaged installs
+- **GUI Automation Testing** -- 49-test full-feature test suite using COM UI Automation via scheduled tasks; covers dashboard, panels, dialogs, buttons, log panel
+- **FlaUI Test Coverage** -- 71 FlaUI-based unit tests for AutomationId coverage
+- **Install Script Sync** -- Flexible installer detection (SQLEXPRADV and SQLEXPR_x64), UPDATEENABLED="0" for unmanaged installs
 
 ### Documentation
-- **GUI Testing Lessons Learned** — 16-section document from headless Windows Server VM testing
+- **GUI Testing Lessons Learned** -- 16-section document from headless Windows Server VM testing
 
 ### Fixes
-- **Version alignment** — All scripts and metadata updated to 4.0.1
-- **GPO enforcement** — 7-day update deadline for quality and feature updates
+- **Version alignment** -- All scripts and metadata updated to 4.0.1
+- **GPO enforcement** -- 7-day update deadline for quality and feature updates
 
 ---
 
 ## [4.0.0] - March 2026
 
 ### New Modules
-- **WsusDialogs.psm1** — Dialog factory (`New-WsusDialog`, `New-WsusFolderBrowser`); eliminates 6 copy-pasted dialog patterns
-- **WsusOperationRunner.psm1** — Unified operation lifecycle with timeout watchdog; replaces ~200 lines of duplicated execution logic
-- **WsusHistory.psm1** — Operation history to JSON with 100-entry trim and file-lock retry
-- **WsusNotification.psm1** — Completion notifications with toast → balloon → log fallback
-- **WsusTrending.psm1** — DB size trending with linear regression and days-until-full estimate
+- **WsusDialogs.psm1** -- Dialog factory (`New-WsusDialog`, `New-WsusFolderBrowser`); eliminates 6 copy-pasted dialog patterns
+- **WsusOperationRunner.psm1** -- Unified operation lifecycle with timeout watchdog; replaces ~200 lines of duplicated execution logic
+- **WsusHistory.psm1** -- Operation history to JSON with 100-entry trim and file-lock retry
+- **WsusNotification.psm1** -- Completion notifications with toast -> balloon -> log fallback
+- **WsusTrending.psm1** -- DB size trending with linear regression and days-until-full estimate
 
 ### New Features
-- **Health Score (0-100)** — Weighted composite: Services 30, DB 20, Sync 20, Disk 20, LastOp 10; Green ≥80 / Yellow 50-79 / Red <50
-- **Startup Splash Screen** — 4-stage progress bar (Loading → Services → Starting → Ready)
-- **History View** — 📜 History nav button showing last 50 operations
-- **Keyboard Shortcuts** — Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh
-- **Log Context Menu** — Right-click: Copy All / Save to File
-- **System Tray** — Minimize-to-tray with health color icon, double-click restore, context menu
-- **Air-Gap USB Package** — "Create USB Package" button with differential export and SHA-256 manifest
-- **Operation Timeouts** — Per-type watchdog (Cleanup=60min, Sync=120min, Default=30min)
-- **Async Dashboard** — 30s TTL cache, "Data unavailable" after 10 consecutive failures
+- **Health Score (0-100)** -- Weighted composite: Services 30, DB 20, Sync 20, Disk 20, LastOp 10; Green >=80 / Yellow 50-79 / Red <50
+- **Startup Splash Screen** -- 4-stage progress bar (Loading -> Services -> Starting -> Ready)
+- **History View** -- History nav button showing last 50 operations
+- **Keyboard Shortcuts** -- Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh
+- **Log Context Menu** -- Right-click: Copy All / Save to File
+- **System Tray** -- Minimize-to-tray with health color icon, double-click restore, context menu
+- **Air-Gap USB Package** -- "Create USB Package" button with differential export and SHA-256 manifest
+- **Operation Timeouts** -- Per-type watchdog (Cleanup=60min, Sync=120min, Default=30min)
+- **Async Dashboard** -- 30s TTL cache, "Data unavailable" after 10 consecutive failures
 
 ### Testing
 - 167 new Pester tests across 6 new test files (490+ total)
@@ -153,8 +153,8 @@ All notable changes to WSUS Manager are documented here.
 
 ### Features
 - **Renamed Monthly Maintenance to Online Sync:**
-  - Nav button: "📅 Monthly" → "🔄 Online Sync"
-  - Quick action button: "Maintenance" → "Online Sync"
+  - Nav button: "Monthly" -> "Online Sync"
+  - Quick action button: "Maintenance" -> "Online Sync"
   - Dialog shows Full Sync, Quick Sync, Sync Only options
   - Schedule dialog title updated
   - Windows Task Scheduler task name unchanged for backward compatibility
