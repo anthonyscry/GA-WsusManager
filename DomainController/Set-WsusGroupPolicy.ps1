@@ -382,13 +382,11 @@ function Push-GPUpdateToAll {
         $cn = $computer.Name
         $err = $null
 
-        # Test RPC connectivity first (fast ping avoids long schtasks timeout)
-        if (-not (Test-Connection -ComputerName $cn -Count 1 -Quiet -ErrorAction SilentlyContinue)) {
+        # Advisory ping check (ICMP may be blocked on hardened domains; still attempt schtasks)
+        $pingFailed = -not (Test-Connection -ComputerName $cn -Count 1 -Quiet -ErrorAction SilentlyContinue)
+        if ($pingFailed) {
             Write-Host "    $cn" -NoNewline
-            Write-Host " offline" -ForegroundColor DarkGray
-            $failList += "$cn (offline)"
-            $failed++
-            continue
+            Write-Host " ping failed, trying RPC..." -ForegroundColor DarkYellow
         }
 
         try {

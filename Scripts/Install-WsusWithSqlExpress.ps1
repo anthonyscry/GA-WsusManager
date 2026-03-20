@@ -560,9 +560,11 @@ if ($sqlcmd) {
         # Pass via sqlcmd -v variable to avoid string interpolation in SQL
         $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
         $currentUser = "$($identity.Name)"
+        # SQL-escape apostrophes for N'...' quoted contexts (e.g. CONTOSO\O'Brien -> O''Brien)
+        $currentUserSafe = $currentUser -replace "'", "''"
         Write-Host "    Adding sysadmin for: $currentUser"
 
-        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(CurrentUser)') CREATE LOGIN [`$(CurrentUser)] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -v SafeUser="$currentUserSafe" RawUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(SafeUser)') CREATE LOGIN [`$(RawUser)] FROM WINDOWS;" -b
         & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [`$(CurrentUser)];" -b
 
         # Verify

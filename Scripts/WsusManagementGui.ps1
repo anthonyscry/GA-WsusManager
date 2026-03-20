@@ -3221,7 +3221,8 @@ function Invoke-LogOperation {
             $src = Get-EscapedPath $opts.SourcePath
             $dst = Get-EscapedPath $opts.DestinationPath
             $Title = "Transfer ($($src) -> $($dst))"
-            "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL"
+            # Robocopy returns 1-7 for success; normalize to exit 0 so operation runner treats it as success
+            "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL; if (`$LASTEXITCODE -le 7) { exit 0 } else { exit `$LASTEXITCODE }"
         }
         "maintenance" {
             $opts = Show-MaintenanceDialog
@@ -3920,8 +3921,9 @@ $controls.BtnFixSqlLogin.Add_Click({
     try {
         $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
 
-        # Create login if not exists
-        $output = & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUser') CREATE LOGIN [$currentUser] FROM WINDOWS; PRINT 'Login created';" -b 2>&1
+        # Create login if not exists (SQL-escape apostrophes for N'...' context)
+        $currentUserSafe = $currentUser -replace "'", "''"
+        $output = & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUserSafe') CREATE LOGIN [$currentUser] FROM WINDOWS; PRINT 'Login created';" -b 2>&1
         Write-LogOutput "[Fix SQL Login] $output"
 
         # Add to sysadmin role
