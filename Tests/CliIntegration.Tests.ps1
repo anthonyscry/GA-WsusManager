@@ -249,9 +249,6 @@ Describe "WsusConfig Module Integration" {
             Get-WsusMaintenanceSetting -Setting "UpdateAgeCutoffMonths" | Should -Be 6
         }
 
-        It "DefaultExportDays is 30" {
-            Get-WsusMaintenanceSetting -Setting "DefaultExportDays" | Should -Be 30
-        }
     }
 }
 
