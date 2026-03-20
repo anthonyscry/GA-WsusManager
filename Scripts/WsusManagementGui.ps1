@@ -2193,7 +2193,7 @@ function Show-RestoreDialog {
 }
 
 function Show-MaintenanceDialog {
-    $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; DifferentialPath = ""; ExportDays = 30; SelectedProducts = @() }
+    $result = @{ Cancelled = $true; Profile = ""; ExportPath = ""; SelectedProducts = @() }
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "MaintenanceDialog")
@@ -2412,68 +2412,6 @@ function Show-MaintenanceDialog {
     $exportStack.Children.Add($exportPanel)
 
     # Differential Export Path
-    $diffLabel = New-Object System.Windows.Controls.TextBlock
-    $diffLabel.Text = "Differential Export Path (recent changes only):"
-    $diffLabel.Foreground = $script:BrushText2
-    $diffLabel.FontSize = 12
-    $diffLabel.Margin = "0,0,0,4"
-    $exportStack.Children.Add($diffLabel)
-
-    $diffPanel = New-Object System.Windows.Controls.DockPanel
-    $diffPanel.Margin = "0,0,0,12"
-
-    $diffBrowse = New-Object System.Windows.Controls.Button
-    $diffBrowse.Content = "..."
-    $diffBrowse.Width = 30
-    $diffBrowse.Background = $script:BrushBgCard
-    $diffBrowse.Foreground = $script:BrushText1
-    $diffBrowse.BorderThickness = 0
-    [System.Windows.Controls.DockPanel]::SetDock($diffBrowse, "Right")
-    $diffPanel.Children.Add($diffBrowse)
-
-    $diffBox = New-Object System.Windows.Controls.TextBox
-    $diffBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDiffExportTextBox")
-    $diffBox.Background = $script:BrushBgCard
-    $diffBox.Foreground = $script:BrushText1
-    $diffBox.BorderThickness = 0
-    $diffBox.Padding = "8,6"
-    $diffBox.Margin = "0,0,4,0"
-    $diffPanel.Children.Add($diffBox)
-
-    $exportStack.Children.Add($diffPanel)
-
-    # Export Days
-    $daysPanel = New-Object System.Windows.Controls.StackPanel
-    $daysPanel.Orientation = "Horizontal"
-    $daysPanel.Margin = "0,0,0,12"
-
-    $daysLabel = New-Object System.Windows.Controls.TextBlock
-    $daysLabel.Text = "Differential includes files from last"
-    $daysLabel.Foreground = $script:BrushText2
-    $daysLabel.FontSize = 12
-    $daysLabel.VerticalAlignment = "Center"
-    $daysPanel.Children.Add($daysLabel)
-
-    $daysBox = New-Object System.Windows.Controls.TextBox
-    $daysBox.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "SyncDaysTextBox")
-    $daysBox.Text = "30"
-    $daysBox.Width = 50
-    $daysBox.Background = $script:BrushBgCard
-    $daysBox.Foreground = $script:BrushText1
-    $daysBox.BorderThickness = 0
-    $daysBox.Padding = "8,4"
-    $daysBox.Margin = "8,0,8,0"
-    $daysBox.HorizontalContentAlignment = "Center"
-    $daysPanel.Children.Add($daysBox)
-
-    $daysLabel2 = New-Object System.Windows.Controls.TextBlock
-    $daysLabel2.Text = "days"
-    $daysLabel2.Foreground = $script:BrushText2
-    $daysLabel2.FontSize = 12
-    $daysLabel2.VerticalAlignment = "Center"
-    $daysPanel.Children.Add($daysLabel2)
-
-    $exportStack.Children.Add($daysPanel)
 
     # Export info note
     $exportNote = New-Object System.Windows.Controls.TextBlock
@@ -2499,16 +2437,6 @@ function Show-MaintenanceDialog {
         } finally { $fbd.Dispose() }
     })
 
-    $diffBrowse.Add_Click({
-        $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select differential export destination (e.g., USB drive)"
-        try {
-            if ($fbd.ShowDialog() -eq "OK") {
-                $diffBox.Text = $fbd.SelectedPath
-            }
-        } finally { $fbd.Dispose() }
-    })
-
     # Button panel (outside tabs)
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -2528,9 +2456,6 @@ function Show-MaintenanceDialog {
         elseif ($radioQuick.IsChecked) { $result.Profile = "Quick" }
         else { $result.Profile = "SyncOnly" }
         $result.ExportPath = $exportBox.Text.Trim()
-        $result.DifferentialPath = $diffBox.Text.Trim()
-        $days = 30
-        if ([int]::TryParse($daysBox.Text, [ref]$days)) { $result.ExportDays = $days }
         $result.SelectedProducts = @()
         foreach ($prod in $productNames) {
             if ($productCheckBoxes[$prod].IsChecked) { $result.SelectedProducts += $prod }
@@ -3395,13 +3320,6 @@ function Invoke-LogOperation {
             if ($opts.ExportPath) {
                 $exportPathSafe = Get-EscapedPath $opts.ExportPath
                 $maintCmd += " -ExportPath '$exportPathSafe'"
-            }
-            if ($opts.DifferentialPath) {
-                $diffPathSafe = Get-EscapedPath $opts.DifferentialPath
-                $maintCmd += " -DifferentialExportPath '$diffPathSafe'"
-            }
-            if ($opts.ExportDays -and $opts.ExportDays -gt 0) {
-                $maintCmd += " -ExportDays $($opts.ExportDays)"
             }
             $maintCmd
         }
