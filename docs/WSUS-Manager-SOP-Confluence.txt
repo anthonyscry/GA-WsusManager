@@ -87,13 +87,13 @@ h3. Granting SQL Server Sysadmin Privileges
 *Step 2: Add Login with Sysadmin Role*
 
 ||Step||Action||
-|1|In Object Explorer, expand Security → Logins|
-|2|Right-click Logins → New Login...|
+|1|In Object Explorer, expand Security -> Logins|
+|2|Right-click Logins -> New Login...|
 |3|Click Search... to locate the account|
-|4|Click Locations... → select Entire Directory|
-|5|Enter domain group (e.g., {{DOMAIN\System Administrators}}) → OK|
+|4|Click Locations... -> select Entire Directory|
+|5|Enter domain group (e.g., {{DOMAIN\System Administrators}}) -> OK|
 |6|Go to Server Roles page|
-|7|Check sysadmin → OK|
+|7|Check sysadmin -> OK|
 
 *Step 3: Refresh Permissions*
 
@@ -120,7 +120,7 @@ h3. Installation Steps
 |1|Place SQL installers in {{C:\WSUS\SQLDB\}}|
 |2|Extract {{WsusManager-v4.0.2.zip}} to {{C:\WSUS\}}|
 |3|Verify folder structure (EXE + Scripts/ + Modules/)|
-|4|Right-click {{WsusManager.exe}} → Run as Administrator|
+|4|Right-click {{WsusManager.exe}} -> Run as Administrator|
 |5|Click *Install WSUS* and follow prompts|
 
 h3. Deployment Layout
@@ -156,7 +156,7 @@ WSUS Manager v4.0.2 includes a full GUI application ({{WsusManager.exe}}) built 
 
 h3. Launching the GUI
 
-# Right-click {{WsusManager.exe}} → *Run as Administrator*
+# Right-click {{WsusManager.exe}} -> *Run as Administrator*
 # If WSUS is not installed, only *Install WSUS* will be enabled
 # Dashboard auto-populates once WSUS is detected
 
@@ -180,7 +180,6 @@ h3. GUI Operations
 |*Deep Cleanup*|Full database cleanup: supersession records, index optimization, shrink|
 |*Online Sync*|Profile-based sync and maintenance (Full/Quick/Sync Only)|
 |*Transfer*|Export/Import dialog for air-gap operations|
-|*Create USB Package*|Air-gap export with SHA-256 transfer manifest and checksums|
 |*Restore Database*|Restore SUSDB from backup file|
 |*Reset Content*|Re-verify content files after DB import (air-gap)|
 |*Schedule Task*|Create scheduled online sync task|
@@ -300,7 +299,7 @@ h3. Workflow Overview
 |1|Online WSUS Server|Run *Online Sync* - Syncs, cleans up, exports to network share|
 |2|Online WSUS Server|Run *Transfer > Export* - Copy to USB/Apricorn|
 |3|Physical Transfer|Transport USB/Apricorn drive to air-gapped network|
-|4|Air-Gapped WSUS Server|Run *Transfer → Import* - Copy from external media|
+|4|Air-Gapped WSUS Server|Run *Transfer -> Import* - Copy from external media|
 |5|Air-Gapped WSUS Server|Run *Restore Database*|
 |6|Domain Controller|Run {{.\Set-WsusGroupPolicy.ps1}} (one-time setup)|
 
@@ -396,7 +395,6 @@ Configures Windows Update client behavior via registry settings.
 |ConfigureDeadlineForQualityUpdates|7 days|Quality updates must install within 7 days|
 |ConfigureDeadlineForFeatureUpdates|7 days|Feature updates must install within 7 days|
 |ConfigureDeadlineGracePeriod|0 days|No grace period after deadline|
-|ConfigureDeadlineNoAutoReboot|Disabled|Auto-reboot after update installation|
 |AlwaysAutoRebootAtScheduledTime|Enabled|Auto-restart at scheduled time|
 
 h4. 2. WSUS Inbound Allow (Firewall)
@@ -479,7 +477,7 @@ Update the GPO with the new HTTPS URL:
 
 For self-signed certificates, deploy the exported {{.cer}} file to clients via:
 
-* *GPO:* Computer Config → Policies → Windows Settings → Security Settings → Public Key Policies → Trusted Root CAs
+* *GPO:* Computer Config -> Policies -> Windows Settings -> Security Settings -> Public Key Policies -> Trusted Root CAs
 * *Manual:* Import on each client
 
 ----
@@ -556,6 +554,7 @@ h3. GUI Log Panel
 * Auto-expands when operations start
 * Clear button to reset output
 * Live Terminal toggle for external window
+* Right-click context menu: Copy All / Save to File
 
 ----
 
@@ -611,21 +610,26 @@ h2. Repository Structure
 |Scripts/Set-WsusHttps.ps1|Optional HTTPS configuration|
 |DomainController/Set-WsusGroupPolicy.ps1|GPO import script|
 |DomainController/WSUS GPOs/|Pre-configured GPO backups|
-|Modules/*.psm1|11 shared PowerShell modules|
+|Modules/*.psm1|16 shared PowerShell modules|
 
 h3. PowerShell Modules
 
 ||Module||Purpose||
 |WsusUtilities.psm1|Logging, colors, helpers|
 |WsusDatabase.psm1|Database operations|
-|WsusHealth.psm1|Health checks and repair|
+|WsusHealth.psm1|Health checks, repair, health score (0-100)|
 |WsusServices.psm1|Service management|
 |WsusFirewall.psm1|Firewall rules|
 |WsusPermissions.psm1|Directory permissions|
-|WsusConfig.psm1|Configuration|
+|WsusConfig.psm1|Configuration, operation timeouts, health weights, GUI settings|
 |WsusExport.psm1|Export/import|
 |WsusScheduledTask.psm1|Scheduled tasks|
-|WsusAutoDetection.psm1|Server detection and auto-recovery|
+|WsusAutoDetection.psm1|Server detection, auto-recovery, dashboard data, 30s TTL cache|
+|WsusDialogs.psm1|Dialog factory for WPF GUI (dark-themed windows, folder browsers)|
+|WsusOperationRunner.psm1|Unified operation lifecycle with timeout watchdog|
+|WsusHistory.psm1|Operation history (JSON at %APPDATA%\WsusManager\history.json)|
+|WsusNotification.psm1|Toast/balloon/log-only completion notifications|
+|WsusTrending.psm1|DB size trending with linear regression and days-until-full|
 |AsyncHelpers.psm1|Async/background operation helpers for WPF|
 
 ----
@@ -633,18 +637,24 @@ h3. PowerShell Modules
 h2. Features Summary
 
 ||Feature||Description||
-|GUI Application|WPF-based dark theme interface with dashboard|
+|GUI Application|WPF-based dark theme interface with dashboard and splash screen|
+|Health Score|Weighted composite 0-100 (Services, DB, Sync, Disk, LastOp) with color-coded grade|
+|DB Size Trending|Linear regression over 30 days with days-until-full estimate|
+|Operation History|Last 50 operations with duration, result, and summary|
+|Desktop Notifications|Toast/balloon/log-only fallback on operation completion|
+|Operation Timeouts|Per-operation watchdog (Cleanup=60min, Sync=120min, Default=30min)|
 |Automated Installation|One-click deployment of SQL Server Express 2022 + SSMS + WSUS|
-|Air-Gap Support|Full content export/import for offline networks|
+|Air-Gap Support|Full content export/import for offline networks with USB package and manifest|
 |Database Management|Backup, restore, cleanup, and optimization|
-|Health Monitoring|Automated diagnostics and repair capabilities|
-|Scheduled Maintenance|GUI and CLI support for Windows Task Scheduler|
-|GPO Deployment|Pre-configured Group Policy Objects for domain-wide client configuration|
+|Unified Diagnostics|Combined health check and auto-repair in a single operation|
+|Scheduled Sync|GUI and CLI support for Windows Task Scheduler|
+|GPO Deployment|Pre-configured GPOs with schtasks-based push (no WinRM required)|
 |Live Terminal Mode|External PowerShell window for operation output|
-|Server Mode Toggle|Online vs Air-Gap mode switching|
-|Auto-Refresh Dashboard|30-second interval status updates|
+|Server Mode Toggle|Online vs Air-Gap mode switching with context-aware menus|
+|Auto-Refresh Dashboard|30-second interval status updates with operation skip|
+|Keyboard Shortcuts|Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R/F5 for quick navigation|
 |DPI Awareness|Crisp rendering on high-DPI displays|
-|Modular Architecture|11 reusable PowerShell modules|
+|Modular Architecture|16 reusable PowerShell modules|
 
 ----
 

@@ -169,7 +169,6 @@ README.md
 - Health Score card on dashboard (0-100, color-coded)
 - DB size trend indicator with days-until-full estimate
 - Last successful sync timestamp on dashboard
-- Air-Gap "Create USB Package" workflow with transfer manifest
 - Server Mode toggle (Online vs Air-Gap) with context-aware menu
 - Custom icon: `wsus-icon.ico` (if present)
 - Requires admin privileges
@@ -271,7 +270,6 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - **DB Size Trending** — `WsusTrending.psm1` with linear regression; days-until-full estimate; Critical/Warning alerts near 10GB limit
 - **Health Score** — `Get-WsusHealthScore` in `WsusHealth.psm1`; 0-100 weighted composite (Services=30, DB=20, Sync=20, Disk=20, LastOp=10); Grade Green/Yellow/Red/Unknown
 - **Operation Timeouts** — `Get-WsusOperationTimeout` in `WsusConfig.psm1`; per-type values (Cleanup=60min, Sync=120min, Default=30min)
-- **Air-Gap USB Package** — "Create USB Package" button in GUI; generates transfer manifest with checksums
 - **History View** — 📜 History nav button; lists last 50 operations from history.json
 
 ### Phase 3 — Polish

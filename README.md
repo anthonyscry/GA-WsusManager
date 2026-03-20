@@ -86,7 +86,6 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 - Server Mode toggle: Online vs Air-Gap.
 - Export updates and content to USB for transfer to disconnected networks.
 - Import updates and content from USB on the air-gapped server.
-- "Create USB Package" workflow with transfer manifest and checksums.
 - "Reset Content" button to fix content download status after import.
 
 ### Client Deployment
@@ -179,8 +178,6 @@ This is how you move updates from an internet-connected WSUS server to an air-ga
 9. After import completes, click **Reset Content** (under Diagnostics) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
 
 10. Run **Diagnostics** to verify everything is healthy.
-
-**Tip:** Use the "Create USB Package" button to generate a transfer manifest with checksums for each file, which helps verify nothing was corrupted during the physical transfer.
 
 ### Deploying GPOs to Clients
 

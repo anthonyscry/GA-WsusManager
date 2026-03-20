@@ -3870,10 +3870,10 @@ if ($controls.BtnClearHistory) {
 if ($controls.InternetStatusBorder) {
     $controls.InternetStatusBorder.Add_MouseLeftButtonUp({
         if ($script:ServerModeOverride) {
-            # Already manually overridden — toggle to opposite mode
+            # Already manually overridden -- toggle to opposite mode
             $script:ServerModeOverride = if ($script:ServerModeOverride -eq "Online") { "Air-Gap" } else { "Online" }
         } else {
-            # Currently auto — force override to opposite of current auto mode
+            # Currently auto -- force override to opposite of current auto mode
             $script:ServerModeOverride = if ($script:ServerMode -eq "Online") { "Air-Gap" } else { "Online" }
         }
         $window.Dispatcher.Invoke([Action]{ Update-ServerMode })

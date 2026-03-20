@@ -212,7 +212,7 @@ All notable changes to WSUS Manager are documented here.
   - GitHub Actions now extracts contents before uploading
 - **Fixed**: Noisy `spDeleteUpdate` errors during declined update purge
   - Expected errors for updates with revision dependencies now silently handled
-- **Fixed**: Window height increased by 8 pixels (720 → 728)
+- **Fixed**: Window height increased by 8 pixels (720 -> 728)
 
 ---
 
@@ -265,7 +265,7 @@ All notable changes to WSUS Manager are documented here.
   - Fields re-enabled when operation completes or is cancelled
 
 ### Code Quality
-- **Removed**: Duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies → 1)
+- **Removed**: Duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies -> 1)
 - **Streamlined**: GitHub workflows with concurrency settings
 - **Removed**: Codacy and release-drafter workflows
 
