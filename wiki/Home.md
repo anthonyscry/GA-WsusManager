@@ -57,7 +57,7 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 | Deep Cleanup | Aggressive space recovery |
 | Diagnostics | Comprehensive health check with auto-repair |
 | Reset Content | Re-verify content files after import |
-| Create USB Package | Air-gap differential export with SHA-256 manifest |
+| Create USB Package | Air-gap export with SHA-256 manifest |
 
 > **Note:** Online Sync and Schedule Task should run on the **Online** WSUS server only.
 
