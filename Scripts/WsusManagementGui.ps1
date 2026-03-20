@@ -1803,8 +1803,8 @@ function Show-ExportDialog {
     $daysPanel.Children.Add($daysTxt)
     $stack.Children.Add($daysPanel)
 
-    $radioDiff.Add_Checked({ $daysPanel.Visibility = "Visible" }.GetNewClosure())
-    $radioFull.Add_Checked({ $daysPanel.Visibility = "Collapsed" }.GetNewClosure())
+    $radioDiff.Add_Checked({ $daysPanel.Visibility = "Visible" })
+    $radioFull.Add_Checked({ $daysPanel.Visibility = "Collapsed" })
 
     $destLbl = New-Object System.Windows.Controls.TextBlock
     $destLbl.Text = "Destination:"
@@ -1836,7 +1836,7 @@ function Show-ExportDialog {
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
         try { if ($fbd.ShowDialog() -eq "OK") { $destTxt.Text = $fbd.SelectedPath } }
         finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($destPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
@@ -1866,7 +1866,7 @@ function Show-ExportDialog {
         $result.DestinationPath = $destTxt.Text
         $result.DaysOld = $daysVal
         $dlg.Close()
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($exportBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -1875,7 +1875,7 @@ function Show-ExportDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -1940,7 +1940,7 @@ function Show-ImportDialog {
         $fbd.Description = "Select source folder containing WSUS export data"
         try { if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath } }
         finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($srcPanel)
 
     # Destination folder section
@@ -1977,7 +1977,7 @@ function Show-ImportDialog {
         $fbd.SelectedPath = $dstTxt.Text
         try { if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath } }
         finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($dstPanel)
 
     $btnPanel = New-Object System.Windows.Controls.StackPanel
@@ -2005,7 +2005,7 @@ function Show-ImportDialog {
         $result.SourcePath = $srcTxt.Text
         $result.DestinationPath = $dstTxt.Text
         $dlg.Close()
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($importBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -2014,7 +2014,7 @@ function Show-ImportDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -2099,7 +2099,7 @@ function Show-RestoreDialog {
         $ofd.Filter = "Backup Files (*.bak)|*.bak|All Files (*.*)|*.*"
         $ofd.InitialDirectory = "C:\WSUS"
         if ($ofd.ShowDialog() -eq $true) { $fileTxt.Text = $ofd.FileName }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($filePanel)
 
     # Show recent backups if any found
@@ -2128,7 +2128,7 @@ function Show-RestoreDialog {
             if ($listBox.SelectedIndex -ge 0 -and $listBox.SelectedIndex -lt $backupFiles.Count) {
                 $fileTxt.Text = $backupFiles[$listBox.SelectedIndex].FullName
             }
-        }.GetNewClosure())
+        })
         $stack.Children.Add($listBox)
     } else {
         $noFilesLbl = New-Object System.Windows.Controls.TextBlock
@@ -2174,7 +2174,7 @@ function Show-RestoreDialog {
             $result.BackupPath = $fileTxt.Text
             $dlg.Close()
         }
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($restoreBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -2183,7 +2183,7 @@ function Show-RestoreDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -2497,7 +2497,7 @@ function Show-MaintenanceDialog {
                 $exportBox.Text = $fbd.SelectedPath
             }
         } finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
 
     $diffBrowse.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -2507,7 +2507,7 @@ function Show-MaintenanceDialog {
                 $diffBox.Text = $fbd.SelectedPath
             }
         } finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
 
     # Button panel (outside tabs)
     $btnPanel = New-Object System.Windows.Controls.StackPanel
@@ -2522,7 +2522,6 @@ function Show-MaintenanceDialog {
     $runBtn.Foreground = $script:BrushText1
     $runBtn.BorderThickness = 0
     $runBtn.Margin = "0,0,8,0"
-    $saveSettingsCmd = Get-Command Save-Settings
     $runBtn.Add_Click({
         $result.Cancelled = $false
         if ($radioFull.IsChecked) { $result.Profile = "Full" }
@@ -2541,9 +2540,9 @@ function Show-MaintenanceDialog {
             return
         }
         $script:SyncProducts = $result.SelectedProducts
-        & $saveSettingsCmd
+        Save-Settings
         $dlg.Close()
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($runBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -2552,7 +2551,7 @@ function Show-MaintenanceDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -2932,7 +2931,7 @@ function Show-TransferDialog {
         $fbd.Description = "Select source folder (e.g. C:\WSUS\WsusContent)"
         try { if ($fbd.ShowDialog() -eq "OK") { $srcTxt.Text = $fbd.SelectedPath } }
         finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($srcPanel)
 
     # Destination folder
@@ -2966,7 +2965,7 @@ function Show-TransferDialog {
         $fbd.Description = "Select destination folder (e.g. D:\WsusContent)"
         try { if ($fbd.ShowDialog() -eq "OK") { $dstTxt.Text = $fbd.SelectedPath } }
         finally { $fbd.Dispose() }
-    }.GetNewClosure())
+    })
     $stack.Children.Add($dstPanel)
 
     # Differential date filter option
@@ -3038,7 +3037,7 @@ function Show-TransferDialog {
             $result.DaysOld = 0
         }
         $dlg.Close()
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($runBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -3047,7 +3046,7 @@ function Show-TransferDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -3152,18 +3151,16 @@ function Show-SettingsDialog {
     $saveBtn.Foreground = $script:BrushText1
     $saveBtn.BorderThickness = 0
     $saveBtn.Margin = "0,0,8,0"
-    $saveSettingsCmd2 = Get-Command Save-Settings
-    $refreshCmd = Get-Command Invoke-DashboardRefreshSafe
     $saveBtn.Add_Click({
         $script:ContentPath = if($txt1.Text){$txt1.Text}else{"C:\WSUS"}
         $script:SqlInstance = if($txt2.Text){$txt2.Text}else{".\SQLEXPRESS"}
         $script:NotificationsEnabled = $chkNotif.IsChecked -eq $true
         $script:NotificationBeep = $chkBeep.IsChecked -eq $true
         $script:TrayMinimize = $chkTray.IsChecked -eq $true
-        & $saveSettingsCmd2
-        & $refreshCmd -Source "Settings Save"
+        Save-Settings
+        Invoke-DashboardRefreshSafe -Source "Settings Save"
         $dlg.Close()
-    }.GetNewClosure())
+    })
     $btnPanel.Children.Add($saveBtn)
 
     $cancelBtn = New-Object System.Windows.Controls.Button
@@ -3172,7 +3169,7 @@ function Show-SettingsDialog {
     $cancelBtn.Background = $script:BrushBgCard
     $cancelBtn.Foreground = $script:BrushText1
     $cancelBtn.BorderThickness = 0
-    $cancelBtn.Add_Click({ $dlg.Close() }.GetNewClosure())
+    $cancelBtn.Add_Click({ $dlg.Close() })
     $btnPanel.Children.Add($cancelBtn)
 
     $stack.Children.Add($btnPanel)
@@ -3726,7 +3723,7 @@ while ($countdown -gt 0) {
                     $script:FullLogContent += $formattedLine
                     $logOutput.AppendText($formattedLine)
                     $logOutput.ScrollToEnd()
-                }.GetNewClosure())
+                })
             }
 
             $exitHandler = {
@@ -3879,14 +3876,14 @@ $controls.InstallSaPassword.Add_PasswordChanged({
         $pwdConfirm = $controls.InstallSaPasswordConfirm.Password
         $controls.BtnRunInstall.IsEnabled = ($pwd -eq $pwdConfirm -and $pwd.Length -gt 0)
     }
-}.GetNewClosure())
+})
 
 $controls.InstallSaPasswordConfirm.Add_PasswordChanged({
     $pwd = $controls.InstallSaPassword.Password
     $pwdConfirm = $controls.InstallSaPasswordConfirm.Password
     $strength = Test-PasswordStrength $pwd
     $controls.BtnRunInstall.IsEnabled = ($pwd -eq $pwdConfirm -and $strength -eq 100)
-}.GetNewClosure())
+})
 $controls.BtnRestore.Add_Click({ Invoke-LogOperation "restore" "Restore Database" })
 $controls.BtnCreateGpo.Add_Click({
     # Create GPO files for DC admin
@@ -4010,7 +4007,7 @@ if ($controls.BtnRefreshHistory) {
     $controls.BtnRefreshHistory.Add_Click({ Update-HistoryView })
 }
 if ($controls.HistoryFilter) {
-    $controls.HistoryFilter.Add_TextChanged({ Update-HistoryView }.GetNewClosure())
+    $controls.HistoryFilter.Add_TextChanged({ Update-HistoryView })
 }
 if ($controls.BtnClearHistory) {
     $controls.BtnClearHistory.Add_Click({
@@ -4216,7 +4213,7 @@ $menuCopyAll.Add_Click({
     if ($controls.LogOutput.Text.Length -gt 0) {
         [System.Windows.Clipboard]::SetText($controls.LogOutput.Text)
     }
-}.GetNewClosure())
+})
 $menuSaveToFile = New-Object System.Windows.Controls.MenuItem
 $menuSaveToFile.Header = "Save to File..."
 $menuSaveToFile.Add_Click({
@@ -4227,7 +4224,7 @@ $menuSaveToFile.Add_Click({
         $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
         Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
     }
-}.GetNewClosure())
+})
 $null = $logContextMenu.Items.Add($menuCopyAll)
 $null = $logContextMenu.Items.Add($menuSaveToFile)
 $controls.LogOutput.ContextMenu = $logContextMenu
