@@ -11,8 +11,11 @@ This guide explains how to use the WSUS Manager GUI application for day-to-day o
 3. [Server Mode Toggle](#server-mode-toggle)
 4. [Operations Menu](#operations-menu)
 5. [Quick Actions](#quick-actions)
-6. [Settings](#settings)
-7. [Viewing Logs](#viewing-logs)
+6. [Operation History](#operation-history)
+7. [Notifications](#notifications)
+8. [Settings](#settings)
+9. [Viewing Logs](#viewing-logs)
+10. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -391,6 +394,48 @@ The **Start Services** button starts services in dependency order:
 
 ---
 
+## Operation History
+
+Click the **History** button in the sidebar (or press **Ctrl+H**) to view a list of past operations.
+
+### What It Shows
+
+The History view displays the last **50 operations** with:
+- Operation type (Diagnostics, Online Sync, Deep Cleanup, etc.)
+- Duration
+- Result (Success, Failed, Cancelled)
+- Summary text
+
+### Storage
+
+History is stored in JSON format at:
+```
+%APPDATA%\WsusManager\history.json
+```
+
+The file is automatically trimmed to 100 entries. File-lock retry logic prevents corruption if multiple processes access the file simultaneously.
+
+---
+
+## Notifications
+
+WSUS Manager displays a notification when an operation completes. This is useful when running long operations (Deep Cleanup, Online Sync) while working in other applications.
+
+### Notification Fallback
+
+The notification system uses a 3-tier fallback:
+1. **Windows 10 Toast** -- native toast notification (preferred)
+2. **Balloon Tip** -- system tray balloon notification (fallback)
+3. **Log Only** -- writes to the application log if neither UI method is available
+
+### Configuration
+
+Notifications can be enabled or disabled in the **Settings** dialog:
+- **Enable Notifications** -- toggle completion notifications on/off
+- **Enable Beep** -- play a sound on operation completion
+
+---
+
 ## Settings
 
 Access settings via the **Settings** button in the sidebar.
@@ -401,6 +446,9 @@ Access settings via the **Settings** button in the sidebar.
 |---------|---------|-------------|
 | WSUS Content Path | `C:\WSUS` | Root directory for WSUS |
 | SQL Instance | `.\SQLEXPRESS` | SQL Server instance name |
+| Notifications | Enabled | Show toast/balloon on operation completion |
+| Beep on Completion | Disabled | Play sound when operations finish |
+| Minimize to Tray | Disabled | Minimize to system tray instead of taskbar |
 
 ### Settings Storage
 

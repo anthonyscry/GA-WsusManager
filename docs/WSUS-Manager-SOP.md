@@ -108,13 +108,13 @@ README.md                 # Full documentation
 
 | Step | Action |
 |------|--------|
-| 1 | In Object Explorer, expand Security → Logins |
-| 2 | Right-click Logins → New Login... |
+| 1 | In Object Explorer, expand Security -> Logins |
+| 2 | Right-click Logins -> New Login... |
 | 3 | Click Search... to locate the account |
-| 4 | Click Locations... → select Entire Directory |
-| 5 | Enter domain group (e.g., `DOMAIN\System Administrators`) → OK |
+| 4 | Click Locations... -> select Entire Directory |
+| 5 | Enter domain group (e.g., `DOMAIN\System Administrators`) -> OK |
 | 6 | Go to Server Roles page |
-| 7 | Check sysadmin → OK |
+| 7 | Check sysadmin -> OK |
 
 **Step 3: Refresh Permissions**
 
@@ -143,7 +143,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
 | 2 | Extract `WsusManager-v4.0.2.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
-| 4 | Right-click `WsusManager.exe` → Run as Administrator |
+| 4 | Right-click `WsusManager.exe` -> Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
 
 ### Deployment Layout
@@ -180,7 +180,7 @@ WSUS Manager v4.0.2 includes a full GUI application (`WsusManager.exe`) built wi
 
 ### Launching the GUI
 
-1. Right-click `WsusManager.exe` → **Run as Administrator**
+1. Right-click `WsusManager.exe` -> **Run as Administrator**
 2. If WSUS is not installed, only **Install WSUS** will be enabled
 3. Dashboard auto-populates once WSUS is detected
 
@@ -346,7 +346,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | 1 | Online WSUS Server | Run **Online Sync** - Syncs, cleans up, exports to network share |
 | 2 | Online WSUS Server | Run **Transfer > Export** - Copy to USB/Apricorn |
 | 3 | Physical Transfer | Transport USB/Apricorn drive to air-gapped network |
-| 4 | Air-Gapped WSUS Server | Run **Transfer → Import** - Copy from external media |
+| 4 | Air-Gapped WSUS Server | Run **Transfer -> Import** - Copy from external media |
 | 5 | Air-Gapped WSUS Server | Run **Restore Database** |
 | 6 | Domain Controller | Run `.\Set-WsusGroupPolicy.ps1` (one-time setup) |
 
@@ -539,7 +539,7 @@ Update the GPO with the new HTTPS URL:
 
 For self-signed certificates, deploy the exported `.cer` file to clients via:
 
-- **GPO:** Computer Config → Policies → Windows Settings → Security Settings → Public Key Policies → Trusted Root CAs
+- **GPO:** Computer Config -> Policies -> Windows Settings -> Security Settings -> Public Key Policies -> Trusted Root CAs
 - **Manual:** Import on each client
 
 ---

@@ -97,7 +97,7 @@ $script:RecentLines = @{}
 $script:LiveTerminalMode = $true
 $script:NotificationsEnabled = $true  # Show notifications when operations complete
 $script:NotificationBeep = $false     # Beep on completion
-# Theme: Dark mode only (light theme not implemented — remove this comment when adding theme support)
+# Theme: Dark mode only (light theme not implemented -- remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
 $script:SyncProducts = @("Windows 11", "Windows Server 2019", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps")
@@ -1275,7 +1275,7 @@ function Update-Dashboard {
                 $sub = $wsus.GetSubscription()
                 $lastSync = $sub.LastSuccessfulSynchronizationTime
                 # Fallback: LastSuccessfulSynchronizationTime can return MinValue on air-gapped servers
-                # even after a successful sync — check GetLastSynchronizationInfo() instead
+                # even after a successful sync -- check GetLastSynchronizationInfo() instead
                 if (-not $lastSync -or $lastSync -eq [DateTime]::MinValue) {
                     $syncInfo = $sub.GetLastSynchronizationInfo()
                     if ($syncInfo -and $syncInfo.Result -eq [Microsoft.UpdateServices.Administration.SynchronizationResult]::Succeeded) {
@@ -3866,7 +3866,7 @@ if ($controls.BtnClearHistory) {
     })
 }
 
-# Online/Offline status indicator — click to toggle manual override
+# Online/Offline status indicator -- click to toggle manual override
 if ($controls.InternetStatusBorder) {
     $controls.InternetStatusBorder.Add_MouseLeftButtonUp({
         if ($script:ServerModeOverride) {
