@@ -21,9 +21,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Closure scope bugs** in WPF click handlers causing stale variable capture
 - **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v` variable to prevent SQL injection
 - **Security:** `Invoke-WsusMonthlyMaintenance.ps1` — word-boundary `\b` in product decline regex prevents false positives
+- **Security:** SQL-escape apostrophes in `N'...'` contexts for Fix SQL Login and installer sysadmin grant
+- **Security:** Sanitize WSUS product names before command string interpolation (reject unsafe characters)
+- **Security:** Block double-quote and percent in `Test-SafePath` to prevent robocopy argument injection
+- **Security:** Scrub SA password from `ConfigurationFile.ini` immediately after SQL setup completes
+- **Security:** Wrap process start in `try/finally` for guaranteed password env var cleanup
 - **Safety:** `WsusTrending.psm1` — add timestamp to corrupt backup filename to prevent silent overwrite
+- **Robocopy exit codes:** Normalize exit codes 1–7 to 0 (success) in GUI transfer operations
+- **GPO push:** Make ICMP ping advisory — hardened domains blocking ping can still receive GP updates via RPC
+- **Restore:** Guard `wsusutil reset` behind `Test-Path` to prevent WSUS service stranding if wsusutil.exe is missing
+- **Dashboard:** Skip refresh while operations are running (prevents log output stutter)
 - Log message said 'any key' but only ESC/Q work
 - Backtick-escape `$(CurrentUser)` in installer sqlcmd calls
+- Fix `Integration.Tests.ps1` version check (4.0.1 → 4.0.2) and replace broken build.yml workflow test
 
 ### Documentation
 - Added **AIR-GAP ONLY** warnings across all documentation (SOP, User Guide, Installation Guide, Confluence, Troubleshooting, CLAUDE.md)
