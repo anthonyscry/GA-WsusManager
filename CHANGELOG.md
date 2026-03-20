@@ -5,6 +5,32 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2026-03-20
+
+### Changed
+- **GPO deployment (v1.6.0):** Replaced `Invoke-GPUpdate` (WinRM) with `schtasks.exe` RPC-based push — works without WinRM, includes per-computer tracking and ping pre-check
+- **GPO import strategy:** Delete-and-reimport instead of merge — permanently fixes stale registry values that caused "Extra Registry Settings" warnings in GPMC
+- **GPO backups:** Removed `ScheduledInstallEveryWeek`, `ConfigureDeadlineNoAutoReboot`, `EnableFirewall`, and `PolicyVersion` from .pol binary files
+- Removed differential export feature (Full/Differential copy mode, ExportDays, DifferentialExportPath) — simplified to full export only
+- Removed `.GetNewClosure()` from all WPF click handlers — replaced with proper scope patterns
+- Install script: dynamic SQL instance registry key detection, `UpdateServices` role (not `UpdateServices-DB`) for external SQL, `SyncFromMicrosoftUpdate=1`, TrustServerCertificate (`-C`), update language set to English
+- `WsusOperationRunner.psm1` — Wrapped process command so Warning/Verbose/Debug/Info streams flow to stdout
+- `WsusTrending.psm1` — Timestamped corrupt backup filenames to prevent silent overwrite
+
+### Fixed
+- **Closure scope bugs** in WPF click handlers causing stale variable capture
+- **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v` variable to prevent SQL injection
+- **Security:** `Invoke-WsusMonthlyMaintenance.ps1` — word-boundary `\b` in product decline regex prevents false positives
+- **Safety:** `WsusTrending.psm1` — add timestamp to corrupt backup filename to prevent silent overwrite
+- Log message said 'any key' but only ESC/Q work
+- Backtick-escape `$(CurrentUser)` in installer sqlcmd calls
+
+### Documentation
+- Added **AIR-GAP ONLY** warnings across all documentation (SOP, User Guide, Installation Guide, Confluence, Troubleshooting, CLAUDE.md)
+- Updated Create GPO instructions: removed `Invoke-GPUpdate` reference, added schtasks explanation
+- Removed `ConfigureDeadlineNoAutoReboot` from SOP settings table
+- Removed differential export references from all docs and wiki
+
 ## [4.0.1] - 2026-03-18
 
 ### Added
