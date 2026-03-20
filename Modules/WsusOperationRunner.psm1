@@ -438,7 +438,7 @@ function Start-WsusOperation {
         }
 
         'Embedded' {
-            # Log accumulator (StringBuilder avoids O(n²) string concat)
+            # Log accumulator (StringBuilder avoids O(n^2) string concat)
             $logBuffer = New-Object System.Text.StringBuilder
 
             # Shared output/error handler data
