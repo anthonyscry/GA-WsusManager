@@ -486,13 +486,18 @@ function Invoke-WsusRestore {
 
     # Content reset -- must stop WSUS before resetting so the service picks up
     # the re-verification flags on startup (matches standalone Reset behavior)
-    Write-Log "Stopping WSUS for content reset..." "Yellow"
-    Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 3
-    Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
-    & $wsusutil reset 2>$null
-    Write-Log "Starting WSUS..." "Yellow"
-    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    if (Test-Path $wsusutil) {
+        Write-Log "Stopping WSUS for content reset..." "Yellow"
+        Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
+        & $wsusutil reset 2>$null
+        Write-Log "Starting WSUS..." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    } else {
+        Write-Log "wsusutil.exe not found — skipping content reset. Start WSUS manually." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    }
 
     Write-Banner "RESTORE COMPLETE"
     Write-Log "[OK] Database restored" "Green"

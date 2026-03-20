@@ -364,7 +364,14 @@ if ($sqlInstalled) {
     }
 
     $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -PassThru -NoNewWindow
-    Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
+    try {
+        Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
+    } finally {
+        # Scrub SA password from config file immediately (don't leave it on disk)
+        if (Test-Path $ConfigFile) {
+            (Get-Content $ConfigFile) -replace 'SAPWD="[^"]*"', 'SAPWD=""' | Set-Content $ConfigFile -Force
+        }
+    }
 
     $sqlExitCode = $setupProcess.ExitCode
     if ($null -ne $sqlExitCode -and $sqlExitCode -ne 0 -and $sqlExitCode -ne 3010) {
