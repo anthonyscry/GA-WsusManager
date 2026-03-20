@@ -42,7 +42,7 @@ The dashboard is your main monitoring view, showing the health of your WSUS infr
 
 ### Status Cards
 
-The dashboard displays four color-coded status cards:
+The dashboard displays color-coded status cards plus a Health Score band:
 
 #### Services Card
 | Color | Meaning |
@@ -71,9 +71,49 @@ The dashboard displays four color-coded status cards:
 | Green | Scheduled task configured and ready |
 | Orange | No scheduled task configured |
 
+### Health Score
+
+The dashboard displays a **Health Score** band (0-100) that combines multiple indicators into a single weighted score:
+
+| Component | Weight | What It Measures |
+|-----------|--------|------------------|
+| Services | 30 | SQL Server, WSUS, IIS running status |
+| Database | 20 | SUSDB size relative to 10GB limit |
+| Sync Recency | 20 | Time since last successful sync |
+| Disk Space | 20 | Available storage for updates |
+| Last Operation | 10 | Result of most recent operation |
+
+**Grading:**
+| Grade | Score Range | Color |
+|-------|------------|-------|
+| Green | 80-100 | Healthy |
+| Yellow | 50-79 | Needs attention |
+| Red | 0-49 | Critical issues |
+| Unknown | N/A | All data sources failed |
+
+### DB Size Trend Indicator
+
+The database card includes a **trend indicator** showing the projected days until the database reaches the 10GB SQL Express limit. This uses linear regression over the last 30 days of size snapshots.
+
+| Alert Level | Days Until Full | Action |
+|-------------|-----------------|--------|
+| Normal | > 180 days | No action needed |
+| Warning | 90-180 days | Plan a cleanup |
+| Critical | < 90 days | Run Deep Cleanup immediately |
+
+### Last Successful Sync
+
+A timestamp showing when the last successful sync completed:
+
+| Color | Time Since Sync | Meaning |
+|-------|-----------------|---------|
+| Green | < 7 days | Up to date |
+| Yellow | 7-30 days | Sync soon |
+| Red | > 30 days | Overdue -- sync immediately |
+
 ### Auto-Refresh
 
-The dashboard automatically refreshes every **30 seconds**. A refresh guard prevents overlapping operations that could hang the UI.
+The dashboard automatically refreshes every **30 seconds**. A refresh guard prevents overlapping operations that could hang the UI. Dashboard refresh is also skipped while an operation is running to prevent log output stutter.
 
 ---
 

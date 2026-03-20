@@ -9,7 +9,7 @@ Version: 4.0.2
     WSUS Manager GUI - Modern WPF interface for WSUS management
 .DESCRIPTION
     Portable GUI for managing WSUS servers with SQL Express.
-    Features: Dashboard, Health checks, Maintenance, Import/Export
+    Features: Dashboard, Health Score, Diagnostics, Online Sync, Import/Export, History, Notifications
 #>
 
 param(
@@ -676,7 +676,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Monthly maintenance automation&#x0a;• Health diagnostics with auto-repair&#x0a;• Deep cleanup and optimization"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Online Sync with scheduled automation&#x0a;• Health Score (0-100) with diagnostics&#x0a;• Operation history and notifications&#x0a;• DB size trending and deep cleanup"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -1607,8 +1607,10 @@ FEATURES
 • Modern dark-themed GUI with auto-refresh
 • Air-gapped network support (export/import)
 • Automated maintenance and cleanup
-• Health monitoring with auto-repair
-• Database size monitoring (10GB limit)
+• Health Score (0-100) with color-coded grading
+• Operation history and completion notifications
+• Database size trending with days-until-full estimate
+• Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)
 
 QUICK START
 1. Run WsusManager.exe as Administrator
@@ -1650,7 +1652,7 @@ TASK CARD
 • Orange: Not configured
 
 QUICK ACTIONS
-• Health Check - Diagnostics only
+• Diagnostics - Health check + auto-repair
 • Deep Cleanup - Aggressive cleanup
 • Online Sync - Sync with Microsoft
 • Start Services - Start all services
@@ -1668,13 +1670,13 @@ TRANSFER
 • Import (Air-Gap) - Import from external media
 
 MAINTENANCE
-• Monthly (Online only) - Sync, decline superseded, cleanup, backup
-• Schedule Task (Online only) - Create/update the maintenance scheduled task
+• Online Sync (Online only) - Sync, decline superseded, cleanup, backup
+• Schedule Task (Online only) - Create/update the sync scheduled task
 • Deep Cleanup - Remove obsolete, shrink database
 
 DIAGNOSTICS
-• Health Check - Read-only verification
-• Repair - Auto-fix common issues
+• Diagnostics - Comprehensive health check with auto-repair
+• Reset Content - Re-verify content files after import
 "@
 
     AirGap = @"
@@ -1685,7 +1687,7 @@ Two-server model for disconnected networks:
 • Air-Gap WSUS: Disconnected
 
 WORKFLOW
-1. On Online server: Run Maintenance, then Export
+1. On Online server: Run Online Sync, then Export
 2. Transfer USB to air-gap network
 3. On Air-Gap server: Import, then Restore DB
 
@@ -1705,12 +1707,12 @@ SERVICES WON'T START
 1. Start SQL Server first
 2. Use 'Start Services' button
 3. Check Event Viewer
-4. Run Health + Repair
+4. Run Diagnostics
 
 DATABASE OFFLINE
 • Start SQL Server Express service
 • Check disk space
-• Run Health Check
+• Run Diagnostics
 
 DATABASE >9 GB
 • Run Deep Cleanup
