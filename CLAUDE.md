@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell WPF automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides a modern GUI application for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 4.0.0 (PowerShell)
+**Current Version:** 4.0.2 (PowerShell)
 
 ## Repository Structure
 
@@ -42,7 +42,7 @@ GA-WsusManager/
 │   ├── WsusNotification.psm1    # [v4.0] Toast/balloon notifications — Show-WsusNotification
 │   └── WsusTrending.psm1        # [v4.0] DB size trending — Add/Get/Clear trend snapshots
 ├── Tests/                       # Pester unit tests (one file per module)
-└── DomainController/            # GPO deployment scripts
+└── DomainController/            # Air-gap GPO deployment scripts
 ```
 
 ## Build Process
@@ -90,7 +90,7 @@ Modules/                  # Required - PowerShell modules
 ├── WsusUtilities.psm1
 ├── WsusHealth.psm1
 └── ...
-DomainController/         # Optional - GPO scripts
+DomainController/         # Optional - Air-gap GPO deployment scripts
 general_atomics_logo_big.ico
 general_atomics_logo_small.ico
 QUICK-START.txt
