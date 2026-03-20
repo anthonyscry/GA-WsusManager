@@ -562,8 +562,8 @@ if ($sqlcmd) {
         $currentUser = "$($identity.Name)"
         Write-Host "    Adding sysadmin for: $currentUser"
 
-        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$(CurrentUser)') CREATE LOGIN [$(CurrentUser)] FROM WINDOWS;" -b
-        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$(CurrentUser)];" -b
+        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(CurrentUser)') CREATE LOGIN [`$(CurrentUser)] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [`$(CurrentUser)];" -b
 
         # Verify
         $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
