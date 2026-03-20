@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 4.0.1
+Version: 4.0.2
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -51,7 +51,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "4.0.1"
+$script:AppVersion = "4.0.2"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -429,7 +429,7 @@ $script:StdinFlushTimer = $null
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v4.0.1" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v4.0.2" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -660,7 +660,7 @@ $script:StdinFlushTimer = $null
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="WSUS Manager" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.1" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.2" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -3778,6 +3778,11 @@ $controls.BtnCreateGpo.Add_Click({
         $instructions = @"
 GPO files copied to: $destDir
 
+=== AIR-GAP DEPLOYMENT ONLY ===
+
+These GPOs direct ALL Windows Update traffic to the internal
+WSUS server. Do NOT deploy on internet-connected systems.
+
 === NEXT STEPS ===
 
 1. Copy 'C:\WSUS\WSUS GPO' folder to the Domain Controller
@@ -3789,8 +3794,9 @@ GPO files copied to: $destDir
 3. To force clients to update immediately:
    gpupdate /force
 
-   Or from DC (all domain computers):
-   Get-ADComputer -Filter * | ForEach-Object { Invoke-GPUpdate -Computer `$_.Name -Force }
+   The script automatically pushes to all domain computers
+   via schtasks (no WinRM required). Unreachable machines
+   will pick up GPOs within 90 min or on next reboot.
 
 4. Verify on clients:
    gpresult /r | findstr WSUS
@@ -3803,7 +3809,7 @@ GPO files copied to: $destDir
         Set-Status "GPO files created"
 
         # Also show message box with summary
-        Show-WsusPopup -Message "GPO files created at:`n$destDir`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands." -Title "GPO Files Created" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
+        Show-WsusPopup -Message "GPO files created at:`n$destDir`n`nWARNING: For air-gapped systems only.`n`nNext steps:`n1. Copy folder to Domain Controller`n2. Run Set-WsusGroupPolicy.ps1 as Admin`n3. Run 'gpupdate /force' on clients`n`nSee log panel for full commands." -Title "GPO Files Created (Air-Gap Only)" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
 
     } catch {
         Write-LogOutput "Error: $_" -Level Error
