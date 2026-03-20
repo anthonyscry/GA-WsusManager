@@ -4,14 +4,16 @@
 ===============================================================================
 Script: Set-WsusGroupPolicy.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.5.0
-Date: 2026-03-18
+Version: 1.6.0
+Date: 2026-03-20
 ===============================================================================
 
 .SYNOPSIS
-    Import and configure WSUS Group Policy Objects for client management.
+    Import and configure WSUS Group Policy Objects for air-gapped client management.
 
 .DESCRIPTION
+    For AIR-GAPPED networks only. Do NOT deploy on internet-connected systems.
+
     Automates the deployment of three WSUS GPOs on a Domain Controller:
     - WSUS Update Policy: Configures Windows Update client settings (linked to domain root)
     - WSUS Inbound Allow: Firewall rules for WSUS server (linked to Member Servers\WSUS Server)
@@ -40,6 +42,11 @@ Date: 2026-03-18
     Imports GPOs using specified WSUS server URL.
 
 .NOTES
+    IMPORTANT: These GPOs are designed for AIR-GAPPED systems only.
+    Deploying on internet-connected systems will direct all Windows
+    Update traffic to the internal WSUS server and prevent updates
+    from Microsoft.
+
     Requirements:
     - Run on a Domain Controller with Administrator privileges
     - RSAT Group Policy Management tools must be installed
@@ -62,7 +69,14 @@ function Test-Prerequisites {
     param([string]$ModuleName)
 
     if (-not (Get-Module -ListAvailable -Name $ModuleName)) {
-        throw "Required module '$ModuleName' not found. Install RSAT Group Policy Management tools."
+        Write-Host "  Module '$ModuleName' not found. Installing GPMC feature..." -ForegroundColor Yellow
+        try {
+            $feature = Add-WindowsFeature GPMC -ErrorAction Stop
+            if (-not $feature.Success) { throw "Feature install returned failure." }
+            Write-Host "  GPMC installed successfully." -ForegroundColor Green
+        } catch {
+            throw "Could not install GPMC feature: $_. Run: Add-WindowsFeature GPMC"
+        }
     }
     Import-Module $ModuleName -ErrorAction Stop
 }
@@ -79,12 +93,17 @@ function Get-WsusServerUrl {
     }
 
     Write-Host ""
-    Write-Host "WSUS Server Name" -ForegroundColor Yellow
-    $serverName = Read-Host "  Enter hostname (e.g., WSUS01)"
+    Write-Host "WSUS Server Name" -ForegroundColor Cyan
+    Write-Host "  Enter just the hostname - the script will build the full URL." -ForegroundColor Gray
+    Write-Host "  Example: SRV01  ->  http://SRV01:8530" -ForegroundColor Gray
+    Write-Host ""
+    $serverName = Read-Host "  Hostname"
     if (-not $serverName) {
         throw "WSUS server name is required."
     }
-    return "http://$serverName:8530"
+    $url = "http://$($serverName.Trim()):8530"
+    Write-Host "  Using: $url" -ForegroundColor Green
+    return $url
 }
 
 function Get-DomainInfo {
@@ -212,16 +231,23 @@ function Import-WsusGpo {
     Write-Host "[$gpoName]" -ForegroundColor Cyan
     Write-Host "  $($GpoDefinition.Description)" -ForegroundColor Gray
 
-    # Create or update GPO from backup
+    # Delete existing GPO and reimport for a clean state (Import-GPO merges
+    # and never removes old values, so updating causes stale registry entries)
     $existingGpo = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
 
     if ($existingGpo) {
-        Write-Host "  Updating from backup..." -NoNewline
-    } else {
-        Write-Host "  Creating from backup..." -NoNewline
-        $existingGpo = New-GPO -Name $gpoName -ErrorAction Stop
+        Write-Host "  Removing existing GPO for clean import..." -NoNewline
+        # Must remove all links before deleting
+        $existingGpo | Get-GPInheritance -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty GpoLinks |
+            Where-Object { $_.DisplayName -eq $gpoName } |
+            ForEach-Object { Remove-GPLink -Guid $_.GPOId -Target $_.TargetName -ErrorAction SilentlyContinue -Confirm:$false }
+        Remove-GPO -Name $gpoName -ErrorAction Stop | Out-Null
+        Write-Host " OK" -ForegroundColor Yellow
     }
 
+    Write-Host "  Importing from backup..." -NoNewline
+    $existingGpo = New-GPO -Name $gpoName -ErrorAction Stop
     Import-GPO -BackupId $Backup.Id -Path $BackupPath -TargetName $gpoName -ErrorAction Stop | Out-Null
     Write-Host " OK" -ForegroundColor Green
 
@@ -244,8 +270,6 @@ function Import-WsusGpo {
             -ValueName "ScheduledInstallDay" -Type DWord -Value 0 -ErrorAction Stop
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
             -ValueName "ScheduledInstallTime" -Type DWord -Value 22 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
-            -ValueName "ScheduledInstallEveryWeek" -Type DWord -Value 0 -ErrorAction Stop
         Write-Host " OK" -ForegroundColor Green
 
         # Deadline: 7 days to install, auto-restart
@@ -258,10 +282,32 @@ function Import-WsusGpo {
             -ValueName "ConfigureDeadlineForFeatureUpdates" -Type DWord -Value 7 -ErrorAction Stop
         Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
             -ValueName "ConfigureDeadlineGracePeriod" -Type DWord -Value 0 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "ConfigureDeadlineNoAutoReboot" -Type DWord -Value 0 -ErrorAction Stop
         Write-Host " OK" -ForegroundColor Green
     }
+
+    # Remove values baked into the backup that lack ADMX definitions — causes
+    # "Extra Registry Settings" warnings in GPMC. Must run AFTER Import-GPO and
+    # Set-GPRegistryValue so any re-introduced values are caught.
+    $staleValues = @(
+        @{ Key = "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU";    Name = "ScheduledInstallEveryWeek" },
+        @{ Key = "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate";       Name = "ConfigureDeadlineNoAutoReboot" },
+        @{ Key = "HKLM\Software\Policies\Microsoft\WindowsFirewall\DomainProfile"; Name = "EnableFirewall" },
+        @{ Key = "HKLM\Software\Policies\Microsoft\WindowsFirewall";             Name = "PolicyVersion" }
+    )
+    $removed = 0
+    foreach ($sv in $staleValues) {
+        try {
+            $existing = Get-GPRegistryValue -Name $gpoName -Key $sv.Key -ValueName $sv.Name -ErrorAction SilentlyContinue
+            if ($existing) {
+                Remove-GPRegistryValue -Name $gpoName -Key $sv.Key -ValueName $sv.Name -ErrorAction Stop
+                Write-Host "  Removed stale value: $($sv.Name)" -ForegroundColor DarkGray
+                $removed++
+            }
+        } catch {
+            Write-Warning "  Could not remove stale value $($sv.Name): $_"
+        }
+    }
+    if ($removed -eq 0) { Write-Host "  No stale registry values found." -ForegroundColor DarkGray }
 
     # Build list of target OUs
     $targetOUs = @()
@@ -310,38 +356,88 @@ function Import-WsusGpo {
 function Push-GPUpdateToAll {
     <#
     .SYNOPSIS
-        Forces Group Policy update on all domain computers.
+        Forces Group Policy update on all domain computers via scheduled task (no WinRM required).
+    .DESCRIPTION
+        Uses schtasks.exe over RPC/SMB to create a one-shot SYSTEM task that runs
+        'gpupdate /force'. Works on domain machines without WinRM enabled.
     #>
     param([string]$DomainDN)
 
     Write-Host ""
-    Write-Host "Pushing GPO to all domain computers..." -ForegroundColor Yellow
+    Write-Host "Pushing GPO to all domain computers (via schtasks/RPC)..." -ForegroundColor Yellow
 
-    # Get all computer objects
     $computers = Get-ADComputer -Filter "Enabled -eq `$true" -SearchBase $DomainDN -ErrorAction SilentlyContinue |
         Where-Object { $_.DistinguishedName -notlike "*OU=Domain Controllers*" }
 
-    $total = $computers.Count
+    $total   = $computers.Count
     $success = 0
-    $failed = 0
+    $failed  = 0
+    $okList  = @()
+    $failList = @()
+    $taskName = "WSUS-GpUpdate-Temp"
 
     Write-Host "  Found $total computers (excluding DCs)"
 
     foreach ($computer in $computers) {
+        $cn = $computer.Name
+        $err = $null
+
+        # Test RPC connectivity first (fast ping avoids long schtasks timeout)
+        if (-not (Test-Connection -ComputerName $cn -Count 1 -Quiet -ErrorAction SilentlyContinue)) {
+            Write-Host "    $cn" -NoNewline
+            Write-Host " offline" -ForegroundColor DarkGray
+            $failList += "$cn (offline)"
+            $failed++
+            continue
+        }
+
         try {
-            Invoke-GPUpdate -Computer $computer.Name -Force -RandomDelayInMinutes 0 -ErrorAction Stop
-            $success++
+            # Create one-shot SYSTEM task, run it, then delete it
+            $output = schtasks.exe /create /s $cn /tn $taskName /tr "gpupdate /force /wait:0" /sc once /st 00:00 /f /ru SYSTEM 2>&1
+            if ($output -match 'ERROR:|ACCESS_DENIED|RPC.*unavailable|network.*path.*not found') {
+                $err = ($output | Where-Object { $_ -match 'ERROR:' }) -join '; '
+            }
+
+            if (-not $err) {
+                $output = schtasks.exe /run /s $cn /tn $taskName 2>&1
+                if ($output -match 'ERROR:') {
+                    $err = ($output | Where-Object { $_ -match 'ERROR:' }) -join '; '
+                }
+                Start-Sleep -Milliseconds 500
+            }
+
+            # Always clean up (ignore errors on delete)
+            schtasks.exe /delete /s $cn /tn $taskName /f 2>&1 | Out-Null
+
+            if ($err) {
+                Write-Host "    $cn" -NoNewline
+                Write-Host " FAILED: $err" -ForegroundColor DarkGray
+                $failList += "$cn ($err)"
+                $failed++
+            } else {
+                Write-Host "    $cn" -NoNewline
+                Write-Host " OK" -ForegroundColor Green
+                $okList += $cn
+                $success++
+            }
         } catch {
+            Write-Host "    $cn" -NoNewline
+            Write-Host " FAILED: $($_.Exception.Message)" -ForegroundColor DarkGray
+            $failList += "$cn ($($_.Exception.Message))"
             $failed++
         }
     }
 
-    Write-Host "  Pushed: " -NoNewline
-    Write-Host "$success OK" -ForegroundColor Green -NoNewline
-    if ($failed -gt 0) {
-        Write-Host ", $failed failed (offline/unreachable)" -ForegroundColor DarkGray
-    } else {
-        Write-Host ""
+    Write-Host ""
+    if ($okList.Count -gt 0) {
+        Write-Host "  Pushed OK:  $($okList -join ', ')" -ForegroundColor Green
+    }
+    if ($failList.Count -gt 0) {
+        Write-Host "  Failed:     $($failList -join ', ')" -ForegroundColor Yellow
+        Write-Host "  NOTE: Failed computers will apply GPOs within 90 min or on next reboot." -ForegroundColor Gray
+    }
+    if ($okList.Count -eq 0 -and $failList.Count -eq 0) {
+        Write-Host "  No computers found." -ForegroundColor Gray
     }
 }
 
@@ -377,6 +473,18 @@ function Show-Summary {
 #region Main Script
 
 try {
+    # Ensure GroupPolicy module is available — install GPMC if missing
+    if (-not (Get-Module -ListAvailable -Name GroupPolicy)) {
+        Write-Host "GroupPolicy module not found. Installing GPMC..." -ForegroundColor Yellow
+        $r = Add-WindowsFeature GPMC -ErrorAction Stop
+        if ($r.RestartNeeded -eq 'Yes') {
+            Write-Host "GPMC installed. A restart is required. Please reboot and re-run this script." -ForegroundColor Red
+            exit 1
+        }
+    }
+    Import-Module GroupPolicy -ErrorAction Stop
+    Write-Host "GroupPolicy module loaded." -ForegroundColor Green
+
     # Validate prerequisites
     Test-Prerequisites -ModuleName "GroupPolicy"
 
@@ -399,7 +507,24 @@ try {
     }
 
     # Scan for available backups
-    $availableBackups = Get-GPOBackup -Path $BackupPath -ErrorAction SilentlyContinue
+    $availableBackups = @()
+    Get-ChildItem -Path $BackupPath -Directory | Where-Object { $_.Name -match '^\{[0-9A-Fa-f\-]+\}$' } | ForEach-Object {
+        $bkupFile = Join-Path $_.FullName "bkupInfo.xml"
+        if (Test-Path $bkupFile) {
+            try {
+                [xml]$xml = Get-Content $bkupFile -ErrorAction Stop
+                $ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
+                $ns.AddNamespace("gp", "http://www.microsoft.com/GroupPolicy/GPOOperations/Manifest")
+                $displayName = $xml.SelectSingleNode("//gp:GPODisplayName", $ns).'#cdata-section'
+                $backupId    = $_.Name.Trim('{}')
+                if ($displayName) {
+                    $availableBackups += [PSCustomObject]@{ Id = $backupId; DisplayName = $displayName }
+                }
+            } catch {
+                Write-Warning "Could not parse bkupInfo.xml in $($_.FullName): $_"
+            }
+        }
+    }
     if (-not $availableBackups) {
         throw "No GPO backups found in $BackupPath"
     }
