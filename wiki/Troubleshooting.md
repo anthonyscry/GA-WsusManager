@@ -506,7 +506,7 @@ The Health Check verifies:
 3. **Manual CLI test**
    ```powershell
    # Test non-interactive mode directly
-   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export" -CopyMode "Full"
+   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export"
    ```
 
 ### Export Fails

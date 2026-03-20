@@ -176,7 +176,6 @@ Exports database and update files for transfer to air-gapped servers.
 1. Click **Export to Media**
 2. Choose export type:
    - **Full Export**: Complete database and all files
-   - **Differential Export**: Only recent updates (N days)
 3. Select destination folder (USB drive)
 4. Wait for export to complete
 
@@ -241,10 +240,8 @@ Runs comprehensive sync and maintenance tasks.
 | Field | Description |
 |-------|-------------|
 | **Full Export Path** | Network share for complete backup + content mirror |
-| **Differential Export Path** | Destination for recent changes only (e.g., USB drive for air-gap) |
-| **Export Days** | Age filter for differential export (default: 30 days) |
 
-> **Note:** Export fields are optional. If not specified, the export step is skipped.
+> **Note:** Export path is optional. If not specified, the export step is skipped.
 
 **When to run:**
 - Monthly (Full Sync recommended)

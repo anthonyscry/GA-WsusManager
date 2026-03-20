@@ -46,7 +46,7 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 |-----------|-------------|
 | Install WSUS | Fresh installation with SQL Express |
 | Restore Database | Restore SUSDB from backup |
-| Export to Media | Full or differential export to USB |
+| Export to Media | Full export to USB |
 | Import from Media | Import updates to air-gapped server |
 | Monthly Maintenance | Sync, cleanup, and backup |
 | Schedule Task | Create or update the maintenance scheduled task |

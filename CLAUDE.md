@@ -831,23 +831,21 @@ BeforeAll {
 
 **Problem:** Export operation hangs waiting for keyboard input when called from GUI.
 
-**Cause:** The CLI script's `Invoke-ExportToMedia` function prompts interactively for source, destination, and copy mode, but GUI passes parameters expecting non-interactive mode.
+**Cause:** The CLI script's `Invoke-ExportToMedia` function prompts interactively for source and destination, but GUI passes parameters expecting non-interactive mode.
 
 **Solution:** Check if destination is provided and skip prompts:
 ```powershell
 function Invoke-ExportToMedia {
     param(
         [string]$SourcePath,
-        [string]$DestinationPath,
-        [string]$CopyMode = "Full",
-        [int]$DaysOld = 30
+        [string]$DestinationPath
     )
 
     # Detect non-interactive mode when DestinationPath is provided
     $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
 
     if (-not $nonInteractive) {
-        # Interactive prompts for source, mode, destination
+        # Interactive prompts for source and destination
         $source = Read-Host "Enter source"
         # ... etc
     } else {
@@ -859,8 +857,8 @@ function Invoke-ExportToMedia {
 
 **GUI side:** Always pass all required parameters:
 ```powershell
-# Pass all export parameters to avoid interactive prompts
-"& '$mgmt' -Export -DestinationPath '$dest' -SourcePath '$src' -CopyMode '$mode' -DaysOld $days"
+# Pass export parameters to avoid interactive prompts
+"& '$mgmt' -Export -DestinationPath '$dest' -SourcePath '$src'"
 ```
 
 ### 15. Using v4.0 Dialog Factory (WsusDialogs.psm1)

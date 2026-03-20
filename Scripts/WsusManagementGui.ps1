@@ -1664,7 +1664,7 @@ SETUP
 • Restore DB - Restore SUSDB from backup
 
 TRANSFER
-• Export (Online) - Full or differential export to USB
+• Export (Online) - Full export to USB
 • Import (Air-Gap) - Import from external media
 
 MAINTENANCE
@@ -1689,9 +1689,8 @@ WORKFLOW
 2. Transfer USB to air-gap network
 3. On Air-Gap server: Import, then Restore DB
 
-EXPORT OPTIONS
-• Full: Complete DB + all files (100 GB+)
-• Differential: Recent updates only (smaller)
+EXPORT
+• Full export: Complete DB + all content files
 
 TIPS
 • Use USB 3.0 formatted as NTFS
@@ -1741,7 +1740,7 @@ function Show-Help {
 
 #region Dialogs
 function Show-ExportDialog {
-    $result = @{ Cancelled = $true; ExportType = "Full"; DestinationPath = ""; DaysOld = 30 }
+    $result = @{ Cancelled = $true; DestinationPath = "" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDialog")
@@ -1774,37 +1773,7 @@ function Show-ExportDialog {
     $radioFull.IsChecked = $true
     $radioFull.Margin = "0,0,20,0"
     $radioPanel.Children.Add($radioFull)
-
-    $radioDiff = New-Object System.Windows.Controls.RadioButton
-    $radioDiff.Content = "Differential"
-    $radioDiff.Foreground = $script:BrushText1
-    $radioPanel.Children.Add($radioDiff)
     $stack.Children.Add($radioPanel)
-
-    $daysPanel = New-Object System.Windows.Controls.StackPanel
-    $daysPanel.Orientation = "Horizontal"
-    $daysPanel.Margin = "0,0,0,12"
-    $daysPanel.Visibility = "Collapsed"
-
-    $daysLbl = New-Object System.Windows.Controls.TextBlock
-    $daysLbl.Text = "Days:"
-    $daysLbl.Foreground = $script:BrushText2
-    $daysLbl.VerticalAlignment = "Center"
-    $daysLbl.Margin = "0,0,8,0"
-    $daysPanel.Children.Add($daysLbl)
-
-    $daysTxt = New-Object System.Windows.Controls.TextBox
-    $daysTxt.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDaysTextBox")
-    $daysTxt.Text = "30"
-    $daysTxt.Width = 50
-    $daysTxt.Background = $script:BrushBgCard
-    $daysTxt.Foreground = $script:BrushText1
-    $daysTxt.Padding = "4"
-    $daysPanel.Children.Add($daysTxt)
-    $stack.Children.Add($daysPanel)
-
-    $radioDiff.Add_Checked({ $daysPanel.Visibility = "Visible" })
-    $radioFull.Add_Checked({ $daysPanel.Visibility = "Collapsed" })
 
     $destLbl = New-Object System.Windows.Controls.TextBlock
     $destLbl.Text = "Destination:"
@@ -1856,15 +1825,8 @@ function Show-ExportDialog {
             Show-WsusPopup -Message "Select destination folder." -Title "Export" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
-        $daysVal = 30
-        if ($radioDiff.IsChecked -and -not [int]::TryParse($daysTxt.Text, [ref]$daysVal)) {
-            Show-WsusPopup -Message "Invalid days value." -Title "Export" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
-            return
-        }
         $result.Cancelled = $false
-        $result.ExportType = if($radioFull.IsChecked){"Full"}else{"Differential"}
         $result.DestinationPath = $destTxt.Text
-        $result.DaysOld = $daysVal
         $dlg.Close()
     })
     $btnPanel.Children.Add($exportBtn)
@@ -2411,8 +2373,6 @@ function Show-MaintenanceDialog {
 
     $exportStack.Children.Add($exportPanel)
 
-    # Differential Export Path
-
     # Export info note
     $exportNote = New-Object System.Windows.Controls.TextBlock
     $exportNote.Text = "Leave paths empty to skip export after sync."
@@ -2794,7 +2754,7 @@ function Show-ScheduleTaskDialog {
 }
 
 function Show-TransferDialog {
-    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = ""; DaysOld = 0; UseDateFilter = $false }
+    $result = @{ Cancelled = $true; SourcePath = ""; DestinationPath = "" }
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "TransferDialog")
@@ -2893,34 +2853,6 @@ function Show-TransferDialog {
     })
     $stack.Children.Add($dstPanel)
 
-    # Differential date filter option
-    $diffPanel = New-Object System.Windows.Controls.StackPanel
-    $diffPanel.Orientation = "Horizontal"
-    $diffPanel.Margin = "0,0,0,16"
-
-    $chkDiff = New-Object System.Windows.Controls.CheckBox
-    $chkDiff.Content = "Only copy files modified in the last"
-    $chkDiff.Foreground = $script:BrushText1
-    $chkDiff.VerticalAlignment = "Center"
-    $diffPanel.Children.Add($chkDiff)
-
-    $txtDays = New-Object System.Windows.Controls.TextBox
-    $txtDays.Text = "30"
-    $txtDays.Width = 50
-    $txtDays.Background = $script:BrushBgCard
-    $txtDays.Foreground = $script:BrushText1
-    $txtDays.Padding = "4,2"
-    $txtDays.Margin = "4,0,0,0"
-    $diffPanel.Children.Add($txtDays)
-
-    $daysLbl = New-Object System.Windows.Controls.TextBlock
-    $daysLbl.Text = "days"
-    $daysLbl.Foreground = $script:BrushText2
-    $daysLbl.VerticalAlignment = "Center"
-    $diffPanel.Children.Add($daysLbl)
-
-    $stack.Children.Add($diffPanel)
-
     # Buttons
     $btnPanel = New-Object System.Windows.Controls.StackPanel
     $btnPanel.Orientation = "Horizontal"
@@ -2950,17 +2882,6 @@ function Show-TransferDialog {
         $result.Cancelled = $false
         $result.SourcePath = $srcTxt.Text
         $result.DestinationPath = $dstTxt.Text
-        $result.UseDateFilter = $chkDiff.IsChecked
-        if ($chkDiff.IsChecked) {
-            $daysVal = 30
-            if ([int]::TryParse($txtDays.Text, [ref]$daysVal) -and $daysVal -gt 0) {
-                $result.DaysOld = $daysVal
-            } else {
-                $result.DaysOld = 30
-            }
-        } else {
-            $result.DaysOld = 0
-        }
         $dlg.Close()
     })
     $btnPanel.Children.Add($runBtn)
@@ -3300,13 +3221,7 @@ function Invoke-LogOperation {
             $src = Get-EscapedPath $opts.SourcePath
             $dst = Get-EscapedPath $opts.DestinationPath
             $Title = "Transfer ($($src) -> $($dst))"
-            if ($opts.UseDateFilter -and $opts.DaysOld -gt 0) {
-                $Title = "Transfer (differential, $($opts.DaysOld) days)"
-                "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL /MAXAGE:$($opts.DaysOld)"
-            } else {
-                $Title = "Transfer (full)"
-                "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL"
-            }
+            "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL"
         }
         "maintenance" {
             $opts = Show-MaintenanceDialog

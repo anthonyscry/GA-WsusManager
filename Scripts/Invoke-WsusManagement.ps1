@@ -110,13 +110,6 @@ param(
     [Parameter(ParameterSetName = 'Import')]
     [string]$DestinationPath,
 
-    [Parameter(ParameterSetName = 'Export')]
-    [ValidateSet('Full', 'Differential')]
-    [string]$CopyMode = "Full",
-
-    [Parameter(ParameterSetName = 'Export')]
-    [int]$DaysOld = 30,
-
     # Non-interactive mode (skip prompts, fail on missing required paths)
     [Parameter(ParameterSetName = 'Export')]
     [Parameter(ParameterSetName = 'Import')]
@@ -556,11 +549,11 @@ function Copy-ToDestination {
         $step++
     }
 
-    # Differential copy of content using robocopy
+    # Copy content using robocopy
     if ($IncludeContent) {
         $wsusContentSource = Join-Path $SourceFolder "WsusContent"
         if (Test-Path $wsusContentSource) {
-            Write-Log "[$step/$totalSteps] Differential copy of content (this may take a while)..." "Yellow"
+            Write-Log "[$step/$totalSteps] Copying content (this may take a while)..." "Yellow"
             $destContent = Join-Path $Destination "WsusContent"
 
             # /E = include subdirs, /XO = exclude older files, /MT:16 = 16 threads
@@ -682,7 +675,7 @@ function Invoke-FullCopy {
     Write-Host "Configuration:" -ForegroundColor Yellow
     Write-Host "  Source: $ExportSource"
     Write-Host "  Destination: $destination"
-    Write-Host "  Mode: Differential copy (only newer/missing files)"
+    Write-Host "  Mode: Copy (only newer/missing files)"
     Write-Host ""
 
     # Skip confirmation if DestinationPath was provided (non-interactive mode)
@@ -1202,17 +1195,14 @@ function Invoke-ExportToMedia {
     .SYNOPSIS
         Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
     .DESCRIPTION
-        Prompts for source and destination, supports full or differential copy modes.
+        Prompts for source and destination, copies all content.
         When DestinationPath is provided, runs in non-interactive mode (for GUI).
     #>
     param(
         [string]$DefaultSource = '\\lab-hyperv\d\WSUS-Exports',
         [string]$ContentPath = "C:\WSUS",
         [string]$SourcePath,
-        [string]$DestinationPath,
-        [ValidateSet('Full', 'Differential')]
-        [string]$ExportCopyMode = "Full",
-        [int]$ExportDaysOld = 30
+        [string]$DestinationPath
     )
 
     # Determine if running in non-interactive mode (GUI mode)
@@ -1222,9 +1212,6 @@ function Invoke-ExportToMedia {
 
     Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
     Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
-    if ($nonInteractive) {
-        Write-Host "Copy mode: $ExportCopyMode$(if($ExportCopyMode -eq 'Differential'){" (last $ExportDaysOld days)"})" -ForegroundColor Cyan
-    }
     Write-Host ""
 
     # Validate paths - use defaults if empty
@@ -1233,47 +1220,6 @@ function Invoke-ExportToMedia {
     }
     if ([string]::IsNullOrWhiteSpace($ContentPath)) {
         $ContentPath = "C:\WSUS"
-    }
-
-    # Set copy mode variables
-    $copyMode = $ExportCopyMode
-    $maxAgeDays = $ExportDaysOld
-
-    if (-not $nonInteractive) {
-        # Interactive mode: Prompt for copy mode
-        Write-Host "Copy mode:" -ForegroundColor Cyan
-        Write-Host "  1. Full copy (all files)"
-        Write-Host "  2. Differential copy (files from last 30 days) [Default]"
-        Write-Host "  3. Differential copy (custom days)"
-        Write-Host ""
-        $modeChoice = Read-Host "Select mode (1/2/3) [2]"
-        if ([string]::IsNullOrWhiteSpace($modeChoice)) { $modeChoice = "2" }
-
-        switch ($modeChoice) {
-            "1" {
-                $copyMode = "Full"
-                $maxAgeDays = 0
-            }
-            "2" {
-                $copyMode = "Differential"
-                $maxAgeDays = 30
-            }
-            "3" {
-                $copyMode = "Differential"
-                $daysInput = Read-Host "Enter number of days [30]"
-                if ([string]::IsNullOrWhiteSpace($daysInput)) { $daysInput = "30" }
-                if ([int]::TryParse($daysInput, [ref]$maxAgeDays)) {
-                    if ($maxAgeDays -le 0) { $maxAgeDays = 30 }
-                } else {
-                    $maxAgeDays = 30
-                }
-            }
-            default {
-                $copyMode = "Differential"
-                $maxAgeDays = 30
-            }
-        }
-        Write-Host ""
     }
 
     # Determine source path
@@ -1373,11 +1319,7 @@ function Invoke-ExportToMedia {
     Write-Host "Configuration:" -ForegroundColor Yellow
     Write-Host "  Source:      $source"
     Write-Host "  Destination: $destination"
-    if ($copyMode -eq "Full") {
-        Write-Host "  Mode:        Full (all files)"
-    } else {
-        Write-Host "  Mode:        Differential (files from last $maxAgeDays days)"
-    }
+    Write-Host "  Mode:        Full (all files)"
     Write-Host ""
 
     # Skip confirmation in non-interactive mode
@@ -1406,11 +1348,6 @@ function Invoke-ExportToMedia {
             "`"$sourceContent`"", "`"$destContent`"",
             "/E", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
         )
-
-        if ($copyMode -eq "Differential") {
-            # /MAXAGE:n = exclude files older than n days
-            $robocopyArgs += "/MAXAGE:$maxAgeDays"
-        }
 
         $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
         if ($proc.ExitCode -lt 8) {
@@ -1876,8 +1813,7 @@ if ($Restore) {
     }
 
     Invoke-ExportToMedia -DefaultSource $defaultExportRoot -ContentPath $ContentPath `
-        -SourcePath $actualSource -DestinationPath $actualDestination `
-        -ExportCopyMode $CopyMode -ExportDaysOld $DaysOld
+        -SourcePath $actualSource -DestinationPath $actualDestination
 } elseif ($Health) {
     Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
 } elseif ($Repair) {

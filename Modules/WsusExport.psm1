@@ -14,7 +14,7 @@ Date: 2026-01-09
     - Content export with robocopy
     - Database backup copy
     - Archive structure management
-    - Differential export support
+    - Export path validation
 
     This module consolidates duplicate export logic from multiple scripts.
 #>
@@ -86,7 +86,7 @@ function Invoke-WsusRobocopy {
         "`"$Source`"",
         "`"$Destination`"",
         "/E",           # Include subdirectories (including empty ones)
-        "/XO",          # Exclude older files (differential copy)
+        "/XO",          # Exclude older files (skip files already up to date)
         "/MT:$ThreadCount",  # Multi-threaded copy
         "/R:2",         # Retry count
         "/W:5",         # Wait time between retries
@@ -269,19 +269,6 @@ function Export-WsusContent {
             $result.ContentCopied = $true
         } else {
             $result.Errors += "Root content copy: $($rootCopyResult.Message)"
-        }
-
-        # Copy differential to archive if specified
-        if ($archivePath -and $MaxAgeDays -gt 0) {
-            $archiveDestContent = Join-Path $archivePath "WsusContent"
-            $archiveLogFile = Join-Path $logDir "Export_Archive_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-
-            $archiveCopyResult = Invoke-WsusRobocopy -Source $wsusContent -Destination $archiveDestContent `
-                -MaxAgeDays $MaxAgeDays -LogPath $archiveLogFile
-
-            if (-not $archiveCopyResult.Success) {
-                $result.Errors += "Archive content copy: $($archiveCopyResult.Message)"
-            }
         }
 
         # Calculate exported file stats
