@@ -406,7 +406,7 @@ The Health Check verifies:
    WsusManager.exe      # Main application
    Scripts/             # REQUIRED - operation scripts
    Modules/             # REQUIRED - PowerShell modules
-   DomainController/    # Optional - GPO scripts
+    DomainController/    # Optional - Air-gap GPO deployment scripts
    ```
 3. Run `WsusManager.exe` from this folder
 
@@ -506,7 +506,7 @@ The Health Check verifies:
 3. **Manual CLI test**
    ```powershell
    # Test non-interactive mode directly
-   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export" -CopyMode "Full"
+   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export"
    ```
 
 ### Export Fails

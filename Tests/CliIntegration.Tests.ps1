@@ -66,21 +66,6 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ExportPath' }
             $param | Should -Not -BeNullOrEmpty
         }
-
-        It "Has DifferentialExportPath parameter" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'DifferentialExportPath' }
-            $param | Should -Not -BeNullOrEmpty
-        }
-
-        It "Has ExportDays parameter" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ExportDays' }
-            $param | Should -Not -BeNullOrEmpty
-        }
-
-        It "ExportDays has correct type (int)" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ExportDays' }
-            $param.StaticType.Name | Should -Be 'Int32'
-        }
     }
 
     Context "Switch Parameters" {
@@ -185,24 +170,6 @@ Describe "Invoke-WsusManagement.ps1 Parameter Validation" {
         }
     }
 
-    Context "Export/Import Parameters" {
-        It "Has CopyMode parameter" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'CopyMode' }
-            $param | Should -Not -BeNullOrEmpty
-        }
-
-        It "CopyMode accepts Full and Differential" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'CopyMode' }
-            $validateSet = $param.Attributes | Where-Object { $_.TypeName.Name -eq 'ValidateSet' }
-            $validateSet.PositionalArguments.Value | Should -Contain 'Full'
-            $validateSet.PositionalArguments.Value | Should -Contain 'Differential'
-        }
-
-        It "Has DaysOld parameter" {
-            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'DaysOld' }
-            $param | Should -Not -BeNullOrEmpty
-        }
-    }
 }
 
 Describe "Install-WsusWithSqlExpress.ps1 Parameter Validation" {
@@ -367,26 +334,6 @@ Describe "Update Classifications Configuration" {
     Context "Safety Limits" {
         It "Has MaxAutoApproveCount safety check" {
             $script:MaintenanceContent | Should -Match 'pendingUpdates\.Count\s*-gt\s*200'
-        }
-    }
-}
-
-Describe "Export Path Handling" {
-    BeforeAll {
-        $script:MaintenanceContent = Get-Content (Join-Path $script:ScriptsPath "Invoke-WsusMonthlyMaintenance.ps1") -Raw
-    }
-
-    Context "Export Path Parameters" {
-        It "Supports separate DifferentialExportPath" {
-            $script:MaintenanceContent | Should -Match '\[string\]\$DifferentialExportPath'
-        }
-
-        It "Creates year/month subfolder when DifferentialExportPath not specified" {
-            $script:MaintenanceContent | Should -Match 'archiveDestination.*ExportPath.*year.*month|Combine.*ExportPath.*year.*month'
-        }
-
-        It "Uses DifferentialExportPath directly when specified" {
-            $script:MaintenanceContent | Should -Match 'if.*DifferentialExportPath'
         }
     }
 }

@@ -210,6 +210,9 @@ New-NetFirewallRule -DisplayName "WSUS HTTPS Traffic (Port 8531)" `
 
 ## Domain Controller Setup
 
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
+
 ### Deploy WSUS Group Policy
 
 Run this script on your Domain Controller (not the WSUS server):

@@ -4,6 +4,96 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [4.0.2] - March 2026
+
+### Changed
+- GPO deployment v1.6.0 - replaced Invoke-GPUpdate (WinRM) with schtasks.exe RPC-based push
+- GPO import strategy - delete-and-reimport instead of merge (fixes stale registry values)
+- Removed differential export feature - simplified to full export only
+- Removed .GetNewClosure() from all WPF click handlers
+- Install script - dynamic SQL instance registry detection, TrustServerCertificate, English language
+
+### Security
+- SQL-escape apostrophes in N'...' contexts for Fix SQL Login and installer
+- Sanitize WSUS product names before command string interpolation
+- Block double-quote and percent in Test-SafePath to prevent robocopy injection
+- Scrub SA password from ConfigurationFile.ini immediately after SQL setup
+- Guaranteed password env var cleanup via try/finally
+
+### Fixed
+- Robocopy exit codes 1-7 normalized to 0 (success) in GUI transfers
+- ICMP ping made advisory in GPO push (hardened domains still get GP updates via RPC)
+- wsusutil reset guarded behind Test-Path (prevents WSUS service stranding)
+- Dashboard refresh skipped during active operations (prevents log stutter)
+- Unicode em dash replaced with ASCII (PS 5.1 parse fix)
+- Integration test version check and broken workflow test fixed
+
+### Documentation
+- Full README rewrite with detailed GPO reference and step-by-step workflows
+- SOP updated to v4.0.2 with all current features
+- Air-gap warnings added across all documentation
+- Removed all differential export references
+
+---
+
+## [4.0.1] - March 2026
+
+### Features
+- **GUI Automation Testing** -- 49-test full-feature test suite using COM UI Automation via scheduled tasks; covers dashboard, panels, dialogs, buttons, log panel
+- **FlaUI Test Coverage** -- 71 FlaUI-based unit tests for AutomationId coverage
+- **Install Script Sync** -- Flexible installer detection (SQLEXPRADV and SQLEXPR_x64), UPDATEENABLED="0" for unmanaged installs
+
+### Documentation
+- **GUI Testing Lessons Learned** -- 16-section document from headless Windows Server VM testing
+
+### Fixes
+- **Version alignment** -- All scripts and metadata updated to 4.0.1
+- **GPO enforcement** -- 7-day update deadline for quality and feature updates
+
+---
+
+## [4.0.0] - March 2026
+
+### New Modules
+- **WsusDialogs.psm1** -- Dialog factory (`New-WsusDialog`, `New-WsusFolderBrowser`); eliminates 6 copy-pasted dialog patterns
+- **WsusOperationRunner.psm1** -- Unified operation lifecycle with timeout watchdog; replaces ~200 lines of duplicated execution logic
+- **WsusHistory.psm1** -- Operation history to JSON with 100-entry trim and file-lock retry
+- **WsusNotification.psm1** -- Completion notifications with toast -> balloon -> log fallback
+- **WsusTrending.psm1** -- DB size trending with linear regression and days-until-full estimate
+
+### New Features
+- **Health Score (0-100)** -- Weighted composite: Services 30, DB 20, Sync 20, Disk 20, LastOp 10; Green >=80 / Yellow 50-79 / Red <50
+- **Startup Splash Screen** -- 4-stage progress bar (Loading -> Services -> Starting -> Ready)
+- **History View** -- History nav button showing last 50 operations
+- **Keyboard Shortcuts** -- Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh
+- **Log Context Menu** -- Right-click: Copy All / Save to File
+- **System Tray** -- Minimize-to-tray with health color icon, double-click restore, context menu
+- **Air-Gap USB Package** -- "Create USB Package" button with differential export and SHA-256 manifest
+- **Operation Timeouts** -- Per-type watchdog (Cleanup=60min, Sync=120min, Default=30min)
+- **Async Dashboard** -- 30s TTL cache, "Data unavailable" after 10 consecutive failures
+
+### Testing
+- 167 new Pester tests across 6 new test files (490+ total)
+
+---
+
+## [3.9.0] - March 2026
+
+### Features
+- Auto-decline ARM64 and 25H2 updates in monthly maintenance policy
+
+### Changed
+- Restored PowerShell-only distribution (removed C# source/workflow tracks)
+
+---
+
+## [3.8.12] - February 2026
+
+### Fixes
+- TrustServerCertificate compatibility for older SqlServer module versions
+
+---
+
 ## [3.8.11] - January 2026
 
 ### Bug Fixes
@@ -63,8 +153,8 @@ All notable changes to WSUS Manager are documented here.
 
 ### Features
 - **Renamed Monthly Maintenance to Online Sync:**
-  - Nav button: "📅 Monthly" → "🔄 Online Sync"
-  - Quick action button: "Maintenance" → "Online Sync"
+  - Nav button: "Monthly" -> "Online Sync"
+  - Quick action button: "Maintenance" -> "Online Sync"
   - Dialog shows Full Sync, Quick Sync, Sync Only options
   - Schedule dialog title updated
   - Windows Task Scheduler task name unchanged for backward compatibility
@@ -122,7 +212,7 @@ All notable changes to WSUS Manager are documented here.
   - GitHub Actions now extracts contents before uploading
 - **Fixed**: Noisy `spDeleteUpdate` errors during declined update purge
   - Expected errors for updates with revision dependencies now silently handled
-- **Fixed**: Window height increased by 8 pixels (720 → 728)
+- **Fixed**: Window height increased by 8 pixels (720 -> 728)
 
 ---
 
@@ -175,7 +265,7 @@ All notable changes to WSUS Manager are documented here.
   - Fields re-enabled when operation completes or is cancelled
 
 ### Code Quality
-- **Removed**: Duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies → 1)
+- **Removed**: Duplicate `Start-Heartbeat`/`Stop-Heartbeat` functions (3 copies -> 1)
 - **Streamlined**: GitHub workflows with concurrency settings
 - **Removed**: Codacy and release-drafter workflows
 
@@ -468,9 +558,12 @@ PATCH - Bug fixes (backwards compatible)
 ### Version Locations
 
 Update version in:
-1. `build.ps1` - `$script:Version`
+1. `build.ps1` - `$Version`
 2. `Scripts/WsusManagementGui.ps1` - `$script:AppVersion`
-3. `CLAUDE.md` - Current Version
+3. `Scripts/Invoke-WsusManagement.ps1` - header comment + `Show-Menu` banner
+4. `Scripts/Invoke-WsusMonthlyMaintenance.ps1` - `$ScriptVersion`
+5. `metadata.json` - `"version"`
+6. `CLAUDE.md` - Current Version
 
 ---
 

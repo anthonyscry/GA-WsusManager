@@ -247,10 +247,8 @@ Excluded: Upgrades (require manual review)
 | | - **Sync Only**: Just sync and approve | 5-10 minutes |
 | | - **Quick Sync**: Sync + cleanup + backup | 15-30 minutes |
 | | - **Full Sync**: Complete maintenance cycle | 30-60 minutes |
-| 5 | (Optional) Configure export paths: | |
+| 5 | (Optional) Configure export path: | |
 | | - **Full Export Path**: Network share for backup | |
-| | - **Differential Path**: USB drive for air-gap | |
-| | - **Export Days**: Age filter (default: 30) | |
 | 6 | Click **Run Sync** | |
 | 7 | Monitor progress in log panel | Some phases may be quiet for several minutes |
 | 8 | Verify completion message | |
@@ -275,11 +273,8 @@ Excluded: Upgrades (require manual review)
 |------|----------|--------|
 | 1 | Online WSUS | Run **Online Sync** to prepare updates |
 | 2 | Online WSUS | Click **Export to Media** (or use export options in Online Sync dialog) |
-| 3 | Online WSUS | Select export type: |
-| | | - **Full**: Complete database and all content |
-| | | - **Differential**: Only updates from last N days |
-| 4 | Online WSUS | Select destination folder (USB drive) |
-| 5 | Online WSUS | Wait for export to complete |
+| 3 | Online WSUS | Select destination folder (USB drive) |
+| 4 | Online WSUS | Wait for export to complete |
 
 ### 12.2 Import to Air-Gapped Server
 
@@ -334,6 +329,9 @@ Required for database operations (Restore, Deep Cleanup, Maintenance).
 ---
 
 ## 14. Domain Controller Configuration
+
+> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
+> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
 
 Run on the Domain Controller, not the WSUS server.
 

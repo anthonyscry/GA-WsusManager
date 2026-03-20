@@ -33,9 +33,9 @@ Describe "Script Syntax Validation" {
             $errors.Count | Should -Be 0
         }
 
-        It "WsusManagementGui.ps1 contains version 4.0.1" {
+        It "WsusManagementGui.ps1 contains version 4.0.2" {
             $content = Get-Content $script:GuiScript -Raw
-            $content | Should -Match '\$script:AppVersion\s*=\s*"4\.0\.1"'
+            $content | Should -Match '\$script:AppVersion\s*=\s*"4\.0\.2"'
         }
     }
 
@@ -174,9 +174,10 @@ Describe "Version Consistency" {
         $buildVersion | Should -Be $guiVersion
     }
 
-    It "Workflow DEFAULT_VERSION is current" {
-        $workflowPath = Join-Path $script:RepoRoot ".github" "workflows" "build.yml"
-        $content = Get-Content $workflowPath -Raw
-        $content | Should -Match "DEFAULT_VERSION:\s*'3\.8\.6'"
+    It "Build script version matches GUI version" {
+        $buildContent = Get-Content (Join-Path $script:RepoRoot "build.ps1") -Raw
+        $guiContent = Get-Content $script:GuiScript -Raw
+        $guiVersion = if ($guiContent -match '\$script:AppVersion\s*=\s*"([^"]+)"') { $Matches[1] } else { "unknown" }
+        $buildContent | Should -Match ([regex]::Escape($guiVersion))
     }
 }

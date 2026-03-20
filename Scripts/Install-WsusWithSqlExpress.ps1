@@ -364,7 +364,14 @@ if ($sqlInstalled) {
     }
 
     $setupProcess = Start-Process $setupExe -ArgumentList "/CONFIGURATIONFILE=`"$ConfigFile`"" -PassThru -NoNewWindow
-    Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
+    try {
+        Wait-WithHeartbeat -Process $setupProcess -Message "Installing SQL Server Express (this can take several minutes)..."
+    } finally {
+        # Scrub SA password from config file immediately (don't leave it on disk)
+        if (Test-Path $ConfigFile) {
+            (Get-Content $ConfigFile) -replace 'SAPWD="[^"]*"', 'SAPWD=""' | Set-Content $ConfigFile -Force
+        }
+    }
 
     $sqlExitCode = $setupProcess.ExitCode
     if ($null -ne $sqlExitCode -and $sqlExitCode -ne 0 -and $sqlExitCode -ne 3010) {
@@ -421,7 +428,23 @@ Write-Host "    IFI enabled."
 # =====================================================================
 Write-Host "[+] Configuring SQL networking..."
 
-$root = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib"
+# Dynamically find the MSSQL registry key (MSSQL16 for 2022, MSSQL15 for 2019, etc.)
+$instanceKey = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
+$mssqlRoot = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server"
+$instanceId = $null
+if (Test-Path $instanceKey) {
+    $instanceId = (Get-ItemProperty -Path $instanceKey -ErrorAction SilentlyContinue).SQLEXPRESS
+}
+if (-not $instanceId) {
+    # Fallback: scan for the instance directory
+    $instanceId = (Get-ChildItem "$mssqlRoot\MSSQL*.SQLEXPRESS" -ErrorAction SilentlyContinue |
+        Select-Object -First 1).PSChildName
+}
+if (-not $instanceId) {
+    $instanceId = "MSSQL16.SQLEXPRESS"  # Default to SQL 2022
+    Write-Host "    Warning: Could not detect SQL instance registry key, using default: $instanceId" -ForegroundColor Yellow
+}
+$root = "$mssqlRoot\$instanceId\MSSQLServer\SuperSocketNetLib"
 
 # Ensure TCP path exists
 if (!(Test-Path "$root\Tcp\IPAll")) {
@@ -459,11 +482,14 @@ Write-Host "    Networking configured."
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
-$wsusFeatures = Get-WindowsFeature -Name UpdateServices-DB, UpdateServices-UI
+# Use UpdateServices (not UpdateServices-DB) so WSUS accepts an external SQL
+# instance during postinstall. UpdateServices-DB locks WSUS to WID and causes
+# the "SQL_INSTANCE_NAME has no effect" warning.
+$wsusFeatures = Get-WindowsFeature -Name UpdateServices, UpdateServices-UI
 $needsInstall = $wsusFeatures | Where-Object { $_.InstallState -ne 'Installed' }
 
 if ($needsInstall) {
-    Install-WindowsFeature -Name UpdateServices-DB, UpdateServices-UI -IncludeManagementTools | Out-Null
+    Install-WindowsFeature -Name UpdateServices, UpdateServices-UI -IncludeManagementTools | Out-Null
     Write-Host "    WSUS role installed."
 } else {
     Write-Host "    WSUS role already installed."
@@ -533,11 +559,30 @@ $sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if ($sqlcmd) {
     try {
+        # ODBC Driver 18+ requires TrustServerCertificate to connect without a trusted cert
+        $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
+
+        # Add current logged-in user as sysadmin
+        # Use [System.Security.Principal] to reliably get DOMAIN\USER even in workgroup
+        # Pass via sqlcmd -v variable to avoid string interpolation in SQL
+        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $currentUser = "$($identity.Name)"
+        # SQL-escape apostrophes for N'...' quoted contexts (e.g. CONTOSO\O'Brien -> O''Brien)
+        $currentUserSafe = $currentUser -replace "'", "''"
+        Write-Host "    Adding sysadmin for: $currentUser"
+
+        & $sqlcmd @sqlcmdArgs -v SafeUser="$currentUserSafe" RawUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(SafeUser)') CREATE LOGIN [`$(RawUser)] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [`$(CurrentUser)];" -b
+
+        # Verify
+        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
+        Write-Host "    sysadmin check: $check"
+
         # Create NETWORK SERVICE login if not exists
-        & $sqlcmd -S $sqlInstance -E -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
+        & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
         
         # Grant dbcreator role to NETWORK SERVICE
-        & $sqlcmd -S $sqlInstance -E -Q "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -b
+        & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -b
         
         Write-Host "    SQL permissions granted."
     } catch {
@@ -545,9 +590,13 @@ if ($sqlcmd) {
     }
 } else {
     Write-Host "    Warning: sqlcmd.exe not found. SQL permissions must be set manually."
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $currentUser = "$($identity.Name)"
     Write-Host "    Run these commands after SSMS finishes installing:"
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [$currentUser] FROM WINDOWS`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
+    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
 }
 
 # =====================================================================
@@ -681,10 +730,11 @@ Set-ItemProperty -Path $wsusRegSetup -Name ContentDir -Value $WSUSContent -Force
 # Suppress the WSUS Configuration Wizard (OOBE)
 # These must be set AFTER postinstall completes, as postinstall may reset them.
 # OobeInitialized=1 + OobeComplete=1 tells the WSUS console the wizard has already run.
+# SyncFromMicrosoftUpdate=1 is REQUIRED for WSUS to actually sync with Microsoft.
 $setupFlags = @{
     OobeInitialized          = 1
     OobeComplete             = 1
-    SyncFromMicrosoftUpdate  = 0
+    SyncFromMicrosoftUpdate  = 1
     AllProductsEnabled       = 0
     AllClassificationsEnabled= 0
     AllLanguagesEnabled      = 0
@@ -706,6 +756,21 @@ Write-Host "    Restarting WSUS service to apply configuration..."
 Restart-Service WsusService -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 5
 Write-Host "    WSUS service restarted."
+
+# =====================================================================
+# 12a. CONFIGURE UPDATE LANGUAGE (English only)
+# =====================================================================
+Write-Host "[+] Configuring update language to English..."
+try {
+    Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
+    $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
+    $config = $wsus.GetConfiguration()
+    $config.SetUpdateLanguages(@("en"))
+    $config.Save()
+    Write-Host "    Language set to English."
+} catch {
+    Write-Host "    Warning: Failed to set language: $($_.Exception.Message)"
+}
 
 # =====================================================================
 # 12b. CONFIGURE UPSTREAM/DOWNSTREAM SERVER ROLE
@@ -737,8 +802,7 @@ if ($UpstreamServerHostname) {
     }
 } else {
     Write-Host "[+] Server role: Upstream (syncs from Microsoft Update)"
-    # SyncFromMicrosoftUpdate is already set to 0 in registry flags above.
-    # The first sync from the app/console will connect to Microsoft Update by default.
+    # SyncFromMicrosoftUpdate=1 is set in registry flags above (step 12).
 }
 
 # =====================================================================

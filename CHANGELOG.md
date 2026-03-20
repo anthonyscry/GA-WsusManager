@@ -5,6 +5,42 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2026-03-20
+
+### Changed
+- **GPO deployment (v1.6.0):** Replaced `Invoke-GPUpdate` (WinRM) with `schtasks.exe` RPC-based push — works without WinRM, includes per-computer tracking and ping pre-check
+- **GPO import strategy:** Delete-and-reimport instead of merge — permanently fixes stale registry values that caused "Extra Registry Settings" warnings in GPMC
+- **GPO backups:** Removed `ScheduledInstallEveryWeek`, `ConfigureDeadlineNoAutoReboot`, `EnableFirewall`, and `PolicyVersion` from .pol binary files
+- Removed differential export feature (Full/Differential copy mode, ExportDays, DifferentialExportPath) — simplified to full export only
+- Removed `.GetNewClosure()` from all WPF click handlers — replaced with proper scope patterns
+- Install script: dynamic SQL instance registry key detection, `UpdateServices` role (not `UpdateServices-DB`) for external SQL, `SyncFromMicrosoftUpdate=1`, TrustServerCertificate (`-C`), update language set to English
+- `WsusOperationRunner.psm1` — Wrapped process command so Warning/Verbose/Debug/Info streams flow to stdout
+- `WsusTrending.psm1` — Timestamped corrupt backup filenames to prevent silent overwrite
+
+### Fixed
+- **Closure scope bugs** in WPF click handlers causing stale variable capture
+- **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v` variable to prevent SQL injection
+- **Security:** `Invoke-WsusMonthlyMaintenance.ps1` — word-boundary `\b` in product decline regex prevents false positives
+- **Security:** SQL-escape apostrophes in `N'...'` contexts for Fix SQL Login and installer sysadmin grant
+- **Security:** Sanitize WSUS product names before command string interpolation (reject unsafe characters)
+- **Security:** Block double-quote and percent in `Test-SafePath` to prevent robocopy argument injection
+- **Security:** Scrub SA password from `ConfigurationFile.ini` immediately after SQL setup completes
+- **Security:** Wrap process start in `try/finally` for guaranteed password env var cleanup
+- **Safety:** `WsusTrending.psm1` — add timestamp to corrupt backup filename to prevent silent overwrite
+- **Robocopy exit codes:** Normalize exit codes 1–7 to 0 (success) in GUI transfer operations
+- **GPO push:** Make ICMP ping advisory — hardened domains blocking ping can still receive GP updates via RPC
+- **Restore:** Guard `wsusutil reset` behind `Test-Path` to prevent WSUS service stranding if wsusutil.exe is missing
+- **Dashboard:** Skip refresh while operations are running (prevents log output stutter)
+- Log message said 'any key' but only ESC/Q work
+- Backtick-escape `$(CurrentUser)` in installer sqlcmd calls
+- Fix `Integration.Tests.ps1` version check (4.0.1 → 4.0.2) and replace broken build.yml workflow test
+
+### Documentation
+- Added **AIR-GAP ONLY** warnings across all documentation (SOP, User Guide, Installation Guide, Confluence, Troubleshooting, CLAUDE.md)
+- Updated Create GPO instructions: removed `Invoke-GPUpdate` reference, added schtasks explanation
+- Removed `ConfigureDeadlineNoAutoReboot` from SOP settings table
+- Removed differential export references from all docs and wiki
+
 ## [4.0.1] - 2026-03-18
 
 ### Added
@@ -13,11 +49,22 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **docs/GUI-TESTING-LESSONS.md** — 16-section lessons learned document from GUI testing
   on headless Windows Server VMs via SSH tunnels and RDP sessions
 - **Tests/FlaUI.Tests.ps1** — 71 FlaUI-based unit tests for AutomationId coverage
+- **Tests/ProductFilter.Tests.ps1** — 31 Pester tests for product decline/approval logic,
+  Office 365 LTSC exception handling, ARM64/25H2 exclusion, and SQL injection safety
 
 ### Changed
 - Install script synced with Pro version: flexible installer detection, `UPDATEENABLED="0"`
 - GUI-tests CI workflow replaces old build.yml (self-hosted runner on triton-ajt)
 - `.planning/` C#-era plans archived to `.planning-archive-reverted-c#-era/`
+
+### Fixed
+- **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v`
+  variable instead of string interpolation to prevent SQL injection in sysadmin creation
+- **Security:** `Invoke-WsusMonthlyMaintenance.ps1` — add word-boundary `\b` to product
+  decline regex to prevent false-positive substring matches (e.g., "Server 2019" matching
+  "Windows Server 2019 22H2")
+- **Safety:** `WsusTrending.psm1` — add timestamp to corrupt backup filename to prevent
+  silent overwrite of diagnostic data
 
 ## [4.0.0] - 2026-03-15
 
