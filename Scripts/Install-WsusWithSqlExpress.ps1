@@ -495,6 +495,26 @@ if ($widFeature -and $widFeature.InstallState -eq 'Installed') {
     Start-Sleep -Seconds 3
     Uninstall-WindowsFeature -Name UpdateServices -IncludeManagementTools -ErrorAction SilentlyContinue | Out-Null
     Write-Host "    WSUS role removed."
+
+    # Remove leftover WID data files so postinstall creates SUSDB fresh on SQL Express
+    # If these files exist, postinstall tries to re-attach them instead of creating new
+    $widFiles = @("C:\Windows\WID\Data\SUSDB.mdf", "C:\Windows\WID\Data\SUSDB_log.ldf")
+    foreach ($wf in $widFiles) {
+        if (Test-Path $wf) {
+            Remove-Item $wf -Force -ErrorAction SilentlyContinue
+            Write-Host "    Cleaned up: $wf"
+        }
+    }
+
+    # A reboot may be required after feature uninstall/reinstall.
+    # Check if a reboot is pending and warn the user.
+    $rebootPending = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing" -Name RebootPending -ErrorAction SilentlyContinue) -or
+                     (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update" -Name RebootRequired -ErrorAction SilentlyContinue)
+    if ($rebootPending) {
+        Write-Host "    NOTE: A server restart may be required. If WSUS fails to start," -ForegroundColor Yellow
+        Write-Host "    restart the server and run this installer again." -ForegroundColor Yellow
+    }
+
     Start-Sleep -Seconds 3
     Start-Service W3SVC -ErrorAction SilentlyContinue
 }
