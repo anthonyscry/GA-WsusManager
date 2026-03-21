@@ -805,11 +805,12 @@ try {
     Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
     $config = $wsus.GetConfiguration()
-    $config.SetUpdateLanguages(@("en"))
+    $config.AllUpdateLanguagesEnabled = $false
+    $config.SetEnabledUpdateLanguages(@("en"))
     # Suppress WSUS configuration wizard via API
     $config.OobeInitialized = $true
     $config.Save()
-    Write-Host "    Language set to English."
+    Write-Host "    Language set to English only."
     Write-Host "    Configuration wizard suppressed."
 } catch {
     Write-Host "    Warning: Failed to set language: $($_.Exception.Message)"
