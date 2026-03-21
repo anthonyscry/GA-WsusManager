@@ -2468,9 +2468,9 @@ function Show-ScheduleTaskDialog {
     $script:ScheduleDialogResult = @{
         Cancelled = $true
         Schedule = "Weekly"
-        DayOfWeek = "Saturday"
+        DayOfWeek = "Tuesday"
         DayOfMonth = 1
-        Time = "02:00"
+        Time = "23:00"
         Profile = "Full"
         RunAsUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
         Password = ""
@@ -2608,11 +2608,11 @@ function Show-ScheduleTaskDialog {
             <ComboBox x:Name="DowCombo" Style="{StaticResource DarkComboBox}">
                 <ComboBoxItem Content="Sunday"/>
                 <ComboBoxItem Content="Monday"/>
-                <ComboBoxItem Content="Tuesday"/>
+                <ComboBoxItem Content="Tuesday" IsSelected="True"/>
                 <ComboBoxItem Content="Wednesday"/>
                 <ComboBoxItem Content="Thursday"/>
                 <ComboBoxItem Content="Friday"/>
-                <ComboBoxItem Content="Saturday" IsSelected="True"/>
+                <ComboBoxItem Content="Saturday"/>
             </ComboBox>
         </StackPanel>
 
@@ -2624,7 +2624,7 @@ function Show-ScheduleTaskDialog {
 
         <!-- Start Time -->
         <TextBlock Text="Start Time (HH:mm):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="TimeBox" Text="02:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
+        <TextBox x:Name="TimeBox" Text="23:00" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
                  automation:AutomationProperties.AutomationId="ScheduleTimeTextBox"/>
 
         <!-- Maintenance Profile -->
@@ -2640,12 +2640,8 @@ function Show-ScheduleTaskDialog {
         <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
                    FontSize="12" Margin="0,4,0,8"/>
 
-        <CheckBox x:Name="UseCurrentUser" Content="Use currently logged-in user" IsChecked="True"
-                  Foreground="#8B949E" Margin="0,0,0,8"
-                  automation:AutomationProperties.AutomationId="UseCurrentUserCheckBox"/>
-
         <TextBlock Text="Username (DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="UserBox" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12" IsEnabled="False"
+        <TextBox x:Name="UserBox" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
                  automation:AutomationProperties.AutomationId="ScheduleUserTextBox"/>
 
         <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
@@ -2684,23 +2680,11 @@ function Show-ScheduleTaskDialog {
     $profileCombo = $dlg.FindName("ProfileCombo")
     $userBox = $dlg.FindName("UserBox")
     $passBox = $dlg.FindName("PassBox")
-    $useCurrentUser = $dlg.FindName("UseCurrentUser")
     $btnCreate = $dlg.FindName("BtnCreate")
     $btnCancel = $dlg.FindName("BtnCancel")
 
-    # Set default username to current user
-    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $userBox.Text = $currentIdentity
-
-    # Toggle username field based on checkbox
-    $useCurrentUser.Add_Checked({
-        $userBox.Text = $currentIdentity
-        $userBox.IsEnabled = $false
-    })
-    $useCurrentUser.Add_Unchecked({
-        $userBox.IsEnabled = $true
-        $userBox.Focus() | Out-Null
-    })
+    # Default username to currently logged-in user
+    $userBox.Text = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
     # ESC key closes dialog
     $dlg.Add_KeyDown({
@@ -2758,12 +2742,13 @@ function Show-ScheduleTaskDialog {
 
         # Preflight: verify the specified user is an administrator
         try {
-            if ($useCurrentUser.IsChecked) {
+            $currentName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            if ($userVal -eq $currentName) {
                 # Check current user's admin status directly
                 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
                 $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
             } else {
-                # For non-current users, check local Administrators group membership
+                # For other users, check local Administrators group membership
                 $adminGroup = [ADSI]"WinNT://./Administrators,group"
                 $members = @($adminGroup.Invoke("Members")) | ForEach-Object { $_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null) }
                 $shortName = $userVal.Split('\')[-1]
