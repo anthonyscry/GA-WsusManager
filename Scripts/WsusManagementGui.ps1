@@ -2472,7 +2472,7 @@ function Show-ScheduleTaskDialog {
         DayOfMonth = 1
         Time = "02:00"
         Profile = "Full"
-        RunAsUser = "DoD_Admin"
+        RunAsUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
         Password = ""
     }
 
@@ -2640,8 +2640,12 @@ function Show-ScheduleTaskDialog {
         <TextBlock Text="Run As Credentials (for unattended execution):" Foreground="#8B949E"
                    FontSize="12" Margin="0,4,0,8"/>
 
-        <TextBlock Text="Username (e.g., DoD_Admin or DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
-        <TextBox x:Name="UserBox" Text="DoD_Admin" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"
+        <CheckBox x:Name="UseCurrentUser" Content="Use currently logged-in user" IsChecked="True"
+                  Foreground="#8B949E" Margin="0,0,0,8"
+                  automation:AutomationProperties.AutomationId="UseCurrentUserCheckBox"/>
+
+        <TextBlock Text="Username (DOMAIN\user):" Foreground="#8B949E" Margin="0,0,0,4"/>
+        <TextBox x:Name="UserBox" Style="{StaticResource DarkTextBox}" Margin="0,0,0,12" IsEnabled="False"
                  automation:AutomationProperties.AutomationId="ScheduleUserTextBox"/>
 
         <TextBlock Text="Password:" Foreground="#8B949E" Margin="0,0,0,4"/>
@@ -2680,8 +2684,23 @@ function Show-ScheduleTaskDialog {
     $profileCombo = $dlg.FindName("ProfileCombo")
     $userBox = $dlg.FindName("UserBox")
     $passBox = $dlg.FindName("PassBox")
+    $useCurrentUser = $dlg.FindName("UseCurrentUser")
     $btnCreate = $dlg.FindName("BtnCreate")
     $btnCancel = $dlg.FindName("BtnCancel")
+
+    # Set default username to current user
+    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $userBox.Text = $currentIdentity
+
+    # Toggle username field based on checkbox
+    $useCurrentUser.Add_Checked({
+        $userBox.Text = $currentIdentity
+        $userBox.IsEnabled = $false
+    })
+    $useCurrentUser.Add_Unchecked({
+        $userBox.IsEnabled = $true
+        $userBox.Focus() | Out-Null
+    })
 
     # ESC key closes dialog
     $dlg.Add_KeyDown({
@@ -2735,6 +2754,28 @@ function Show-ScheduleTaskDialog {
         if ([string]::IsNullOrWhiteSpace($passVal)) {
             Show-WsusPopup -Message "Password is required for scheduled task execution.`n`nThe task needs credentials to run whether the user is logged on or not." -Title "Schedule" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
+        }
+
+        # Preflight: verify the specified user is an administrator
+        try {
+            if ($useCurrentUser.IsChecked) {
+                # Check current user's admin status directly
+                $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+                $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            } else {
+                # For non-current users, check local Administrators group membership
+                $adminGroup = [ADSI]"WinNT://./Administrators,group"
+                $members = @($adminGroup.Invoke("Members")) | ForEach-Object { $_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null) }
+                $shortName = $userVal.Split('\')[-1]
+                $isAdmin = $shortName -in $members
+            }
+            if (-not $isAdmin) {
+                Show-WsusPopup -Message "The user '$userVal' does not appear to be a member of the local Administrators group.`n`nThe scheduled task requires admin privileges to manage WSUS." -Title "Admin Required" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+                return
+            }
+        } catch {
+            # If check fails (e.g., domain user lookup), warn but allow
+            Write-Log "Admin check for '$userVal' inconclusive: $_"
         }
 
         # Store results
