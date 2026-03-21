@@ -388,7 +388,7 @@ $script:StdinFlushTimer = $null
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#79B8FF"/>
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Background" Value="#30363D"/>
@@ -1084,7 +1084,7 @@ function Show-WsusPopup {
 # Dashboard data functions - delegate to WsusAutoDetection module
 function Get-ServiceStatus { Get-WsusDashboardServiceStatus }
 function Get-DiskFreeGB { Get-WsusDashboardDiskFreeGB }
-function Get-DatabaseSizeGB { Get-WsusDashboardDatabaseSizeGB }
+function Get-DatabaseSizeGB { Get-WsusDashboardDatabaseSizeGB -SqlInstance $script:SqlInstance }
 function Get-TaskStatus { Get-WsusDashboardTaskStatus }
 function Test-InternetConnection { Test-WsusDashboardInternetConnection }
 
@@ -3062,6 +3062,13 @@ function Invoke-LogOperation {
     if (-not $taskModule) {
         $taskModule = Find-WsusScript -ScriptName "WsusScheduledTask.psm1" -ScriptRoot (Join-Path $sr "Modules")
     }
+    if (-not $taskModule) {
+        # Dev layout: Scripts/ is $sr, Modules/ is sibling
+        $parentModules = Join-Path (Split-Path $sr -Parent) "Modules"
+        if (Test-Path (Join-Path $parentModules "WsusScheduledTask.psm1")) {
+            $taskModule = Join-Path $parentModules "WsusScheduledTask.psm1"
+        }
+    }
 
     # Validate scripts exist before proceeding
     if ($Id -ne "schedule") {
@@ -3189,7 +3196,7 @@ function Invoke-LogOperation {
             $opts = Show-ScheduleTaskDialog
             if ($opts.Cancelled) { return }
             if (-not $taskModuleSafe) {
-                Show-WsusPopup -Message "Cannot find WsusScheduledTask.psm1`n`nSearched in:`n- $sr\Modules`n- $(Split-Path $sr -Parent)\Modules`n`nMake sure the Modules folder is in the same directory as WsusManager.exe" -Title "Module Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
+                Show-WsusPopup -Message "Cannot find WsusScheduledTask.psm1`n`nSearched in:`n- $sr`n- $sr\Scripts`n- $sr\Modules`n- $(Split-Path $sr -Parent)\Modules`n`nMake sure the Modules folder is in the same directory as WsusManager.exe" -Title "Module Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
                 Write-Log "ERROR: WsusScheduledTask.psm1 not found"
                 return
             }
