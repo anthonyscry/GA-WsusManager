@@ -993,7 +993,7 @@ function Get-WsusHealthScore {
     $opScore = 5   # neutral default  - no history
     try {
         if (Test-Path $HistoryPath) {
-            $history = Get-Content $HistoryPath -Raw | ConvertFrom-Json
+            $history = Get-Content $HistoryPath -Raw -Encoding UTF8 | ConvertFrom-Json
             if ($history -and $history.Count -gt 0) {
                 $last = $history | Sort-Object -Property Timestamp -Descending | Select-Object -First 1
                 $opScore = if ($last.Result -eq 'Pass') { 10 } else { 0 }

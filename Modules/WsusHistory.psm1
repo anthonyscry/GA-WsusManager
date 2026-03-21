@@ -65,7 +65,7 @@ function Read-HistoryFile {
             Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
         }
         catch {
-            # Best-effort backup
+            Write-Warning "WsusHistory: Could not back up corrupt history file - history will be reset without backup"
         }
         Write-Warning "WsusHistory: history.json was corrupt and has been reset. Backup: $backupPath"
         return @()

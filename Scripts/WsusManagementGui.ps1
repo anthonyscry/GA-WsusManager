@@ -3577,14 +3577,19 @@ while ($countdown -gt 0) {
 
             try {
                 $script:CurrentProcess.Start() | Out-Null
+                $script:CurrentProcess.BeginOutputReadLine()
+                $script:CurrentProcess.BeginErrorReadLine()
+            } catch {
+                Write-LogOutput "Failed to start operation: $($_.Exception.Message)" -Level Error
+                $script:OperationRunning = $false
+                Enable-OperationButtons
+                Set-Status "Error"
+                return
             } finally {
                 # Security: Clear password environment variables from parent process immediately
                 Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue
                 Remove-Item Env:\WSUS_TASK_PASSWORD -ErrorAction SilentlyContinue
             }
-
-            $script:CurrentProcess.BeginOutputReadLine()
-            $script:CurrentProcess.BeginErrorReadLine()
 
             # Stdin flush timer - sends newlines to StandardInput every 2 seconds to flush output buffer
             $script:StdinFlushTimer = New-Object System.Windows.Threading.DispatcherTimer
@@ -4147,7 +4152,7 @@ $script:window.Add_Closing({
         $script:TrayIcon = $null
     }
     # Clean up any running operation (suppress log since we're closing)
-    Stop-CurrentOperation -SuppressLog
+    try { Stop-CurrentOperation -SuppressLog } catch { }
 })
 #endregion
 

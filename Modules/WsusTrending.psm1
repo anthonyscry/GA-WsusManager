@@ -68,7 +68,7 @@ function Save-TrendData {
         }
         $Data | ConvertTo-Json -Depth 3 | Set-Content -Path $path -Encoding UTF8 -ErrorAction Stop
     } catch {
-        Write-Verbose "WsusTrending: Failed to save trends data  - $($_.Exception.Message)"
+        Write-Warning "WsusTrending: Failed to save trends data - $($_.Exception.Message)"
     }
 }
 
@@ -96,9 +96,15 @@ function Add-WsusTrendSnapshot {
         $data  = Read-TrendData
 
         # Update existing entry for today, or add a new one
-        $existing = $data | Where-Object { $_.Date -eq $today }
-        if ($null -ne $existing) {
-            $existing.DatabaseSizeGB = $DatabaseSizeGB
+        $existing = @($data | Where-Object { $_.Date -eq $today })
+        if ($existing.Count -eq 1) {
+            $existing[0].DatabaseSizeGB = $DatabaseSizeGB
+        } elseif ($existing.Count -gt 1) {
+            # Duplicate dates from corrupt data - remove all and add fresh
+            $data = [System.Collections.Generic.List[hashtable]]::new(
+                @($data | Where-Object { $_.Date -ne $today })
+            )
+            $data.Add(@{ Date = $today; DatabaseSizeGB = $DatabaseSizeGB })
         } else {
             $data.Add(@{ Date = $today; DatabaseSizeGB = $DatabaseSizeGB })
         }
