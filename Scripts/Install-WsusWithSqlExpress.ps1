@@ -482,15 +482,30 @@ Write-Host "    Networking configured."
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
+# Check if WSUS is currently using WID (Windows Internal Database).
+# If so, uninstall the WID feature so WSUS can be reconfigured for SQL Express.
+$widFeature = Get-WindowsFeature -Name UpdateServices-WidDB -ErrorAction SilentlyContinue
+if ($widFeature -and $widFeature.InstallState -eq 'Installed') {
+    Write-Host "    WSUS is using WID (Windows Internal Database) - removing WID to use SQL Express..."
+    Stop-Service WSUSService -Force -ErrorAction SilentlyContinue
+    Uninstall-WindowsFeature -Name UpdateServices-WidDB -ErrorAction SilentlyContinue | Out-Null
+    Write-Host "    WID feature removed."
+    # Clear the WSUS setup registry so postinstall runs fresh
+    $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
+    if (Test-Path $wsusRegSetup) {
+        Remove-ItemProperty -Path $wsusRegSetup -Name SqlServerName -ErrorAction SilentlyContinue
+    }
+}
+
 # Use UpdateServices (not UpdateServices-DB) so WSUS accepts an external SQL
 # instance during postinstall. UpdateServices-DB locks WSUS to WID and causes
 # the "SQL_INSTANCE_NAME has no effect" warning.
-$wsusFeatures = Get-WindowsFeature -Name UpdateServices, UpdateServices-UI
+$wsusFeatures = Get-WindowsFeature -Name UpdateServices, UpdateServices-Services, UpdateServices-UI
 $needsInstall = $wsusFeatures | Where-Object { $_.InstallState -ne 'Installed' }
 
 if ($needsInstall) {
-    Install-WindowsFeature -Name UpdateServices, UpdateServices-UI -IncludeManagementTools | Out-Null
-    Write-Host "    WSUS role installed."
+    Install-WindowsFeature -Name UpdateServices, UpdateServices-Services, UpdateServices-UI -IncludeManagementTools | Out-Null
+    Write-Host "    WSUS role installed (SQL Express mode)."
 } else {
     Write-Host "    WSUS role already installed."
 }
@@ -744,8 +759,7 @@ foreach ($key in $setupFlags.Keys) {
     Set-ItemProperty -Path $wsusRegSetup -Name $key -Value $setupFlags[$key] -Force
 }
 
-# Mark role services as installed
-Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-WidDatabase" -Value 2 -Force
+# Mark role services as installed (Services + UI, NOT WidDatabase since we use SQL Express)
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-Services" -Value 2 -Force
 Set-ItemProperty -Path $wsusRegSetupInstalled -Name "UpdateServices-UI" -Value 2 -Force
 
