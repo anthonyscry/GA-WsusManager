@@ -3513,7 +3513,6 @@ while ($countdown -gt 0) {
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $line = "[$timestamp] [+] $($data.Title) completed`r`n"
-                    $null = $script:FullLogContent.Append($line)
                     $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
                     # Show completion notification if enabled
