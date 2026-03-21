@@ -101,7 +101,7 @@ $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented -- remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
-$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps")
+$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Microsoft Edge", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps")
 
 function Write-Log { param([string]$Msg)
     try {

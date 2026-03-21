@@ -692,7 +692,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 $toEnable = @()
                 foreach ($prod in $allProducts) {
                     foreach ($sel in $SelectedProducts) {
-                        if ($prod.Title -like "*$sel*") { $toEnable += $prod; break }
+                        if ($prod.Title -eq $sel) { $toEnable += $prod; break }
                     }
                 }
                 if ($toEnable.Count -gt 0) {
@@ -820,7 +820,7 @@ if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
         $toEnable = @()
         foreach ($prod in $allProducts) {
             foreach ($sel in $SelectedProducts) {
-                if ($prod.Title -like "*$sel*") { $toEnable += $prod; break }
+                if ($prod.Title -eq $sel) { $toEnable += $prod; break }
             }
         }
 
