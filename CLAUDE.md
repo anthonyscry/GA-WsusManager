@@ -622,13 +622,13 @@ $controls.LogOutput.Dispatcher.Invoke([Action]{
 
 **Cause:** PowerShell closures capture variables by reference, not value.
 
-**Solution:** Use `.GetNewClosure()` to capture current values:
+**Solution (v4.0.2):** All `.GetNewClosure()` calls were removed in v4.0.2 because they blocked access to script-scope functions. Instead, use script-scope variables directly or pass data via `-MessageData` on event handlers:
 ```powershell
-# WRONG - may use wrong value if $i changes
-$btn.Add_Click({ Write-Host $i })
-
-# CORRECT - captures current value
+# WRONG - GetNewClosure blocks script function access
 $btn.Add_Click({ Write-Host $i }.GetNewClosure())
+
+# CORRECT - use script-scope variable directly
+$btn.Add_Click({ Write-Host $script:SomeValue })
 ```
 
 ### 6. Missing CLI Parameters
@@ -907,7 +907,7 @@ Before committing GUI changes, verify:
 2. [ ] All function return values are suppressed (`$null =` or `| Out-Null`)
 3. [ ] Event handlers use `Dispatcher.Invoke()` for UI updates
 4. [ ] Event handlers pass data via `-MessageData`, not script-scope variables
-5. [ ] Click handlers use `.GetNewClosure()` when capturing variables
+5. [ ] Click handlers do NOT use `.GetNewClosure()` (removed in v4.0.2 - blocks script function access)
 6. [ ] New CLI parameters are added to BOTH GUI and CLI scripts
 7. [ ] Concurrent operation blocking is in place
 8. [ ] Cancel button properly kills running processes
