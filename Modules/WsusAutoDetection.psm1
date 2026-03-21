@@ -223,7 +223,7 @@ function Get-WsusCertificateStatus {
                     $certHash = $httpsBinding.certificateHash
                     if ($certHash) {
                         $result.Thumbprint = $certHash
-                        $cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -eq $certHash }
+                        $cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -ieq $certHash }
                         if ($cert) {
                             $result.CertificateFound = $true
                             $result.Subject = $cert.Subject
@@ -503,7 +503,12 @@ function Start-WsusHealthMonitor {
     )
 
     $scriptBlock = {
-        param($IntervalSeconds, $ContentPath, $AutoRecover)
+        param($IntervalSeconds, $ContentPath, $AutoRecover, $ModulePath)
+
+        # Import module in job runspace (Start-Job creates a clean process)
+        if ($ModulePath -and (Test-Path $ModulePath)) {
+            Import-Module $ModulePath -Force -DisableNameChecking -ErrorAction SilentlyContinue
+        }
 
         while ($true) {
             $health = Get-WsusOverallHealth -ContentPath $ContentPath
@@ -519,7 +524,8 @@ function Start-WsusHealthMonitor {
         }
     }
 
-    Start-Job -ScriptBlock $scriptBlock -ArgumentList $IntervalSeconds, $ContentPath, $AutoRecover -Name "WsusHealthMonitor"
+    $moduleSelf = Join-Path $PSScriptRoot "WsusAutoDetection.psm1"
+    Start-Job -ScriptBlock $scriptBlock -ArgumentList $IntervalSeconds, $ContentPath, $AutoRecover, $moduleSelf -Name "WsusHealthMonitor"
 }
 
 function Stop-WsusHealthMonitor {
