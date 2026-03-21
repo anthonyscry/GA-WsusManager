@@ -942,8 +942,9 @@ if ($allUpdates.Count -gt 0) {
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
     $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
+    $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds (21H2/22H2/23H2)=$($legacyBuildUpdates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1011,7 +1012,19 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount"
+    $previewCount = 0
+    if ($previewUpdates.Count -gt 0) {
+        $previewUpdates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $previewCount++
+            } catch {
+                Write-Warning "Failed to decline preview/beta update: $($_.Title)"
+            }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount | Preview/Beta=$previewCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
