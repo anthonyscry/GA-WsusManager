@@ -200,7 +200,7 @@ if ($script:ModulesDir) {
     # Bypass execution policy for this process so UNC-path modules load without signing requirement
     try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch {}
 
-    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusHealth","WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
+    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusAutoDetection","WsusHealth","WsusDialogs","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
         $modPath = Join-Path $script:ModulesDir "$mod.psm1"
         if (Test-Path $modPath) {
             try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction Stop }
@@ -319,7 +319,7 @@ $script:StdinFlushTimer = $null
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WSUS Manager" Height="736" Width="950" MinHeight="600" MinWidth="800"
+        Title="WSUS Manager" Height="800" Width="1000" MinHeight="650" MinWidth="850"
         WindowStartupLocation="CenterScreen" Background="#0D1117"
         FontFamily="Segoe UI"
         AutomationProperties.AutomationId="WsusManagerMainWindow">
@@ -1086,12 +1086,31 @@ function Show-WsusPopup {
     }
 }
 
-# Dashboard data functions - delegate to WsusAutoDetection module
-function Get-ServiceStatus { Get-WsusDashboardServiceStatus }
-function Get-DiskFreeGB { Get-WsusDashboardDiskFreeGB }
-function Get-DatabaseSizeGB { Get-WsusDashboardDatabaseSizeGB -SqlInstance $script:SqlInstance }
-function Get-TaskStatus { Get-WsusDashboardTaskStatus }
-function Test-InternetConnection { Test-WsusDashboardInternetConnection }
+# Dashboard data functions - delegate to WsusAutoDetection module with inline fallbacks
+function Get-ServiceStatus {
+    if (Get-Command Get-WsusDashboardServiceStatus -ErrorAction SilentlyContinue) { return Get-WsusDashboardServiceStatus }
+    return @{Running=0; Names=@()}
+}
+function Get-DiskFreeGB {
+    if (Get-Command Get-WsusDashboardDiskFreeGB -ErrorAction SilentlyContinue) { return Get-WsusDashboardDiskFreeGB }
+    try { $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue; if ($d.Free) { return [math]::Round($d.Free/1GB,1) } } catch {}
+    return 0
+}
+function Get-DatabaseSizeGB {
+    if (Get-Command Get-WsusDashboardDatabaseSizeGB -ErrorAction SilentlyContinue) { return Get-WsusDashboardDatabaseSizeGB -SqlInstance $script:SqlInstance }
+    return -1
+}
+function Get-TaskStatus {
+    if (Get-Command Get-WsusDashboardTaskStatus -ErrorAction SilentlyContinue) { return Get-WsusDashboardTaskStatus }
+    return "Not Set"
+}
+function Test-InternetConnection {
+    if (Get-Command Test-WsusDashboardInternetConnection -ErrorAction SilentlyContinue) { return Test-WsusDashboardInternetConnection }
+    $ping = $null
+    try { $ping = New-Object System.Net.NetworkInformation.Ping; $reply = $ping.Send("8.8.8.8", 500); return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success) }
+    catch { return $false }
+    finally { if ($null -ne $ping) { $ping.Dispose() } }
+}
 
 function Update-ServerMode {
     # Use manual override if set, otherwise auto-detect
@@ -1133,6 +1152,13 @@ function Update-Dashboard {
 
     # Check if WSUS is installed first
     $wsusInstalled = Test-WsusInstalled
+    $script:WsusInstalled = $wsusInstalled
+
+    # Skip heavy queries if WSUS not installed - just update button state
+    if (-not $wsusInstalled) {
+        Update-WsusButtonState
+        return
+    }
 
     # Card 1: Services
     $svc = Get-ServiceStatus
