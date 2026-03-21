@@ -482,6 +482,8 @@ Write-Host "    Networking configured."
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
+$script:WidMigrated = $false
+
 # Check if WSUS is currently using WID (Windows Internal Database).
 # If so, migrate SUSDB from WID to SQL Express by detaching and reattaching.
 $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
@@ -526,6 +528,7 @@ if ($widFeature -and $widFeature.InstallState -eq 'Installed' -and $currentSqlSe
             $check = & $migSqlcmd -S ".\SQLEXPRESS" -E -Q "SELECT DB_ID('SUSDB')" -h -1 -W 2>$null
             if ($check -and $check.Trim() -ne 'NULL' -and $check.Trim() -ne '') {
                 Write-Host "    SUSDB successfully migrated to SQL Express"
+                $script:WidMigrated = $true
             } else {
                 Write-Host "    WARNING: SUSDB migration may have failed - check SQL Express" -ForegroundColor Yellow
             }
@@ -675,14 +678,19 @@ Write-Host "[+] Pre-configured WSUS wizard suppression registry keys."
 # =====================================================================
 # 11. WSUS POSTINSTALL
 # =====================================================================
-Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
-
 $wsusProtocol = "HTTP"
 $wsusPort = 8530
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 
-if (Test-Path $wsusUtil) {
+if ($script:WidMigrated) {
+    # SUSDB was migrated from WID to SQL Express - skip wsusutil postinstall
+    # because it ignores SQL_INSTANCE_NAME when UpdateServices-WidDB feature
+    # is installed and tries to connect to WID (which no longer has SUSDB).
+    # The database is already attached to SQL Express and the registry is set.
+    Write-Host "[+] Skipping WSUS postinstall (SUSDB already migrated to SQL Express)"
+} elseif (Test-Path $wsusUtil) {
+    Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
     $postInstallArgs = "postinstall", "SQL_INSTANCE_NAME=`"$sqlInstance`"", "CONTENT_DIR=`"$WSUSContent`""
 
     $wsusProcess = Start-Process $wsusUtil -ArgumentList $postInstallArgs -PassThru -NoNewWindow
