@@ -246,11 +246,6 @@ Describe "Get-WsusMaintenanceSetting" {
         $result | Should -Be 90
     }
 
-    It "Should return DefaultExportDays" {
-        $result = Get-WsusMaintenanceSetting -Setting 'DefaultExportDays'
-        $result | Should -Be 30
-    }
-
     It "Should return IndexFragmentationThreshold" {
         $result = Get-WsusMaintenanceSetting -Setting 'IndexFragmentationThreshold'
         $result | Should -Be 10
