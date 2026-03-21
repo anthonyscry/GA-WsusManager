@@ -172,7 +172,10 @@ function Import-WsusSettings {
             if ($null -ne $s.HistoryEnabled) { $script:HistoryEnabled = $s.HistoryEnabled }
             if ($null -ne $s.SyncProducts) { $script:SyncProducts = @($s.SyncProducts) }
         }
-    } catch { Write-Log "Failed to load settings: $_" }
+    } catch {
+        Write-Log "Failed to load settings: $_"
+        $script:SettingsCorrupt = $true
+    }
 }
 
 function Save-Settings {
@@ -844,7 +847,9 @@ if ($controls.BtnMaintenance) { $controls.BtnMaintenance.ToolTip = "Online Sync 
 $script:LogExpanded = $true
 $script:HasTrendingModule = [bool](Get-Command Add-WsusTrendSnapshot -ErrorAction SilentlyContinue)
 $script:HasHealthModule = [bool](Get-Command Get-WsusHealthScore -ErrorAction SilentlyContinue)
+$script:HasNotificationModule = [bool](Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)
 $script:CachedSqlCmdPath = $null
+$script:SettingsCorrupt = $false
 
 function Expand-LogPanel {
     if (-not $script:LogExpanded) {
@@ -1238,10 +1243,12 @@ function Update-Dashboard {
         } catch { }
     }
 
-    # Last Successful Sync
-    if ($controls.LastSyncText) {
+    # Last Successful Sync (skip if WSUS service is not running to avoid blocking)
+    if ($controls.LastSyncText -and $wsusInstalled) {
         try {
-            $wsus = Get-WsusServer -ErrorAction SilentlyContinue
+            $wsusRunning = (Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue).Status -eq "Running"
+            if (-not $wsusRunning) { throw "WSUS service not running" }
+            $wsus = Get-WsusServer -ErrorAction Stop
             if ($wsus) {
                 $sub = $wsus.GetSubscription()
                 $lastSync = $sub.LastSuccessfulSynchronizationTime
@@ -3301,7 +3308,7 @@ while ($countdown -gt 0) {
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $data.Controls.LogOutput.AppendText("`r`n[$timestamp] [+] Console closed - $($data.Title) finished`r`n")
                     # Show completion notification if enabled
-                    if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
+                    if ($script:NotificationsEnabled -and $script:HasNotificationModule) {
                         $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
                         $dur = [TimeSpan]::FromSeconds($durationSecs)
                         Show-WsusNotification -Title "WSUS Manager  - $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
@@ -3344,6 +3351,13 @@ while ($countdown -gt 0) {
 
             try {
                 $script:CurrentProcess.Start() | Out-Null
+            } catch {
+                # H1: Process.Start() can throw (access denied, exe not found)
+                Write-LogOutput "Failed to start operation: $($_.Exception.Message)" -Level Error
+                $script:OperationRunning = $false
+                Enable-OperationButtons
+                Set-Status "Error"
+                return
             } finally {
                 # Security: Clear password environment variables from parent process immediately
                 Remove-Item Env:\WSUS_INSTALL_SA_PASSWORD -ErrorAction SilentlyContinue
@@ -3523,7 +3537,7 @@ while ($countdown -gt 0) {
                     $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
                     # Show completion notification if enabled
-                    if ($script:NotificationsEnabled -and (Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)) {
+                    if ($script:NotificationsEnabled -and $script:HasNotificationModule) {
                         $durationSecs = ((Get-Date) - $data.StartTime).TotalSeconds
                         $dur = [TimeSpan]::FromSeconds($durationSecs)
                         Show-WsusNotification -Title "WSUS Manager  - $($data.Title) Complete" -Message "Completed in $([int]$dur.TotalMinutes)m $($dur.Seconds)s" -Result "Pass" -EnableBeep:$script:NotificationBeep
@@ -4054,6 +4068,12 @@ Update-SplashProgress -Splash $script:Splash -Progress 90 -Status "Starting..."
 if (-not $script:WsusInstalled) {
     $controls.LogOutput.Text = "WSUS is not installed on this server.`r`n`r`nMost operations are disabled until WSUS is installed.`r`nUse 'Install WSUS' from the Setup menu to begin installation.`r`n"
     Expand-LogPanel
+}
+
+# M3: Warn if settings were corrupt and reset to defaults
+if ($script:SettingsCorrupt) {
+    Show-WsusPopup -Message "Settings file was corrupt and has been reset to defaults.`n`nYour previous configuration was not loaded. Check Settings to reconfigure." -Title "Settings Reset" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+    $script:SettingsCorrupt = $false
 }
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer

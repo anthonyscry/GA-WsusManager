@@ -33,9 +33,13 @@ $requiredModules = @('WsusUtilities', 'WsusServices', 'WsusFirewall', 'WsusPermi
 foreach ($modName in $requiredModules) {
     $modFile = Join-Path $modulePath "$modName.psm1"
     if (Test-Path $modFile) {
-        Import-Module $modFile -Force -DisableNameChecking -ErrorAction Stop
+        try {
+            Import-Module $modFile -Force -DisableNameChecking -ErrorAction Stop
+        } catch {
+            Write-Warning "WsusHealth: Failed to import $modName - $($_.Exception.Message)"
+        }
     } else {
-        throw "Required module not found: $modFile"
+        Write-Warning "WsusHealth: Required module not found - $modFile"
     }
 }
 

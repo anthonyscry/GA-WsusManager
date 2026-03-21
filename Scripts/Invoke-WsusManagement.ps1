@@ -328,7 +328,23 @@ function Test-SqlSysadmin {
             return $result
         }
 
-        # Check sysadmin membership using Invoke-Sqlcmd
+        # Check sysadmin membership using Invoke-Sqlcmd (or sqlcmd.exe fallback)
+        if (-not (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue)) {
+            # SqlServer module not installed - try sqlcmd.exe fallback
+            $sqlcmd = @(
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($sqlcmd) {
+                $out = & $sqlcmd -S $SqlInstance -E -Q "SELECT IS_SRVROLEMEMBER('sysadmin')" -h -1 -W 2>$null
+                $result.HasPermission = ($out -match '^\s*1\s*$')
+                if ($result.HasPermission) { $result.Message = "User has sysadmin permissions" }
+                else { $result.Message = "User '$($result.UserName)' does not have sysadmin permissions" }
+                return $result
+            }
+            $result.Message = "Cannot check permissions: SqlServer module and sqlcmd.exe not found"
+            return $result
+        }
         $query = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
         $checkResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Query $query -ErrorAction Stop
 
