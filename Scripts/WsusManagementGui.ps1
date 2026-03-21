@@ -95,6 +95,7 @@ $script:PopupHistory = @{}
 $script:RecentLines = @{}
 # Live Terminal Mode - launches operations in visible console window
 $script:LiveTerminalMode = $true
+$script:ForceEmbeddedMode = $false
 $script:NotificationsEnabled = $true  # Show notifications when operations complete
 $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented -- remove this comment when adding theme support)
@@ -3204,7 +3205,9 @@ function Invoke-LogOperation {
             $dst = Get-EscapedPath $opts.DestinationPath
             $Title = "Transfer ($($src) -> $($dst))"
             # Robocopy returns 1-7 for success; normalize to exit 0 so operation runner treats it as success
-            "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NFL /NDL; if (`$LASTEXITCODE -le 7) { exit 0 } else { exit `$LASTEXITCODE }"
+            # Show file names (/NDL hides dirs but /NFL removed so files are visible)
+            $script:ForceEmbeddedMode = $true
+            "robocopy `"$src`" `"$dst`" /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NDL /NP; if (`$LASTEXITCODE -le 7) { exit 0 } else { exit `$LASTEXITCODE }"
         }
         "maintenance" {
             $opts = Show-MaintenanceDialog
@@ -3264,8 +3267,10 @@ function Invoke-LogOperation {
 
     Set-Status "Running: $Title"
 
-    # Branch based on Live Terminal mode
-    if ($script:LiveTerminalMode) {
+    # Branch based on Live Terminal mode (some operations force embedded mode)
+    $useTerminal = $script:LiveTerminalMode -and -not $script:ForceEmbeddedMode
+    $script:ForceEmbeddedMode = $false
+    if ($useTerminal) {
         # LIVE TERMINAL MODE: Launch in visible console window
         $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nKeystroke refresh is active (sending Enter every 2 seconds to flush output).`r`n`r`nThe console will remain open after completion so you can review the output.`r`nClose the console window when finished, or press ESC or Q to close it."
 
