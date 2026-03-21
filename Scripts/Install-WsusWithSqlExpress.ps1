@@ -482,79 +482,34 @@ Write-Host "    Networking configured."
 # =====================================================================
 Write-Host "[+] Installing WSUS role..."
 
-$script:WidMigrated = $false
-
-# Check if WSUS is currently using WID (Windows Internal Database).
-# If so, migrate SUSDB from WID to SQL Express by detaching and reattaching.
-$wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
-$currentSqlServer = (Get-ItemProperty $wsusRegSetup -ErrorAction SilentlyContinue).SqlServerName
+# Check if WSUS is currently installed with WID (Windows Internal Database).
+# If so, fully uninstall WSUS and reinstall with UpdateServices-DB (external SQL).
+# This is the only reliable way - wsusutil postinstall ignores SQL_INSTANCE_NAME
+# when UpdateServices-WidDB feature is installed.
 $widFeature = Get-WindowsFeature -Name UpdateServices-WidDB -ErrorAction SilentlyContinue
 
-if ($widFeature -and $widFeature.InstallState -eq 'Installed' -and $currentSqlServer -eq 'MICROSOFT##WID') {
-    Write-Host "    WSUS is using WID - migrating SUSDB to SQL Express..."
-
-    # Find sqlcmd.exe early for WID migration
-    $migSqlcmd = @(
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe"
-    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-    if (-not $migSqlcmd) {
-        Write-Host "    ERROR: sqlcmd.exe not found - cannot migrate SUSDB from WID" -ForegroundColor Red
-        Write-Host "    Install SQL Express first, then re-run this script" -ForegroundColor Yellow
-    } else {
-        Write-Host "    Stopping WSUS and IIS..."
-        Stop-Service WSUSService -Force -ErrorAction SilentlyContinue
-        Stop-Service W3SVC -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
-
-        $widDataPath = "C:\Windows\WID\Data"
-        $mdf = Join-Path $widDataPath "SUSDB.mdf"
-        $ldf = Join-Path $widDataPath "SUSDB_log.ldf"
-
-        if (Test-Path $mdf) {
-            Write-Host "    Detaching SUSDB from WID..."
-            & $migSqlcmd -S "\\.\pipe\MICROSOFT##WID\tsql\query" -E -Q "ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE" -b 2>$null
-            & $migSqlcmd -S "\\.\pipe\MICROSOFT##WID\tsql\query" -E -Q "EXEC sp_detach_db 'SUSDB'" -b 2>$null
-
-            Write-Host "    Attaching SUSDB to SQL Express (upgrading database version)..."
-            $attachQuery = "CREATE DATABASE SUSDB ON (FILENAME = '$mdf'), (FILENAME = '$ldf') FOR ATTACH"
-            & $migSqlcmd -S ".\SQLEXPRESS" -E -Q $attachQuery -b 2>&1 | ForEach-Object {
-                if ($_ -notmatch 'running the upgrade step') { Write-Host "    $_" }
-            }
-
-            # Verify SUSDB exists on SQL Express
-            $check = & $migSqlcmd -S ".\SQLEXPRESS" -E -Q "SELECT DB_ID('SUSDB')" -h -1 -W 2>$null
-            if ($check -and $check.Trim() -ne 'NULL' -and $check.Trim() -ne '') {
-                Write-Host "    SUSDB successfully migrated to SQL Express"
-                $script:WidMigrated = $true
-            } else {
-                Write-Host "    WARNING: SUSDB migration may have failed - check SQL Express" -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "    WID SUSDB files not found at $widDataPath - fresh install will proceed"
-        }
-
-        # Update registry to point to SQL Express
-        Set-ItemProperty -Path $wsusRegSetup -Name SqlServerName -Value "$env:COMPUTERNAME\SQLEXPRESS" -Force
-        Write-Host "    Registry updated to use SQL Express"
-
-        Start-Service W3SVC -ErrorAction SilentlyContinue
-    }
+if ($widFeature -and $widFeature.InstallState -eq 'Installed') {
+    Write-Host "    WSUS is installed with WID - removing to reinstall with SQL Express..."
+    Stop-Service WSUSService -Force -ErrorAction SilentlyContinue
+    Stop-Service W3SVC -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Uninstall-WindowsFeature -Name UpdateServices -IncludeManagementTools -ErrorAction SilentlyContinue | Out-Null
+    Write-Host "    WSUS role removed."
+    Start-Sleep -Seconds 3
+    Start-Service W3SVC -ErrorAction SilentlyContinue
 }
 
-# Install WSUS features if not already present
-# Use UpdateServices (not UpdateServices-DB) so WSUS accepts an external SQL
-# instance during postinstall. UpdateServices-DB locks WSUS to WID.
-$wsusFeatures = Get-WindowsFeature -Name UpdateServices, UpdateServices-Services, UpdateServices-UI
-$needsInstall = $wsusFeatures | Where-Object { $_.InstallState -ne 'Installed' }
+# Install WSUS with UpdateServices-DB (external SQL support).
+# This is the key difference from the default install which uses UpdateServices-WidDB.
+# With UpdateServices-DB, wsusutil postinstall accepts SQL_INSTANCE_NAME.
+$dbFeature = Get-WindowsFeature -Name UpdateServices-DB -ErrorAction SilentlyContinue
 
-if ($needsInstall) {
-    Install-WindowsFeature -Name UpdateServices, UpdateServices-Services, UpdateServices-UI -IncludeManagementTools | Out-Null
+if (-not $dbFeature -or $dbFeature.InstallState -ne 'Installed') {
+    Write-Host "    Installing WSUS role with SQL Express support..."
+    Install-WindowsFeature -Name UpdateServices-Services, UpdateServices-DB, UpdateServices-UI -IncludeManagementTools | Out-Null
     Write-Host "    WSUS role installed (SQL Express mode)."
 } else {
-    Write-Host "    WSUS role already installed."
+    Write-Host "    WSUS role already installed with SQL Express support."
 }
 
 # =====================================================================
@@ -683,13 +638,7 @@ $wsusPort = 8530
 
 $wsusUtil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
 
-if ($script:WidMigrated) {
-    # SUSDB was migrated from WID to SQL Express - skip wsusutil postinstall
-    # because it ignores SQL_INSTANCE_NAME when UpdateServices-WidDB feature
-    # is installed and tries to connect to WID (which no longer has SUSDB).
-    # The database is already attached to SQL Express and the registry is set.
-    Write-Host "[+] Skipping WSUS postinstall (SUSDB already migrated to SQL Express)"
-} elseif (Test-Path $wsusUtil) {
+if (Test-Path $wsusUtil) {
     Write-Host "[+] Running WSUS postinstall (this may take several minutes)..."
     $postInstallArgs = "postinstall", "SQL_INSTANCE_NAME=`"$sqlInstance`"", "CONTENT_DIR=`"$WSUSContent`""
 
