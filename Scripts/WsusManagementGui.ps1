@@ -3202,7 +3202,9 @@ function Invoke-LogOperation {
                 return
             }
             $src = Get-EscapedPath $opts.SourcePath
-            $dst = Get-EscapedPath $opts.DestinationPath
+            # Append source folder name to destination so robocopy creates a subfolder
+            $srcFolderName = Split-Path $opts.SourcePath -Leaf
+            $dst = Get-EscapedPath (Join-Path $opts.DestinationPath $srcFolderName)
             $Title = "Transfer ($($src) -> $($dst))"
             # Robocopy returns 1-7 for success; normalize to exit 0 so operation runner treats it as success
             # Show file names (/NDL hides dirs but /NFL removed so files are visible)
