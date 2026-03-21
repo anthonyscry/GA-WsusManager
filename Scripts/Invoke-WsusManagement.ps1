@@ -1571,6 +1571,26 @@ function Invoke-WsusCleanup {
     Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 5
 
+    # Verify SQL is still accepting connections after WSUS stop
+    $sqlReady = $false
+    for ($retry = 1; $retry -le 3; $retry++) {
+        try {
+            $sqlcmdPath = @(
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($sqlcmdPath) {
+                $null = & $sqlcmdPath -S $SqlInstance -E -Q "SELECT 1" -W -h -1 2>&1
+                if ($LASTEXITCODE -eq 0) { $sqlReady = $true; break }
+            }
+        } catch { }
+        Write-Log "Waiting for SQL connection (attempt $retry/3)..." "Yellow"
+        Start-Sleep -Seconds 5
+    }
+    if (-not $sqlReady) {
+        Write-Log "[WARN] SQL connection not ready - database operations may fail" "Yellow"
+    }
+
     # Step 1: Run WSUS built-in cleanup
     Write-Log "Step 1/6: Running WSUS built-in cleanup..." "Yellow"
     try {
