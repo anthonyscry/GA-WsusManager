@@ -267,8 +267,8 @@ function Start-WsusOperation {
     Runner owns: process creation, button state, event subscriptions, timeout
     watchdog, and cleanup.  Output display is delegated to the selected mode:
 
-      Embedded  – captures stdout/stderr into the GUI log panel TextBox.
-      Terminal  – launches a visible PowerShell console window.
+      Embedded  - captures stdout/stderr into the GUI log panel TextBox.
+      Terminal  - launches a visible PowerShell console window.
 
     GUI state is communicated via the Context hashtable so that the module has
     no hard dependency on script-scope variables in the GUI.
@@ -279,15 +279,15 @@ function Start-WsusOperation {
 .PARAMETER Context
     Hashtable containing GUI state references. Expected keys:
       Window           [System.Windows.Window]
-      Controls         [hashtable] – named controls dictionary
-      OperationButtons [string[]]  – button names to disable during the operation
-      OperationInputs  [string[]]  – input field names to disable
-      LogOutput        [System.Windows.Controls.TextBox] – log panel (Embedded mode)
+      Controls         [hashtable] - named controls dictionary
+      OperationButtons [string[]]  - button names to disable during the operation
+      OperationInputs  [string[]]  - input field names to disable
+      LogOutput        [System.Windows.Controls.TextBox] - log panel (Embedded mode)
       StatusLabel      [System.Windows.Controls.TextBlock]
       CancelButton     [System.Windows.Controls.Button]
-      ScriptRoot       [string] – working directory for the child process
-      SetOperationRunning [scriptblock] – called with $true/$false to set the flag
-      UpdateButtonState   [scriptblock] – (optional) called after completion
+      ScriptRoot       [string] - working directory for the child process
+      SetOperationRunning [scriptblock] - called with $true/$false to set the flag
+      UpdateButtonState   [scriptblock] - (optional) called after completion
 .PARAMETER Mode
     "Embedded" (default) captures output to the GUI log panel.
     "Terminal" opens a visible PowerShell console window.
@@ -422,7 +422,7 @@ function Start-WsusOperation {
     #region Mode-specific wiring
     switch ($Mode) {
         'Terminal' {
-            # Keystroke timer – sends Enter every 2 s to flush PowerShell output buffer
+            # Keystroke timer - sends Enter every 2 s to flush PowerShell output buffer
             $kTimer = New-Object System.Windows.Threading.DispatcherTimer
             $kTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
             $kTimerData = @{ Proc = $proc }
@@ -493,7 +493,7 @@ function Start-WsusOperation {
             $proc.BeginOutputReadLine()
             $proc.BeginErrorReadLine()
 
-            # Stdin flush timer – keeps the process output buffer moving
+            # Stdin flush timer - keeps the process output buffer moving
             $flushTimer = New-Object System.Windows.Threading.DispatcherTimer
             $flushTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
             $flushProc = $proc

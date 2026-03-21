@@ -285,7 +285,7 @@ function Import-WsusGpo {
         Write-Host " OK" -ForegroundColor Green
     }
 
-    # Remove values baked into the backup that lack ADMX definitions — causes
+    # Remove values baked into the backup that lack ADMX definitions - causes
     # "Extra Registry Settings" warnings in GPMC. Must run AFTER Import-GPO and
     # Set-GPRegistryValue so any re-introduced values are caught.
     $staleValues = @(
@@ -471,7 +471,7 @@ function Show-Summary {
 #region Main Script
 
 try {
-    # Ensure GroupPolicy module is available — install GPMC if missing
+    # Ensure GroupPolicy module is available - install GPMC if missing
     if (-not (Get-Module -ListAvailable -Name GroupPolicy)) {
         Write-Host "GroupPolicy module not found. Installing GPMC..." -ForegroundColor Yellow
         $r = Add-WindowsFeature GPMC -ErrorAction Stop
