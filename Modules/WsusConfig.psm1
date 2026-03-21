@@ -98,6 +98,7 @@ $script:WsusConfig = @{
 
         # Panel Heights
         LogPanelHeight = 250
+        LogPanelCollapsed = 36
         NavPanelWidth = 180
 
         # Timer Intervals (milliseconds)
