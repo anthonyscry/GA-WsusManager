@@ -602,7 +602,6 @@ Gets maintenance settings.
 
 ```powershell
 Get-WsusMaintenanceSetting -Setting BackupRetentionDays  # 30
-Get-WsusMaintenanceSetting -Setting DefaultExportDays    # 30
 Get-WsusMaintenanceSetting -Setting BatchSize            # 10000
 ```
 

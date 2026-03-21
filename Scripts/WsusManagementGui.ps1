@@ -240,6 +240,8 @@ function Get-EscapedPath { param([string]$Path)
 }
 
 function Get-SqlCmdPath {
+    # Return cached result if already found
+    if ($script:CachedSqlCmdPath) { return $script:CachedSqlCmdPath }
     # Search common sqlcmd.exe locations (ODBC 18, 17, and legacy paths)
     $sqlcmdPaths = @(
         "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
@@ -248,7 +250,8 @@ function Get-SqlCmdPath {
         "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
         "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
     )
-    return $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $script:CachedSqlCmdPath = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    return $script:CachedSqlCmdPath
 }
 
 function Test-SafePath { param([string]$Path)
@@ -385,7 +388,7 @@ $script:StdinFlushTimer = $null
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                                <Setter TargetName="bd" Property="Background" Value="#79B8FF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Background" Value="#30363D"/>
@@ -500,8 +503,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Services" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card1Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -510,8 +513,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Database" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card2Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -520,8 +523,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Disk" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card3Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -530,8 +533,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Task" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card4Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -563,9 +566,9 @@ $script:StdinFlushTimer = $null
                 <StackPanel Grid.Row="2" Margin="0,0,0,16">
                     <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
-                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
+                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,12,0"/>
+                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,12,0"/>
+                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,12,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
@@ -643,10 +646,7 @@ $script:StdinFlushTimer = $null
                     </ScrollViewer>
                 </Border>
 <StackPanel Grid.Row="1" Margin="0,4,0,0">
-                    <ProgressBar x:Name="CleanupProgress" Height="8" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
-                    <ProgressBar x:Name="DiagnosticsProgress" Height="8" Margin="0,8,0,0" Visibility="Collapsed" Foreground="{StaticResource Blue}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button x:Name="BtnCancel" Content="Cancel" Style="{StaticResource BtnRed}" Margin="0,0,8,0" Visibility="Collapsed"/>
                         <Button x:Name="BtnBack" Content="Back" Style="{StaticResource BtnSec}"/>
                     </StackPanel>
                 </StackPanel>
@@ -842,7 +842,27 @@ if ($controls.BtnMaintenance) { $controls.BtnMaintenance.ToolTip = "Online Sync 
 
 #region Helper Functions
 $script:LogExpanded = $true
-$script:FullLogContent = ""
+$script:HasTrendingModule = [bool](Get-Command Add-WsusTrendSnapshot -ErrorAction SilentlyContinue)
+$script:HasHealthModule = [bool](Get-Command Get-WsusHealthScore -ErrorAction SilentlyContinue)
+$script:CachedSqlCmdPath = $null
+
+function Expand-LogPanel {
+    if (-not $script:LogExpanded) {
+        $controls.LogPanel.Height = 250
+        $controls.BtnToggleLog.Content = "Hide"
+        $script:LogExpanded = $true
+    }
+}
+
+function Save-LogToFile {
+    $dialog = New-Object Microsoft.Win32.SaveFileDialog
+    $dialog.Filter = "Text Files (*.txt)|*.txt"
+    $dialog.FileName = "WsusManager-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+    if ($dialog.ShowDialog() -eq $true) {
+        $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
+        Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
+    }
+}
 
 function Show-SplashScreen {
 <#
@@ -967,7 +987,6 @@ function Write-LogOutput {
     $prefix = switch ($Level) { 'Success' { "[+]" } 'Warning' { "[!]" } 'Error' { "[-]" } default { "[*]" } }
     $controls.LogOutput.Dispatcher.Invoke([Action]{
         $line = "[$timestamp] $prefix $Message`r`n"
-        $script:FullLogContent += $line
         $controls.LogOutput.AppendText($line)
         $controls.LogOutput.ScrollToEnd()
     })
@@ -994,6 +1013,7 @@ function Show-WsusPopup {
     }
 
     if ($SuppressDuplicateSeconds -gt 0) {
+        if ($script:PopupHistory.Count -gt 100) { $script:PopupHistory.Clear() }
         $popupKey = "$Title|$Button|$Icon|$Message"
         $now = Get-Date
         if ($script:PopupHistory.ContainsKey($popupKey)) {
@@ -1061,61 +1081,12 @@ function Show-WsusPopup {
     }
 }
 
-function Get-ServiceStatus {
-    $result = @{Running=0; Names=@()}
-    foreach ($svc in @("MSSQL`$SQLEXPRESS","WSUSService","W3SVC")) {
-        try {
-            $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
-            if ($s -and $s.Status -eq "Running") {
-                $result.Running++
-                $result.Names += switch($svc){"MSSQL`$SQLEXPRESS"{"SQL"}"WSUSService"{"WSUS"}"W3SVC"{"IIS"}}
-            }
-        } catch { <# Service not found or inaccessible #> }
-    }
-    return $result
-}
-
-function Get-DiskFreeGB {
-    try {
-        $d = Get-PSDrive -Name "C" -ErrorAction SilentlyContinue
-        if ($d.Free) { return [math]::Round($d.Free/1GB,1) }
-    } catch { <# Drive access failed #> }
-    return 0
-}
-
-function Get-DatabaseSizeGB {
-    try {
-        $sql = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
-        if ($sql -and $sql.Status -eq "Running") {
-            $q = "SELECT SUM(size * 8 / 1024.0) AS SizeMB FROM sys.master_files WHERE database_id = DB_ID('SUSDB')"
-            $r = Invoke-Sqlcmd -ServerInstance $script:SqlInstance -Query $q -ErrorAction SilentlyContinue
-            if ($r -and $r.SizeMB) { return [math]::Round($r.SizeMB / 1024, 2) }
-        }
-    } catch { <# SQL query failed #> }
-    return -1
-}
-
-function Get-TaskStatus {
-    try {
-        $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
-        if ($t) { return $t.State.ToString() }
-    } catch { <# Task not found #> }
-    return "Not Set"
-}
-
-function Test-InternetConnection {
-    # Use .NET Ping with short timeout (500ms) to avoid blocking UI
-    $ping = $null
-    try {
-        $ping = New-Object System.Net.NetworkInformation.Ping
-        $reply = $ping.Send("8.8.8.8", 500)  # Google DNS, 500ms timeout
-        return ($null -ne $reply -and $reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
-    } catch {
-        return $false
-    } finally {
-        if ($null -ne $ping) { $ping.Dispose() }
-    }
-}
+# Dashboard data functions - delegate to WsusAutoDetection module
+function Get-ServiceStatus { Get-WsusDashboardServiceStatus }
+function Get-DiskFreeGB { Get-WsusDashboardDiskFreeGB }
+function Get-DatabaseSizeGB { Get-WsusDashboardDatabaseSizeGB }
+function Get-TaskStatus { Get-WsusDashboardTaskStatus }
+function Test-InternetConnection { Test-WsusDashboardInternetConnection }
 
 function Update-ServerMode {
     # Use manual override if set, otherwise auto-detect
@@ -1193,7 +1164,7 @@ function Update-Dashboard {
                 $controls.Card2Bar.Background = "#D29922"
             }
             # Add trending data snapshot and display trend
-            if (Get-Command Add-WsusTrendSnapshot -ErrorAction SilentlyContinue) {
+            if ($script:HasTrendingModule) {
                 if ($db -ge 0) { Add-WsusTrendSnapshot -DatabaseSizeGB $db }
                 $trend = Get-WsusTrendSummary
                 if ($trend -and $trend.Status -eq "OK") {
@@ -1242,20 +1213,20 @@ function Update-Dashboard {
     if ($controls.StatusLabel) { $controls.StatusLabel.Text = "Updated $(Get-Date -Format 'HH:mm:ss')" }
 
     # Update Health Score
-    if ($controls.HealthScoreValue -and (Get-Command Get-WsusHealthScore -ErrorAction SilentlyContinue)) {
+    if ($controls.HealthScoreValue -and $script:HasHealthModule) {
         try {
             $health = Get-WsusHealthScore -SqlInstance $script:SqlInstance -ContentPath $script:ContentPath
             if ($health.Score -ge 0) {
                 $controls.HealthScoreValue.Text = "$($health.Score)"
                 $controls.HealthScoreBar.Value = $health.Score
-                $scoreColor = switch($health.Grade) {
-                    "Green"   { "#3FB950" }
-                    "Yellow"  { "#D29922" }
-                    default   { "#F85149" }
+                $scoreBrush = switch($health.Grade) {
+                    "Green"   { $script:BrushGreen }
+                    "Yellow"  { $script:BrushOrange }
+                    default   { $script:BrushRed }
                 }
-                $controls.HealthScoreValue.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($scoreColor)
+                $controls.HealthScoreValue.Foreground = $scoreBrush
                 $controls.HealthScoreGrade.Text = $health.Grade
-                $controls.HealthScoreGrade.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($scoreColor)
+                $controls.HealthScoreGrade.Foreground = $scoreBrush
                 # Update tray tooltip with health grade
                 if ($null -ne $script:TrayIcon) {
                     $script:TrayIcon.Text = "WSUS Manager  - Health: $($health.Grade) ($($health.Score)/100)"
@@ -1286,8 +1257,7 @@ function Update-Dashboard {
                     $daysAgo = [int]([DateTime]::Now - $lastSync).TotalDays
                     $lastSyncStr = if ($daysAgo -eq 0) { "today" } elseif ($daysAgo -eq 1) { "yesterday" } else { "$daysAgo days ago" }
                     $controls.LastSyncText.Text = "Last sync: $lastSyncStr ($($lastSync.ToString('MMM d, yyyy HH:mm')))"
-                    $syncColor = if ($daysAgo -le 7) { "#3FB950" } elseif ($daysAgo -le 30) { "#D29922" } else { "#F85149" }
-                    $controls.LastSyncText.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($syncColor)
+                    $controls.LastSyncText.Foreground = if ($daysAgo -le 7) { $script:BrushGreen } elseif ($daysAgo -le 30) { $script:BrushOrange } else { $script:BrushRed }
                 } else {
                     $controls.LastSyncText.Text = "Last sync: Never"
                     $controls.LastSyncText.Foreground = $script:BrushRed
@@ -3085,34 +3055,12 @@ function Invoke-LogOperation {
 
     $sr = $script:ScriptRoot
 
-    # Find management script - check multiple locations
-    $mgmt = $null
-    $mgmtLocations = @(
-        (Join-Path $sr "Invoke-WsusManagement.ps1"),
-        (Join-Path $sr "Scripts\Invoke-WsusManagement.ps1")
-    )
-    foreach ($loc in $mgmtLocations) {
-        if (Test-Path $loc) { $mgmt = $loc; break }
-    }
-
-    # Find maintenance script - check multiple locations
-    $maint = $null
-    $maintLocations = @(
-        (Join-Path $sr "Invoke-WsusMonthlyMaintenance.ps1"),
-        (Join-Path $sr "Scripts\Invoke-WsusMonthlyMaintenance.ps1")
-    )
-    foreach ($loc in $maintLocations) {
-        if (Test-Path $loc) { $maint = $loc; break }
-    }
-
-    # Find scheduled task module - check multiple locations
-    $taskModule = $null
-    $taskModuleLocations = @(
-        (Join-Path $sr "Modules\WsusScheduledTask.psm1"),
-        (Join-Path (Split-Path $sr -Parent) "Modules\WsusScheduledTask.psm1")
-    )
-    foreach ($loc in $taskModuleLocations) {
-        if (Test-Path $loc) { $taskModule = $loc; break }
+    # Find scripts using module helper
+    $mgmt = Find-WsusScript -ScriptName "Invoke-WsusManagement.ps1" -ScriptRoot $sr
+    $maint = Find-WsusScript -ScriptName "Invoke-WsusMonthlyMaintenance.ps1" -ScriptRoot $sr
+    $taskModule = Find-WsusScript -ScriptName "WsusScheduledTask.psm1" -ScriptRoot $sr
+    if (-not $taskModule) {
+        $taskModule = Find-WsusScript -ScriptName "WsusScheduledTask.psm1" -ScriptRoot (Join-Path $sr "Modules")
     }
 
     # Validate scripts exist before proceeding
@@ -3138,15 +3086,7 @@ function Invoke-LogOperation {
     # Handle dialog-based operations
     $cmd = switch ($Id) {
         "install" {
-            # Find install script - check same locations as other scripts
-            $installScript = $null
-            $installLocations = @(
-                (Join-Path $sr "Install-WsusWithSqlExpress.ps1"),
-                (Join-Path $sr "Scripts\Install-WsusWithSqlExpress.ps1")
-            )
-            foreach ($loc in $installLocations) {
-                if (Test-Path $loc) { $installScript = $loc; break }
-            }
+            $installScript = Find-WsusScript -ScriptName "Install-WsusWithSqlExpress.ps1" -ScriptRoot $sr
 
             if (-not $installScript) {
                 Show-WsusPopup -Message "Cannot find Install-WsusWithSqlExpress.ps1`n`nSearched in:`n- $sr`n- $sr\Scripts`n`nMake sure the Scripts folder is in the same directory as WsusManager.exe" -Title "Script Not Found" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) -SuppressDuplicateSeconds 5 | Out-Null
@@ -3275,12 +3215,7 @@ function Invoke-LogOperation {
         default       { "Write-Host 'Unknown: $Id'" }
     }
 
-    # Expand log panel to show output
-    if (-not $script:LogExpanded) {
-        $controls.LogPanel.Height = 250
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
-    }
+    Expand-LogPanel
 
     # Mark operation as running, disable buttons, show cancel button
     $script:OperationRunning = $true
@@ -3460,7 +3395,7 @@ while ($countdown -gt 0) {
 
             # Keystroke timer - sends Enter to console every 2 seconds to flush output buffer
             $script:KeystrokeTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:KeystrokeTimer.Interval = [TimeSpan]::FromMilliseconds((Get-WsusTimerInterval -Timer KeystrokeFlush))
             $script:KeystrokeTimer.Add_Tick({
                 try {
                     if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
@@ -3479,7 +3414,7 @@ while ($countdown -gt 0) {
 
             # Timer for backup cleanup (in case exit event doesn't fire)
             $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds((Get-WsusTimerInterval -Timer OpCheck))
             $script:OpCheckTimer.Add_Tick({
                 if ($null -eq $script:CurrentProcess -or $script:CurrentProcess.HasExited) {
                     $this.Stop()
@@ -3561,7 +3496,6 @@ while ($countdown -gt 0) {
                 $logOutput = $data.Controls.LogOutput
                 # Use BeginInvoke with closure to capture formatted values
                 $data.Window.Dispatcher.BeginInvoke([System.Windows.Threading.DispatcherPriority]::Normal, [Action]{
-                    $script:FullLogContent += $formattedLine
                     $logOutput.AppendText($formattedLine)
                     $logOutput.ScrollToEnd()
                 })
@@ -3579,7 +3513,7 @@ while ($countdown -gt 0) {
                 $data.Window.Dispatcher.Invoke([Action]{
                     $timestamp = Get-Date -Format "HH:mm:ss"
                     $line = "[$timestamp] [+] $($data.Title) completed`r`n"
-                    $script:FullLogContent += $line
+                    $null = $script:FullLogContent.Append($line)
                     $data.Controls.LogOutput.AppendText($line)
                     $data.Controls.LogOutput.ScrollToEnd()
                     # Show completion notification if enabled
@@ -3634,7 +3568,7 @@ while ($countdown -gt 0) {
 
             # Stdin flush timer - sends newlines to StandardInput every 2 seconds to flush output buffer
             $script:StdinFlushTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $script:StdinFlushTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $script:StdinFlushTimer.Interval = [TimeSpan]::FromMilliseconds((Get-WsusTimerInterval -Timer KeystrokeFlush))
             $script:StdinFlushTimer.Add_Tick({
                 try {
                     if ($null -ne $script:CurrentProcess -and -not $script:CurrentProcess.HasExited) {
@@ -3653,7 +3587,7 @@ while ($countdown -gt 0) {
             # Use a timer to force UI refresh (keeps log responsive)
             # Note: Primary cleanup happens in exitHandler; timer is backup for edge cases only
             $script:OpCheckTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+            $script:OpCheckTimer.Interval = [TimeSpan]::FromMilliseconds((Get-WsusTimerInterval -Timer UiUpdate))
             $script:OpCheckTimer.Add_Tick({
                 # Force WPF to process pending dispatcher operations (keeps log responsive)
                 # This is the WPF equivalent of DoEvents - pushes all queued dispatcher frames
@@ -3755,12 +3689,7 @@ $controls.BtnCreateGpo.Add_Click({
     # Disable buttons during operation
     Disable-OperationButtons
 
-    # Expand log panel and show progress
-    if (-not $script:LogExpanded) {
-        $controls.LogPanel.Height = 250
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
-    }
+    Expand-LogPanel
 
     Write-LogOutput "=== Creating GPO Files ===" -Level Info
 
@@ -3981,12 +3910,7 @@ $controls.QBtnStart.Add_Click({
     $controls.QBtnStart.Background = $script:BrushOrange
     Set-Status "Starting services..."
 
-    # Expand log panel
-    if (-not $script:LogExpanded) {
-        $controls.LogPanel.Height = 250
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
-    }
+    Expand-LogPanel
 
     Write-LogOutput "Starting WSUS services..." -Level Info
     @(
@@ -4032,27 +3956,17 @@ $controls.BtnLiveTerminal.Add_Click({
 
 $controls.BtnToggleLog.Add_Click({
     if ($script:LogExpanded) {
-        $controls.LogPanel.Height = 36
+        $controls.LogPanel.Height = (Get-WsusGuiSetting 'LogPanelCollapsed')
         $controls.BtnToggleLog.Content = "Show"
         $script:LogExpanded = $false
     } else {
-        $controls.LogPanel.Height = 250
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
+        Expand-LogPanel
     }
 })
 
 $controls.BtnClearLog.Add_Click({ $controls.LogOutput.Clear() })
 
-$controls.BtnSaveLog.Add_Click({
-    $dialog = New-Object Microsoft.Win32.SaveFileDialog
-    $dialog.Filter = "Text Files (*.txt)|*.txt"
-    $dialog.FileName = "WsusManager-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-    if ($dialog.ShowDialog() -eq $true) {
-        $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
-        Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
-    }
-})
+$controls.BtnSaveLog.Add_Click({ Save-LogToFile })
 
 #region Log Panel Context Menu
 $logContextMenu = New-Object System.Windows.Controls.ContextMenu
@@ -4065,27 +3979,13 @@ $menuCopyAll.Add_Click({
 })
 $menuSaveToFile = New-Object System.Windows.Controls.MenuItem
 $menuSaveToFile.Header = "Save to File..."
-$menuSaveToFile.Add_Click({
-    $dialog = New-Object Microsoft.Win32.SaveFileDialog
-    $dialog.Filter = "Text Files (*.txt)|*.txt"
-    $dialog.FileName = "WsusManager-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-    if ($dialog.ShowDialog() -eq $true) {
-        $controls.LogOutput.Text | Out-File $dialog.FileName -Encoding UTF8
-        Write-LogOutput "Log saved to $($dialog.FileName)" -Level Success
-    }
-})
+$menuSaveToFile.Add_Click({ Save-LogToFile })
 $null = $logContextMenu.Items.Add($menuCopyAll)
 $null = $logContextMenu.Items.Add($menuSaveToFile)
 $controls.LogOutput.ContextMenu = $logContextMenu
 #endregion
 
 $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" })
-$controls.BtnCancel.Add_Click({
-    Stop-CurrentOperation
-    Enable-OperationButtons
-    $controls.BtnCancel.Visibility = "Collapsed"
-    Set-Status "Cancelled"
-})
 #endregion
 
 #region Initialize
@@ -4147,14 +4047,11 @@ Update-SplashProgress -Splash $script:Splash -Progress 90 -Status "Starting..."
 # Show message if WSUS is not installed
 if (-not $script:WsusInstalled) {
     $controls.LogOutput.Text = "WSUS is not installed on this server.`r`n`r`nMost operations are disabled until WSUS is installed.`r`nUse 'Install WSUS' from the Setup menu to begin installation.`r`n"
-    # Expand log panel to show message
-    $controls.LogPanel.Height = 250
-    $controls.BtnToggleLog.Content = "Hide"
-    $script:LogExpanded = $true
+    Expand-LogPanel
 }
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
-$timer.Interval = [TimeSpan]::FromSeconds(30)
+$timer.Interval = [TimeSpan]::FromMilliseconds((Get-WsusTimerInterval -Timer DashboardRefresh))
 $timer.Add_Tick({
     if ($controls.DashboardPanel.Visibility -eq "Visible") {
         Invoke-DashboardRefreshSafe -Source "Auto Refresh"
