@@ -696,10 +696,12 @@ function Get-WsusDashboardDatabaseSizeGB {
     try {
         $sql = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
         if ($sql -and $sql.Status -eq "Running") {
-            # Import WsusDatabase module for Invoke-WsusSqlcmd wrapper
-            $dbModule = Join-Path $PSScriptRoot "WsusDatabase.psm1"
-            if (Test-Path $dbModule) {
-                Import-Module $dbModule -Force -DisableNameChecking -ErrorAction SilentlyContinue
+            # Import WsusDatabase module for Invoke-WsusSqlcmd wrapper (only if not already loaded)
+            if (-not (Get-Module WsusDatabase -ErrorAction SilentlyContinue)) {
+                $dbModule = Join-Path $PSScriptRoot "WsusDatabase.psm1"
+                if (Test-Path $dbModule) {
+                    Import-Module $dbModule -DisableNameChecking -ErrorAction SilentlyContinue
+                }
             }
             $q = "SELECT SUM(size * 8 / 1024.0) AS SizeMB FROM sys.master_files WHERE database_id = DB_ID('SUSDB')"
             $r = $null

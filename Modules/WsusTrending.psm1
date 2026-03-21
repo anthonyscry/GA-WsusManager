@@ -18,6 +18,15 @@ function Read-TrendData {
         return [System.Collections.Generic.List[hashtable]]::new()
     }
 
+    # M2: Guard against oversized files (corrupt or runaway growth)
+    $fileInfo = Get-Item -Path $path -ErrorAction SilentlyContinue
+    if ($fileInfo -and $fileInfo.Length -gt 1MB) {
+        Write-Warning "WsusTrending: Trends file is $(([math]::Round($fileInfo.Length/1KB)))KB - resetting"
+        $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+        Move-Item -Path $path -Destination "$path.oversized.$timestamp" -Force -ErrorAction SilentlyContinue
+        return [System.Collections.Generic.List[hashtable]]::new()
+    }
+
     try {
         $raw = Get-Content -Path $path -Raw -ErrorAction Stop
         $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
