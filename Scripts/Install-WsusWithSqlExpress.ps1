@@ -648,6 +648,11 @@ if (!(Test-Path $wsusRegPreSetup)) {
 }
 Set-ItemProperty -Path $wsusRegPreSetup -Name OobeInitialized -Value 1 -Force
 Set-ItemProperty -Path $wsusRegPreSetup -Name OobeComplete -Value 1 -Force
+Set-ItemProperty -Path $wsusRegPreSetup -Name ServerConfigurationComplete -Value 1 -Type DWord -Force
+# Per-user wizard suppression (prevents MMC console wizard)
+$userWsusKey = "HKCU:\Software\Microsoft\Update Services\Server\Setup"
+if (!(Test-Path $userWsusKey)) { New-Item -Path $userWsusKey -Force | Out-Null }
+Set-ItemProperty -Path $userWsusKey -Name WizardComplete -Value 1 -Type DWord -Force
 Write-Host "[+] Pre-configured WSUS wizard suppression registry keys."
 
 # =====================================================================
@@ -801,8 +806,11 @@ try {
     $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, 8530)
     $config = $wsus.GetConfiguration()
     $config.SetUpdateLanguages(@("en"))
+    # Suppress WSUS configuration wizard via API
+    $config.OobeInitialized = $true
     $config.Save()
     Write-Host "    Language set to English."
+    Write-Host "    Configuration wizard suppressed."
 } catch {
     Write-Host "    Warning: Failed to set language: $($_.Exception.Message)"
 }
