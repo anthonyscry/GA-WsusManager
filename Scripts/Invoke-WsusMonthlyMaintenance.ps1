@@ -684,6 +684,27 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
     Start-Heartbeat "Synchronization running... this may take several minutes."
     try {
+        # Configure products BEFORE starting sync (subscription can't be modified while syncing)
+        if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
+            Write-Log "Configuring products before sync: $($SelectedProducts -join ', ')"
+            $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
+            if ($allProducts.Count -gt 0) {
+                $toEnable = @()
+                foreach ($prod in $allProducts) {
+                    foreach ($sel in $SelectedProducts) {
+                        if ($prod.Title -like "*$sel*") { $toEnable += $prod; break }
+                    }
+                }
+                if ($toEnable.Count -gt 0) {
+                    $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
+                    foreach ($p in $toEnable) { $coll.Add($p) }
+                    $subscription.SetUpdateCategories($coll)
+                    $subscription.Save()
+                    Write-Log "Enabled $($toEnable.Count) products for sync"
+                }
+            }
+        }
+
         $lastSync = $subscription.GetLastSynchronizationInfo()
         if ($lastSync) {
             Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
@@ -790,42 +811,20 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
     $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
 }
 
-# === CONFIGURE PRODUCTS (after sync, when categories are available) ===
+# === DECLINE UPDATES FROM NON-SELECTED PRODUCTS (after sync) ===
 if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
-    Write-Log "Configuring WSUS products: $($SelectedProducts -join ', ')"
+    # Products were already enabled before sync started (see above).
+    # Now decline updates that don't match the selected product list.
     try {
         $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
-
-        if ($allProducts.Count -eq 0) {
-            Write-Log "No product categories available yet (first sync may still be running). Products will be configured on next sync."
-        } else {
-            # Find matching products (case-insensitive substring match)
-            $toEnable = @()
-            foreach ($prod in $allProducts) {
-                foreach ($sel in $SelectedProducts) {
-                    if ($prod.Title -like "*$sel*") {
-                        $toEnable += $prod
-                        break
-                    }
-                }
+        $toEnable = @()
+        foreach ($prod in $allProducts) {
+            foreach ($sel in $SelectedProducts) {
+                if ($prod.Title -like "*$sel*") { $toEnable += $prod; break }
             }
+        }
 
-            # Build UpdateCategoryCollection and apply
-            $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
-            foreach ($p in $toEnable) { $coll.Add($p) }
-            $subscription.SetUpdateCategories($coll)
-            $subscription.Save()
-
-            # Re-apply OOBE suppression
-            $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
-            if (Test-Path $wsusRegSetup) {
-                Set-ItemProperty -Path $wsusRegSetup -Name OobeInitialized -Value 1 -Force -ErrorAction SilentlyContinue
-                Set-ItemProperty -Path $wsusRegSetup -Name OobeComplete -Value 1 -Force -ErrorAction SilentlyContinue
-            }
-
-            $enabledNames = ($toEnable | ForEach-Object { $_.Title }) -join ", "
-            Write-Log "Products enabled: $enabledNames"
-
+        if ($toEnable.Count -gt 0) {
             # Decline updates from non-selected products
             Write-Log "Cleaning up updates from non-selected products..."
             $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
