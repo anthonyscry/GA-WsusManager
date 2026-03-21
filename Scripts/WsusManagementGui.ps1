@@ -388,7 +388,7 @@ $script:StdinFlushTimer = $null
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                                <Setter TargetName="bd" Property="Background" Value="#79B8FF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Background" Value="#30363D"/>
@@ -503,8 +503,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card1Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Services" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Services" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card1Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card1Sub" Text="SQL, WSUS, IIS" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -513,8 +513,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card2Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Green}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Database" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Database" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card2Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card2Sub" Text="SUSDB" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -523,8 +523,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card3Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Orange}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Disk" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Disk" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card3Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card3Sub" Text="Free space" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -533,8 +533,8 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Margin="4,0">
                         <Grid>
                             <Border x:Name="Card4Bar" Height="3" VerticalAlignment="Top" CornerRadius="4,4,0,0" Background="{StaticResource Blue}"/>
-                            <StackPanel Margin="12,16,12,12">
-                                <TextBlock Text="Task" FontSize="10" Foreground="{StaticResource Text2}"/>
+                            <StackPanel Margin="12">
+                                <TextBlock Text="Task" FontSize="11" Foreground="{StaticResource Text2}"/>
                                 <TextBlock x:Name="Card4Value" Text="Loading…" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}" Margin="0,4,0,0"/>
                                 <TextBlock x:Name="Card4Sub" Text="Scheduled" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -566,9 +566,9 @@ $script:StdinFlushTimer = $null
                 <StackPanel Grid.Row="2" Margin="0,0,0,16">
                     <TextBlock Text="Quick Actions" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
                     <WrapPanel>
-                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
-                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,8,0"/>
+                        <Button x:Name="QBtnDiagnostics" Content="Diagnostics" Style="{StaticResource Btn}" Margin="0,0,12,0"/>
+                        <Button x:Name="QBtnCleanup" Content="Deep Cleanup" Style="{StaticResource BtnSec}" Margin="0,0,12,0"/>
+                        <Button x:Name="QBtnMaint" Content="Online Sync" Style="{StaticResource BtnSec}" Margin="0,0,12,0"/>
                         <Button x:Name="QBtnStart" Content="Start Services" Style="{StaticResource BtnGreen}"/>
                     </WrapPanel>
                 </StackPanel>
@@ -3956,13 +3956,11 @@ $controls.BtnLiveTerminal.Add_Click({
 
 $controls.BtnToggleLog.Add_Click({
     if ($script:LogExpanded) {
-        $controls.LogPanel.Height = 36
+        $controls.LogPanel.Height = (Get-WsusGuiSetting 'LogPanelCollapsed')
         $controls.BtnToggleLog.Content = "Show"
         $script:LogExpanded = $false
     } else {
-        $controls.LogPanel.Height = 250
-        $controls.BtnToggleLog.Content = "Hide"
-        $script:LogExpanded = $true
+        Expand-LogPanel
     }
 })
 
