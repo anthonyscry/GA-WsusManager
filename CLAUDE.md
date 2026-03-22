@@ -269,13 +269,15 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 **Auto-Decline Rules:**
 - Expired and superseded updates
-- ARM64, 25H2, legacy builds (21H2/22H2/23H2)
+- ARM64 updates
+- Legacy builds: 21H2, 22H2, 23H2 (declined)
 - Preview and Beta updates
 - Edge: Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2 only)
 - Office: Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024 only)
 - WSL (Windows Subsystem for Linux)
 
 **Auto-Approval Exclusions (not declined, just not approved):**
+- 25H2 updates (kept for manual review)
 - x86 and 32-bit updates (lab is x64 only)
 - Upgrades (require manual review)
 

@@ -21,7 +21,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Sync timeout increased from 60 to 180 minutes for first-sync scenarios
 - Products set before sync starts (was racing with running sync)
 - Exact product name matching (prevents driver sub-product bloat)
-- x86/32-bit updates excluded from auto-approval (not declined)
+- x86/32-bit and 25H2 updates excluded from auto-approval (kept but not approved)
+- 25H2 no longer auto-declined (kept for manual review); 23H2 and older still declined
 - Export silently skips when path is inaccessible (was logging error)
 - Robocopy transfer uses embedded log panel with visible file names
 - Transfer creates destination subfolder (was dumping files loose)
