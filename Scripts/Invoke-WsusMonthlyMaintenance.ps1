@@ -547,7 +547,6 @@ $MaintenanceResults = @{
     DeclinedSuperseded = 0
     DeclinedOld = 0
     DeclinedArm64 = 0
-    Declined25H2 = 0
     Approved = 0
     DatabaseSize = 0
     BackupFile = ""
@@ -956,7 +955,6 @@ $expiredCount = 0
 $supersededCount = 0
 $oldCount = 0
 $arm64Count = 0
-$h25Count = 0
 $legacyBuildCount = 0
 $approvedCount = 0
 
@@ -1163,7 +1161,6 @@ $MaintenanceResults.DeclinedExpired = $expiredCount
 $MaintenanceResults.DeclinedSuperseded = $supersededCount
 $MaintenanceResults.DeclinedOld = $oldCount
 $MaintenanceResults.DeclinedArm64 = $arm64Count
-$MaintenanceResults.Declined25H2 = $h25Count
 $MaintenanceResults.Approved = $approvedCount
 
 # === CLEANUP ===
