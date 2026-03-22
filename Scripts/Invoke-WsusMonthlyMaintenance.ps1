@@ -684,6 +684,18 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 
     Start-Heartbeat "Synchronization running... this may take several minutes."
     try {
+        # DNS preflight - verify we can reach Microsoft Update before starting a multi-hour sync
+        Write-Log "Preflight: checking DNS resolution for windowsupdate.microsoft.com..."
+        $dnsResult = Resolve-DnsName windowsupdate.microsoft.com -ErrorAction SilentlyContinue
+        if (-not $dnsResult) {
+            Write-Log "ERROR: Cannot resolve windowsupdate.microsoft.com" "Red"
+            Write-Log "Sync will fail without DNS. Check network/DNS configuration:" "Yellow"
+            Write-Log "  Current DNS: $((Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1).ServerAddresses -join ', ')" "Yellow"
+            Write-Log "  Fix: Set-DnsClientServerAddress -ServerAddresses @('8.8.8.8','1.1.1.1')" "Yellow"
+            throw "DNS resolution failed - cannot reach Microsoft Update servers"
+        }
+        Write-Log "DNS OK: windowsupdate.microsoft.com resolves"
+
         # Configure products BEFORE starting sync (subscription can't be modified while syncing)
         if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
             Write-Log "Configuring products before sync: $($SelectedProducts -join ', ')"
