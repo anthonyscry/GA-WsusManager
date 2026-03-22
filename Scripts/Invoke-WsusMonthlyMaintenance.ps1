@@ -373,19 +373,33 @@ function Test-Prerequisites {
         $results.Success = $false
     }
 
-    # Check 6: SQL Server sysadmin permissions
+    # Check 6: SQL Server sysadmin permissions (sqlcmd.exe fallback if Invoke-Sqlcmd unavailable)
     Write-Host "  SQL Sysadmin      " -NoNewline -ForegroundColor DarkGray
     try {
         $sqlService = Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue
         if ($sqlService -and $sqlService.Status -eq 'Running') {
-            $permQuery = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
-            $permResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Query $permQuery -ErrorAction Stop
-            if ($permResult.IsSysAdmin -eq 1) {
+            $isSysAdmin = $false
+            $sqlcmdExe = @(
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+            if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) {
+                $permResult = Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" -Query "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin" -ErrorAction Stop
+                $isSysAdmin = ($permResult.IsSysAdmin -eq 1)
+            } elseif ($sqlcmdExe) {
+                $out = & $sqlcmdExe -S ".\SQLEXPRESS" -E -Q "SELECT IS_SRVROLEMEMBER('sysadmin')" -h -1 -W 2>$null
+                $isSysAdmin = ($out -match '^\s*1\s*$')
+            } else {
+                Write-Host "SKIP (no SQL tools)" -ForegroundColor Yellow
+            }
+
+            if ($isSysAdmin) {
                 Write-Host "OK" -ForegroundColor Green
             } else {
                 Write-Host "FAILED" -ForegroundColor Red
                 $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-                $results.Errors += "User '$currentUser' does not have SQL sysadmin permissions. Run: ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]"
+                $results.Errors += "User '$currentUser' does not have SQL sysadmin permissions. Use 'Fix SQL Login' in the app."
                 $results.Success = $false
             }
         } else {
