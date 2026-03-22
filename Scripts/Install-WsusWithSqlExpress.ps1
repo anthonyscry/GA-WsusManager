@@ -812,8 +812,21 @@ try {
     $config.Save()
     Write-Host "    Language set to English only."
     Write-Host "    Configuration wizard suppressed."
+    # Configure default classifications: Critical, Security, Definition, Updates, Update Rollups
+    Write-Host "[+] Configuring default update classifications..."
+    $sub = $wsus.GetSubscription()
+    $allClassifications = $wsus.GetUpdateClassifications()
+    $defaultClassNames = @("Critical Updates", "Security Updates", "Definition Updates", "Updates", "Update Rollups")
+    $classColl = New-Object Microsoft.UpdateServices.Administration.UpdateClassificationCollection
+    foreach ($name in $defaultClassNames) {
+        $cls = $allClassifications | Where-Object { $_.Title -eq $name }
+        if ($cls) { $classColl.Add($cls) }
+    }
+    $sub.SetUpdateClassifications($classColl)
+    $sub.Save()
+    Write-Host "    Classifications: $($defaultClassNames -join ', ')"
 } catch {
-    Write-Host "    Warning: Failed to set language: $($_.Exception.Message)"
+    Write-Host "    Warning: Failed to set language/classifications: $($_.Exception.Message)"
 }
 
 # =====================================================================
