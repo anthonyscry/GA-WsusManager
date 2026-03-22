@@ -680,7 +680,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation&#x0a;• Database backup/restore operations&#x0a;• Air-gapped network export/import&#x0a;• Online Sync with scheduled automation&#x0a;• Health Score (0-100) with diagnostics&#x0a;• Operation history and notifications&#x0a;• DB size trending and deep cleanup"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, Preview/Beta, ARM64, Edge non-stable, Office 365/2019/2021, WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -1610,10 +1610,10 @@ A toolkit for deploying and managing Windows Server Update Services with SQL Ser
 FEATURES
 • Modern dark-themed GUI with auto-refresh
 • Air-gapped network support (export/import)
-• Automated maintenance and cleanup
-• Health Score (0-100) with color-coded grading
-• Operation history and completion notifications
-• Database size trending with days-until-full estimate
+• Automated sync, cleanup, and deep cleanup
+• Smart decline: superseded, Preview/Beta, ARM64, Edge non-stable, Office 365/2019/2021, WSL
+• Default products: Windows 11, Server 2019, Edge, Defender, Office, SQL Server
+• DNS preflight check before sync
 • Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)
 
 QUICK START
@@ -1674,7 +1674,7 @@ TRANSFER
 • Import (Air-Gap) - Import from external media
 
 MAINTENANCE
-• Online Sync (Online only) - Sync, decline superseded, cleanup, backup
+• Online Sync (Online only) - Sync, auto-decline, approve x64, deep cleanup, backup
 • Schedule Task (Online only) - Create/update the sync scheduled task
 • Deep Cleanup - Remove obsolete, shrink database
 
