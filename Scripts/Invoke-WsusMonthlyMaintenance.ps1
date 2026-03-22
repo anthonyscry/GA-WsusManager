@@ -960,15 +960,15 @@ if ($allUpdates.Count -gt 0) {
     
     $expired = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsExpired })
     $superseded = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsSuperseded })
-    $cutoff = (Get-Date).AddMonths(-6)
-    # Use CreationDate (Microsoft's release date) not ArrivalDate (when imported to WSUS)
-    $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.CreationDate -lt $cutoff })
+    # Note: removed age-based decline (was declining everything >6 months old).
+    # On fresh syncs this would decline the entire catalog. Superseded/expired
+    # rules already handle stale updates without mass-declining by age.
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
     $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
     $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old (released over 6mo ago)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -992,17 +992,6 @@ if ($allUpdates.Count -gt 0) {
         }
     }
     
-    if ($oldUpdates.Count -gt 0) {
-        $oldUpdates | ForEach-Object { 
-            try { 
-                $_.Decline() | Out-Null
-                $oldCount++
-            } catch { 
-                Write-Warning "Failed to decline old: $($_.Title)"
-            } 
-        }
-    }
-
     if ($arm64Updates.Count -gt 0) {
         $arm64Updates | ForEach-Object {
             try {
@@ -1048,7 +1037,7 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount | Preview/Beta=$previewCount"
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy builds=$legacyBuildCount | Preview/Beta=$previewCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -1061,7 +1050,6 @@ if ($allUpdates.Count -gt 0) {
             -not $_.IsSuperseded -and
             -not $_.IsExpired -and
             ($_.GetUpdateApprovals($targetGroup) | Where-Object { $_.Action -eq "Install" }).Count -eq 0 -and
-            $_.CreationDate -gt (Get-Date).AddMonths(-6) -and  # Only recent updates (last 6 months)
             $_.Title -notlike "*Preview*" -and
             $_.Title -notlike "*Beta*" -and
             $_.Title -notmatch '(?i)\bARM64\b' -and
