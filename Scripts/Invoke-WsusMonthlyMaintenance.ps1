@@ -34,7 +34,7 @@
 
 .PARAMETER ExportPath
     Root path for full exports. Full backup + complete content mirror goes here.
-    Default: \\lab-hyperv\d\WSUS-Exports
+    Default: empty (export skipped if not specified)
 
 .PARAMETER SkipExport
     Skip the export step entirely.
@@ -91,7 +91,7 @@ param(
 
     # Root path for full exports (e.g., "\\server\share\WSUS-Full")
     # Full backup + complete content mirror goes here
-    [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
+    [string]$ExportPath = "",
 
     # Skip the export step entirely
     [switch]$SkipExport,
@@ -695,6 +695,19 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             throw "DNS resolution failed - cannot reach Microsoft Update servers"
         }
         Write-Log "DNS OK: windowsupdate.microsoft.com resolves"
+
+        # Stop any existing sync before modifying subscription (can't save while syncing)
+        $syncStatus = $subscription.GetSynchronizationStatus()
+        if ($syncStatus -ne "NotProcessing") {
+            Write-Log "A sync is already running ($syncStatus) - stopping it first..."
+            $subscription.StopSynchronization()
+            $waitCount = 0
+            while ($subscription.GetSynchronizationStatus() -ne "NotProcessing" -and $waitCount -lt 12) {
+                Start-Sleep -Seconds 5
+                $waitCount++
+            }
+            Write-Log "Previous sync stopped"
+        }
 
         # Configure products BEFORE starting sync (subscription can't be modified while syncing)
         if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
