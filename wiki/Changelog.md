@@ -4,6 +4,30 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [4.0.3] - March 2026
+
+### Added
+- Auto-decline: Edge non-stable, Office 365/2019/LTSC 2021, WSL, Preview/Beta
+- Microsoft Defender Antivirus and Defender for Endpoint in default products
+- Updates and Update Rollups classifications enabled by default
+- DNS preflight check before sync
+- Install script configures classifications via API
+
+### Changed
+- 25H2 updates kept for manual review (no longer auto-declined)
+- 23H2 and older still auto-declined
+- x86/32-bit updates excluded from auto-approval (not declined)
+- Sync timeout increased to 180 minutes
+- Exact product name matching (no driver sub-product bloat)
+- WID auto-migration to SQL Express on install
+
+### Fixed
+- Age-based decline removed (was declining entire catalog)
+- Language set via correct WSUS API
+- Export silently skips when path inaccessible
+
+---
+
 ## [4.0.2] - March 2026
 
 ### Changed
