@@ -354,8 +354,7 @@ function Test-Prerequisites {
         if ($exportAccessible) {
             Write-Host "OK" -ForegroundColor Green
         } else {
-            Write-Host "FAILED" -ForegroundColor Red
-            $results.Warnings += "Cannot access export path: $ExportPath"
+            Write-Host "SKIPPED (not accessible)" -ForegroundColor DarkGray
         }
     }
 
@@ -697,20 +696,26 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
         Write-Log "DNS OK: windowsupdate.microsoft.com resolves"
 
         # Stop any existing sync before modifying subscription (can't save while syncing)
+        $syncStopped = $true
         $syncStatus = $subscription.GetSynchronizationStatus()
         if ($syncStatus -ne "NotProcessing") {
             Write-Log "A sync is already running ($syncStatus) - stopping it first..."
             $subscription.StopSynchronization()
             $waitCount = 0
-            while ($subscription.GetSynchronizationStatus() -ne "NotProcessing" -and $waitCount -lt 12) {
+            while ($subscription.GetSynchronizationStatus() -ne "NotProcessing" -and $waitCount -lt 24) {
                 Start-Sleep -Seconds 5
                 $waitCount++
             }
-            Write-Log "Previous sync stopped"
+            if ($subscription.GetSynchronizationStatus() -ne "NotProcessing") {
+                Write-Log "Sync still running after 2 minutes - will skip product config and use existing"
+                $syncStopped = $false
+            } else {
+                Write-Log "Previous sync stopped"
+            }
         }
 
-        # Configure products BEFORE starting sync (subscription can't be modified while syncing)
-        if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
+        # Configure products BEFORE starting sync (skip if sync wouldn't stop)
+        if ($syncStopped -and $SelectedProducts -and $SelectedProducts.Count -gt 0) {
             Write-Log "Configuring products before sync: $($SelectedProducts -join ', ')"
             $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
             if ($allProducts.Count -gt 0) {
@@ -1084,7 +1089,7 @@ if ($allUpdates.Count -gt 0) {
         }
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
-        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6mo, not superseded/expired"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, not superseded/expired"
         Write-Log "  Excluded: Upgrades, ARM64, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
@@ -1489,7 +1494,7 @@ Write-Host ""
 Write-Host "  Progress Summary" -ForegroundColor Cyan
 Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
 Write-Log "MAINTENANCE SUMMARY"
-Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount | Old (released over 6mo ago)=$oldCount"
+Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount"
 Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
 
 try {
