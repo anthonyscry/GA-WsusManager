@@ -5,13 +5,13 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, old updates (released over 6 months ago), ARM64, and 25H2 updates
+    - Declines expired, superseded, ARM64, legacy builds (23H2 and older), Preview/Beta, Edge non-stable, Office 365/2019/2021, WSL
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
     - Exports full backup + content to export folder
 
-    Excludes "Upgrades", ARM64, and 25H2 updates from auto-approval.
+    Excludes Upgrades, ARM64, x86/32-bit, 25H2 updates from auto-approval (kept but not approved).
 
     Author: Tony Tran, ISSO, GA-ASI
     Version: 3.0.1
@@ -969,7 +969,7 @@ if ($allUpdates.Count -gt 0) {
     # On fresh syncs this would decline the entire catalog. Superseded/expired
     # rules already handle stale updates without mass-declining by age.
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
-    $h25Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b25H2\b' })
+    # 25H2: kept but not auto-approved (no decline, no approval - available for manual review)
     $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
     $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
     # Edge: keep only Stable Channel and WebView2, decline everything else
@@ -983,7 +983,7 @@ if ($allUpdates.Count -gt 0) {
         $_.Title -match '(?i)Office LTSC 2021'
     ) -and $_.Title -notmatch '(?i)(2024|LTSC 2024)' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1014,17 +1014,6 @@ if ($allUpdates.Count -gt 0) {
                 $arm64Count++
             } catch {
                 Write-Warning "Failed to decline ARM64 update: $($_.Title)"
-            }
-        }
-    }
-
-    if ($h25Updates.Count -gt 0) {
-        $h25Updates | ForEach-Object {
-            try {
-                $_.Decline() | Out-Null
-                $h25Count++
-            } catch {
-                Write-Warning "Failed to decline 25H2 update: $($_.Title)"
             }
         }
     }
@@ -1083,7 +1072,7 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -1132,7 +1121,7 @@ if ($allUpdates.Count -gt 0) {
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
         Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, not superseded/expired"
-        Write-Log "  Excluded: Upgrades, ARM64, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
+        Write-Log "  Excluded: Upgrades, ARM64, x86/32-bit, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
             # Safety check - don't auto-approve more than 200 updates
@@ -1678,7 +1667,7 @@ Write-Host ""
 Write-Host "  Duration        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$totalDuration minutes" -ForegroundColor White
 Write-Host "  Declined        " -NoNewline -ForegroundColor DarkGray
-Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old: $($MaintenanceResults.DeclinedOld)  ARM64: $($MaintenanceResults.DeclinedArm64)  25H2: $($MaintenanceResults.Declined25H2)" -ForegroundColor White
+Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  ARM64: $($MaintenanceResults.DeclinedArm64)" -ForegroundColor White
 Write-Host "  Approved        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$($MaintenanceResults.Approved) updates" -ForegroundColor White
 
