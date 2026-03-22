@@ -5,6 +5,38 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.3] - 2026-03-22
+
+### Added
+- Auto-decline rules for Edge non-stable (Dev/Beta/Extended Stable), Office 365/2019/LTSC 2021, WSL, Preview/Beta updates
+- Microsoft Defender Antivirus and Microsoft Defender for Endpoint added to default products
+- Microsoft Edge added to default products
+- Updates and Update Rollups classifications enabled by default
+- DNS preflight check before starting WSUS sync
+- SQL connection retry after stopping WSUS in deep cleanup
+- Install script configures classifications via WSUS API on fresh install
+- Full WSUS configuration wizard suppression (registry + per-user + API)
+
+### Changed
+- Sync timeout increased from 60 to 180 minutes for first-sync scenarios
+- Products set before sync starts (was racing with running sync)
+- Exact product name matching (prevents driver sub-product bloat)
+- x86/32-bit updates excluded from auto-approval (not declined)
+- Export silently skips when path is inaccessible (was logging error)
+- Robocopy transfer uses embedded log panel with visible file names
+- Transfer creates destination subfolder (was dumping files loose)
+- Schedule dialog defaults to current user, Tuesday 23:00
+- Window size increased to 800x1000
+- Dashboard skips all queries when WSUS not installed
+
+### Fixed
+- WID-to-SQL Express migration: uninstall WID role, reinstall with UpdateServices-DB
+- Leftover WID data files cleaned up to prevent postinstall conflicts
+- Language set via correct API (was using non-existent SetUpdateLanguages method)
+- Age-based decline removed (was declining entire catalog on fresh sync)
+- Process.Start() failure handling prevents stuck disabled buttons
+- Get-WsusServer guarded by service running check (prevents UI freeze)
+
 ## [4.0.2] - 2026-03-20
 
 ### Changed

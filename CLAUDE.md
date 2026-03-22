@@ -256,9 +256,65 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Run tests before committing: `.\build.ps1 -TestOnly`
 - GitHub Actions builds the EXE on push/PR and creates releases
 
-## Recent Changes (v4.0.0)
+## Recent Changes
 
-### Phase 1 — Foundations
+### v4.0.3 (post-release improvements)
+
+**Sync & Maintenance:**
+- DNS preflight check before sync (prevents hours-long stuck syncs when DNS is broken)
+- Sync timeout increased from 60 to 180 minutes (first sync can take 2-4 hours)
+- Products set BEFORE sync starts (was racing with sync, causing "subscription cannot be modified" errors)
+- Stops any running sync before modifying subscription config
+- Exact product name matching (prevents "Windows 11" from matching 19 driver sub-products)
+
+**Auto-Decline Rules:**
+- Expired and superseded updates
+- ARM64, 25H2, legacy builds (21H2/22H2/23H2)
+- Preview and Beta updates
+- Edge: Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2 only)
+- Office: Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024 only)
+- WSL (Windows Subsystem for Linux)
+
+**Auto-Approval Exclusions (not declined, just not approved):**
+- x86 and 32-bit updates (lab is x64 only)
+- Upgrades (require manual review)
+
+**Default Products:**
+- Windows 11, Windows Server 2019, Microsoft Edge
+- Microsoft Defender Antivirus, Microsoft Defender for Endpoint
+- Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
+
+**Default Classifications:**
+- Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups
+
+**Install Script:**
+- Auto-detects and removes WID, reinstalls WSUS with SQL Express (UpdateServices-DB)
+- Cleans up leftover WID data files to prevent postinstall conflicts
+- Sets language to English only via correct API (AllUpdateLanguagesEnabled + SetEnabledUpdateLanguages)
+- Configures classifications via API on fresh install
+- Full WSUS wizard suppression (registry + per-user + API)
+- SQL connection retry after stopping WSUS in deep cleanup
+
+**GUI:**
+- Window size increased to 800x1000 (was 736x950)
+- Robocopy transfer uses embedded log panel with file names visible
+- Transfer creates subfolder at destination (not loose files)
+- Schedule dialog defaults to current user, Tuesday 23:00
+- Dashboard skips refresh when WSUS not installed (prevents error spam)
+- Dashboard helper functions delegate to WsusAutoDetection module with fallbacks
+- Export path silently skips when inaccessible (was logging error)
+
+**Hardening:**
+- Process.Start() failure handling in both Terminal and Embedded modes
+- Get-WsusServer call guarded by WSUS service running check
+- Trending file size guard (>1MB auto-reset)
+- Corrupt settings.json warning popup
+- Health module dependency import with graceful degradation
+- Certificate thumbprint comparison case-insensitive
+
+### v4.0.0-v4.0.2
+
+### Phase 1 -- Foundations
 - **WsusDialogs.psm1** — Dialog factory eliminating 6 copy-paste dialog patterns
 - **WsusOperationRunner.psm1** — Unified operation lifecycle (start/stop/complete); timeout watchdog; Terminal + Embedded mode support
 - **Async Dashboard** — Dashboard data functions moved to `WsusAutoDetection.psm1`; 30s TTL cache; `Get-WsusDashboardData` is runspace-safe; `Test-WsusDashboardDataUnavailable` after 10 failures
