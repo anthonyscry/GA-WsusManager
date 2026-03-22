@@ -91,7 +91,7 @@ param(
 
     # Root path for full exports (e.g., "\\server\share\WSUS-Full")
     # Full backup + complete content mirror goes here
-    [string]$ExportPath = "",
+    [string]$ExportPath = "\\lab-hyperv\d\WSUS-Exports",
 
     # Skip the export step entirely
     [switch]$SkipExport,
@@ -1534,10 +1534,9 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
 
     # Check if export path is accessible using improved test
     if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
-        Write-Status "Cannot access export path: $ExportPath" -Type Error
-        Write-Warning "Skipping export - check network connectivity"
-        $MaintenanceResults.Errors += "Export path inaccessible: $ExportPath"
-        $exportPhase.Status = "Failed"
+        Write-Status "Export path not accessible: $ExportPath - skipping export" -Type Info
+        Write-Log "Export path not accessible (may be offline or not configured) - skipping"
+        $exportPhase.Status = "Skipped"
     } else {
         # =====================================================================
         # STEP 1: Copy database backup to export folder

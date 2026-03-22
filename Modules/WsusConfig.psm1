@@ -33,7 +33,7 @@ $script:WsusConfig = @{
     ContentSubfolder = "WsusContent"
     LogPath = "C:\WSUS\Logs"
     SqlInstallerPath = "C:\WSUS\SQLDB"
-    DefaultExportPath = ""
+    DefaultExportPath = "\\lab-hyperv\d\WSUS-Exports"
 
     # Service Names
     Services = @{
