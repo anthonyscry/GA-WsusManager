@@ -1101,6 +1101,7 @@ if ($allUpdates.Count -gt 0) {
             $_.Title -notmatch '(?i)\bARM64\b' -and
             $_.Title -notmatch '(?i)\b25H2\b' -and
             $_.Title -notmatch '(?i)\b(21H2|22H2|23H2)\b' -and
+            $_.Title -notmatch '(?i)\bx86\b' -and
             (
                 $_.UpdateClassificationTitle -eq "Critical Updates" -or
                 $_.UpdateClassificationTitle -eq "Security Updates" -or
