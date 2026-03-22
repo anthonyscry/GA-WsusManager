@@ -611,8 +611,8 @@ if ($sqlcmd) {
         & $sqlcmd @sqlcmdArgs -v SafeUser="$currentUserSafe" RawUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(SafeUser)') CREATE LOGIN [`$(RawUser)] FROM WINDOWS;" -b
         & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [`$(CurrentUser)];" -b
 
-        # Verify
-        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT IS_SRVROLEMEMBER('sysadmin', SUSER_SNAME())" -h -1 -W 2>$null
+        # Verify (use sys.server_role_members - IS_SRVROLEMEMBER caches per-connection)
+        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = SUSER_SNAME()" -h -1 -W 2>$null
         Write-Host "    sysadmin check: $check"
 
         # Create NETWORK SERVICE login if not exists
