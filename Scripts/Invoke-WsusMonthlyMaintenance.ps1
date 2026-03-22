@@ -747,7 +747,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
         [Console]::Out.Flush()
 
         $syncIterations = 0
-        $maxIterations = 120
+        $maxIterations = 360  # 360 x 30s = 180 minutes (3 hours) - first sync can take a while
         $lastPhase = ""
         $lastProcessed = 0
 
@@ -796,7 +796,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
             }
 
             if ($syncIterations -ge $maxIterations) {
-                Write-Warning "Sync timeout after 60 minutes"
+                Write-Warning "Sync timeout after 180 minutes"
                 break
             }
 
