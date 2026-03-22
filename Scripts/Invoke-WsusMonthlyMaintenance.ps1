@@ -974,6 +974,8 @@ if ($allUpdates.Count -gt 0) {
     $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
     # Edge: keep only Stable Channel and WebView2, decline everything else
     $edgeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)Microsoft Edge' -and ($_.Title -notmatch '(?i)(Stable Channel|WebView2)' -or $_.Title -match '(?i)Extended Stable') })
+    # WSL: decline Windows Subsystem for Linux updates
+    $wslDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)(Windows Subsystem for Linux|WSL)' })
     # Office: decline 365 Apps, Office 2019, Office LTSC 2021 (keep only Office 2024/LTSC 2024)
     $officeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and (
         $_.Title -match '(?i)Microsoft 365 Apps' -or
@@ -981,7 +983,7 @@ if ($allUpdates.Count -gt 0) {
         $_.Title -match '(?i)Office LTSC 2021'
     ) -and $_.Title -notmatch '(?i)(2024|LTSC 2024)' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy builds=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge non-stable=$($edgeDeclines.Count) | Office 365/2019/2021=$($officeDeclines.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | 25H2=$($h25Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1074,7 +1076,14 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy=$legacyBuildCount | Preview/Beta=$previewCount | Edge non-stable=$edgeDeclineCount | Office 365/2019/2021=$officeDeclineCount"
+    $wslDeclineCount = 0
+    if ($wslDeclines.Count -gt 0) {
+        $wslDeclines | ForEach-Object {
+            try { $_.Decline() | Out-Null; $wslDeclineCount++ } catch {}
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | 25H2=$h25Count | Legacy=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
