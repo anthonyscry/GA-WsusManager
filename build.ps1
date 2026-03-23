@@ -441,7 +441,11 @@ try {
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
         if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
-        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination (Join-Path $packageDir "README.txt") }
+        if (Test-Path ".\README.txt") {
+            Copy-Item ".\README.txt" -Destination (Join-Path $packageDir "README.txt")
+        } elseif (Test-Path ".\README.md") {
+            Copy-Item ".\README.md" -Destination (Join-Path $packageDir "README.txt")
+        }
 
         # Copy logo files for sidebar and About page
         if (Test-Path ".\general_atomics_logo_small.ico") {
