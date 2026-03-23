@@ -5,7 +5,7 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, ARM64, legacy builds (23H2 and older), Preview/Beta, Edge non-stable, Office 365/2019/2021, WSL
+    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and older), Preview/Beta, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
