@@ -1,7 +1,9 @@
-h1. WSUS Manager
+h1. WSUS Manager v4.0.4
 
 *Version:* 4.0.4
 *Author:* Tony Tran, ISSO, GA-ASI
+*Last Updated:* March 2026
+*Classification:* Internal Use Only
 
 WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It handles the entire lifecycle of keeping Windows machines patched when they cannot reach the internet: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB, importing them, and pushing updates out to client machines through Group Policy.
 
@@ -70,6 +72,31 @@ h3. Air-Gap Support
 * Import updates and content from USB on the air-gapped server.
 * "Create USB Package" workflow with transfer manifest and checksums.
 * "Reset Content" button to fix content download status after import.
+
+h3. Smart Update Policy
+
+The Online Sync workflow automatically applies decline and approval rules:
+
+*Auto-Declined (removed from catalog):*
+
+||Rule||Details||
+|Expired / Superseded|Updates replaced by newer versions|
+|Older than 6 months|By Microsoft release date — already-approved updates are preserved|
+|ARM64|Not applicable to x64 lab environments|
+|Legacy Windows builds|21H2, 22H2, 23H2|
+|Preview / Beta|Pre-release updates|
+|Edge non-stable|Dev Channel, Beta Channel, Extended Stable — keeps Stable + WebView2 only|
+|Office legacy|Microsoft 365 Apps, Office 2019, Office LTSC 2021 — keeps Office 2024/LTSC 2024|
+|WSL|Windows Subsystem for Linux|
+
+*Kept but not auto-approved (require manual review):*
+* 25H2 updates
+* x86 / 32-bit updates (lab is x64 only)
+* Feature upgrades
+
+*Default Products:* Windows 11, Windows Server 2019, Microsoft Edge, Microsoft Defender Antivirus, Microsoft Defender for Endpoint, Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials.
+
+*Default Classifications:* Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups.
 
 h3. Client Deployment
 
@@ -403,6 +430,22 @@ Close and reopen WSUS Manager. This can happen if an operation exits unexpectedl
 Make sure the {{Scripts/}} and {{Modules/}} folders are in the same directory as {{WsusManager.exe}}. If you moved only the EXE, the application cannot find its scripts.
 
 See [CLAUDE.md] for detailed developer documentation, architecture notes, and a full catalog of known GUI issues with solutions.
+
+----
+
+h2. Version History
+
+||Version||Date||Highlights||
+|4.0.4|Mar 2026|sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved), sysadmin check via sqlcmd, explicit SQLPS module import|
+|4.0.3|Mar 2026|Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight check, 180-min sync timeout, default products/classifications, WID auto-migration, exact product name matching|
+|4.0.2|Mar 2026|GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization, removed .GetNewClosure()|
+|4.0.1|Mar 2026|GUI automation tests (49), FlaUI test coverage (71), install script sync, version alignment|
+|4.0.0|Mar 2026|Dialog factory, operation runner, health score (0-100), operation history, notifications, DB trending, splash screen, keyboard shortcuts, system tray, 490+ tests|
+|3.9.0|Mar 2026|ARM64/25H2 auto-decline, PowerShell-only distribution restored|
+|3.8.12|Feb 2026|TrustServerCertificate compatibility fix|
+|3.8.10|Feb 2026|Deep Cleanup 6-step workflow, unified Diagnostics|
+|3.8.9|Feb 2026|Online Sync rename, Definition Updates auto-approval, Reset Content button|
+|3.8.7|Jan 2026|Live Terminal mode, Create GPO button, WSUS install detection|
 
 ----
 
