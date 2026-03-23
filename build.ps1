@@ -50,7 +50,7 @@ $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "4.0.3"
+$Version = "4.0.4"
 if (-not $OutputName) { $OutputName = "GA-WsusManager.exe" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
