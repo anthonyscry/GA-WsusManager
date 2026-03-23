@@ -1740,15 +1740,12 @@ Deep Cleanup
   6. Shrink database to reclaim disk space
   Reports database size before and after shrink.
 
-TRANSFER (Robocopy)
-Export
-  Mirror WSUS content to external media using Robocopy.
-  Full export copies all content files; differential copies files newer than N days.
-  Creates a timestamped subfolder at the destination.
-
-Import
-  Copy content from external media to the air-gap WSUS server.
-  Specify source (USB drive) and destination (C:\WSUS). Non-interactive.
+Robocopy
+  Copy WSUS content between two folders using Robocopy.
+  Specify a source folder and a destination folder, then click Start Transfer.
+  Non-destructive — only copies files, never deletes. Creates a subfolder at
+  the destination named after the source folder. Use for both export (online →
+  USB) and import (USB → air-gap server).
 
 DIAGNOSTICS
 Run Diagnostics
@@ -1773,18 +1770,17 @@ FULL WORKFLOW
 
 On the Online server:
   1. Run Online Sync (full cycle: sync, decline, approve, cleanup, backup)
-  2. Run Robocopy > Export to copy content + backup to USB drive
-     • Use Full export for initial setup
-     • Use Differential export (last N days) for routine transfers
+  2. Click Robocopy — set source to C:\WSUS\WsusContent and destination to USB drive
+     • Run a full copy for initial setup; repeat for routine transfers
 
 Transfer:
   3. Carry the USB drive to the air-gap network
   4. Scan USB per your site security policy before connecting
 
 On the Air-Gap server:
-  5. Run Robocopy > Import to copy files from USB to C:\WSUS
+  5. Click Robocopy — set source to the USB drive folder and destination to C:\WSUS
   6. Run Restore DB to load the exported SUSDB backup
-  7. Run Diagnostics > Reset Content to re-verify content files against the restored database
+  7. Click Reset Content (in the DIAGNOSTICS section) to re-verify content files against the restored database
   8. Clients pull approved updates on their next check-in (typically within 1 hour)
 
 GPO DEPLOYMENT (one-time setup)
