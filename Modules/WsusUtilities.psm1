@@ -497,8 +497,24 @@ function Invoke-WsusSqlcmd {
         $sqlParams.TrustServerCertificate = $true
     }
 
-    # Execute the query - use Invoke-Sqlcmd if available, fall back to sqlcmd.exe
-    if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) {
+    # Execute the query - try Invoke-Sqlcmd first, fall back to sqlcmd.exe
+    # Import SQLPS/SqlServer module explicitly (auto-load can fail in child processes)
+    if (-not $script:SqlCmdChecked) {
+        $script:SqlCmdAvailable = $false
+        try {
+            Import-Module SQLPS -DisableNameChecking -ErrorAction SilentlyContinue
+            if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) { $script:SqlCmdAvailable = $true }
+        } catch { }
+        if (-not $script:SqlCmdAvailable) {
+            try {
+                Import-Module SqlServer -ErrorAction SilentlyContinue
+                if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) { $script:SqlCmdAvailable = $true }
+            } catch { }
+        }
+        $script:SqlCmdChecked = $true
+    }
+
+    if ($script:SqlCmdAvailable) {
         return Invoke-Sqlcmd @sqlParams
     }
 
