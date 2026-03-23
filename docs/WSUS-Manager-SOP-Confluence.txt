@@ -11,6 +11,70 @@ h1. WSUS Manager v4.0.4 - Standard Operating Procedure
 
 ----
 
+h2. Purpose
+
+WSUS Manager is a PowerShell WPF GUI application that automates the full lifecycle of Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides a centralized interface for installing, configuring, operating, and monitoring WSUS servers — including dedicated support for air-gapped (network-isolated) environments where updates cannot be downloaded directly from Microsoft.
+
+The application eliminates manual scripting for routine WSUS administration and enforces consistent update policy (classification selection, auto-decline rules, auto-approval thresholds) across both online and air-gapped deployments.
+
+----
+
+h2. Scope
+
+*In scope:*
+
+* Installation of WSUS with SQL Server Express 2022 (including migration from Windows Internal Database)
+* Monthly online sync operations — update download, product classification, auto-decline, and auto-approval
+* Air-gap transfer workflow — export to media, physical transport, import, and database restore
+* Client targeting via Group Policy Objects deployed to Domain Controllers
+* Scheduled maintenance (index rebuild, database cleanup, shrink)
+* Health monitoring, diagnostics, and database size trending
+* Database backup and restore operations
+
+*Out of scope:*
+
+* Windows Server OS installation, hardening, or domain join
+* Active Directory domain setup or OU structure (covered by separate DC SOP)
+* Patch testing or change management approval workflows
+* Update approval for products outside the configured default list
+
+----
+
+h2. Applicability
+
+This SOP applies to:
+
+||Role||Applies To||
+|ISSO / System Administrator|Primary operators of WSUS Manager|
+|Online WSUS Server|Internet-connected server that syncs from Microsoft Update|
+|Air-Gapped WSUS Server|Isolated server that receives updates via physical media transfer|
+|Domain Controller Administrator|Responsible for GPO import and client targeting|
+|Security Team|Reviews DTR requirements before physical media transport|
+
+{note}A Data Transfer Request (DTR) may be required before moving update media across network boundaries. Confirm requirements with your security team before performing air-gap transfers.{note}
+
+----
+
+h2. Definitions
+
+||Term||Definition||
+|WSUS|Windows Server Update Services — Microsoft server role for centralized Windows update distribution|
+|SUSDB|The SQL Server database used by WSUS to store update metadata and approval state|
+|Air-Gap|A network with no direct internet connectivity; updates must be physically transferred via removable media|
+|DTR|Data Transfer Request — formal approval required to move data across classified or collateral network boundaries|
+|GPO|Group Policy Object — Active Directory policy applied to domain-joined computers to configure WSUS client settings|
+|SQL Express|Free edition of SQL Server; used by WSUS Manager for SUSDB; has a 10 GB database size limit|
+|sqlcmd.exe|SQL Server command-line tool used as automatic fallback when the PowerShell SqlServer module is unavailable|
+|WID|Windows Internal Database — built-in lightweight database engine; automatically migrated to SQL Express during installation|
+|Online Server|A WSUS server with internet access used to sync update metadata and content from Microsoft Update servers|
+|Health Score|Composite 0–100 score displayed on the dashboard: Green (≥80), Yellow (50–79), Red (<50); based on services, database, sync status, disk space, and last operation result|
+|Auto-Decline|Automatic rejection of update categories (superseded, expired, ARM64, legacy builds, preview) during sync|
+|Auto-Approve|Automatic approval of update categories (Critical, Security, Definition Updates, Updates, Update Rollups) after sync|
+|Deep Cleanup|Full database maintenance: decline superseded, purge obsolete records, rebuild indexes, shrink database|
+|Differential Export|Export of only updates newer than N days; used to minimize USB transfer size during recurring air-gap syncs|
+
+----
+
 h2. File Repository
 
 h3. SQL & WSUS Installers
@@ -33,8 +97,9 @@ WsusManager.exe           # Main GUI application
 Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules (16 modules)
 DomainController/         # Optional - GPO deployment scripts
-QUICK-START.txt           # Quick reference guide
-README.md                 # Full documentation
+QUICK-START.txt           # Quick reference and setup guide
+README.txt                # Full documentation
+CHANGELOG.txt             # Version history and release notes
 {code}
 
 {warning}The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.{warning}
@@ -530,6 +595,9 @@ h2. Version History
 h2. References
 
 ||Topic||Link||
+|Distribution Package (v4.0.4)|[GitHub Releases - WsusManager-v4.0.4.zip|https://github.com/anthonyscry/GA-WsusManager/releases/tag/v4.0.4]|
+|All Releases|[GitHub Releases - WSUS Manager|https://github.com/anthonyscry/GA-WsusManager/releases]|
+|Source Code|[GitHub Repository - GA-WsusManager|https://github.com/anthonyscry/GA-WsusManager]|
 |WSUS Maintenance Guide|[Microsoft Learn - WSUS Maintenance|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/wsus-maintenance]|
 |WSUS Deployment Planning|[Microsoft Learn - Plan Your WSUS Deployment|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment]|
 |Configure WSUS|[Microsoft Learn - Configure WSUS|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus]|
