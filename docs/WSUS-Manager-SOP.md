@@ -752,6 +752,26 @@ SESSION START: 2026-01-19 10:30:00
 
 ---
 
+## Version History
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved updates), sysadmin check via sqlcmd, explicit SQLPS module import |
+| 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight check, 180-minute sync timeout, default products and classifications, WID auto-migration, exact product name matching |
+| 4.0.2 | Mar 2026 | GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization, removed differential export, removed .GetNewClosure() |
+| 4.0.1 | Mar 2026 | GUI automation tests (49 tests), FlaUI test coverage (71 tests), install script sync, version alignment |
+| 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score (0-100), operation history, notifications, DB trending, splash screen, keyboard shortcuts, system tray, 490+ tests |
+| 3.9.0 | Mar 2026 | ARM64/25H2 auto-decline, PowerShell-only distribution restored |
+| 3.8.12 | Feb 2026 | TrustServerCertificate compatibility fix |
+| 3.8.10 | Feb 2026 | Deep Cleanup 6-step workflow, unified Diagnostics |
+| 3.8.9 | Feb 2026 | Online Sync rename, Definition Updates auto-approval, Reset Content button |
+| 3.8.8 | Jan 2026 | Declined update purge fix, shrink retry logic |
+| 3.8.7 | Jan 2026 | Live Terminal mode, Create GPO button, WSUS install detection |
+
+See [CHANGELOG.md](../CHANGELOG.md) for complete version history.
+
+---
+
 ## References
 
 ### Microsoft Official Documentation
