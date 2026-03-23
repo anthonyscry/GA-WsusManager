@@ -134,7 +134,7 @@ h2. File Repository
 
 h3. SQL & WSUS Installers
 
-{note}Save these files to C:\\WSUS\\SQLDB\\ on the target server before running installation.{note}
+{note}Save these files to C:\WSUS\SQLDB\ on the target server before running installation.{note}
 
 ||File||Description||
 |SQLEXPRADV_x64_ENU.exe|SQL Server Express 2022 with Advanced Services|
@@ -181,14 +181,14 @@ h3. System Requirements
 h3. Required Installers
 
 ||File||Location||
-|SQLEXPRADV_x64_ENU.exe|C:\\WSUS\\SQLDB\\|
-|SSMS-Setup-ENU.exe|C:\\WSUS\\SQLDB\\|
+|SQLEXPRADV_x64_ENU.exe|C:\WSUS\SQLDB\|
+|SSMS-Setup-ENU.exe|C:\WSUS\SQLDB\|
 
 h3. Required Privileges
 
 ||Privilege||Scope||Purpose||
 |Local Administrator|WSUS server|Script execution, service management|
-|sysadmin role|localhost\\SQLEXPRESS|SUSDB backup/restore operations|
+|sysadmin role|localhost\SQLEXPRESS|SUSDB backup/restore operations|
 
 h3. Granting SQL Server Sysadmin Privileges
 
@@ -198,7 +198,7 @@ h3. Granting SQL Server Sysadmin Privileges
 
 # Launch SQL Server Management Studio (SSMS)
 # Server type: Database Engine
-# Server name: {{localhost\\SQLEXPRESS}}
+# Server name: {{localhost\SQLEXPRESS}}
 # Authentication: SQL Server Authentication
 # Login: sa (or default admin account)
 # Check *Trust Server Certificate*
@@ -210,7 +210,7 @@ h3. Granting SQL Server Sysadmin Privileges
 # Right-click Logins > New Login...
 # Click Search... to locate the account
 # Click Locations... > select Entire Directory
-# Enter domain group (e.g., {{DOMAIN\\System Administrators}}) > OK
+# Enter domain group (e.g., {{DOMAIN\System Administrators}}) > OK
 # Go to Server Roles page
 # Check sysadmin > OK
 
@@ -229,14 +229,14 @@ h3. First-Time Setup
 
 {code:language=powershell}
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-Get-ChildItem -Path "C:\\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
+Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1|Unblock-File
 {code}
 
 h3. Installation Steps
 
 ||Step||Action||
-|1|Place SQL installers in C:\\WSUS\\SQLDB\\|
-|2|Extract WsusManager-v4.0.4.zip to C:\\WSUS\\|
+|1|Place SQL installers in C:\WSUS\SQLDB\|
+|2|Extract WsusManager-v4.0.4.zip to C:\WSUS\|
 |3|Verify folder structure (EXE + Scripts/ + Modules/)|
 |4|Right-click WsusManager.exe > Run as Administrator|
 |5|Click *Install WSUS* and follow prompts|
@@ -244,15 +244,15 @@ h3. Installation Steps
 h3. Deployment Layout
 
 ||Path||Purpose||
-|C:\\WSUS\\|Content directory (MUST be this exact path)|
-|C:\\WSUS\\SQLDB\\|SQL + SSMS installers|
-|C:\\WSUS\\Logs\\|Log files|
-|C:\\WSUS\\WsusManager.exe|GUI application|
-|C:\\WSUS\\Scripts\\|PowerShell scripts|
-|C:\\WSUS\\Modules\\|PowerShell modules|
-|%APPDATA%\\WsusManager\\settings.json|User settings|
-|%APPDATA%\\WsusManager\\history.json|Operation history (last 100 entries)|
-|%APPDATA%\\WsusManager\\trending.json|Database size trend data|
+|C:\WSUS\|Content directory (MUST be this exact path)|
+|C:\WSUS\SQLDB\|SQL + SSMS installers|
+|C:\WSUS\Logs\|Log files|
+|C:\WSUS\WsusManager.exe|GUI application|
+|C:\WSUS\Scripts\|PowerShell scripts|
+|C:\WSUS\Modules\|PowerShell modules|
+|%APPDATA%\WsusManager\settings.json|User settings|
+|%APPDATA%\WsusManager\history.json|Operation history (last 100 entries)|
+|%APPDATA%\WsusManager\trending.json|Database size trend data|
 
 ----
 
@@ -296,7 +296,7 @@ h3. GUI Operations
 |*Restore Database*|Restore SUSDB from backup file|
 |*Reset Content*|Re-verify content files after DB import (air-gap fix)|
 |*Schedule Task*|Create a scheduled online sync task|
-|*Create GPO*|Copy GPO files to C:\\WSUS\\WSUS GPO with deployment instructions|
+|*Create GPO*|Copy GPO files to C:\WSUS\WSUS GPO with deployment instructions|
 |*History*|View last 50 operations with duration, result, and summary|
 |*Settings*|Configure server mode, paths, notifications, and preferences|
 
@@ -354,12 +354,12 @@ h2. Command Reference (CLI)
 h3. Interactive Menu
 
 {code:language=powershell}
-.\\Scripts\\Invoke-WsusManagement.ps1
+.\Scripts\Invoke-WsusManagement.ps1
 {code}
 
 ||Option||Description||
 |1|Install WSUS with SQL Express 2022|
-|2|Restore Database from C:\\WSUS|
+|2|Restore Database from C:\WSUS|
 |3|Copy Data from External Media (import to air-gap server)|
 |4|Copy Data to External Media (export for air-gap transfer)|
 |5|Online Sync (Sync, Cleanup, Backup, Export)|
@@ -371,20 +371,20 @@ h3. Interactive Menu
 h3. Command-Line Switches
 
 ||Command||Description||
-|.\\Invoke-WsusManagement.ps1 -Restore|Restore newest .bak from C:\\WSUS|
-|.\\Invoke-WsusManagement.ps1 -Cleanup -Force|Deep database cleanup|
-|.\\Invoke-WsusManagement.ps1 -Health|Read-only health check|
-|.\\Invoke-WsusManagement.ps1 -Repair|Health check + auto-repair|
-|.\\Invoke-WsusManagement.ps1 -Reset|Reset content download|
+|.\Invoke-WsusManagement.ps1 -Restore|Restore newest .bak from C:\WSUS|
+|.\Invoke-WsusManagement.ps1 -Cleanup -Force|Deep database cleanup|
+|.\Invoke-WsusManagement.ps1 -Health|Read-only health check|
+|.\Invoke-WsusManagement.ps1 -Repair|Health check + auto-repair|
+|.\Invoke-WsusManagement.ps1 -Reset|Reset content download|
 
 h3. Export / Import CLI Parameters
 
 {code:language=powershell}
 # Export
-.\\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\\WSUS" -DestinationPath "E:\\WsusExport"
+.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport"
 
 # Import
-.\\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\\WsusExport" -DestinationPath "C:\\WSUS"
+.\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\WsusExport" -DestinationPath "C:\WSUS"
 {code}
 
 h3. Online Sync Profiles
@@ -411,14 +411,14 @@ h3. Workflow Overview
 |4|Air-Gapped WSUS Server|Run *Transfer > Import* from USB|
 |5|Air-Gapped WSUS Server|Run *Restore Database*|
 |6|Air-Gapped WSUS Server|Run *Reset Content* (Diagnostics menu)|
-|7|Domain Controller|Run .\\Set-WsusGroupPolicy.ps1 (one-time setup)|
+|7|Domain Controller|Run .\Set-WsusGroupPolicy.ps1 (one-time setup)|
 
 h3. Export Folder Structure
 
 {code}
-E:\\WSUS-Export\\
+E:\WSUS-Export\
 +-- SUSDB_20260320.bak           (latest database backup)
-+-- WsusContent\\               (full content mirror)
++-- WsusContent\               (full content mirror)
 {code}
 
 h3. Robocopy Quick Reference
@@ -463,7 +463,7 @@ Configures Windows Update client behavior. Linked to all workstation/server OUs.
 
 h3. GPO 2: WSUS Inbound Allow
 
-Opens WSUS server firewall for inbound client connections. Linked to Member Servers\\WSUS Server OU.
+Opens WSUS server firewall for inbound client connections. Linked to Member Servers\WSUS Server OU.
 
 ||Property||Value||
 |Direction|Inbound|
@@ -486,7 +486,7 @@ h3. Verify on a Client
 {code:language=powershell}
 gpupdate /force
 wuauclt /detectnow /reportnow
-gpresult /r | findstr WSUS
+gpresult /r|findstr WSUS
 {code}
 
 ----
@@ -495,18 +495,18 @@ h2. HTTPS Configuration (Optional)
 
 {code:language=powershell}
 # Interactive (recommended)
-.\\Scripts\\Set-WsusHttps.ps1
+.\Scripts\Set-WsusHttps.ps1
 
 # Non-interactive
-.\\Scripts\\Set-WsusHttps.ps1 -CertificateThumbprint "1234567890ABCDEF..."
+.\Scripts\Set-WsusHttps.ps1 -CertificateThumbprint "1234567890ABCDEF..."
 {code}
 
-The script binds the certificate to port 8531, runs wsusutil configuressl, and exports the certificate to C:\\WSUS\\WSUS-SSL-Certificate.cer.
+The script binds the certificate to port 8531, runs wsusutil configuressl, and exports the certificate to C:\WSUS\WSUS-SSL-Certificate.cer.
 
 After enabling HTTPS, update the GPO:
 
 {code:language=powershell}
-.\\Set-WsusGroupPolicy.ps1 -WsusServerUrl "https://WSUS01:8531"
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "https://WSUS01:8531"
 {code}
 
 ----
@@ -518,20 +518,20 @@ h3. Create via GUI
 # Click *Schedule Task* button
 # Select maintenance profile (Light / Standard / Deep)
 # Set schedule (Daily / Weekly / Monthly) and time (default: Tuesday 23:00)
-# Enter credentials (default username: .\\dod_admin)
+# Enter credentials (default username: .\dod_admin)
 # Click *Create*
 
 h3. Verify
 
 {code:language=powershell}
-Get-ScheduledTask -TaskName "WSUS*" | Format-Table TaskName, State, LastRunTime
+Get-ScheduledTask -TaskName "WSUS*"|Format-Table TaskName, State, LastRunTime
 {code}
 
 ----
 
 h2. Logging
 
-*Location:* C:\\WSUS\\Logs\\WsusManagement_YYYY-MM-DD.log
+*Location:* C:\WSUS\Logs\WsusManagement_YYYY-MM-DD.log
 
 ||Feature||Description||
 |Single daily file|All sessions and operations append to the same file per day|
@@ -544,7 +544,7 @@ h2. Logging
 h2. Troubleshooting
 
 ||Issue||Solution||
-|Endless downloads / stuck content|Content path must be C:\\WSUS (NOT C:\\WSUS\\wsuscontent)|
+|Endless downloads / stuck content|Content path must be C:\WSUS (NOT C:\WSUS\wsuscontent)|
 |Dashboard shows "Not Installed"|WSUS service not detected - click Install WSUS|
 |Buttons greyed out|Operation already running, or WSUS not installed - wait or restart app|
 |Clients not checking in|Run gpupdate /force, verify GPOs are linked, check firewall ports 8530/8531|
@@ -559,9 +559,9 @@ h2. Troubleshooting
 h3. Diagnostic Commands
 
 ||Purpose||Command||
-|Health check (read-only)|.\\Invoke-WsusManagement.ps1 -Health|
-|Health check with auto-repair|.\\Invoke-WsusManagement.ps1 -Repair|
-|Force client check-in|.\\Scripts\\Invoke-WsusClientCheckIn.ps1|
+|Health check (read-only)|.\Invoke-WsusManagement.ps1 -Health|
+|Health check with auto-repair|.\Invoke-WsusManagement.ps1 -Repair|
+|Force client check-in|.\Scripts\Invoke-WsusClientCheckIn.ps1|
 |Check service status|Get-Service WsusService, MSSQL$SQLEXPRESS, W3SVC|
 
 ----
@@ -598,7 +598,7 @@ h3. PowerShell Modules (16 Total)
 |AsyncHelpers.psm1|Runspace pool, async execution, UI thread dispatch for WPF|
 |WsusDialogs.psm1|Dialog factory - dark-themed window shell, folder browser, styled controls|
 |WsusOperationRunner.psm1|Unified operation lifecycle (start/stop/complete), timeout watchdog|
-|WsusHistory.psm1|Operation history (JSON at %APPDATA%\\WsusManager\\history.json)|
+|WsusHistory.psm1|Operation history (JSON at %APPDATA%\WsusManager\history.json)|
 |WsusNotification.psm1|Toast/balloon/log-only notifications on operation completion|
 |WsusTrending.psm1|DB size trending - linear regression, days-until-full estimate|
 
