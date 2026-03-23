@@ -205,10 +205,11 @@ WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built wi
 | Button | Function |
 |--------|----------|
 | **Install WSUS** | Install WSUS + SQL Server Express 2022 |
+| **Fix SQL Login** | Adds current Windows user as sysadmin on localhost\SQLEXPRESS. Use when database operations fail with a permissions error. |
 | **Diagnostics** | Comprehensive health check with automatic repair |
 | **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
 | **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
-| **Transfer** | Export/Import dialog for air-gap operations |
+| **Robocopy** | Copy WSUS content between folders using robocopy. Non-destructive. Used for both export to USB and import from USB. |
 | **Restore Database** | Restore SUSDB from backup file |
 | **Reset Content** | Re-verify content files after DB import (air-gap) |
 | **Schedule Task** | Create scheduled online sync task |
@@ -340,23 +341,22 @@ Toggle in log panel header to open operations in an external PowerShell window:
 |---------|-------------|
 | `.\Invoke-WsusMonthlyMaintenance.ps1` | Interactive mode |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -Unattended` | Unattended mode (scheduled tasks) |
-| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Light` | Decline superseded, basic cleanup (15-30 min) |
-| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Standard` | Light + index rebuild, statistics (1-2 hours) |
-| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Deep` | Standard + obsolete removal, full optimization (2-4 hours) |
+| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full` | Sync + auto-decline + auto-approve + deep cleanup + optional export (30-120 min) |
+| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Quick` | Sync + auto-approve only (15-30 min) |
+| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile SyncOnly` | Sync with Microsoft only, no approvals or cleanup (10-20 min) |
 
 ### Sync Profile Comparison
 
-| Profile | Duration | Actions |
-|---------|----------|---------|
-| **Light** | 15-30 min | Decline superseded updates, basic cleanup |
-| **Standard** | 1-2 hours | Light + index rebuild, statistics update |
-| **Deep** | 2-4 hours | Standard + obsolete update removal, full optimization |
+| Profile | CLI Value | Duration | Description |
+|---------|-----------|----------|-------------|
+| Full Sync | `Full` | 30-120 min | Sync + auto-decline + auto-approve + deep cleanup + optional export. Recommended monthly. |
+| Quick Sync | `Quick` | 15-30 min | Sync + auto-approve only. Good for weekly runs. |
+| Sync Only | `SyncOnly` | 10-20 min | Sync with Microsoft only. No approvals or cleanup. |
 
 **Recommended Schedule:**
 
-- Light: Weekly
-- Standard: Monthly
-- Deep: Quarterly
+- Quick: Weekly
+- Full: Monthly
 
 ---
 
@@ -369,19 +369,15 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | Step | Location | Action |
 |------|----------|--------|
 | 1 | Online WSUS Server | Run **Online Sync** - Syncs, cleans up, exports to network share |
-| 2 | Online WSUS Server | Run **Transfer > Export** - Copy to USB/Apricorn |
+| 2 | Online WSUS Server | Run **Robocopy** - Set source=export share, dest=USB/Apricorn to copy content |
 | 3 | Physical Transfer | Transport USB/Apricorn drive to air-gapped network |
-| 4 | Air-Gapped WSUS Server | Run **Transfer -> Import** - Copy from external media |
+| 4 | Air-Gapped WSUS Server | Run **Robocopy** - Set source=USB folder, dest=C:\WSUS\ to copy content in |
 | 5 | Air-Gapped WSUS Server | Run **Restore Database** |
 | 6 | Domain Controller | Run `.\Set-WsusGroupPolicy.ps1` (one-time setup) |
 
-### GUI Transfer Dialog
+### GUI Robocopy Dialog
 
-The Transfer dialog provides:
-
-- **Direction selector**: Export or Import
-- **Source folder browser**: Select source path
-- **Destination folder browser**: Select destination path
+The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). Use it for both export (source=C:\WSUS\WsusContent, dest=USB) and import (source=USB folder, dest=C:\WSUS\).
 
 ### Export Folder Structure
 
@@ -576,7 +572,7 @@ For self-signed certificates, deploy the exported `.cer` file to clients via:
 1. Click **Schedule Task** button
 2. Configure:
    - Task name
-   - Maintenance profile (Light/Standard/Deep)
+   - Maintenance profile (Full/Quick/SyncOnly)
    - Schedule type (Daily/Weekly/Monthly)
    - Day of month (1-31 for monthly)
    - Execution time
@@ -590,7 +586,7 @@ For self-signed certificates, deploy the exported `.cer` file to clients via:
 ```powershell
 # Create scheduled task for monthly maintenance
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
-    -Argument "-ExecutionPolicy Bypass -File C:\WSUS\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Standard -Unattended"
+    -Argument "-ExecutionPolicy Bypass -File C:\WSUS\Scripts\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full -Unattended"
 
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 2:00AM
 

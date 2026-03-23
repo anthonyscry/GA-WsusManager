@@ -1603,136 +1603,251 @@ function Show-Panel {
 #region Help Content
 $script:HelpContent = @{
     Overview = @"
-WSUS MANAGER OVERVIEW
+WSUS MANAGER v4.0.4
 
-A toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
+A PowerShell WPF automation suite for deploying and managing Windows Server Update Services (WSUS) with SQL Server Express 2022. Designed for both connected and air-gapped networks.
 
 FEATURES
-• Modern dark-themed GUI with auto-refresh
-• Air-gapped network support (export/import)
-• Automated sync, cleanup, and deep cleanup
-• Smart decline: superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
-• Default products: Windows 11, Server 2019, Edge, Defender, Office, SQL Server
-• DNS preflight check before sync
-• Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)
+• Dark-themed WPF GUI with 30-second auto-refresh dashboard
+• Health Score (0-100) with color-coded grade (Green/Yellow/Red)
+• DB size trending with days-until-full estimate (10 GB SQL Express limit)
+• Operation history log (last 100 operations, stored in %APPDATA%\WsusManager)
+• Toast/balloon notifications on operation completion
+• Live Terminal mode — open operations in external PowerShell window
+• Air-gapped network support (Robocopy export/import + DB restore workflow)
+• Server Mode auto-detects Online vs Air-Gap based on internet connectivity
+• Startup splash screen with initialization progress
+
+SMART AUTO-DECLINE RULES
+Superseded, expired, >6 months old, ARM64, Preview/Beta
+Legacy builds: 21H2, 22H2, 23H2 and older
+Edge: Dev/Beta/Extended Stable channels (keeps Stable + WebView2)
+Office: 365/2019/LTSC 2021 (keeps Office 2024/LTSC 2024)
+WSL (Windows Subsystem for Linux)
+
+AUTO-APPROVE SCOPE
+Recent x64 updates only — x86, 25H2, and Upgrades are held for manual review
+
+KEYBOARD SHORTCUTS
+Ctrl+D = Diagnostics   Ctrl+S = Online Sync
+Ctrl+H = History       Ctrl+R / F5 = Refresh Dashboard
 
 QUICK START
 1. Run WsusManager.exe as Administrator
-2. Use 'Install WSUS' for fresh installation
-3. Dashboard shows real-time status
-4. Server Mode auto-detects Online vs Air-Gap based on internet access
+2. Click Install WSUS for a fresh installation
+3. Dashboard updates automatically every 30 seconds
+4. Use Online Sync for regular maintenance; Robocopy to transfer to air-gap
 
 REQUIREMENTS
-• Windows Server 2019+
-• PowerShell 5.1+
-• SQL Server Express 2022
-• 150 GB+ disk space
+• Windows Server 2019+   • PowerShell 5.1+
+• SQL Server Express 2022 (installed automatically)
+• 150 GB+ disk space recommended
 
 PATHS
-• Content: C:\WSUS\
-• SQL Installers: C:\WSUS\SQLDB\
-• Logs: C:\WSUS\Logs\
+• WSUS Content:    C:\WSUS\
+• SQL Installers:  C:\WSUS\SQLDB\
+• App Logs:        C:\WSUS\Logs\
+• Settings/History: %APPDATA%\WsusManager\
 "@
 
     Dashboard = @"
 DASHBOARD GUIDE
 
-Four status cards with 30-second auto-refresh.
+Auto-refreshes every 30 seconds. Refresh is skipped while an operation is running.
 
-SERVICES CARD
-• Green: All 3 running (SQL, WSUS, IIS)
-• Orange: Partial
-• Red: Critical services stopped
+STATUS CARDS
 
-DATABASE CARD
-• Shows SUSDB vs 10GB SQL Express limit
-• Green: <7GB | Orange: 7-9GB | Red: >9GB
+Services
+• Green: SQL Server, WSUS (WsusService), and IIS are all running
+• Orange: One or more services stopped but not critical
+• Red: SQL or WSUS service is down
 
-DISK CARD
-• Green: >50GB | Orange: 10-50GB | Red: <10GB (recommend 150 GB+ total)
+Database (SUSDB)
+• Shows current size vs the 10 GB SQL Express limit
+• Green <7 GB | Orange 7–9 GB | Red >9 GB
+• Trending indicator shows estimated days until the 10 GB limit is reached
+• Alert shown when fewer than 90 days remain
 
-TASK CARD
-• Green: Scheduled task ready
-• Orange: Not configured
+Disk (C:\WSUS)
+• Free space on the WSUS content drive
+• Green >50 GB | Orange 10–50 GB | Red <10 GB
+• Recommended: 150 GB+ total drive space
+
+Scheduled Task
+• Green: Task exists and is enabled
+• Orange: Task not yet configured — use Schedule Task to create it
+
+Health Score
+• Composite 0–100 score: Services 30 pts, DB 20 pts, Sync 20 pts, Disk 20 pts, Last Op 10 pts
+• Green ≥80 | Yellow 50–79 | Red <50 | Unknown if all checks fail
+
+Last Sync
+• Timestamp of the most recent successful sync with Microsoft Update
 
 QUICK ACTIONS
-• Diagnostics - Health check + auto-repair
-• Deep Cleanup - Aggressive cleanup
-• Online Sync - Sync with Microsoft
-• Start Services - Start all services
+• Diagnostics   — Full health check with automatic repair
+• Deep Cleanup  — Remove obsolete updates, rebuild indexes, shrink DB
+• Online Sync   — Full sync + auto-decline + auto-approve + backup
+• Start Services — Start SQL Server, WSUS, and IIS in correct order
+
+LOG PANEL
+• All operation output streams to the embedded log
+• Right-click: Copy All or Save to File
+• Toggle Live Terminal to run operations in a floating PowerShell window
 "@
 
     Operations = @"
 OPERATIONS GUIDE
 
 SETUP
-• Install WSUS - Fresh installation with SQL Express
-• Restore DB - Restore SUSDB from backup
+Install WSUS
+  Fresh installation of WSUS with SQL Server Express 2022.
+  Auto-detects and removes Windows Internal Database (WID) if present.
+  Configures classifications, language (English only), and WSUS wizard suppression.
+  Requires SQL/SSMS installers in C:\WSUS\SQLDB\ or prompts to locate them.
 
-TRANSFER
-• Export (Online) - Full export to USB
-• Import (Air-Gap) - Import from external media
+Fix SQL Login
+  Adds the current Windows user as a sysadmin on the local SQL Express instance.
+  Use this if database operations fail with a permissions error.
+
+Restore DB
+  Restore a SUSDB .bak backup file to SQL Express.
+  Auto-detects .bak files in C:\WSUS\. Requires sysadmin SQL permission.
+
+Create GPO
+  Copies WSUS Group Policy files to C:\WSUS\WSUS GPO\.
+  Displays instructions for the domain admin to link the GPO and verify client check-in.
 
 MAINTENANCE
-• Online Sync (Online only) - Sync, auto-decline, approve recent x64 updates, deep cleanup, backup
-• Schedule Task (Online only) - Create/update the sync scheduled task
-• Deep Cleanup - Remove obsolete, shrink database
+Online Sync
+  Full maintenance cycle: sync with Microsoft Update, apply auto-decline rules,
+  auto-approve recent x64 updates, run deep cleanup, and create a DB backup.
+  Profiles: Full (all steps), Quick (sync + approve only), Sync Only.
+  DNS preflight check runs before sync to prevent stuck syncs on broken DNS.
+  Sync timeout: 180 minutes (first sync can take 2–4 hours).
+
+Schedule Task
+  Create or update a Windows Scheduled Task to run Online Sync automatically.
+  Defaults: Tuesday 23:00, weekly. Requires domain credentials for unattended execution.
+
+Deep Cleanup
+  Six-step aggressive database maintenance:
+  1. WSUS built-in cleanup (decline superseded, remove obsolete)
+  2. Remove supersession records for declined updates
+  3. Remove supersession records for superseded updates (batched)
+  4. Delete declined updates via spDeleteUpdate stored procedure (batched)
+  5. Rebuild/reorganize fragmented indexes + update statistics
+  6. Shrink database to reclaim disk space
+  Reports database size before and after shrink.
+
+TRANSFER (Robocopy)
+Export
+  Mirror WSUS content to external media using Robocopy.
+  Full export copies all content files; differential copies files newer than N days.
+  Creates a timestamped subfolder at the destination.
+
+Import
+  Copy content from external media to the air-gap WSUS server.
+  Specify source (USB drive) and destination (C:\WSUS). Non-interactive.
 
 DIAGNOSTICS
-• Diagnostics - Comprehensive health check with auto-repair
-• Reset Content - Re-verify content files after import
+Run Diagnostics
+  Comprehensive health scan across services, firewall, permissions, DB connectivity,
+  and SSL certificates. Automatically repairs issues found.
+  Shortcut: Ctrl+D
+
+Reset Content  (under DIAGNOSTICS)
+  Runs wsusutil reset to re-verify all downloaded content files against the database.
+  Use this after importing a DB backup to fix "content still downloading" status
+  on the air-gap server.
 "@
 
     AirGap = @"
 AIR-GAP WORKFLOW
 
-Two-server model for disconnected networks:
-• Online WSUS: Internet-connected
-• Air-Gap WSUS: Disconnected
+Two-server model for networks with no internet access:
+• Online WSUS server  — Internet-connected, syncs from Microsoft Update
+• Air-Gap WSUS server — No internet, receives updates via physical media (USB)
 
-WORKFLOW
-1. On Online server: Run Online Sync, then Export
-2. Transfer USB to air-gap network
-3. On Air-Gap server: Import, then Restore DB
+FULL WORKFLOW
 
-EXPORT
-• Full export: Complete DB + all content files
+On the Online server:
+  1. Run Online Sync (full cycle: sync, decline, approve, cleanup, backup)
+  2. Run Robocopy > Export to copy content + backup to USB drive
+     • Use Full export for initial setup
+     • Use Differential export (last N days) for routine transfers
+
+Transfer:
+  3. Carry the USB drive to the air-gap network
+  4. Scan USB per your site security policy before connecting
+
+On the Air-Gap server:
+  5. Run Robocopy > Import to copy files from USB to C:\WSUS
+  6. Run Restore DB to load the exported SUSDB backup
+  7. Run Diagnostics > Reset Content to re-verify content files against the restored database
+  8. Clients pull approved updates on their next check-in (typically within 1 hour)
+
+GPO DEPLOYMENT (one-time setup)
+  Use Create GPO to generate the Group Policy files.
+  Provide the files to your domain admin to link to the target OU.
+  Force immediate client check-in: gpupdate /force && wuauclt /detectnow
 
 TIPS
-• Use USB 3.0 formatted as NTFS
-• Scan USB per security policy
-• Keep servers synchronized
+• Format USB as NTFS — FAT32 has a 4 GB file size limit
+• Use USB 3.0 for faster transfers; content can exceed 50 GB
+• Keep both servers on the same update baseline for reliable differential exports
+• Schedule Online Sync the night before your transfer window
+• SQL Express 10 GB limit: run Deep Cleanup on Online server regularly
 "@
 
     Troubleshooting = @"
 TROUBLESHOOTING
 
 SERVICES WON'T START
-1. Start SQL Server first
-2. Use 'Start Services' button
-3. Check Event Viewer
-4. Run Diagnostics
+  1. Start SQL Server Express first (it must be running before WSUS)
+  2. Click Start Services on the dashboard
+  3. Run Diagnostics — it will attempt automatic repair
+  4. Check Windows Event Viewer > Application and System logs
 
-DATABASE OFFLINE
-• Start SQL Server Express service
-• Check disk space
-• Run Diagnostics
+DATABASE OFFLINE / SQL CONNECTION FAILED
+  • Start the SQL Server Express service (services.msc > SQL Server (SQLEXPRESS))
+  • Check disk space — SQL Express stops if the DB approaches 10 GB
+  • Run Fix SQL Login if you get a permissions/login error
+  • Run Diagnostics for automated repair
 
-DATABASE >9 GB
-• Run Deep Cleanup
-• Decline unneeded updates
-• Run Online Sync
+DATABASE APPROACHING 10 GB LIMIT
+  • Run Deep Cleanup to shrink the database
+  • Run Online Sync (auto-decline removes unneeded updates)
+  • Review subscribed products and remove unused ones
+  • Dashboard trending shows estimated days until full
 
-CLIENTS NOT UPDATING
-• Verify GPO (gpresult /h)
-• Run gpupdate /force
-• Check ports 8530/8531
-• Verify WSUS URL in registry
+SYNC STUCK OR NEVER COMPLETES
+  • DNS preflight check runs automatically — check the log for DNS failure messages
+  • Verify internet connectivity and DNS resolution from the server
+  • First sync can take 2–4 hours; subsequent syncs are much faster
+  • Cancel and retry if stuck beyond 3 hours
 
-LOGS
-• App: C:\WSUS\Logs\
-• WSUS: C:\Program Files\Update Services\LogFiles\
-• IIS: C:\inetpub\logs\LogFiles\
+CLIENTS NOT RECEIVING UPDATES
+  • Verify the WSUS GPO is linked: gpresult /h report.html
+  • Force a check-in: gpupdate /force && wuauclt /detectnow
+  • Check WSUS ports 8530 (HTTP) and 8531 (HTTPS) are open
+  • Confirm the WSUS URL in registry: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+  • Check client logs: C:\Windows\WindowsUpdate.log
+
+CONTENT STILL DOWNLOADING AFTER AIR-GAP IMPORT
+  • Click Diagnostics > Reset Content — this runs wsusutil reset to re-verify all files
+  • Ensure the Import copied all files (check sizes on both servers)
+  • Wait 5–10 minutes after Reset Content completes before checking client status
+
+SYSADMIN / PERMISSION ERRORS ON DB OPERATIONS
+  • Use Fix SQL Login to add your account as SQL sysadmin
+  • Re-run the failed operation after fixing the login
+
+LOG LOCATIONS
+  • WSUS Manager:  C:\WSUS\Logs\
+  • WSUS Service:  C:\Program Files\Update Services\LogFiles\
+  • IIS:           C:\inetpub\logs\LogFiles\
+  • Operation history: %APPDATA%\WsusManager\history.json
 "@
 }
 

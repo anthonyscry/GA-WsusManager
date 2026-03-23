@@ -289,10 +289,11 @@ h3. GUI Operations
 
 ||Button||Function||
 |*Install WSUS*|Install WSUS + SQL Server Express 2022 (auto-removes WID if present)|
+|*Fix SQL Login*|Adds current Windows user as sysadmin on localhost\\SQLEXPRESS. Use when database operations fail with a permissions error.|
 |*Diagnostics*|Comprehensive health check with automatic repair|
 |*Deep Cleanup*|Full database cleanup: supersession records, index optimization, shrink|
 |*Online Sync*|Profile-based sync and maintenance (Full / Quick / Sync Only)|
-|*Transfer*|Export/Import dialog for air-gap operations|
+|*Robocopy*|Copy WSUS content between folders using robocopy. Non-destructive. Set source and destination for export (C:\\WSUS → USB) or import (USB → C:\\WSUS).|
 |*Restore Database*|Restore SUSDB from backup file|
 |*Reset Content*|Re-verify content files after DB import (air-gap fix)|
 |*Schedule Task*|Create a scheduled online sync task|
@@ -389,12 +390,10 @@ h3. Export / Import CLI Parameters
 
 h3. Online Sync Profiles
 
-||Profile||Duration||Actions||
-|*Light*|15-30 min|Decline superseded updates, basic cleanup|
-|*Standard*|1-2 hours|Light + index rebuild + statistics update|
-|*Deep*|2-4 hours|Standard + obsolete update removal + full optimization|
-
-*Recommended schedule:* Light = weekly, Standard = monthly, Deep = quarterly.
+||Profile||CLI Value||Description||
+|*Full Sync*|Full|Full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export. Recommended monthly.|
+|*Quick Sync*|Quick|Sync + auto-approve only. Good for weekly runs (15-30 min).|
+|*Sync Only*|SyncOnly|Sync with Microsoft only. No approvals or cleanup (10-20 min).|
 
 ----
 
@@ -406,11 +405,11 @@ h3. Workflow Overview
 
 ||Step||Location||Action||
 |1|Online WSUS Server|Run *Online Sync* with export path set|
-|2|Online WSUS Server|Run *Transfer > Export* to copy to USB/Apricorn|
+|2|Online WSUS Server|Run *Robocopy* (source: C:\\WSUS\\WsusContent, destination: USB)|
 |3|Physical Transfer|Transport USB drive to air-gapped network|
-|4|Air-Gapped WSUS Server|Run *Transfer > Import* from USB|
+|4|Air-Gapped WSUS Server|Run *Robocopy* (source: USB folder, destination: C:\\WSUS\\)|
 |5|Air-Gapped WSUS Server|Run *Restore Database*|
-|6|Air-Gapped WSUS Server|Run *Reset Content* (Diagnostics menu)|
+|6|Air-Gapped WSUS Server|Run *Reset Content* (DIAGNOSTICS nav section)|
 |7|Domain Controller|Run .\Set-WsusGroupPolicy.ps1 (one-time setup)|
 
 h3. Export Folder Structure
@@ -516,7 +515,7 @@ h2. Scheduled Tasks
 h3. Create via GUI
 
 # Click *Schedule Task* button
-# Select maintenance profile (Light / Standard / Deep)
+# Select maintenance profile (Full / Quick / Sync Only)
 # Set schedule (Daily / Weekly / Monthly) and time (default: Tuesday 23:00)
 # Enter credentials (default username: .\dod_admin)
 # Click *Create*
@@ -553,7 +552,7 @@ h2. Troubleshooting
 |Database near 10 GB|Run Deep Cleanup; SQL Express hard limit is 10 GB|
 |Sync stuck at 0%|Check DNS configuration - GUI runs a DNS preflight check before syncing|
 |SqlServer module missing|v4.0.4 auto-falls back to sqlcmd.exe; no manual install needed|
-|"Content is still downloading" after import|Click Reset Content (under Diagnostics) to run wsusutil reset|
+|"Content is still downloading" after import|Click Reset Content (in the DIAGNOSTICS section of the nav) to run wsusutil reset|
 |Script not found error|Verify Scripts/ and Modules/ folders are with WsusManager.exe|
 
 h3. Diagnostic Commands
