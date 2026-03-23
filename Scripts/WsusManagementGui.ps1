@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 4.0.3
+Version: 4.0.4
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -51,7 +51,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "4.0.3"
+$script:AppVersion = "4.0.4"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -436,7 +436,7 @@ $script:StdinFlushTimer = $null
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v4.0.3" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v4.0.4" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -664,7 +664,7 @@ $script:StdinFlushTimer = $null
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="WSUS Manager" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.3" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.4" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>

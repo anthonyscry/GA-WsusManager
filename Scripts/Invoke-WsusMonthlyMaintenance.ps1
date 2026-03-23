@@ -205,7 +205,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "4.0.3"
+$ScriptVersion = "4.0.4"
 
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
