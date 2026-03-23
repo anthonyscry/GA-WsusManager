@@ -9,7 +9,7 @@ Version: 4.0.4
     WSUS Manager GUI - Modern WPF interface for WSUS management
 .DESCRIPTION
     Portable GUI for managing WSUS servers with SQL Express.
-    Features: Dashboard, Health Score, Diagnostics, Online Sync, Import/Export, History, Notifications
+    Features: Dashboard, Health Score, Diagnostics, Online Sync, Robocopy, History, Notifications
 #>
 
 param(
@@ -1614,7 +1614,7 @@ FEATURES
 • Operation history log (last 100 operations, stored in %APPDATA%\WsusManager)
 • Toast/balloon notifications on operation completion
 • Live Terminal mode — open operations in external PowerShell window
-• Air-gapped network support (Robocopy export/import + DB restore workflow)
+• Air-gapped network support (Robocopy bi-directional copy + DB restore workflow)
 • Server Mode auto-detects Online vs Air-Gap based on internet connectivity
 • Startup splash screen with initialization progress
 
@@ -1744,8 +1744,9 @@ Robocopy
   Copy WSUS content between two folders using Robocopy.
   Specify a source folder and a destination folder, then click Start Transfer.
   Non-destructive — only copies files, never deletes. Creates a subfolder at
-  the destination named after the source folder. Use for both export (online →
-  USB) and import (USB → air-gap server).
+  the destination named after the source folder.
+  Use twice in the air-gap workflow: once on the online server (content → USB),
+  and once on the air-gap server (USB → C:\WSUS).
 
 DIAGNOSTICS
 Run Diagnostics
@@ -1753,9 +1754,9 @@ Run Diagnostics
   and SSL certificates. Automatically repairs issues found.
   Shortcut: Ctrl+D
 
-Reset Content  (under DIAGNOSTICS)
+Reset Content
   Runs wsusutil reset to re-verify all downloaded content files against the database.
-  Use this after importing a DB backup to fix "content still downloading" status
+  Use this after restoring a DB backup to fix "content still downloading" status
   on the air-gap server.
 "@
 
@@ -1773,7 +1774,7 @@ On the Online server:
   2. Click Robocopy — set source to C:\WSUS\WsusContent and destination to USB drive
      • Run a full copy for initial setup; repeat for routine transfers
 
-Transfer:
+Physical Transfer:
   3. Carry the USB drive to the air-gap network
   4. Scan USB per your site security policy before connecting
 
@@ -1791,7 +1792,7 @@ GPO DEPLOYMENT (one-time setup)
 TIPS
 • Format USB as NTFS — FAT32 has a 4 GB file size limit
 • Use USB 3.0 for faster transfers; content can exceed 50 GB
-• Keep both servers on the same update baseline for reliable differential exports
+• Keep both servers on the same update baseline for reliable transfers
 • Schedule Online Sync the night before your transfer window
 • SQL Express 10 GB limit: run Deep Cleanup on Online server regularly
 "@
@@ -1831,7 +1832,7 @@ CLIENTS NOT RECEIVING UPDATES
   • Check client logs: C:\Windows\WindowsUpdate.log
 
 CONTENT STILL DOWNLOADING AFTER AIR-GAP IMPORT
-  • Click Diagnostics > Reset Content — this runs wsusutil reset to re-verify all files
+  • Click Reset Content (in the DIAGNOSTICS section) — runs wsusutil reset to re-verify all files
   • Ensure the Import copied all files (check sizes on both servers)
   • Wait 5–10 minutes after Reset Content completes before checking client status
 
