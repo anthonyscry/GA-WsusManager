@@ -1097,6 +1097,7 @@ if ($allUpdates.Count -gt 0) {
             -not $_.IsSuperseded -and
             -not $_.IsExpired -and
             ($_.GetUpdateApprovals($targetGroup) | Where-Object { $_.Action -eq "Install" }).Count -eq 0 -and
+            $_.CreationDate -gt (Get-Date).AddMonths(-6) -and  # Only approve updates from last 6 months
             $_.Title -notlike "*Preview*" -and
             $_.Title -notlike "*Beta*" -and
             $_.Title -notmatch '(?i)\bARM64\b' -and
@@ -1132,7 +1133,7 @@ if ($allUpdates.Count -gt 0) {
         }
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
-        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, not superseded/expired"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6 months, not superseded/expired"
         Write-Log "  Excluded: Upgrades, ARM64, x86/32-bit, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
