@@ -3,8 +3,8 @@
 | **Document Information** | |
 |--------------------------|-------------------------|
 | **Author** | Tony Tran, ISSO, GA-ASI |
-| **Version** | 3.8.10 |
-| **Last Updated** | January 2026 |
+| **Version** | 4.0.4 |
+| **Last Updated** | March 2026 |
 | **Classification** | Internal Use Only |
 
 ---
@@ -216,13 +216,18 @@ Deep Cleanup performs comprehensive database maintenance:
 
 **Duration:** 30-90 minutes | **Note:** WSUS service stopped during operation
 
-### 10.3 Update Classifications
+### 10.3 Smart Update Policy
 
-Automatically approved:
-- Critical Updates, Security Updates, Update Rollups, Service Packs, Updates
-- **Definition Updates** (antivirus signatures, security definitions)
+**Default Products:** Windows 11, Windows Server 2019, Microsoft Edge, Microsoft Defender Antivirus, Microsoft Defender for Endpoint, Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
 
-Excluded: Upgrades (require manual review)
+**Default Classifications:** Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups
+
+**Auto-Decline Rules (removed from catalog):**
+- Expired, superseded, and updates older than 6 months (preserves already-approved)
+- ARM64, Legacy builds (21H2, 22H2, 23H2), Preview/Beta
+- Edge non-stable (Dev/Beta/Extended Stable), Office 365/2019/LTSC 2021, WSL
+
+**Not Approved (kept for manual review):** 25H2, x86/32-bit, Upgrades
 
 ---
 
@@ -394,15 +399,17 @@ wuauclt /detectnow /reportnow
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.8.10 | Jan 2026 | **Deep Cleanup fix**: Full 6-step database maintenance (supersession cleanup, indexes, shrink). Unified Diagnostics (combined Health Check + Repair). Documentation updates. |
-| 3.8.9 | Jan 2026 | Reset Content button for air-gap import fix, renamed Monthly Maintenance to Online Sync, export path options, Definition Updates auto-approved |
-| 3.8.8 | Jan 2026 | Fixed declined update purge error, database shrink retry logic, suppressed noisy spDeleteUpdate errors |
-| 3.8.7 | Jan 2026 | Live Terminal mode, import dialog improvements, Create GPO button, non-blocking network check |
-| 3.8.6 | Jan 2026 | Input fields disabled during operations, code cleanup |
-| 3.8.5 | Jan 2026 | Fixed output log refresh, non-interactive install, domain credentials for tasks |
-| 3.8.4 | Jan 2026 | Fixed export hanging, export mode options, GitHub Actions fixes |
-| 3.8.3 | Jan 2026 | Script validation, button state management, distribution package fixes |
-| 3.5.2 | Jan 2026 | Security hardening, service refresh fix, 323 unit tests |
+| 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved updates), sysadmin check via sqlcmd, explicit SQLPS module import |
+| 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight check, 180-minute sync timeout, default products and classifications, WID auto-migration, exact product name matching |
+| 4.0.2 | Mar 2026 | GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization, removed differential export, removed .GetNewClosure() |
+| 4.0.1 | Mar 2026 | GUI automation tests (49 tests), FlaUI test coverage (71 tests), install script sync, version alignment |
+| 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score (0-100), operation history, notifications, DB trending, splash screen, keyboard shortcuts, system tray, 490+ tests |
+| 3.9.0 | Mar 2026 | ARM64/25H2 auto-decline, PowerShell-only distribution restored |
+| 3.8.12 | Feb 2026 | TrustServerCertificate compatibility fix |
+| 3.8.10 | Feb 2026 | Deep Cleanup 6-step workflow, unified Diagnostics |
+| 3.8.9 | Feb 2026 | Online Sync rename, Definition Updates auto-approval, Reset Content button |
+| 3.8.8 | Jan 2026 | Declined update purge fix, shrink retry logic |
+| 3.8.7 | Jan 2026 | Live Terminal mode, Create GPO button, WSUS install detection |
 
 ---
 
