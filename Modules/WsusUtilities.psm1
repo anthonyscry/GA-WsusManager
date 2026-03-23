@@ -497,8 +497,42 @@ function Invoke-WsusSqlcmd {
         $sqlParams.TrustServerCertificate = $true
     }
 
-    # Execute the query
-    return Invoke-Sqlcmd @sqlParams
+    # Execute the query - use Invoke-Sqlcmd if available, fall back to sqlcmd.exe
+    if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) {
+        return Invoke-Sqlcmd @sqlParams
+    }
+
+    # Fallback: use sqlcmd.exe (ODBC) when SqlServer/SQLPS module not available
+    $sqlcmdExe = @(
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $sqlcmdExe) {
+        throw "Neither Invoke-Sqlcmd nor sqlcmd.exe found. Install SqlServer module or SQL Server command line tools."
+    }
+
+    $sqlcmdArgs = @("-S", $ServerInstance, "-d", $Database, "-Q", $Query, "-W", "-b")
+    if ($Credential) {
+        $sqlcmdArgs += @("-U", $Credential.UserName, "-P", $Credential.GetNetworkCredential().Password)
+    } else {
+        $sqlcmdArgs += "-E"
+    }
+    if ($Variable) {
+        $sqlcmdArgs += @("-v", $Variable)
+    }
+    if ($QueryTimeout -gt 0) {
+        $sqlcmdArgs += @("-t", $QueryTimeout.ToString())
+    }
+
+    $output = & $sqlcmdExe @sqlcmdArgs 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $errMsg = ($output | Where-Object { $_ -match 'Msg |Error' }) -join '; '
+        if (-not $errMsg) { $errMsg = $output -join '; ' }
+        throw "sqlcmd.exe failed (exit $LASTEXITCODE): $errMsg"
+    }
+    return $output
 }
 
 # ===========================
