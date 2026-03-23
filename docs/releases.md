@@ -8,7 +8,7 @@ Keep version aligned in both files:
 - `build.ps1` (`$Version = "x.y.z"`)
 - `Scripts/WsusManagementGui.ps1` (`$script:AppVersion = "x.y.z"`)
 
-Current release line: **3.8.x**
+Current release line: **4.0.x**
 
 ## Pre-Release Checklist
 
