@@ -31,7 +31,7 @@ The installer auto-detects WID and migrates to SQL Express if needed. No SqlServ
 ## 2. First Sync (Online Server)
 
 1. Click **Online Sync**
-2. Select **Full Sync** profile
+2. Select **Full** profile
 3. Optionally set an export path (USB drive or network share)
 4. Click **OK**
 
@@ -58,7 +58,7 @@ The sync runs a DNS preflight check, then:
 
 4. Plug in USB drive
 5. Click **Robocopy**, set source to the USB drive folder and destination to `C:\WSUS\`, then click **Start Transfer**
-6. Click **Restore Database** to import the SUSDB backup
+6. Click **Restore DB** to import the SUSDB backup
 7. Click **Reset Content** (in the DIAGNOSTICS section) to re-verify content files
 8. Run **Diagnostics** to confirm everything is healthy
 
@@ -94,8 +94,8 @@ gpresult /r | findstr WSUS
 
 1. Click **Schedule Task** in the GUI
 2. Select a maintenance profile:
-   - **Full Sync** (recommended monthly) -- full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export
-   - **Quick Sync** (weekly) -- sync and approve only, skips cleanup
+   - **Full** (recommended monthly) -- full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export
+   - **Quick** (weekly) -- sync and approve only, skips cleanup
    - **Sync Only** -- sync with Microsoft only, no approvals or cleanup
 3. Set day and time (default: Tuesday 23:00)
 4. Enter credentials and click **Create**

@@ -160,7 +160,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | C:\WSUS\Scripts\ | PowerShell scripts |
 | C:\WSUS\Modules\ | PowerShell modules |
 | %APPDATA%\WsusManager\settings.json | User settings |
-| %APPDATA%\WsusManager\history.json | Operation history |
+| %APPDATA%\WsusManager\history.json | Operation history (last 100 entries) |
 | %APPDATA%\WsusManager\trending.json | Database size trend data |
 
 ---
@@ -200,6 +200,26 @@ WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built wi
 | Clients | Number of registered WSUS clients |
 | Scheduled Task | Next scheduled sync task status |
 
+### Dashboard Configuration Card
+
+| Item | Description |
+|------|-------------|
+| Content Path | WSUS content folder path (default: `C:\WSUS`) |
+| SQL Instance | SQL Server instance name (default: `localhost\SQLEXPRESS`) |
+| Export Root | Configured export directory path |
+| Logs | Path to log folder with **Open** button |
+
+### Dashboard Quick Actions
+
+The dashboard includes a **Quick Actions** bar with shortcut buttons for the most common operations:
+
+| Button | Function |
+|--------|----------|
+| **Diagnostics** | Launch Diagnostics (health check + auto-repair) |
+| **Deep Cleanup** | Launch Deep Cleanup |
+| **Online Sync** | Launch Online Sync |
+| **Start Services** | Start SQL Server, IIS, and WSUS services |
+
 ### GUI Operations
 
 | Button | Function |
@@ -215,7 +235,9 @@ WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built wi
 | **Schedule Task** | Create scheduled online sync task |
 | **Create GPO** | Copy GPO files to C:\WSUS\WSUS GPO |
 | **History** | View last 50 operations with duration, result, and summary |
-| **Settings** | Configure server mode, paths, notifications, and preferences |
+| **Settings** | Configure content path, SQL instance, notifications, and preferences |
+| **Help** | Application documentation and reference |
+| **About** | Version information and credits |
 
 ### Smart Update Policy
 
@@ -255,9 +277,19 @@ The Online Sync workflow applies an automated decline and approval policy:
 | Mode | Description |
 |------|-------------|
 | **Online** | Full internet connectivity, direct sync with Microsoft Update |
-| **Air-Gap** | No internet, uses Export/Import for update transfer |
+| **Air-Gap** | No internet, uses Robocopy for content transfer via physical media |
 
 Toggle via **Settings** dialog or mode indicator in GUI.
+
+### Settings Dialog
+
+| Setting | Description |
+|---------|-------------|
+| WSUS Content Path | Path to WSUS content folder (default: `C:\WSUS`) |
+| SQL Instance | SQL Server instance (default: `localhost\SQLEXPRESS`) |
+| Notifications | Enable/disable desktop notifications on operation completion |
+| Beep | Enable/disable audio beep on operation completion |
+| Minimize to Tray | Minimize window to system tray instead of taskbar |
 
 ### Health Score
 
@@ -734,12 +766,12 @@ SESSION START: 2026-01-19 10:30:00
 | DB Size Trending | Linear regression over 30 days with days-until-full estimate |
 | Operation History | Last 50 operations with duration, result, and summary |
 | Desktop Notifications | Toast/balloon/log-only fallback on operation completion |
-| Operation Timeouts | Per-operation watchdog (Cleanup=60min, Sync=120min, Default=30min) |
+| Operation Timeouts | Per-operation watchdog (Cleanup=60min, Sync=180min, Default=30min) |
 | Smart Update Policy | Auto-decline expired/superseded/old/ARM64/legacy updates; auto-approve by classification |
 | sqlcmd.exe Fallback | All database operations work without SqlServer PowerShell module |
 | DNS Preflight | Sync checks DNS resolution before starting to prevent stuck syncs |
 | Automated Installation | One-click deployment of SQL Server Express 2022 + SSMS + WSUS (auto-removes WID) |
-| Air-Gap Support | Full content export/import for offline networks with USB package and manifest |
+| Air-Gap Support | Full content transfer via Robocopy for offline networks |
 | Database Management | Backup, restore, cleanup, and optimization |
 | Unified Diagnostics | Combined health check and auto-repair in a single operation |
 | Scheduled Sync | GUI and CLI support for Windows Task Scheduler |

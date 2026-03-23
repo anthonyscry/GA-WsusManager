@@ -21,6 +21,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - All database operations (index rebuild, shrink, backup, purge) now work without SqlServer module
 - Age decline preserves already-approved updates (was declining them on subsequent syncs)
 
+### Documentation
+- README.txt Air-Gap Support features rewritten to Robocopy terminology (removed implied Export/Import nav operation references)
+- Air-Gap Transfer Workflow step 8 corrected: Robocopy performs a file copy only and does not import WSUS metadata
+- "Reset Content (under Diagnostics)" corrected to "Reset Content (in the DIAGNOSTICS section)" in the Air-Gap Transfer Workflow
+
 ## [4.0.3] - 2026-03-22
 
 ### Added

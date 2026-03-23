@@ -126,13 +126,12 @@ WSUS Manager supports two server modes to show only relevant operations:
 
 ### Online Mode
 For WSUS servers connected to the internet:
-- **Visible**: Export to Media, Online Sync (sync with Microsoft Update)
-- **Hidden**: Import from Media
+- **Visible**: Online Sync (sync with Microsoft Update), Robocopy
 
 ### Air-Gap Mode
 For WSUS servers on disconnected networks:
-- **Visible**: Import from Media
-- **Hidden**: Export to Media, Online Sync
+- **Hidden**: Online Sync (not applicable without internet)
+- **Always available**: Robocopy (for file transfers in both directions)
 
 ### Changing Modes
 
@@ -211,50 +210,29 @@ Restores SUSDB from a backup file.
 - Update files in `C:\WSUS\WsusContent\`
 - SQL Server running
 
-### Export to Media
+### Robocopy
 
-Exports database and update files for transfer to air-gapped servers.
-
-**Steps:**
-1. Click **Export to Media**
-2. Choose export type:
-   - **Full Export**: Complete database and all files
-3. Select destination folder (USB drive)
-4. Wait for export to complete
-
-**Output:**
-```
-[Destination]\
-+-- SUSDB_backup_[date].bak     # Database backup
-+-- WsusContent\                 # Update files
-+-- export_manifest.json         # Export metadata
-```
-
-### Import from Media
-
-Imports updates from USB media to an air-gapped server.
+Copies update content between servers and USB media. Used for both directions: online server → USB (for transport to air-gap site), and USB → air-gap server (after physical transfer).
 
 **Steps:**
-1. Click **Import from Media**
-2. In the Transfer dialog:
-   - Select **Import** direction
-   - Browse to **Source (External Media)** folder on USB drive
-   - Browse to **Destination (WSUS Server)** folder (default: `C:\WSUS`)
+1. Click **Robocopy** in the Maintenance section
+2. In the Robocopy dialog:
+   - Browse to **Source** folder
+   - Browse to **Destination** folder
 3. Click **Start Transfer**
-4. Wait for import to complete
+4. Wait for transfer to complete
 
-> **Note:** The import runs fully non-interactive using the selected folders and will not prompt for additional input during the copy operation.
+> **Note:** Robocopy is non-destructive. It creates a subfolder at the destination and will not delete any files from the source.
 
-**Dialog Options:**
-| Field | Description | Default |
-|-------|-------------|---------|
-| Source (External Media) | USB drive or network path containing export | (Browse required) |
-| Destination (WSUS Server) | Local WSUS content directory | `C:\WSUS` |
+**Common Usage:**
+| Direction | Source | Destination |
+|-----------|--------|-------------|
+| Online → USB | `C:\WSUS\WsusContent` | USB drive folder (e.g., `E:\WSUS_Transfer`) |
+| USB → Air-Gap | USB drive folder | `C:\WSUS` |
 
 **Prerequisites:**
-- Valid export folder structure on source media
 - Sufficient disk space on destination
-- WSUS services running
+- Source folder accessible
 
 ### Online Sync
 
@@ -396,7 +374,7 @@ The **Start Services** button starts services in dependency order:
 
 ## Operation History
 
-Click the **History** button in the sidebar (or press **Ctrl+H**) to view a list of past operations.
+Click the **History** button in the bottom bar (or press **Ctrl+H**) to view a list of past operations.
 
 ### What It Shows
 
@@ -438,7 +416,7 @@ Notifications can be enabled or disabled in the **Settings** dialog:
 
 ## Settings
 
-Access settings via the **Settings** button in the sidebar.
+Access settings via the **Settings** button in the bottom bar.
 
 ### Configurable Options
 
@@ -525,8 +503,8 @@ The log panel also supports right-click context menu with **Copy All** and **Sav
 
 ### Air-Gap Transfers
 - Use USB 3.0 drives for speed
-- Verify exports before transport
-- Test imports on non-production first
+- Verify the Robocopy transfer completed before disconnecting the drive
+- Test the workflow on non-production servers first
 
 ---
 

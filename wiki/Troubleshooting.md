@@ -12,22 +12,22 @@ This guide helps you diagnose and resolve common issues with WSUS Manager and WS
 4. [Client Issues](#client-issues)
 5. [GUI Issues](#gui-issues)
 6. [Performance Issues](#performance-issues)
-7. [Export/Import Issues](#exportimport-issues)
+7. [Robocopy / Transfer Issues](#robocopy--transfer-issues)
 8. [Error Reference](#error-reference)
 
 ---
 
 ## Quick Diagnostics
 
-### Health Check
+### Run Diagnostics
 
-Always start with a Health Check:
+Always start with Diagnostics:
 
 1. Launch `WsusManager.exe`
-2. Click **Health Check**
+2. Click **Diagnostics** (in the DIAGNOSTICS section)
 3. Review the output
 
-The Health Check verifies:
+Diagnostics verifies:
 - Service status
 - Database connectivity
 - Firewall rules
@@ -41,7 +41,7 @@ The Health Check verifies:
 | Services | Red | Critical services stopped | Click "Start Services" |
 | Database | Red | > 9 GB or offline | Run Deep Cleanup |
 | Disk | Red | < 10 GB free | Free disk space |
-| Automation | Orange | No scheduled task | Run Monthly Maintenance |
+| Automation | Orange | No scheduled task | Click **Schedule Task** |
 
 ---
 
@@ -382,12 +382,12 @@ The Health Check verifies:
 2. Select the folder containing `SQLEXPRADV_x64_ENU.exe` and `SSMS-Setup-ENU.exe`
 3. If you canceled the prompt, re-run Install WSUS and select the correct folder
 
-### Maintenance Appears Idle
+### Online Sync Appears Idle
 
 **Symptoms:**
-- Monthly Maintenance runs but log output pauses for several minutes
+- Online Sync runs but log output pauses for several minutes
 
-**Cause:** Some phases (sync, cleanup, export) can be long-running with minimal output.
+**Cause:** Some phases (sync, cleanup) can be long-running with minimal output.
 
 **Solution:** Allow the process to continue; the GUI refreshes status roughly every 30 seconds.
 
@@ -440,7 +440,7 @@ The Health Check verifies:
    ```
 
 3. **Add performance indexes**
-   - Run Monthly Maintenance (adds indexes automatically)
+   - Run **Online Sync** (adds performance indexes automatically)
 
 ### Slow Sync
 
@@ -471,7 +471,7 @@ The Health Check verifies:
 **Solutions:**
 
 1. **Run in batches**
-   - Monthly Maintenance processes in batches
+   - **Deep Cleanup** processes in batches
    - Let it complete fully
 
 2. **Increase SQL timeout**
@@ -482,72 +482,52 @@ The Health Check verifies:
 
 ---
 
-## Export/Import Issues
+## Robocopy / Transfer Issues
 
-### Export Hangs (No Progress)
+### Transfer Fails to Start
 
 **Symptoms:**
-- Export operation starts but hangs with no output
-- Script waiting for input
-- GUI appears frozen
-
-**Cause:** Old CLI script version prompting for interactive input
+- Robocopy dialog opens but nothing happens after clicking Start Transfer
+- Error message in log panel
 
 **Solutions:**
 
-1. **Update to v3.8.4+**
-   - Download latest release from GitHub
-   - Extract and replace all files
+1. **Verify source path exists**
+   - Ensure the source folder is accessible and contains update files
 
-2. **Verify Scripts folder**
-   - Ensure `Scripts\Invoke-WsusManagement.ps1` is from v3.8.4+
-   - Check file date is recent
+2. **Check destination path**
+   - Destination drive/share must be writable
+   - Ensure sufficient disk space at destination (full content can be 50+ GB)
 
-3. **Manual CLI test**
-   ```powershell
-   # Test non-interactive mode directly
-   .\Scripts\Invoke-WsusManagement.ps1 -Export -DestinationPath "D:\Export"
-   ```
+3. **Run as Administrator**
+   - Robocopy requires elevated privileges for some network paths
 
-### Export Fails
+### Transfer Stops Mid-Way
 
 **Symptoms:**
-- Export stops mid-way
-- Incomplete files on USB
+- Transfer starts but stops before completion
+- Incomplete files at destination
 
 **Solutions:**
 
-1. **Check disk space**
-   - USB needs space for all content
-   - Full export can be 50+ GB
+1. **Check disk space at destination**
+   - Full WSUS content can be 50+ GB
+   - FAT32 drives have a 4 GB per-file limit — format destination as NTFS
 
-2. **Use NTFS format**
-   - FAT32 has 4 GB file limit
-   - Format USB as NTFS
+2. **Check source availability**
+   - Source path must remain accessible for the entire transfer
+   - Network shares may disconnect; prefer local paths or stable UNC paths
 
-3. **Check for file locks**
-   - Close WSUS console during export
+3. **Re-run transfer**
+   - Robocopy is resume-friendly — re-running skips already-transferred files
 
-### Import Fails
+### Wrong Files Transferred
 
 **Symptoms:**
-- Import completes but updates missing
-- Database restore fails
+- Files appear at wrong location on destination
+- Destination folder structure unexpected
 
-**Solutions:**
-
-1. **Verify export integrity**
-   - Check manifest file exists
-   - Verify backup file not corrupted
-
-2. **Check SQL service**
-   - Must be running before restore
-
-3. **Sufficient disk space**
-   - Need space for database + content
-
-4. **Run Health Check after import**
-   - Identify any remaining issues
+**Note:** Robocopy creates a subfolder at the destination (does not copy files into the root of the destination). This is by design to keep transfer sets organized.
 
 ### Content Shows "Downloading" After Import (Air-Gap)
 
@@ -562,7 +542,7 @@ When you restore a database backup, WSUS doesn't know that the content files are
 **Solutions:**
 
 1. **Use Reset Content button** (Recommended)
-   - In WSUS Manager, click **Reset Content** (in Diagnostics section)
+   - In WSUS Manager, click the **Reset Content** button in the DIAGNOSTICS sidebar section (it is a standalone button, not a sub-option of Run Diagnostics)
    - This runs `wsusutil reset` which:
      - Stops WSUS service
      - Re-verifies all content files against database
@@ -638,7 +618,7 @@ Event ID 9002: Transaction log full
 
 ### Self-Help Resources
 
-1. Run **Health Check** first
+1. Run **Diagnostics** first
 2. Review logs in `C:\WSUS\Logs\`
 3. Check Windows Event Viewer
 4. Search this wiki

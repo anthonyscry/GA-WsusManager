@@ -128,14 +128,18 @@ On first launch, go to **Settings** and configure:
 
 ### What Gets Installed
 
-The installer performs these operations:
-1. Installs SQL Server Express 2022
-2. Installs SQL Server Management Studio
-3. Installs WSUS Windows feature
-4. Configures WSUS to use SQL Express
-5. Creates SUSDB database
-6. Sets appropriate permissions
-7. Configures firewall rules
+The installer performs these operations in order:
+1. Auto-detects and removes Windows Internal Database (WID) if present
+2. Installs SQL Server Express 2022
+3. Cleans up any leftover WID data files to prevent conflicts
+4. Installs SQL Server Management Studio (SSMS)
+5. Installs the WSUS Windows feature with SQL Express backend (`UpdateServices-DB`)
+6. Creates and configures the SUSDB database
+7. Sets language to English only via the WSUS API
+8. Configures default update classifications via the WSUS API
+9. Suppresses the WSUS initial configuration wizard (registry + per-user + API)
+10. Sets appropriate directory permissions
+11. Configures firewall rules (ports 8530 HTTP and 8531 HTTPS)
 
 ### Installation Log
 
@@ -187,8 +191,8 @@ The SUSDB database files are stored in:
 
 WSUS Manager automatically configures firewall rules during installation. To verify or repair:
 
-1. Run **Health Check**
-2. If firewall rules are missing, run **Health + Repair**
+1. Run **Diagnostics** (in the DIAGNOSTICS section)
+2. If firewall rules are missing, the Diagnostics repair step will automatically recreate them
 
 ### Manual Configuration
 
@@ -267,12 +271,12 @@ Get-Service MSSQL`$SQLEXPRESS, W3SVC, WSUSService | Format-Table Name, Status
 sqlcmd -S localhost\SQLEXPRESS -d SUSDB -Q "SELECT name, size*8/1024 AS SizeMB FROM sys.database_files"
 ```
 
-### Run Health Check
+### Run Diagnostics
 
-Use WSUS Manager's Health Check to verify all components:
+Use WSUS Manager's Diagnostics to verify all components:
 
 1. Launch `WsusManager.exe`
-2. Click **Health Check**
+2. Click **Diagnostics** (in the DIAGNOSTICS section of the sidebar)
 3. Review the output for any issues
 
 ---

@@ -9,9 +9,9 @@ This guide provides detailed instructions for managing Windows updates on air-ga
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Initial Setup](#initial-setup)
-4. [Export Process](#export-process)
+4. [Copy to USB (Online Server)](#copy-to-usb-online-server)
 5. [Physical Transfer](#physical-transfer)
-6. [Import Process](#import-process)
+6. [Copy from USB (Air-Gap Server)](#copy-from-usb-air-gap-server)
 7. [Scheduling](#scheduling)
 8. [Best Practices](#best-practices)
 
@@ -37,9 +37,11 @@ WSUS normally downloads updates directly from Microsoft. On an air-gapped networ
 ### WSUS Manager Solution
 
 WSUS Manager automates this workflow with:
-- **Export to Media** - Creates portable update package
-- **Import from Media** - Applies updates to air-gapped server
-- **Server Mode Toggle** - Shows only relevant operations
+- **Online Sync** - Syncs and approves updates on the internet-connected server
+- **Robocopy** - Copies content to/from USB media (non-destructive, both directions)
+- **Restore DB** - Restores the SUSDB database backup on the air-gap server
+- **Reset Content** - Re-verifies content files against the database after import
+- **Server Mode Toggle** - Shows only relevant operations per server role
 
 ---
 
@@ -52,9 +54,9 @@ WSUS Manager automates this workflow with:
 │   ONLINE WSUS       │                    │   AIR-GAP WSUS      │
 │   (Internet)        │                    │   (Disconnected)    │
 ├─────────────────────┤                    ├─────────────────────┤
-│ - Syncs with MSFT   │    USB Drive       │ - Receives imports  │
+│ - Syncs with MSFT   │    USB Drive       │ - Receives Robocopy │
 │ - Approves updates  │ =================> │ - Serves clients    │
-│ - Exports to media  │   (Sneakernet)     │ - Local approvals   │
+│ - Robocopy to USB   │   (Sneakernet)     │ - Restores DB       │
 └─────────────────────┘                    └─────────────────────┘
 ```
 
@@ -62,8 +64,8 @@ WSUS Manager automates this workflow with:
 
 | Server | Network | Mode | Primary Functions |
 |--------|---------|------|-------------------|
-| Online WSUS | Internet-connected | Online | Sync, approve, export |
-| Air-Gap WSUS | Disconnected | Air-Gap | Import, serve clients |
+| Online WSUS | Internet-connected | Online | Sync, approve, Robocopy to USB |
+| Air-Gap WSUS | Disconnected | Air-Gap | Robocopy from USB, restore DB, serve clients |
 
 ---
 
@@ -95,35 +97,27 @@ Both servers should have identical:
 
 ---
 
-## Export Process
+## Copy to USB (Online Server)
 
-### Full Export
+### Online Sync + Robocopy
 
-Use for initial transfer or complete refresh.
+Sync updates from Microsoft and copy them to USB media for transport.
 
 **When to use:**
 - First-time setup of air-gap server
-- After major changes to online server
-- To reset air-gap server state
+- Monthly update cycle
+- After major configuration changes on the online server
 
 **Steps:**
 
-1. On the **Online** server, run **Monthly Maintenance**
-2. Click **Export to Media**
-3. Select **Full Export**
-4. Choose destination (USB drive letter)
-5. Wait for export to complete
-
-**Export Contents:**
-```
-E:\WSUS_Export_2026-01-11\
-├── SUSDB_backup_20260111.bak    # Complete database backup
-├── WsusContent\                  # All approved update files
-│   ├── 00\                       # Content organized by hash
-│   ├── 01\
-│   └── ...
-└── export_manifest.json          # Export metadata
-```
+1. On the **Online** server, run **Online Sync** (Full Sync profile recommended)
+   - Syncs with Microsoft Update, declines/approves updates, runs cleanup, and creates a database backup
+2. Click **Robocopy** in the Maintenance section
+3. In the Robocopy dialog:
+   - Set **Source** to `C:\WSUS\WsusContent`
+   - Set **Destination** to your USB drive folder (e.g., `E:\WSUS_Transfer`)
+4. Click **Start Transfer**
+5. Also copy the database backup (`.bak` file from `C:\WSUS\`) to the USB drive
 
 **Time estimate:** 30 minutes to several hours (depending on content size)
 
@@ -146,7 +140,7 @@ E:\WSUS_Export_2026-01-11\
 
 1. **Scan the drive** before connecting to air-gapped network
 2. **Use dedicated drives** - don't mix with other data
-3. **Enable write-protection** after export if possible
+3. **Enable write-protection** after transfer if possible
 4. **Log transfers** per security policy
 5. **Wipe after use** if required by policy
 
@@ -154,50 +148,50 @@ E:\WSUS_Export_2026-01-11\
 
 Before disconnecting from online server:
 ```powershell
-# Verify export integrity
-Get-FileHash -Path "E:\WSUS_Export_*\*.bak" -Algorithm SHA256
+# Verify Robocopy transfer integrity
+Get-FileHash -Path "E:\WSUS_Transfer\*.bak" -Algorithm SHA256
 ```
 
 Record the hash for verification on the air-gap side.
 
 ---
 
-## Import Process
+## Copy from USB (Air-Gap Server)
 
-### Pre-Import Checklist
+### Pre-Transfer Checklist
 
 - [ ] All WSUS services running on air-gap server
 - [ ] Sufficient disk space (check Dashboard)
-- [ ] Database in healthy state
 - [ ] USB drive scanned per security policy
 
-### Import Steps
+### Robocopy Steps
 
-1. Connect USB drive to **Air-Gap** server
+1. Connect USB drive to the **Air-Gap** server
 2. Launch WSUS Manager
-3. Click **Import from Media**
-4. In the Transfer dialog:
-   - Select **Import** direction
-   - **Source (External Media)**: Browse to the export folder on USB (e.g., `E:\WSUS_Export_2026-01-11`)
-   - **Destination (WSUS Server)**: Verify destination folder (default: `C:\WSUS`)
+3. Click **Robocopy** in the Maintenance section
+4. In the Robocopy dialog:
+   - Set **Source** to the USB drive folder containing update content (e.g., `E:\WSUS_Transfer`)
+   - Set **Destination** to `C:\WSUS`
 5. Click **Start Transfer**
-6. Wait for import to complete
+6. Wait for transfer to complete
 
-> **Note:** The import runs fully non-interactive using the selected folders. No additional prompts will appear during the copy operation.
+> **Note:** Robocopy is non-destructive and will not delete existing content on the destination.
 
-### Post-Import Steps
+### Post-Transfer Steps
 
-#### Post-Import Steps
-
-1. Click **Restore Database**
-2. Confirm the warning
-3. Wait for restore to complete
-4. Restart WSUS services
+1. Copy the `.bak` database backup from the USB drive to `C:\WSUS\`
+2. Click **Restore DB** (in the SETUP section) and confirm the warning
+3. Wait for database restore to complete
+4. Click **Reset Content** (in the DIAGNOSTICS section)
+   - Runs `wsusutil reset` to re-verify all content files against the restored database
+   - Fixes "content is still downloading" status after a database import
+5. Wait for Reset Content to complete (may take several minutes depending on content size)
+6. Clients will check in and receive updates at their next update cycle
 
 ### Verification
 
 After import:
-1. Run **Health Check**
+1. Click **Run Diagnostics** to verify all services and configuration
 2. Open WSUS console
 3. Verify new updates appear
 4. Check update approvals
@@ -210,15 +204,15 @@ After import:
 
 | Task | Frequency | Server | Day |
 |------|-----------|--------|-----|
-| Sync with Microsoft | Weekly | Online | Sunday |
-| Monthly Maintenance | Monthly | Online | 1st of month |
-| Export to Media | Monthly | Online | 2nd of month |
-| Import from Media | Monthly | Air-Gap | 3rd-5th of month |
+| Online Sync (Quick) | Weekly | Online | Sunday |
+| Online Sync (Full) | Monthly | Online | 1st of month |
+| Robocopy to USB | Monthly | Online | After Full Sync |
+| Robocopy from USB + Restore DB | Monthly | Air-Gap | 3rd–5th of month |
 | Client update window | Monthly | Both | 2nd week |
 
 ### Automation
 
-On the **Online** server, schedule Monthly Maintenance:
+On the **Online** server, schedule Online Sync:
 
 1. Click **Schedule Task** in the Maintenance section
 2. Choose Weekly/Monthly/Daily and set the start time (recommended: Saturday at 02:00)
@@ -243,17 +237,17 @@ Register-ScheduledTask -TaskName "WSUS Monthly Maintenance" -Action $action -Tri
 3. **Monitor capacity** - Track database and disk growth
 4. **Maintain parity** - Keep servers in sync
 
-### Export Best Practices
+### Copy to USB Best Practices
 
-- Run **Monthly Maintenance** before every export
-- Verify export before disconnecting drive
+- Run **Online Sync** (Full Sync) before every Robocopy transfer
+- Verify the transfer completed before disconnecting the drive
 
-### Import Best Practices
+### Copy from USB Best Practices
 
 - Always scan USB per security policy
-- Check disk space before import
-- Run **Health Check** after import
-- Verify update counts match export
+- Check disk space before starting the transfer
+- Run **Diagnostics** after import to verify server health
+- Run **Reset Content** after Restore DB to fix content verification status
 
 ### Disaster Recovery
 
@@ -266,9 +260,10 @@ Maintain backups on both servers:
 
 | Issue | Solution |
 |-------|----------|
-| Import fails | Check disk space, run Health Check |
-| Updates missing | Verify export included all files |
-| Database mismatch | Perform full export/restore |
+| Robocopy fails | Check disk space, verify source folder is accessible |
+| Updates missing after import | Verify Robocopy completed; check source had all content |
+| "Content still downloading" | Run **Reset Content** (DIAGNOSTICS section) after Restore DB |
+| Database mismatch | Run Full Sync on online server, redo Robocopy and Restore DB |
 | Slow transfer | Use faster USB drive, USB 3.0 port |
 
 ---
@@ -279,32 +274,39 @@ Maintain backups on both servers:
 ┌──────────────────────────────────────────────────────────────────┐
 │                         ONLINE SERVER                             │
 ├──────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐  │
-│  │   Sync      │───>│   Approve   │───>│ Monthly Maintenance │  │
-│  │   Updates   │    │   Updates   │    │                     │  │
-│  └─────────────┘    └─────────────┘    └──────────┬──────────┘  │
-│                                                    │             │
-│                                       ┌────────────▼───────────┐ │
-│                                       │   Export to Media      │ │
-│                                       └────────────┬───────────┘ │
-└────────────────────────────────────────────────────┼────────────┘
-                                                     │
-                                          ┌──────────▼──────────┐
-                                          │     USB Drive       │
-                                          │   (Sneakernet)      │
-                                          └──────────┬──────────┘
-                                                     │
-┌────────────────────────────────────────────────────┼─────────────┐
-│                         AIR-GAP SERVER             │              │
-├────────────────────────────────────────────────────┼─────────────┤
-│                                        ┌───────────▼───────────┐ │
-│                                        │  Import from Media    │ │
-│                                        └───────────┬───────────┘ │
-│                                                    │              │
-│  ┌─────────────────────┐               ┌───────────▼───────────┐ │
-│  │  Serve Clients      │<──────────────│  Restore Database     │ │
-│  │  (Updates Ready)    │               │  (If Full Export)     │ │
-│  └─────────────────────┘               └───────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  Online Sync (Full Sync)                                    │ │
+│  │  Sync → Approve → Cleanup → Backup DB                      │ │
+│  └──────────────────────────────┬──────────────────────────────┘ │
+│                                 │                                 │
+│                    ┌────────────▼───────────┐                    │
+│                    │  Robocopy              │                    │
+│                    │  C:\WSUS\WsusContent   │                    │
+│                    │  → USB Drive           │                    │
+│                    └────────────┬───────────┘                    │
+└─────────────────────────────────┼────────────────────────────────┘
+                                  │
+                       ┌──────────▼──────────┐
+                       │     USB Drive       │
+                       │   (Sneakernet)      │
+                       └──────────┬──────────┘
+                                  │
+┌─────────────────────────────────┼────────────────────────────────┐
+│                         AIR-GAP SERVER                            │
+├─────────────────────────────────┼────────────────────────────────┤
+│                    ┌────────────▼───────────┐                    │
+│                    │  Robocopy              │                    │
+│                    │  USB Drive → C:\WSUS   │                    │
+│                    └────────────┬───────────┘                    │
+│                                 │                                 │
+│                    ┌────────────▼───────────┐                    │
+│                    │  Restore DB            │                    │
+│                    │  + Reset Content       │                    │
+│                    └────────────┬───────────┘                    │
+│                                 │                                 │
+│  ┌──────────────────────────────▼──────────────────────────────┐ │
+│  │  Clients Check In (Updates Ready)                           │ │
+│  └─────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
