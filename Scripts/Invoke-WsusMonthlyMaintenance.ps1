@@ -975,10 +975,18 @@ $approvedCount = 0
 if ($allUpdates.Count -gt 0) {
     Write-Log "Declining updates based on Microsoft RELEASE DATE and policy filters..."
     
+    # Get target group early so we can check approvals in the age decline filter
+    $targetGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "All Computers" }
+
     $expired = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsExpired })
     $superseded = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsSuperseded })
     $cutoff = (Get-Date).AddMonths(-6)
-    $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and -not $_.IsSuperseded -and -not $_.IsExpired -and $_.CreationDate -lt $cutoff })
+    # Age decline: only decline old updates that are NOT already approved for install
+    $oldUpdates = @($allUpdates | Where-Object {
+        -not $_.IsDeclined -and -not $_.IsSuperseded -and -not $_.IsExpired -and
+        $_.CreationDate -lt $cutoff -and
+        (-not $targetGroup -or ($_.GetUpdateApprovals($targetGroup) | Where-Object { $_.Action -eq "Install" }).Count -eq 0)
+    })
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     # 25H2: kept but not auto-approved (no decline, no approval - available for manual review)
     $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
@@ -1093,8 +1101,6 @@ if ($allUpdates.Count -gt 0) {
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
-    $targetGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "All Computers" }
-
     if ($targetGroup) {
         # Conservative approval criteria based on enabled classifications
         $pendingUpdates = @($allUpdates | Where-Object { 
@@ -1682,7 +1688,7 @@ Write-Host ""
 Write-Host "  Duration        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$totalDuration minutes" -ForegroundColor White
 Write-Host "  Declined        " -NoNewline -ForegroundColor DarkGray
-Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  ARM64: $($MaintenanceResults.DeclinedArm64)" -ForegroundColor White
+Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old(>6mo): $($MaintenanceResults.DeclinedOld)  ARM64: $($MaintenanceResults.DeclinedArm64)" -ForegroundColor White
 Write-Host "  Approved        " -NoNewline -ForegroundColor DarkGray
 Write-Host "$($MaintenanceResults.Approved) updates" -ForegroundColor White
 
