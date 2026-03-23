@@ -1704,7 +1704,7 @@ Install WSUS
   Fresh installation of WSUS with SQL Server Express 2022.
   Auto-detects and removes Windows Internal Database (WID) if present.
   Configures classifications, language (English only), and WSUS wizard suppression.
-  Requires SQL/SSMS installers in C:\WSUS\SQLDB\ or prompts to locate them.
+  Requires SQL Express installer in C:\WSUS\SQLDB\ or prompts to locate it. SSMS is optional.
 
 Fix SQL Login
   Adds the current Windows user as a sysadmin on the local SQL Express instance.
@@ -4012,7 +4012,7 @@ if ($controls.InternetStatusBorder) {
 
 $controls.BtnBrowseInstallPath.Add_Click({
     $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-    $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
+    $fbd.Description = "Select folder containing SQL Server Express installer (SQLEXPRADV_x64_ENU.exe). SSMS is optional."
     $fbd.SelectedPath = $script:InstallPath
     try {
         if ($fbd.ShowDialog() -eq "OK") {
@@ -4072,7 +4072,7 @@ $controls.BtnFixSqlLogin.Add_Click({
             Show-WsusPopup -Message "$currentUser has been added as sysadmin on $sqlInstance.`n`nYou can now connect to SQL Server." -Title "SQL Login Fixed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
         } else {
             Write-LogOutput "[Fix SQL Login] WARNING: Verification returned $check" -Level Warning
-            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running SSMS and connecting manually." -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running: sqlcmd -S localhost\SQLEXPRESS -E -Q `"SELECT IS_SRVROLEMEMBER('sysadmin')`"" -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
         }
     } catch {
         Write-LogOutput "[Fix SQL Login] ERROR: $($_.Exception.Message)" -Level Error

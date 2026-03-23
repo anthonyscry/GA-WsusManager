@@ -43,7 +43,7 @@ Download these files and save to `C:\WSUS\SQLDB\` (or select their folder when p
 | File | Download Link |
 |------|---------------|
 | SQL Server Express 2022 | [Microsoft Download Center](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
-| SQL Server Management Studio | [SSMS Download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) |
+| SQL Server Management Studio (optional) | [SSMS Download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) |
 
 > **Important**: Download `SQLEXPRADV_x64_ENU.exe` (SQL Express with Advanced Services)
 
@@ -83,7 +83,7 @@ The WSUS Manager expects the following directory structure:
 
 ```
 C:\WSUS\                    # Main content directory
-├── SQLDB\                  # SQL/SSMS installers
+├── SQLDB\                  # SQL Express installer (SSMS optional)
 ├── Logs\                   # Application logs
 └── WsusContent\            # Update files (auto-created)
 ```
@@ -98,7 +98,7 @@ New-Item -ItemType Directory -Path "C:\WSUS\SQLDB" -Force
 
 Copy the downloaded SQL Server installers to `C:\WSUS\SQLDB\`:
 - `SQLEXPRADV_x64_ENU.exe`
-- `SSMS-Setup-ENU.exe`
+- `SSMS-Setup-ENU.exe` (optional -- skipped if not present)
 
 ### 3. Run as Administrator
 
@@ -132,7 +132,7 @@ The installer performs these operations in order:
 1. Auto-detects and removes Windows Internal Database (WID) if present
 2. Installs SQL Server Express 2022
 3. Cleans up any leftover WID data files to prevent conflicts
-4. Installs SQL Server Management Studio (SSMS)
+4. Installs SQL Server Management Studio (SSMS) if installer is present
 5. Installs the WSUS Windows feature with SQL Express backend (`UpdateServices-DB`)
 6. Creates and configures the SUSDB database
 7. Sets language to English only via the WSUS API
@@ -151,7 +151,30 @@ Logs are saved to `C:\WSUS\Logs\` with timestamps.
 
 ### Grant Sysadmin Access
 
-Your account needs sysadmin privileges to manage SUSDB:
+Your account needs sysadmin privileges to manage SUSDB. Choose one of these methods:
+
+**Option A: Use WSUS Manager GUI (Recommended)**
+
+1. Launch `WsusManager.exe` as Administrator
+2. Click **Fix SQL Login** in the Setup section
+3. The app automatically adds the current user as sysadmin
+
+**Option B: Use sqlcmd (No SSMS Required)**
+
+Open an elevated PowerShell prompt:
+
+```powershell
+# Replace DOMAIN\Username with your account
+sqlcmd -S localhost\SQLEXPRESS -E -Q "
+  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\Username')
+    CREATE LOGIN [DOMAIN\Username] FROM WINDOWS;
+  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\Username', @rolename = N'sysadmin';
+"
+```
+
+> `sqlcmd.exe` ships with SQL Server Express -- no additional downloads needed.
+
+**Option C: Use SSMS (Optional)**
 
 1. Open **SQL Server Management Studio**
 2. Connect to `localhost\SQLEXPRESS`
@@ -295,5 +318,5 @@ Use WSUS Manager's Diagnostics to verify all components:
 |----------|-----|
 | WSUS Deployment Guide | https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/deploy-windows-server-update-services |
 | SQL Express Download | https://www.microsoft.com/en-us/download/details.aspx?id=104781 |
-| SSMS Download | https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms |
+| SSMS Download (optional) | https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms |
 | WSUS Best Practices | https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment |

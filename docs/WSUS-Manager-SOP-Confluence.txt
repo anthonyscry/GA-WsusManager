@@ -138,7 +138,7 @@ h3. SQL & WSUS Installers
 
 ||File||Description||
 |SQLEXPRADV_x64_ENU.exe|SQL Server Express 2022 with Advanced Services|
-|SSMS-Setup-ENU.exe|SQL Server Management Studio|
+|SSMS-Setup-ENU.exe|SQL Server Management Studio (optional)|
 
 h3. Distribution Package
 
@@ -182,7 +182,7 @@ h3. Required Installers
 
 ||File||Location||
 |SQLEXPRADV_x64_ENU.exe|C:\WSUS\SQLDB\|
-|SSMS-Setup-ENU.exe|C:\WSUS\SQLDB\|
+|SSMS-Setup-ENU.exe (optional)|C:\WSUS\SQLDB\|
 
 h3. Required Privileges
 
@@ -194,7 +194,40 @@ h3. Granting SQL Server Sysadmin Privileges
 
 {note}Required for database backup/restore operations. Perform this on both the online and air-gapped WSUS servers.{note}
 
-*Step 1: Connect to SQL Server*
+h4. Option A: Use WSUS Manager GUI (Recommended)
+
+# Launch {{WsusManager.exe}} as Administrator
+# Click *Fix SQL Login* in the Setup section
+# The app automatically adds the current user as sysadmin
+
+h4. Option B: Use PowerShell / sqlcmd (No SSMS Required)
+
+Open an *elevated PowerShell* prompt and run:
+
+{code:language=powershell}
+# Add a Windows login with sysadmin role (replace DOMAIN\Username with your account)
+sqlcmd -S localhost\SQLEXPRESS -E -Q "
+  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\Username')
+    CREATE LOGIN [DOMAIN\Username] FROM WINDOWS;
+  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\Username', @rolename = N'sysadmin';
+"
+{code}
+
+To add a domain group instead of an individual user:
+
+{code:language=powershell}
+sqlcmd -S localhost\SQLEXPRESS -E -Q "
+  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\System Administrators')
+    CREATE LOGIN [DOMAIN\System Administrators] FROM WINDOWS;
+  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\System Administrators', @rolename = N'sysadmin';
+"
+{code}
+
+{note}sqlcmd.exe is installed automatically with SQL Server Express. No additional downloads needed.{note}
+
+h4. Option C: Use SSMS (Optional)
+
+If SSMS is installed, you can also grant sysadmin via the GUI:
 
 # Launch SQL Server Management Studio (SSMS)
 # Server type: Database Engine
@@ -203,9 +236,6 @@ h3. Granting SQL Server Sysadmin Privileges
 # Login: sa (or default admin account)
 # Check *Trust Server Certificate*
 # Click Connect
-
-*Step 2: Add Login with Sysadmin Role*
-
 # In Object Explorer, expand Security > Logins
 # Right-click Logins > New Login...
 # Click Search... to locate the account
@@ -214,7 +244,7 @@ h3. Granting SQL Server Sysadmin Privileges
 # Go to Server Roles page
 # Check sysadmin > OK
 
-*Step 3: Refresh Permissions*
+h4. Refresh Permissions
 
 # Log out of the WSUS server
 # Log back in to refresh group membership
@@ -245,7 +275,7 @@ h3. Deployment Layout
 
 ||Path||Purpose||
 |C:\WSUS\|Content directory (MUST be this exact path)|
-|C:\WSUS\SQLDB\|SQL + SSMS installers|
+|C:\WSUS\SQLDB\|SQL Express installer (SSMS optional)|
 |C:\WSUS\Logs\|Log files|
 |C:\WSUS\WsusManager.exe|GUI application|
 |C:\WSUS\Scripts\|PowerShell scripts|
@@ -644,7 +674,7 @@ h2. Features Summary
 |Smart Update Policy|Auto-decline expired/superseded/old/ARM64/legacy; auto-approve by classification|
 |sqlcmd.exe Fallback|All DB operations work without SqlServer PowerShell module installed|
 |DNS Preflight|Sync checks DNS resolution before starting - prevents hours-long stuck syncs|
-|Automated Installation|One-click SQL Express 2022 + SSMS + WSUS (auto-removes WID if present)|
+|Automated Installation|One-click SQL Express 2022 + WSUS (auto-removes WID if present); SSMS installed only if present|
 |Air-Gap Support|Full content transfer via Robocopy for offline networks|
 |Database Management|Backup, restore, 6-step deep cleanup, index optimization|
 |Unified Diagnostics|Combined health check + auto-repair in a single operation|

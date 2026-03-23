@@ -155,7 +155,7 @@ Installs WSUS with SQL Server Express from scratch.
 3. Click **Install**
 4. Wait 15-30 minutes for completion
 
-> **Note:** If the default installer folder is missing SQL/SSMS files, the installer will prompt you to select the correct folder.
+> **Note:** If the default installer folder is missing the SQL Express installer, the app will prompt you to select the correct folder. SSMS is optional and will be skipped if not present.
 
 **Prerequisites:**
 - SQL installers in selected folder

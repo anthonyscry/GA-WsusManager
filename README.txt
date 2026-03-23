@@ -147,7 +147,7 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 2. Copy the application. Extract the WsusManager-vX.X.X.zip archive to a folder such as C:\WsusManager\.
 
-3. Place the SQL installer. If the server has no internet access, download SQL Server Express 2022 and SQL Server Management Studio (SSMS) on a connected machine and copy the installers to C:\WSUS\SQLDB\ on the target server. The install script will look for them there.
+3. Place the SQL installer. If the server has no internet access, download SQL Server Express 2022 on a connected machine and copy the installer to C:\WSUS\SQLDB\ on the target server. The install script will look for it there. SQL Server Management Studio (SSMS) is optional -- if the installer is present it will be installed, otherwise it is skipped.
 
 4. Launch WSUS Manager. Right-click WsusManager.exe and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
 
@@ -433,7 +433,7 @@ Standard Paths
   SQL Server instance              localhost\SQLEXPRESS
   WSUS database                    SUSDB
   Log files                        C:\WSUS\Logs\
-  SQL/SSMS installers (for offline install)   C:\WSUS\SQLDB\
+  SQL Express installer (SSMS optional)       C:\WSUS\SQLDB\
   WSUS HTTP port                   8530
   WSUS HTTPS port                  8531
   Application settings             %APPDATA%\WsusManager\settings.json
