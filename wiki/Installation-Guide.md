@@ -51,15 +51,11 @@ Download these files and save to `C:\WSUS\SQLDB\` (or select their folder when p
 
 ## Download Options
 
-### Option 1: Portable Executable (Recommended)
+### Option 1: Distribution Package (Recommended)
 
-Download `WsusManager.exe` from the [Releases](../../releases) page.
+Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page and extract to `C:\WSUS\`.
 
-**Advantages:**
-- No installation required
-- Fully portable
-- No PowerShell console window
-- Modern GUI interface
+The package includes the EXE, Scripts/, Modules/, DomainController/, and documentation. The EXE requires the Scripts/ and Modules/ folders in the same directory.
 
 ### Option 2: Clone Repository
 

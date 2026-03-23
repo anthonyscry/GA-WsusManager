@@ -1,6 +1,6 @@
 h1. WSUS Manager
 
-*Version:* 4.0.2
+*Version:* 4.0.4
 *Author:* Tony Tran, ISSO, GA-ASI
 
 WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It handles the entire lifecycle of keeping Windows machines patched when they cannot reach the internet: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB, importing them, and pushing updates out to client machines through Group Policy.

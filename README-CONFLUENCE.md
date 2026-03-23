@@ -79,7 +79,7 @@ This SOP applies to:
 
 | File | Description |
 |------|-------------|
-| **WsusManager.exe** | Portable GUI application (recommended) |
+| **WsusManager.exe** | GUI application (requires Scripts/ and Modules/ in same directory) |
 | **Scripts/** | PowerShell scripts (required - keep with EXE) |
 | **Modules/** | PowerShell modules (required - keep with EXE) |
 
