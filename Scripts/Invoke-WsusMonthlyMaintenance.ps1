@@ -977,9 +977,8 @@ if ($allUpdates.Count -gt 0) {
     
     $expired = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsExpired })
     $superseded = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsSuperseded })
-    # Note: removed age-based decline (was declining everything >6 months old).
-    # On fresh syncs this would decline the entire catalog. Superseded/expired
-    # rules already handle stale updates without mass-declining by age.
+    $cutoff = (Get-Date).AddMonths(-6)
+    $oldUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and -not $_.IsSuperseded -and -not $_.IsExpired -and $_.CreationDate -lt $cutoff })
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     # 25H2: kept but not auto-approved (no decline, no approval - available for manual review)
     $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
@@ -995,7 +994,7 @@ if ($allUpdates.Count -gt 0) {
         $_.Title -match '(?i)Office LTSC 2021'
     ) -and $_.Title -notmatch '(?i)(2024|LTSC 2024)' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1019,6 +1018,12 @@ if ($allUpdates.Count -gt 0) {
         }
     }
     
+    if ($oldUpdates.Count -gt 0) {
+        $oldUpdates | ForEach-Object {
+            try { $_.Decline() | Out-Null; $oldCount++ } catch {}
+        }
+    }
+
     if ($arm64Updates.Count -gt 0) {
         $arm64Updates | ForEach-Object {
             try {
@@ -1084,7 +1089,7 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
