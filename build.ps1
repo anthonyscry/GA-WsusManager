@@ -473,6 +473,14 @@ try {
             Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
         }
 
+        # Copy docs folder (SOP, Quick Start guide)
+        if (Test-Path ".\docs") {
+            New-Item -ItemType Directory -Path (Join-Path $packageDir "docs") -Force | Out-Null
+            Copy-Item ".\docs\QUICK-START.md" -Destination (Join-Path $packageDir "docs") -ErrorAction SilentlyContinue
+            Copy-Item ".\docs\WSUS-Manager-SOP.md" -Destination (Join-Path $packageDir "docs") -ErrorAction SilentlyContinue
+            Write-Host "    Included docs folder" -ForegroundColor Gray
+        }
+
         # Create quick start guide
         $quickStart = @"
 WSUS Manager v$Version - Quick Start Guide
