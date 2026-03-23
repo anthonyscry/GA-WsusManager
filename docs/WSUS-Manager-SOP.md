@@ -19,7 +19,10 @@
 9. [Scheduled Tasks](#scheduled-tasks)
 10. [Logging](#logging)
 11. [Troubleshooting](#troubleshooting)
-12. [References](#references)
+12. [Repository Structure](#repository-structure)
+13. [Features Summary](#features-summary)
+14. [Version History](#version-history)
+15. [References](#references)
 
 ---
 
