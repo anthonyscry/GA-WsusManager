@@ -1663,10 +1663,8 @@ IF @LocalUpdateID IS NOT NULL
                     }
                 }
 
-                if ($currentBatch % 5 -eq 0) {
-                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
-                    Write-Log "  Progress: $currentBatch/$totalBatches batches ($percentComplete%)" "Gray"
-                }
+                $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                Write-Log "  Progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted" "Gray"
             }
             Write-Log "[OK] Deleted $totalDeleted declined updates from database" "Green"
         } else {
