@@ -441,7 +441,7 @@ The GUI (`WsusManagementGui.ps1`) uses:
 
 - **Unified Operation Lifecycle** (`WsusOperationRunner.psm1`) - `Start-WsusOperation` handles the full lifecycle: disable buttons, start process, pipe output to log panel, timeout watchdog, re-enable buttons, and send completion notification. Supports both Terminal and Embedded modes.
 
-- **Operation History Tracking** (`WsusHistory.psm1`) - Every operation writes to `%APPDATA%\WsusManager\history.json` with type, duration, result, and summary. The History nav button shows the last 50 operations.
+- **Operation History Tracking** (`WsusHistory.psm1`) - Every operation writes to `%APPDATA%\WsusManager\history.json` with type, duration, result, and summary. The **☰ History** button in the bottom bar shows the last 100 operations.
 
 - **Health Score Dashboard** (`WsusHealth.psm1`) - `Get-WsusHealthScore` returns a weighted composite (0-100): Services=30, DB=20, Sync=20, Disk=20, LastOp=10. Displayed as a color-coded card (Green >=80, Yellow 50-79, Red <50).
 

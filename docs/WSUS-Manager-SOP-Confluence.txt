@@ -285,6 +285,24 @@ h3. Dashboard Metrics
 |Clients|Number of registered WSUS clients|
 |Scheduled Task|Next scheduled sync task status|
 
+h3. Dashboard Configuration Card
+
+||Item||Description||
+|Content Path|WSUS content folder path (default: C:\WSUS)|
+|SQL Instance|SQL Server instance name (default: localhost\SQLEXPRESS)|
+|Export Root|Configured export directory path|
+|Logs|Path to log folder with *Open* button|
+
+h3. Dashboard Quick Actions
+
+The dashboard includes a *Quick Actions* bar with shortcut buttons for the most common operations:
+
+||Button||Function||
+|*Diagnostics*|Launch Diagnostics (health check + auto-repair)|
+|*Deep Cleanup*|Launch Deep Cleanup|
+|*Online Sync*|Launch Online Sync|
+|*Start Services*|Start SQL Server, IIS, and WSUS services|
+
 h3. GUI Operations
 
 ||Button||Function||
@@ -299,7 +317,9 @@ h3. GUI Operations
 |*Schedule Task*|Create a scheduled online sync task|
 |*Create GPO*|Copy GPO files to C:\WSUS\WSUS GPO with deployment instructions|
 |*History*|View last 50 operations with duration, result, and summary|
-|*Settings*|Configure server mode, paths, notifications, and preferences|
+|*Settings*|Configure content path, SQL instance, notifications, and preferences|
+|*Help*|Application documentation and reference|
+|*About*|Version information and credits|
 
 h3. Smart Update Policy
 
@@ -328,7 +348,16 @@ h3. Server Mode
 
 ||Mode||Description||
 |*Online*|Full internet connectivity, direct sync with Microsoft Update|
-|*Air-Gap*|No internet, uses Export/Import for update transfer|
+|*Air-Gap*|No internet, uses Robocopy for content transfer via physical media|
+
+h3. Settings Dialog
+
+||Setting||Description||
+|WSUS Content Path|Path to WSUS content folder (default: C:\WSUS)|
+|SQL Instance|SQL Server instance (default: localhost\SQLEXPRESS)|
+|Notifications|Enable/disable desktop notifications on operation completion|
+|Beep|Enable/disable audio beep on operation completion|
+|Minimize to Tray|Minimize window to system tray instead of taskbar|
 
 h3. Health Score
 
@@ -616,7 +645,7 @@ h2. Features Summary
 |sqlcmd.exe Fallback|All DB operations work without SqlServer PowerShell module installed|
 |DNS Preflight|Sync checks DNS resolution before starting - prevents hours-long stuck syncs|
 |Automated Installation|One-click SQL Express 2022 + SSMS + WSUS (auto-removes WID if present)|
-|Air-Gap Support|Full content export/import for offline networks|
+|Air-Gap Support|Full content transfer via Robocopy for offline networks|
 |Database Management|Backup, restore, 6-step deep cleanup, index optimization|
 |Unified Diagnostics|Combined health check + auto-repair in a single operation|
 |Scheduled Sync|GUI and CLI support for Windows Task Scheduler|

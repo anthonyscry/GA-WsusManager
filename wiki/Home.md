@@ -42,21 +42,32 @@ Real-time monitoring with color-coded status cards and 30-second auto-refresh:
 
 ### Server Modes
 Server Mode auto-detects Online vs Air-Gap based on internet connectivity to show only relevant operations:
-- **Online Mode** - Export, Online Sync
-- **Air-Gap Mode** - Import from media
+- **Online Mode** - Online Sync, Robocopy (outbound transfer to air-gap media)
+- **Air-Gap Mode** - Robocopy (inbound from media), Reset Content
 
 ### Operations
+
+**SETUP**
 | Operation | Description |
 |-----------|-------------|
-| Install WSUS | Fresh installation with SQL Express |
-| Restore Database | Restore SUSDB from backup |
-| Export to Media | Full export to USB |
-| Import from Media | Import updates to air-gapped server |
-| Online Sync | Sync, cleanup, and backup |
-| Schedule Task | Create or update the sync scheduled task |
-| Deep Cleanup | Aggressive space recovery |
-| Diagnostics | Comprehensive health check with auto-repair |
-| Reset Content | Re-verify content files after import |
+| Install WSUS | Fresh installation with SQL Express 2022 |
+| Fix SQL Login | Grant SQL sysadmin permissions to the current user |
+| Restore DB | Restore SUSDB from a backup file |
+| Create GPO | Copy GPO files and display DC deployment instructions |
+
+**MAINTENANCE**
+| Operation | Description |
+|-----------|-------------|
+| Online Sync | Sync updates with Microsoft (Full Sync / Quick Sync / Sync Only) |
+| Schedule Task | Create or update the monthly sync scheduled task |
+| Deep Cleanup | Aggressive space recovery — 6-step database maintenance |
+| Robocopy | Transfer content to/from media (single dialog: Source + Destination + Start) |
+
+**DIAGNOSTICS**
+| Operation | Description |
+|-----------|-------------|
+| Diagnostics | Comprehensive health check with automatic repair |
+| Reset Content | Re-verify content files against database after air-gap import |
 
 > **Note:** Online Sync and Schedule Task should run on the **Online** WSUS server only.
 

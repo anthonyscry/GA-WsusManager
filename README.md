@@ -87,9 +87,8 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 
 ### Air-Gap Support
 - Server Mode toggle: Online vs Air-Gap.
-- Export updates and content to USB for transfer to disconnected networks.
-- Import updates and content from USB on the air-gapped server.
-- "Reset Content" button to fix content download status after import.
+- **Robocopy** (MAINTENANCE section): single dialog with Source folder, Destination folder, and **Start Transfer** button. Non-destructive (never deletes). Creates a subfolder at the destination. Used in both directions: online server → USB drive, and USB drive → air-gapped server.
+- **Reset Content** (DIAGNOSTICS section): runs `wsusutil reset` to re-verify content files after an import.
 
 ### Smart Update Policy
 
@@ -127,9 +126,9 @@ The Online Sync workflow applies an automated decline and approval policy to kee
 - Dark theme with light theme toggle in Settings (reserved).
 - Window size 800x1000 for improved layout.
 - Startup splash screen with progress bar.
-- Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
+- Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Online Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
 - Right-click context menu on log panel: Copy All / Save to File.
-- Operation history view showing last 50 operations.
+- Operation history view showing last 100 operations.
 - Desktop notifications on operation completion (toast, balloon, or log-only fallback).
 - Live Terminal Mode to open operations in an external PowerShell window.
 - Robocopy transfer shows file names in embedded log panel and creates destination subfolder.
@@ -171,8 +170,8 @@ Run this monthly on the internet-connected WSUS server to download the latest up
 2. **Click Online Sync** in the navigation panel (or use the Quick Action button).
 
 3. **Choose a sync profile:**
-   - **Full Sync** -- Decline superseded/expired/old updates, sync with Microsoft, approve new updates matching the smart update policy, clean up the database, and export.
-   - **Quick Sync** -- Sync and approve only (skip cleanup).
+   - **Full** -- Decline superseded/expired/old updates, sync with Microsoft, approve new updates matching the smart update policy, clean up the database, and export.
+   - **Quick** -- Sync and approve only (skip cleanup).
    - **Sync Only** -- Just sync with Microsoft, no approvals or cleanup.
 
 4. **Set the export path** (optional). If you plan to transfer updates to an air-gapped network, enter a destination folder (for example, a USB drive path like `E:\WSUS-Export`). If you leave this blank, the sync runs without exporting.
@@ -181,7 +180,7 @@ Run this monthly on the internet-connected WSUS server to download the latest up
 
 6. **Check the dashboard.** After the sync completes, the Last Sync timestamp should update and the database size may increase.
 
-**Tip:** To automate this, click **Schedule** to create a Windows Scheduled Task that runs the sync monthly.
+**Tip:** To automate this, click **Schedule Task** to create a Windows Scheduled Task that runs the sync monthly.
 
 ### Air-Gap Transfer Workflow
 

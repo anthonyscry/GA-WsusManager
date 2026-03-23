@@ -87,8 +87,8 @@ Server Management:
 
 Air-Gap Support:
 - Server Mode toggle: Online vs Air-Gap.
-- Export updates and content to USB for transfer to disconnected networks.
-- Import updates and content from USB on the air-gapped server.
+- Robocopy transfer to copy WSUS content to USB for air-gap delivery (Source + Destination + Start Transfer, non-destructive).
+- Robocopy transfer to copy content from USB into the WSUS content directory on the air-gapped server.
 - "Reset Content" button to fix content download status after import.
 
 Smart Update Policy:
@@ -207,9 +207,9 @@ On the air-gapped server:
 
 7. Click **Robocopy**, set source to the USB drive folder and destination to `C:\WSUS\`, then click Start Transfer.
 
-8. The import copies content files and imports the WSUS metadata.
+8. Robocopy copies the content files to the WSUS content directory.
 
-9. After import completes, click Reset Content (under Diagnostics) to run wsusutil reset. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
+9. After the transfer completes, click Reset Content (in the DIAGNOSTICS section) to run wsusutil reset. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
 
 10. Run Diagnostics to verify everything is healthy.
 
