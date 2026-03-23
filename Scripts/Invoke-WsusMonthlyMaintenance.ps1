@@ -1408,10 +1408,8 @@ IF @LocalUpdateID IS NOT NULL
                         }
                     }
 
-                    if ($currentBatch % 5 -eq 0) {
-                        $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
-                        Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
-                    }
+                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
                 }
 
                 Write-Log "Declined update purge complete: $totalDeleted deleted"
