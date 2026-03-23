@@ -473,100 +473,16 @@ try {
             Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
         }
 
-        # Copy docs .txt files (Confluence SOP)
-        if (Test-Path ".\docs") {
-            New-Item -ItemType Directory -Path (Join-Path $packageDir "docs") -Force | Out-Null
-            Copy-Item ".\docs\*.txt" -Destination (Join-Path $packageDir "docs") -ErrorAction SilentlyContinue
-            Write-Host "    Included docs folder" -ForegroundColor Gray
+        # Use docs/QUICK-START.md as QUICK-START.txt (already accurate)
+        if (Test-Path ".\docs\QUICK-START.md") {
+            Copy-Item ".\docs\QUICK-START.md" -Destination (Join-Path $packageDir "QUICK-START.txt")
         }
 
-        # Create quick start guide
-        $quickStart = @"
-WSUS Manager v$Version - Quick Start Guide
-============================================
-Author: Tony Tran, ISSO, GA-ASI
+        # Include CHANGELOG as CHANGELOG.txt
+        if (Test-Path ".\CHANGELOG.md") {
+            Copy-Item ".\CHANGELOG.md" -Destination (Join-Path $packageDir "CHANGELOG.txt")
+        }
 
-REQUIREMENTS
-------------
-  Server:     Windows Server 2019 or 2022, 16 GB RAM, 150 GB free disk
-  Installers: SQLEXPRADV_x64_ENU.exe and SSMS-Setup-ENU.exe in C:\WSUS\SQLDB\
-  Privileges: Local Administrator
-
-INSTALLATION
-------------
-1. Extract WsusManager-v$Version.zip to C:\WSUS\  (keep folder structure intact)
-2. Place SQL Express and SSMS installers in C:\WSUS\SQLDB\
-3. Right-click WsusManager.exe and select "Run as administrator"
-
-   IMPORTANT: Keep Scripts\ and Modules\ in the same folder as WsusManager.exe
-              Do not move the EXE without those folders.
-
-FIRST SYNC (Online Server)
---------------------------
-1. If WSUS is not installed, click "Install WSUS" from the dashboard
-2. Click "Online Sync" > select "Full Sync"
-3. Optionally set an export path (USB or network share) for air-gap transfer
-4. Click OK -- the first sync takes 2-4 hours (180-minute timeout)
-
-   Auto-managed updates:
-     DECLINED:  Superseded, expired, older than 6 months, ARM64, Preview/Beta,
-                legacy builds (21H2/22H2/23H2), non-stable Edge, WSL, Office 2019
-     APPROVED:  Critical, Security, Definition Updates, Updates, Update Rollups
-     MANUAL:    25H2, x86/32-bit, Upgrades (kept but not auto-approved)
-
-AIR-GAP TRANSFER
-----------------
-  On the ONLINE server:
-    1. Run Online Sync with an export path set to a staging folder
-    2. Transfer > Export -- copy update content to USB drive
-
-  On the AIR-GAPPED server:
-    3. Transfer > Import -- source: USB drive, destination: C:\WSUS\
-    4. Restore Database -- import the SUSDB backup from USB
-    5. Diagnostics > Reset Content -- re-verify content files after import
-    6. Diagnostics -- confirm all checks pass
-
-  NOTE: A Data Transfer Request (DTR) may be required before moving media
-        across network boundaries. Confirm with your security team.
-
-GPO DEPLOYMENT (Domain Controller)
------------------------------------
-1. Copy the DomainController\ folder to your DC
-2. Open an elevated PowerShell prompt on the DC
-3. Run: .\Set-WsusGroupPolicy.ps1
-4. Enter the WSUS server hostname when prompted (e.g., WSUS01)
-
-   WARNING: These GPOs block direct Microsoft Update traffic.
-            Only deploy on air-gapped networks.
-
-SCHEDULE RECURRING SYNC
-------------------------
-GUI > Schedule Task > select a profile:
-  Light    (weekly,    15-30 min) -- decline superseded, basic cleanup
-  Standard (monthly,   1-2 hrs)  -- plus index rebuild
-  Deep     (quarterly, 2-4 hrs)  -- full database optimization
-
-Set day/time, enter domain credentials, click Create.
-
-KEYBOARD SHORTCUTS
-------------------
-  Ctrl+D    Diagnostics
-  Ctrl+S    Online Sync
-  Ctrl+H    History
-  Ctrl+R    Refresh Dashboard
-
-COMMON ISSUES
--------------
-  "Not Installed" on dashboard      --> Click Install WSUS
-  Sync stuck at 0%                  --> Check DNS configuration
-  "Content still downloading"       --> Diagnostics > Reset Content
-  Buttons greyed out                --> Wait for current operation to finish
-  Database near 10 GB               --> Run Deep Cleanup (Database menu)
-  Script not found errors           --> Ensure Scripts\ and Modules\ are present
-
-For full documentation, see README.txt in this package.
-"@
-        $quickStart | Out-File -FilePath (Join-Path $packageDir "QUICK-START.txt") -Encoding UTF8
 
         # Remove existing zip if present
         if (Test-Path ".\$zipFileName") { Remove-Item ".\$zipFileName" -Force }
