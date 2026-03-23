@@ -193,7 +193,7 @@ This is how you move updates from an internet-connected WSUS server to an air-ga
 
 1. Run an Online Sync (see above) with the export path set to a USB drive or staging folder.
 
-2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click **Transfer > Export** and select the source (your WSUS content folder, default `C:\WSUS\`) and destination (USB drive).
+2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click **Robocopy**, set the source to `C:\WSUS\` and the destination to the USB drive, then click **Start Transfer**.
 
 3. Safely eject the USB drive.
 
@@ -205,11 +205,11 @@ This is how you move updates from an internet-connected WSUS server to an air-ga
 
 6. Switch to **Air-Gap** mode using the Server Mode toggle (if not already set).
 
-7. Click **Transfer > Import**. Select the USB drive as the source and `C:\WSUS\` as the destination.
+7. Click **Robocopy**. Set the source to the USB drive and the destination to `C:\WSUS\`, then click **Start Transfer**.
 
-8. The import copies content files and imports the WSUS metadata.
+8. Robocopy copies content files from the USB drive to the WSUS content directory (non-destructive, copies only).
 
-9. After import completes, click **Reset Content** (under Diagnostics) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
+9. After the transfer completes, click **Reset Content** (in the DIAGNOSTICS section) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
 
 10. Run **Diagnostics** to verify everything is healthy.
 
@@ -466,7 +466,7 @@ The WSUS Windows Server role is not present. Click Install WSUS to set it up.
 This is a known GUI pattern issue. If you see it, the operation should still work -- just wait for the dialog to appear.
 
 **"Content is still downloading" after air-gap import**
-After importing updates from USB, run Diagnostics > Reset Content to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
+After importing updates from USB, click **Reset Content** (in the DIAGNOSTICS section) to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
 
 **SqlServer module not installed**
 WSUS Manager v4.0.4+ automatically falls back to `sqlcmd.exe` for all database operations when the SqlServer PowerShell module is not installed. No manual module installation is needed.
@@ -478,7 +478,7 @@ Check DNS configuration. The sync requires DNS resolution to reach Microsoft Upd
 Verify GPOs are applied: run `gpresult /r` on the client. Check that the WSUS Outbound Allow GPO is linked to the client's OU. Check that the WSUS server firewall allows inbound on ports 8530/8531.
 
 **Database approaching 10 GB limit**
-Run a Deep Cleanup from the Database menu. This declines superseded updates, removes obsolete records, rebuilds indexes, and shrinks the database.
+Run a **Deep Cleanup**. This declines superseded updates, removes obsolete records, rebuilds indexes, and shrinks the database.
 
 **Buttons stay greyed out after an operation finishes**
 Close and reopen WSUS Manager. This can happen if an operation exits unexpectedly without resetting the operation-running flag.

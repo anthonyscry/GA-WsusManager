@@ -51,15 +51,15 @@ The sync runs a DNS preflight check, then:
 **On the online server:**
 
 1. Run Online Sync with export path set to a staging folder
-2. Click **Transfer > Export** to copy to USB drive
+2. Click **Robocopy**, set source to your WSUS content folder (e.g. `C:\WSUS\WsusContent`) and destination to the USB drive, then click **Start Transfer**
 3. Eject USB
 
 **On the air-gapped server:**
 
 4. Plug in USB drive
-5. Click **Transfer > Import** -- select USB as source, `C:\WSUS\` as destination
+5. Click **Robocopy**, set source to the USB drive folder and destination to `C:\WSUS\`, then click **Start Transfer**
 6. Click **Restore Database** to import the SUSDB backup
-7. Click **Reset Content** (under Diagnostics) to re-verify content files
+7. Click **Reset Content** (in the DIAGNOSTICS section) to re-verify content files
 8. Run **Diagnostics** to confirm everything is healthy
 
 ---
@@ -94,9 +94,9 @@ gpresult /r | findstr WSUS
 
 1. Click **Schedule Task** in the GUI
 2. Select a maintenance profile:
-   - **Light** (weekly, 15-30 min) -- decline superseded, basic cleanup
-   - **Standard** (monthly, 1-2 hours) -- plus index rebuild
-   - **Deep** (quarterly, 2-4 hours) -- full optimization
+   - **Full Sync** (recommended monthly) -- full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export
+   - **Quick Sync** (weekly) -- sync and approve only, skips cleanup
+   - **Sync Only** -- sync with Microsoft only, no approvals or cleanup
 3. Set day and time (default: Tuesday 23:00)
 4. Enter credentials and click **Create**
 
@@ -119,7 +119,7 @@ gpresult /r | findstr WSUS
 |---------|-----|
 | Dashboard shows "Not Installed" | Click Install WSUS |
 | Sync stuck at 0% | Check DNS configuration |
-| "Content is still downloading" after import | Click Reset Content |
+| "Content is still downloading" after import | Click **Reset Content** in the DIAGNOSTICS nav section |
 | Buttons greyed out | Wait for current operation to finish |
 | Database near 10 GB | Run Deep Cleanup |
 

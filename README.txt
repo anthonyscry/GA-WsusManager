@@ -193,7 +193,7 @@ On the online server:
 
 1. Run an Online Sync (see above) with the export path set to a USB drive or staging folder.
 
-2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click Transfer > Export and select the source (your WSUS content folder, default C:\WSUS\) and destination (USB drive).
+2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click **Robocopy**, set source to `C:\WSUS\WsusContent` and destination to the USB drive, then click Start Transfer.
 
 3. Safely eject the USB drive.
 
@@ -205,7 +205,7 @@ On the air-gapped server:
 
 6. Switch to Air-Gap mode using the Server Mode toggle (if not already set).
 
-7. Click Transfer > Import. Select the USB drive as the source and C:\WSUS\ as the destination.
+7. Click **Robocopy**, set source to the USB drive folder and destination to `C:\WSUS\`, then click Start Transfer.
 
 8. The import copies content files and imports the WSUS metadata.
 
@@ -449,11 +449,8 @@ Troubleshooting
 "WSUS Not Installed" on the dashboard
 The WSUS Windows Server role is not present. Click Install WSUS to set it up.
 
-Operations show a blank window before a dialog appears
-This is a known GUI pattern issue. If you see it, the operation should still work -- just wait for the dialog to appear.
-
 "Content is still downloading" after air-gap import
-After importing updates from USB, run Diagnostics > Reset Content to execute wsusutil reset. This tells WSUS to re-verify all content files against the database.
+After importing updates from USB, run **Reset Content** (in the DIAGNOSTICS section of the nav) to execute wsusutil reset. This tells WSUS to re-verify all content files against the database.
 
 SqlServer module not installed
 WSUS Manager v4.0.4+ automatically falls back to sqlcmd.exe for all database operations when the SqlServer PowerShell module is not installed. No manual module installation is needed.
