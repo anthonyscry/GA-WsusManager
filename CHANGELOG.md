@@ -5,6 +5,22 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.4] - 2026-03-22
+
+### Added
+- Invoke-WsusSqlcmd falls back to sqlcmd.exe when SqlServer module is not installed
+- Updates older than 6 months auto-declined (skips already-approved updates)
+- Declined purge progress shown on every batch (was every 5th)
+
+### Changed
+- Sysadmin verification uses sys.server_role_members (IS_SRVROLEMEMBER caches per-connection)
+- Sysadmin preflight uses sqlcmd.exe fallback when Invoke-Sqlcmd unavailable
+- SQLPS/SqlServer module explicitly imported before use (auto-load fails in child processes)
+
+### Fixed
+- All database operations (index rebuild, shrink, backup, purge) now work without SqlServer module
+- Age decline preserves already-approved updates (was declining them on subsequent syncs)
+
 ## [4.0.3] - 2026-03-22
 
 ### Added
@@ -34,7 +50,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - WID-to-SQL Express migration: uninstall WID role, reinstall with UpdateServices-DB
 - Leftover WID data files cleaned up to prevent postinstall conflicts
 - Language set via correct API (was using non-existent SetUpdateLanguages method)
-- Age-based decline removed (was declining entire catalog on fresh sync)
+- Age-based decline fixed (was declining entire catalog including approved updates on fresh sync)
 - Process.Start() failure handling prevents stuck disabled buttons
 - Get-WsusServer guarded by service running check (prevents UI freeze)
 
