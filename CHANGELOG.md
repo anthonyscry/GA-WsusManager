@@ -212,6 +212,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Shrink retry behavior while backups are active
 - Reduced expected noisy purge output errors
 
+[4.0.4]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.3...v4.0.4
+[4.0.3]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.2...v4.0.3
+[4.0.2]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.9.0...v4.0.0
 [3.9.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.12...v3.9.0

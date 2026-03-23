@@ -78,11 +78,11 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 
 ## Getting Started
 
-### Option 1: Portable Executable (Recommended)
+### Option 1: Distribution Package (Recommended)
 
-1. Download `WsusManager.exe` from the [Releases](../../releases) page
-2. Run as Administrator
-3. Configure settings on first launch
+1. Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page
+2. Extract to `C:\WSUS\` (EXE requires Scripts/ and Modules/ in the same directory)
+3. Right-click `WsusManager.exe` -- Run as Administrator
 
 ### Option 2: PowerShell Scripts
 
@@ -100,6 +100,8 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB ops, 6-month age decline (preserves approved), sysadmin check via sqlcmd |
+| 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180min sync timeout, default products, WID auto-migration |
 | 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, robocopy fix, removed differential export, stream piping fix |
 | 4.0.1 | Mar 2026 | GUI automation tests, install script sync, version alignment |
 | 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score, history, notifications, trending, splash screen, keyboard shortcuts, system tray |

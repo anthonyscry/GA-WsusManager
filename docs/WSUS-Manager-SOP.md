@@ -1,6 +1,6 @@
-# WSUS Manager v4.0.2 - Standard Operating Procedure
+# WSUS Manager v4.0.4 - Standard Operating Procedure
 
-**Version:** 4.0.2
+**Version:** 4.0.4
 **Author:** Tony Tran, ISSO, GA-ASI
 **Last Updated:** March 2026
 
@@ -38,7 +38,7 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v4.0.2.zip | Complete distribution package |
+| WsusManager-v4.0.4.zip | Complete distribution package |
 
 **Package Contents:**
 
@@ -141,7 +141,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v4.0.2.zip` to `C:\WSUS\` |
+| 2 | Extract `WsusManager-v4.0.4.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `WsusManager.exe` -> Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
@@ -166,7 +166,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v4.0.2 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
 
 - **Dashboard** with auto-refresh (30-second interval) and Health Score (0-100)
 - **Server Mode** toggle (Online vs Air-Gap) with context-aware menus
@@ -213,17 +213,38 @@ WSUS Manager v4.0.2 includes a full GUI application (`WsusManager.exe`) built wi
 | **History** | View last 50 operations with duration, result, and summary |
 | **Settings** | Configure server mode, paths, notifications, and preferences |
 
-### Update Classifications
+### Smart Update Policy
 
-The following update classifications are automatically approved:
-- Critical Updates
-- Security Updates
-- Update Rollups
-- Service Packs
-- Updates
-- **Definition Updates** (antivirus signatures, security definitions)
+The Online Sync workflow applies an automated decline and approval policy:
 
-Excluded (require manual review): Upgrades
+**Auto-Decline Rules (removed from catalog):**
+
+| Rule | Description |
+|------|-------------|
+| Expired / Superseded | Updates replaced by newer versions |
+| Older than 6 months | By Microsoft release date (preserves already-approved updates) |
+| ARM64 | Not applicable to x64 lab environments |
+| Legacy builds | 21H2, 22H2, 23H2 |
+| Preview / Beta | Pre-release updates |
+| Edge non-stable | Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2) |
+| Office legacy | Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024/LTSC 2024) |
+| WSL | Windows Subsystem for Linux |
+
+**Auto-Approval Exclusions (kept but not approved):**
+
+| Rule | Reason |
+|------|--------|
+| 25H2 updates | Kept for manual review |
+| x86 / 32-bit | Lab is x64 only |
+| Upgrades | Require manual review |
+
+**Default Products:**
+- Windows 11, Windows Server 2019, Microsoft Edge
+- Microsoft Defender Antivirus, Microsoft Defender for Endpoint
+- Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
+
+**Default Classifications:**
+- Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups
 
 ### Server Mode
 
@@ -255,7 +276,7 @@ Operations are protected by a per-type timeout watchdog:
 | Operation | Timeout |
 |-----------|---------|
 | Cleanup / Deep Cleanup | 60 minutes |
-| Sync / Online Sync | 120 minutes |
+| Sync / Online Sync | 180 minutes |
 | All other operations | 30 minutes |
 
 If an operation exceeds its timeout, the watchdog terminates the hung process and logs the timeout.
@@ -635,6 +656,8 @@ SESSION START: 2026-01-19 10:30:00
 | Database restore fails | Verify sysadmin privileges on SQL Server (see Prerequisites) |
 | Database size near 10GB | Run Deep Cleanup; SQL Express limit is 10GB |
 | Sync failures | Check internet connectivity (online mode), run Health Check |
+| Sync stuck at 0% | Check DNS configuration; WSUS Manager runs a DNS preflight check |
+| SqlServer module missing | v4.0.4 auto-falls back to sqlcmd.exe; no manual install needed |
 | Operations hang | Check if running in non-interactive mode; GUI passes `-NonInteractive` |
 | Script not found error | Verify Scripts/ and Modules/ folders are with EXE |
 
@@ -711,7 +734,10 @@ SESSION START: 2026-01-19 10:30:00
 | Operation History | Last 50 operations with duration, result, and summary |
 | Desktop Notifications | Toast/balloon/log-only fallback on operation completion |
 | Operation Timeouts | Per-operation watchdog (Cleanup=60min, Sync=120min, Default=30min) |
-| Automated Installation | One-click deployment of SQL Server Express 2022 + SSMS + WSUS |
+| Smart Update Policy | Auto-decline expired/superseded/old/ARM64/legacy updates; auto-approve by classification |
+| sqlcmd.exe Fallback | All database operations work without SqlServer PowerShell module |
+| DNS Preflight | Sync checks DNS resolution before starting to prevent stuck syncs |
+| Automated Installation | One-click deployment of SQL Server Express 2022 + SSMS + WSUS (auto-removes WID) |
 | Air-Gap Support | Full content export/import for offline networks with USB package and manifest |
 | Database Management | Backup, restore, cleanup, and optimization |
 | Unified Diagnostics | Combined health check and auto-repair in a single operation |

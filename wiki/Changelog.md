@@ -6,11 +6,19 @@ All notable changes to WSUS Manager are documented here.
 
 ## [4.0.4] - March 2026
 
+### Added
+- `Invoke-WsusSqlcmd` falls back to sqlcmd.exe when SqlServer module is not installed
+- Updates older than 6 months auto-declined (skips already-approved updates)
+- Declined purge progress shown on every batch (was every 5th)
+
+### Changed
+- Sysadmin verification uses `sys.server_role_members` (IS_SRVROLEMEMBER caches per-connection)
+- Sysadmin preflight uses sqlcmd.exe fallback when Invoke-Sqlcmd unavailable
+- SQLPS/SqlServer module explicitly imported before use (auto-load fails in child processes)
+
 ### Fixed
-- All database operations work without SqlServer module (sqlcmd.exe fallback)
-- Age decline preserves already-approved updates
-- Sysadmin check uses sqlcmd.exe when Invoke-Sqlcmd unavailable
-- Declined purge shows progress on every batch
+- All database operations (index rebuild, shrink, backup, purge) now work without SqlServer module
+- Age decline preserves already-approved updates (was declining them on subsequent syncs)
 
 ---
 
@@ -64,7 +72,7 @@ All notable changes to WSUS Manager are documented here.
 
 ### Documentation
 - Full README rewrite with detailed GPO reference and step-by-step workflows
-- SOP updated to v4.0.2 with all current features
+- SOP updated to v4.0.4 with all current features
 - Air-gap warnings added across all documentation
 - Removed all differential export references
 
@@ -598,6 +606,7 @@ Update version in:
 4. `Scripts/Invoke-WsusMonthlyMaintenance.ps1` - `$ScriptVersion`
 5. `metadata.json` - `"version"`
 6. `CLAUDE.md` - Current Version
+7. `CHANGELOG.md` - New release entry
 
 ---
 

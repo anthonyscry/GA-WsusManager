@@ -1,6 +1,6 @@
 # WSUS Manager
 
-**Version:** 4.0.2
+**Version:** 4.0.4
 **Author:** Tony Tran, ISSO, GA-ASI
 
 WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It handles the entire lifecycle of keeping Windows machines patched when they cannot reach the internet: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB, importing them, and pushing updates out to client machines through Group Policy.
@@ -76,17 +76,47 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 
 ### Server Management
 - One-click WSUS + SQL Server Express installation with guided setup.
+- Auto-detects and removes WID if present, reinstalls WSUS with SQL Express.
 - Unified Diagnostics (health check + auto-repair in a single operation).
 - Database backup, restore, and deep cleanup (6-step maintenance including index rebuild and database shrink).
-- Online Sync with Full, Quick, and Sync Only profiles.
+- Online Sync with Full, Quick, and Sync Only profiles. DNS preflight check prevents stuck syncs.
+- Sync timeout of 180 minutes (first sync can take 2-4 hours).
 - Scheduled task creation for recurring sync operations.
 - HTTPS configuration via `Set-WsusHttps.ps1`.
+- All database operations work without SqlServer PowerShell module (sqlcmd.exe fallback).
 
 ### Air-Gap Support
 - Server Mode toggle: Online vs Air-Gap.
 - Export updates and content to USB for transfer to disconnected networks.
 - Import updates and content from USB on the air-gapped server.
 - "Reset Content" button to fix content download status after import.
+
+### Smart Update Policy
+
+The Online Sync workflow applies an automated decline and approval policy to keep the update catalog clean:
+
+**Auto-Decline Rules (removed from catalog):**
+- Expired and superseded updates
+- Updates older than 6 months by Microsoft release date (preserves already-approved updates)
+- ARM64 updates
+- Legacy builds: 21H2, 22H2, 23H2
+- Preview and Beta updates
+- Edge: Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2 only)
+- Office: Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024/LTSC 2024)
+- WSL (Windows Subsystem for Linux)
+
+**Auto-Approval Exclusions (kept but not approved):**
+- 25H2 updates (kept for manual review)
+- x86 and 32-bit updates (lab is x64 only)
+- Upgrades (require manual review)
+
+**Default Products:**
+- Windows 11, Windows Server 2019, Microsoft Edge
+- Microsoft Defender Antivirus, Microsoft Defender for Endpoint
+- Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
+
+**Default Classifications:**
+- Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups
 
 ### Client Deployment
 - GPO deployment scripts for air-gapped domains.
@@ -95,12 +125,14 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 
 ### GUI Features
 - Dark theme with light theme toggle in Settings (reserved).
+- Window size 800x1000 for improved layout.
 - Startup splash screen with progress bar.
 - Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
 - Right-click context menu on log panel: Copy All / Save to File.
 - Operation history view showing last 50 operations.
 - Desktop notifications on operation completion (toast, balloon, or log-only fallback).
 - Live Terminal Mode to open operations in an external PowerShell window.
+- Robocopy transfer shows file names in embedded log panel and creates destination subfolder.
 - DPI-aware rendering on high-DPI displays.
 
 ---
@@ -139,13 +171,13 @@ Run this monthly on the internet-connected WSUS server to download the latest up
 2. **Click Online Sync** in the navigation panel (or use the Quick Action button).
 
 3. **Choose a sync profile:**
-   - **Full Sync** -- Decline superseded updates, sync with Microsoft, approve new updates, clean up the database, and export.
+   - **Full Sync** -- Decline superseded/expired/old updates, sync with Microsoft, approve new updates matching the smart update policy, clean up the database, and export.
    - **Quick Sync** -- Sync and approve only (skip cleanup).
    - **Sync Only** -- Just sync with Microsoft, no approvals or cleanup.
 
 4. **Set the export path** (optional). If you plan to transfer updates to an air-gapped network, enter a destination folder (for example, a USB drive path like `E:\WSUS-Export`). If you leave this blank, the sync runs without exporting.
 
-5. **Click OK.** The operation runs in the log panel. A Full Sync typically takes 30-120 minutes depending on how many updates are available.
+5. **Click OK.** The operation runs in the log panel. A DNS preflight check runs first to ensure connectivity. A Full Sync typically takes 30-120 minutes depending on how many updates are available. The first sync on a new server can take 2-4 hours (timeout is 180 minutes).
 
 6. **Check the dashboard.** After the sync completes, the Last Sync timestamp should update and the database size may increase.
 
@@ -433,6 +465,12 @@ This is a known GUI pattern issue. If you see it, the operation should still wor
 
 **"Content is still downloading" after air-gap import**
 After importing updates from USB, run Diagnostics > Reset Content to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
+
+**SqlServer module not installed**
+WSUS Manager v4.0.4+ automatically falls back to `sqlcmd.exe` for all database operations when the SqlServer PowerShell module is not installed. No manual module installation is needed.
+
+**Sync stuck at 0% in Categories phase**
+Check DNS configuration. The sync requires DNS resolution to reach Microsoft Update servers. WSUS Manager runs a DNS preflight check before starting sync to catch this early.
 
 **Client machines not finding the WSUS server**
 Verify GPOs are applied: run `gpresult /r` on the client. Check that the WSUS Outbound Allow GPO is linked to the client's OU. Check that the WSUS server firewall allows inbound on ports 8530/8531.
