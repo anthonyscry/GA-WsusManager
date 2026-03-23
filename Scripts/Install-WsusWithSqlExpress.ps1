@@ -5,9 +5,9 @@ Author: Tony Tran, ISSO, GA-ASI
 Version: 1.1.0
 Date: 2026-01-09
 ===============================================================================
-Purpose: Fully automated SQL Express 2022 + SSMS + WSUS installation (SQL mode).
+Purpose: Fully automated SQL Express 2022 + WSUS installation (SQL mode). SSMS installed only if present.
 Overview:
-  - Extracts SQL Express and installs SQL Engine + SSMS silently.
+  - Extracts SQL Express and installs SQL Engine silently. Installs SSMS if installer is present.
   - Enables SQL networking, firewall rules, and WSUS role/services.
   - Configures WSUS content path, IIS virtual directory, and permissions.
 Notes:
@@ -23,7 +23,7 @@ Notes:
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '')]
 param(
-    [Parameter(HelpMessage = "Path to folder containing SQL Express and SSMS installers")]
+    [Parameter(HelpMessage = "Path to folder containing SQL Express installer (SSMS optional)")]
     [string]$InstallerPath = "C:\WSUS\SQLDB",
     [Parameter(HelpMessage = "SQL sa username")]
     [string]$SaUsername = "sa",
@@ -85,7 +85,7 @@ function Resolve-InstallerPath {
 
     Add-Type -AssemblyName System.Windows.Forms
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = "Select folder containing SQL Server installers (SQLEXPR_x64_ENU.exe or SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
+    $dialog.Description = "Select folder containing SQL Server Express installer (SQLEXPR_x64_ENU.exe or SQLEXPRADV_x64_ENU.exe). SSMS is optional."
     $dialog.SelectedPath = "C:\WSUS"
 
     if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
@@ -629,7 +629,7 @@ if ($sqlcmd) {
     Write-Host "    Warning: sqlcmd.exe not found. SQL permissions must be set manually."
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $currentUser = "$($identity.Name)"
-    Write-Host "    Run these commands after SSMS finishes installing:"
+    Write-Host "    Run these commands to configure SQL permissions:"
     Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [$currentUser] FROM WINDOWS`""
     Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]`""
     Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
@@ -983,7 +983,7 @@ Remove-Item $PasswordFile -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "==============================================================="
-Write-Host " SQL Express 2022 + SSMS + WSUS Installation Complete!"
+Write-Host " SQL Express 2022 + WSUS Installation Complete!"
 Write-Host "==============================================================="
 Write-Host ""
 Write-Host " SQL Server Instance: .\SQLEXPRESS"

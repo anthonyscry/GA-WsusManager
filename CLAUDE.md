@@ -178,7 +178,7 @@ README.md
 
 ### Standard Paths
 - WSUS Content: `C:\WSUS\`
-- SQL/SSMS Installers: `C:\WSUS\SQLDB\` (installer script prompts if missing)
+- SQL Express Installer: `C:\WSUS\SQLDB\` (installer script prompts if missing; SSMS optional)
 - Logs: `C:\WSUS\Logs\`
 - SQL Instance: `localhost\SQLEXPRESS`
 - WSUS Ports: 8530 (HTTP), 8531 (HTTPS)

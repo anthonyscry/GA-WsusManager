@@ -147,7 +147,7 @@ Diagnostics verifies:
 
 2. **Check database status**
    ```sql
-   -- Run in SSMS
+   -- Run in SSMS or via sqlcmd -S localhost\SQLEXPRESS -E -Q "..."
    SELECT name, state_desc FROM sys.databases WHERE name = 'SUSDB'
    ```
 
@@ -227,7 +227,7 @@ Diagnostics verifies:
 
 2. **Restore from backup**
    - Use WSUS Manager **Restore Database**
-   - Or via SSMS restore wizard
+   - Or via SSMS restore wizard (if SSMS is installed)
 
 ---
 
@@ -375,11 +375,11 @@ Diagnostics verifies:
 - Install WSUS starts but shows no progress
 - Log shows "Starting Install WSUS" with no further output
 
-**Cause:** The installer prompt is waiting for a folder selection if SQL/SSMS files are missing from the default path.
+**Cause:** The installer prompt is waiting for a folder selection if the SQL Express installer is missing from the default path.
 
 **Solutions:**
 1. Look for a folder picker dialog (may be behind other windows)
-2. Select the folder containing `SQLEXPRADV_x64_ENU.exe` and `SSMS-Setup-ENU.exe`
+2. Select the folder containing `SQLEXPRADV_x64_ENU.exe` (SSMS installer is optional)
 3. If you canceled the prompt, re-run Install WSUS and select the correct folder
 
 ### Online Sync Appears Idle

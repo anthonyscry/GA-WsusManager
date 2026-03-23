@@ -9,7 +9,7 @@
 | Item | Details |
 |------|---------|
 | Server | Windows Server 2019 or 2022, 16 GB RAM, 150 GB disk |
-| Installers | `SQLEXPRADV_x64_ENU.exe` and `SSMS-Setup-ENU.exe` in `C:\WSUS\SQLDB\` |
+| Installers | `SQLEXPRADV_x64_ENU.exe` in `C:\WSUS\SQLDB\` (SSMS optional) |
 | Package | `WsusManager-v4.0.4.zip` extracted to `C:\WSUS\` |
 | Privileges | Local Administrator |
 

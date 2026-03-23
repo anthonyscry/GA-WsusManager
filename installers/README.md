@@ -7,7 +7,7 @@ Offline installers for WSUS Manager dependencies. Large binaries — gitignored.
 | File | Size | Description |
 |------|------|-------------|
 | `SQLEXPRADV_x64_ENU.exe` | ~714 MB | SQL Server 2022 Express with Advanced Services — full offline installer |
-| `SSMS-Setup-ENU.exe` | ~473 MB | SQL Server Management Studio — full offline installer |
+| `SSMS-Setup-ENU.exe` | ~473 MB | SQL Server Management Studio — full offline installer (optional) |
 
 ## Deploying to SRV01 (Lab)
 
