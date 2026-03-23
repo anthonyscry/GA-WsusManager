@@ -362,6 +362,8 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 ## Air-Gapped Network Workflow
 
+> **Note:** Depending on your program, transferring files into SAP or collateral spaces may require a Data Transfer Request (DTR). Check with your security team before physically moving media across network boundaries.
+
 ### Workflow Overview
 
 | Step | Location | Action |
