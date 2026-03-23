@@ -4,6 +4,16 @@ All notable changes to WSUS Manager are documented here.
 
 ---
 
+## [4.0.4] - March 2026
+
+### Fixed
+- All database operations work without SqlServer module (sqlcmd.exe fallback)
+- Age decline preserves already-approved updates
+- Sysadmin check uses sqlcmd.exe when Invoke-Sqlcmd unavailable
+- Declined purge shows progress on every batch
+
+---
+
 ## [4.0.3] - March 2026
 
 ### Added
