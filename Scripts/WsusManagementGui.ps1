@@ -680,7 +680,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/2021, WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/2021, WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -1611,7 +1611,7 @@ FEATURES
 • Modern dark-themed GUI with auto-refresh
 • Air-gapped network support (export/import)
 • Automated sync, cleanup, and deep cleanup
-• Smart decline: superseded, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/2021, WSL
+• Smart decline: superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/2021, WSL
 • Default products: Windows 11, Server 2019, Edge, Defender, Office, SQL Server
 • DNS preflight check before sync
 • Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)

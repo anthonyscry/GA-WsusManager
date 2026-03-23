@@ -269,6 +269,7 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 **Auto-Decline Rules:**
 - Expired and superseded updates
+- Updates older than 6 months (by Microsoft release date)
 - ARM64 updates
 - Legacy builds: 21H2, 22H2, 23H2 (declined)
 - Preview and Beta updates
