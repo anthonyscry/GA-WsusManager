@@ -187,6 +187,8 @@ Run this monthly on the internet-connected WSUS server to download the latest up
 
 This is how you move updates from an internet-connected WSUS server to an air-gapped WSUS server.
 
+> **Note:** Depending on your program, transferring files into SAP or collateral spaces may require a Data Transfer Request (DTR). Check with your security team before physically moving media across network boundaries.
+
 **On the online server:**
 
 1. Run an Online Sync (see above) with the export path set to a USB drive or staging folder.
