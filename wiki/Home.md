@@ -93,7 +93,7 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 
 1. Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page
 2. Extract to `C:\WSUS\` (EXE requires Scripts/ and Modules/ in the same directory)
-3. Right-click `WsusManager.exe` -- Run as Administrator
+3. Right-click `GA-WsusManager.exe` -- Run as Administrator
 
 ### Option 2: PowerShell Scripts
 

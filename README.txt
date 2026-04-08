@@ -48,7 +48,7 @@ Quick Start
 1. Go to the Releases page.
 2. Download WsusManager-vX.X.X.zip.
 3. Extract the full archive to a folder (for example, C:\WsusManager\).
-4. Right-click WsusManager.exe and select Run as Administrator.
+4. Right-click GA-WsusManager.exe and select Run as Administrator.
 
 Important: The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not move the EXE without also moving those folders.
 ------------------------------------------------------------
@@ -149,7 +149,7 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 3. Place the SQL installer. If the server has no internet access, download SQL Server Express 2022 on a connected machine and copy the installer to C:\WSUS\SQLDB\ on the target server. The install script will look for it there. SQL Server Management Studio (SSMS) is optional -- if the installer is present it will be installed, otherwise it is skipped.
 
-4. Launch WSUS Manager. Right-click WsusManager.exe and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
+4. Launch WSUS Manager. Right-click GA-WsusManager.exe and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
 
 5. Run Install. Click the Install WSUS button. The application will:
    - Prompt for the content directory (default: C:\WSUS\).
@@ -209,9 +209,11 @@ On the air-gapped server:
 
 8. Robocopy copies the content files to the WSUS content directory.
 
-9. After the transfer completes, click Reset Content (in the DIAGNOSTICS section) to run wsusutil reset. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
+9. Click **Restore DB** to import the SUSDB backup from the transfer set.
 
-10. Run Diagnostics to verify everything is healthy.
+10. After the transfer completes, click Reset Content (in the DIAGNOSTICS section) to run wsusutil reset. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
+
+11. Run Diagnostics to verify everything is healthy.
 
 Deploying GPOs to Clients:
 
@@ -351,8 +353,10 @@ Project Structure
     GA-WsusManager/
     |-- build.ps1                        # Build script (PS2EXE compiler)
     |-- dist/                            # Build output (gitignored)
-    |   |-- WsusManager.exe
+    |   |-- GA-WsusManager.exe
     |   +-- WsusManager-vX.X.X.zip
+    |-- Assets/
+    |   +-- Branding/                    # Source icons and logo files for build/package
     |-- Scripts/
     |   |-- WsusManagementGui.ps1        # Main GUI application (WPF/XAML)
     |   |-- Invoke-WsusManagement.ps1    # CLI for WSUS operations
@@ -403,13 +407,13 @@ Build and Test
 The project uses PS2EXE to compile PowerShell scripts into a standalone .exe.
 
     # Full build: tests + code analysis + compile
-    .\build.ps1
+    .\build.ps1 -NoPush
     
     # Build without running tests
-    .\build.ps1 -SkipTests
+    .\build.ps1 -SkipTests -NoPush
     
     # Build without code review (PSScriptAnalyzer)
-    .\build.ps1 -SkipCodeReview
+    .\build.ps1 -SkipCodeReview -NoPush
     
     # Run tests only (no build)
     .\build.ps1 -TestOnly
@@ -420,9 +424,10 @@ The project uses PS2EXE to compile PowerShell scripts into a standalone .exe.
     # Run code analysis directly
     Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
 
-Build output goes to dist/ as WsusManager.exe and WsusManager-vX.X.X.zip. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
+Build output goes to dist/ as GA-WsusManager.exe and WsusManager-vX.X.X.zip. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
 
-CI pipeline (.github/workflows/build.yml) runs PSScriptAnalyzer, Pester tests, PS2EXE compilation, EXE validation (PE header, 64-bit architecture, version info), and startup benchmarks on every push and pull request.
+For a fuller local validation pass before building, run .\build\Invoke-LocalValidation.ps1. It checks PSScriptAnalyzer, Pester, and embedded XAML in addition to the main build flow.
+For normal local builds, keep -NoPush on build.ps1 so the script does not auto-commit and push dist/.
 ------------------------------------------------------------
 
 Standard Paths
@@ -468,7 +473,7 @@ Buttons stay greyed out after an operation finishes
 Close and reopen WSUS Manager. This can happen if an operation exits unexpectedly without resetting the operation-running flag.
 
 Script not found errors
-Make sure the Scripts/ and Modules/ folders are in the same directory as WsusManager.exe. If you moved only the EXE, the application cannot find its scripts.
+Make sure the Scripts/ and Modules/ folders are in the same directory as GA-WsusManager.exe. If you moved only the EXE, the application cannot find its scripts.
 
 See CLAUDE.md <CLAUDE.md> for detailed developer documentation, architecture notes, and a full catalog of known GUI issues with solutions.
 ------------------------------------------------------------

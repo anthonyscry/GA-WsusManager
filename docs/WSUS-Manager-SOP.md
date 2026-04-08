@@ -46,12 +46,13 @@
 **Package Contents:**
 
 ```
-WsusManager.exe           # Main GUI application
+GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules (16 modules)
 DomainController/         # Optional - GPO deployment scripts
 QUICK-START.txt           # Quick reference guide
-README.md                 # Full documentation
+README.txt                # Full documentation
+CHANGELOG.txt             # Version history and release notes
 ```
 
 > **IMPORTANT:** The EXE requires Scripts/ and Modules/ folders in the same directory. Do not deploy the EXE alone.
@@ -99,7 +100,7 @@ README.md                 # Full documentation
 
 | Step | Action |
 |------|--------|
-| 1 | Launch `WsusManager.exe` as Administrator |
+| 1 | Launch `GA-WsusManager.exe` as Administrator |
 | 2 | Click **Fix SQL Login** in the Setup section |
 | 3 | The app automatically adds the current user as sysadmin |
 
@@ -176,7 +177,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
 | 2 | Extract `WsusManager-v4.0.4.zip` to `C:\WSUS\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
-| 4 | Right-click `WsusManager.exe` -> Run as Administrator |
+| 4 | Right-click `GA-WsusManager.exe` -> Run as Administrator |
 | 5 | Click **Install WSUS** and follow prompts |
 
 ### Deployment Layout
@@ -186,7 +187,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | C:\WSUS\ | Content directory (MUST be this exact path) |
 | C:\WSUS\SQLDB\ | SQL Express installer (SSMS optional) |
 | C:\WSUS\Logs\ | Log files |
-| C:\WSUS\WsusManager.exe | GUI application |
+| C:\WSUS\GA-WsusManager.exe | GUI application |
 | C:\WSUS\Scripts\ | PowerShell scripts |
 | C:\WSUS\Modules\ | PowerShell modules |
 | %APPDATA%\WsusManager\settings.json | User settings |
@@ -199,7 +200,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 
 ### Overview
 
-WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built with WPF. The GUI provides:
+WSUS Manager v4.0.4 includes a full GUI application (`GA-WsusManager.exe`) built with WPF. The GUI provides:
 
 - **Dashboard** with auto-refresh (30-second interval) and Health Score (0-100)
 - **Server Mode** toggle (Online vs Air-Gap) with context-aware menus
@@ -213,7 +214,7 @@ WSUS Manager v4.0.4 includes a full GUI application (`WsusManager.exe`) built wi
 
 ### Launching the GUI
 
-1. Right-click `WsusManager.exe` -> **Run as Administrator**
+1. Right-click `GA-WsusManager.exe` -> **Run as Administrator**
 2. If WSUS is not installed, only **Install WSUS** will be enabled
 3. Dashboard auto-populates once WSUS is detected
 
@@ -753,7 +754,7 @@ SESSION START: 2026-01-19 10:30:00
 
 | File/Folder | Description |
 |-------------|-------------|
-| WsusManager.exe | Main GUI application (compiled from WsusManagementGui.ps1) |
+| GA-WsusManager.exe | Main GUI application (compiled from WsusManagementGui.ps1) |
 | Scripts/WsusManagementGui.ps1 | GUI source code |
 | Scripts/Invoke-WsusManagement.ps1 | CLI entry point (interactive menu + switches) |
 | Scripts/Install-WsusWithSqlExpress.ps1 | One-time installation |

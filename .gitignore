@@ -60,6 +60,10 @@ installers/*.exe
 /dist/
 /staging/
 
+# Local workspace state
+/.gstack/
+/.worktrees/
+
 # Screenshots
 /screenshots/
 Tests/Screenshots/

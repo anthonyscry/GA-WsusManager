@@ -23,7 +23,7 @@ This guide helps you diagnose and resolve common issues with WSUS Manager and WS
 
 Always start with Diagnostics:
 
-1. Launch `WsusManager.exe`
+1. Launch `GA-WsusManager.exe`
 2. Click **Diagnostics** (in the DIAGNOSTICS section)
 3. Review the output
 
@@ -310,7 +310,7 @@ Diagnostics verifies:
 ### Application Won't Start
 
 **Symptoms:**
-- WsusManager.exe doesn't launch
+- GA-WsusManager.exe doesn't launch
 - No error message
 
 **Solutions:**
@@ -356,10 +356,10 @@ Diagnostics verifies:
 - Path errors in console
 
 **Solution:**
-- Ensure `Scripts\` folder is alongside `WsusManager.exe`
+- Ensure `Scripts\` folder is alongside `GA-WsusManager.exe`
 - Required files:
   ```
-  WsusManager.exe
+  GA-WsusManager.exe
   Scripts\
   ├── Invoke-WsusManagement.ps1
   └── Invoke-WsusMonthlyMaintenance.ps1
@@ -403,14 +403,14 @@ Diagnostics verifies:
 1. Download the full distribution package (`WsusManager-vX.X.X.zip`)
 2. Extract ALL contents, maintaining folder structure:
    ```
-   WsusManager.exe      # Main application
+   GA-WsusManager.exe   # Main application
    Scripts/             # REQUIRED - operation scripts
    Modules/             # REQUIRED - PowerShell modules
     DomainController/    # Optional - Air-gap GPO deployment scripts
    ```
-3. Run `WsusManager.exe` from this folder
+3. Run `GA-WsusManager.exe` from this folder
 
-**Important:** Do not move `WsusManager.exe` to a different location without also moving the Scripts/ and Modules/ folders.
+**Important:** Do not move `GA-WsusManager.exe` to a different location without also moving the Scripts/ and Modules/ folders.
 
 ---
 
