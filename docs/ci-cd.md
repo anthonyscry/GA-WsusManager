@@ -1,53 +1,13 @@
-# CI/CD Pipeline Documentation
+# Validation and Release Automation
 
-WSUS Manager uses GitHub Actions to validate and package the PowerShell GUI release.
-
-## Active Workflows
-
-### Build GA-WsusManager
-- **File:** `.github/workflows/build.yml`
-- **Purpose:** Code review, tests, EXE build, and packaging
-- **Triggers:**
-  - Push to `main`, `master`, `develop` on PowerShell paths
-  - Manual trigger (`workflow_dispatch`)
-
-#### Jobs
-
-1. **PowerShell Code Review**
-   - Installs `PSScriptAnalyzer`
-   - Scans `.ps1`, `.psm1`, `.psd1` files
-   - Fails on analyzer errors
-   - Includes security-focused rules
-
-2. **Pester Tests**
-   - Installs `Pester` v5+
-   - Runs test suites in `Tests/` (excluding EXE validation pre-build)
-   - Uploads `test-results` artifact
-
-3. **Build Executable**
-   - Installs `PS2EXE`
-   - Builds `Scripts/WsusManagementGui.ps1` into `WsusManager.exe`
-   - Runs `Tests/ExeValidation.Tests.ps1`
-   - Packages distribution zip with required folders:
-     - `WsusManager.exe`
-     - `Scripts/`
-     - `Modules/`
-     - optional `DomainController/`
-
-4. **Create Release** (manual input)
-   - Creates GitHub release from build artifact when requested
-
-### Repository Hygiene
-- **File:** `.github/workflows/repo-hygiene.yml`
-- Scheduled maintenance for stale PRs/branches/runs
-
-### Dependabot Auto-Merge
-- **File:** `.github/workflows/dependabot-auto-merge.yml`
-- Auto-merges minor/patch dependency updates
+This repository currently relies on local validation scripts as the source of truth for build and quality checks. If GitHub Actions workflow files are added back later, they should mirror the commands below.
 
 ## Local Validation Commands
 
 ```powershell
+# Full local validation (recommended)
+.\build\Invoke-LocalValidation.ps1
+
 # Analyzer
 Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
 Invoke-ScriptAnalyzer -Path .\Scripts\Invoke-WsusManagement.ps1 -Severity Error,Warning
@@ -56,19 +16,40 @@ Invoke-ScriptAnalyzer -Path .\Scripts\Invoke-WsusManagement.ps1 -Severity Error,
 Invoke-Pester -Path .\Tests -Output Detailed
 
 # Full build pipeline
-.\build.ps1
+.\build.ps1 -NoPush
 ```
 
-## Artifacts
+## What the Local Validation Flow Covers
 
-Primary build artifact is a distribution package:
-- `WsusManager-vX.X.X.zip`
+1. `build\Invoke-LocalValidation.ps1`
+   - Runs PSScriptAnalyzer across repo PowerShell files
+   - Validates embedded XAML in `Scripts/WsusManagementGui.ps1`
+   - Runs Pester test suites unless `-SkipTests` is used
 
-The package is expected to include companion folders required by the EXE runtime (`Scripts/`, `Modules/`).
+2. `build.ps1`
+   - Runs PSScriptAnalyzer on the main entry scripts
+   - Runs the Pester suite unless `-SkipTests` is used
+   - Compiles `Scripts/WsusManagementGui.ps1` into `GA-WsusManager.exe`
+   - Creates the `WsusManager-vX.X.X.zip` distribution package
+   - Copies build outputs into `dist\`
+   - Auto-commits and pushes `dist\` unless `-NoPush` is supplied
+
+## Build Artifacts
+
+Primary build artifacts are:
+- `dist\GA-WsusManager.exe`
+- `dist\WsusManager-vX.X.X.zip`
+
+The distribution zip is expected to include companion folders required by the EXE runtime:
+- `GA-WsusManager.exe`
+- `Scripts/`
+- `Modules/`
+- optional `DomainController/`
+- release documentation files copied by `build.ps1`
 
 ## Troubleshooting
 
 - **Analyzer failures:** fix reported script errors/warnings first
 - **Pester failures:** run failing test file directly and reproduce locally
 - **Build failures:** verify `PS2EXE` installed and script paths resolve
-- **EXE works in repo but not after deployment:** confirm `Scripts/` and `Modules/` are alongside `WsusManager.exe`
+- **EXE works in repo but not after deployment:** confirm `Scripts/` and `Modules/` are alongside `GA-WsusManager.exe`

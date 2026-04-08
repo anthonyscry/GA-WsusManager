@@ -102,7 +102,7 @@ Copy the downloaded SQL Server installers to `C:\WSUS\SQLDB\`:
 
 ### 3. Run as Administrator
 
-Right-click `WsusManager.exe` and select **Run as administrator**.
+Right-click `GA-WsusManager.exe` and select **Run as administrator**.
 
 > **Note**: Administrator privileges are required for all WSUS operations.
 
@@ -118,7 +118,7 @@ On first launch, go to **Settings** and configure:
 
 ### Using the GUI
 
-1. Launch `WsusManager.exe` as Administrator
+1. Launch `GA-WsusManager.exe` as Administrator
 2. Click **Install WSUS** in the sidebar
 3. Browse to the folder containing SQL installers (`C:\WSUS\SQLDB` if you kept defaults)
 4. Click **Install**
@@ -155,7 +155,7 @@ Your account needs sysadmin privileges to manage SUSDB. Choose one of these meth
 
 **Option A: Use WSUS Manager GUI (Recommended)**
 
-1. Launch `WsusManager.exe` as Administrator
+1. Launch `GA-WsusManager.exe` as Administrator
 2. Click **Fix SQL Login** in the Setup section
 3. The app automatically adds the current user as sysadmin
 
@@ -298,7 +298,7 @@ sqlcmd -S localhost\SQLEXPRESS -d SUSDB -Q "SELECT name, size*8/1024 AS SizeMB F
 
 Use WSUS Manager's Diagnostics to verify all components:
 
-1. Launch `WsusManager.exe`
+1. Launch `GA-WsusManager.exe`
 2. Click **Diagnostics** (in the DIAGNOSTICS section of the sidebar)
 3. Review the output for any issues
 

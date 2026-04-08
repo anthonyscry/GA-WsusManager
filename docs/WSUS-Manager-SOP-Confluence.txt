@@ -148,7 +148,7 @@ h3. Distribution Package
 *Package Contents:*
 
 {code}
-WsusManager.exe           # Main GUI application
+GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules (16 modules)
 DomainController/         # Optional - GPO deployment scripts
@@ -196,7 +196,7 @@ h3. Granting SQL Server Sysadmin Privileges
 
 h4. Option A: Use WSUS Manager GUI (Recommended)
 
-# Launch {{WsusManager.exe}} as Administrator
+# Launch {{GA-WsusManager.exe}} as Administrator
 # Click *Fix SQL Login* in the Setup section
 # The app automatically adds the current user as sysadmin
 
@@ -268,7 +268,7 @@ h3. Installation Steps
 |1|Place SQL installers in C:\WSUS\SQLDB\|
 |2|Extract WsusManager-v4.0.4.zip to C:\WSUS\|
 |3|Verify folder structure (EXE + Scripts/ + Modules/)|
-|4|Right-click WsusManager.exe > Run as Administrator|
+|4|Right-click GA-WsusManager.exe > Run as Administrator|
 |5|Click *Install WSUS* and follow prompts|
 
 h3. Deployment Layout
@@ -277,7 +277,7 @@ h3. Deployment Layout
 |C:\WSUS\|Content directory (MUST be this exact path)|
 |C:\WSUS\SQLDB\|SQL Express installer (SSMS optional)|
 |C:\WSUS\Logs\|Log files|
-|C:\WSUS\WsusManager.exe|GUI application|
+|C:\WSUS\GA-WsusManager.exe|GUI application|
 |C:\WSUS\Scripts\|PowerShell scripts|
 |C:\WSUS\Modules\|PowerShell modules|
 |%APPDATA%\WsusManager\settings.json|User settings|
@@ -290,7 +290,7 @@ h2. GUI Application
 
 h3. Overview
 
-WSUS Manager v4.0.4 includes a full WPF GUI application (WsusManager.exe) providing:
+WSUS Manager v4.0.4 includes a full WPF GUI application (GA-WsusManager.exe) providing:
 
 * *Dashboard* with auto-refresh (30-second interval) and Health Score (0-100)
 * *Server Mode* toggle (Online vs Air-Gap) with context-aware menus
@@ -612,7 +612,7 @@ h2. Troubleshooting
 |Sync stuck at 0%|Check DNS configuration - GUI runs a DNS preflight check before syncing|
 |SqlServer module missing|v4.0.4 auto-falls back to sqlcmd.exe; no manual install needed|
 |"Content is still downloading" after import|Click Reset Content (in the DIAGNOSTICS section of the nav) to run wsusutil reset|
-|Script not found error|Verify Scripts/ and Modules/ folders are with WsusManager.exe|
+|Script not found error|Verify Scripts/ and Modules/ folders are with GA-WsusManager.exe|
 
 h3. Diagnostic Commands
 
@@ -629,7 +629,7 @@ h2. Repository Structure
 h3. Scripts and Key Files
 
 ||File / Folder||Description||
-|WsusManager.exe|Main GUI application (compiled from WsusManagementGui.ps1)|
+|GA-WsusManager.exe|Main GUI application (compiled from WsusManagementGui.ps1)|
 |Scripts/WsusManagementGui.ps1|GUI source code|
 |Scripts/Invoke-WsusManagement.ps1|CLI entry point (interactive menu + switches)|
 |Scripts/Install-WsusWithSqlExpress.ps1|One-time installation script|

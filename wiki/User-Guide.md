@@ -23,7 +23,7 @@ This guide explains how to use the WSUS Manager GUI application for day-to-day o
 
 ### Launching the Application
 
-1. Right-click `WsusManager.exe`
+1. Right-click `GA-WsusManager.exe`
 2. Select **Run as administrator**
 
 > **Important**: Administrator privileges are required for all WSUS operations.

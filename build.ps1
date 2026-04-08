@@ -53,6 +53,27 @@ Set-Location $ScriptRoot
 $Version = "4.0.4"
 if (-not $OutputName) { $OutputName = "GA-WsusManager.exe" }
 
+function Get-BrandingAssetPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FileName
+    )
+
+    $searchRoots = @(
+        (Join-Path $ScriptRoot "Assets\Branding"),
+        $ScriptRoot
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+    foreach ($root in $searchRoots) {
+        $candidate = Join-Path $root $FileName
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  WSUS Manager Executable Builder" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
@@ -393,9 +414,10 @@ $buildParams = @{
 }
 
 # Add icon if exists
-if (Test-Path ".\wsus-icon.ico") {
-    $buildParams.IconFile = ".\wsus-icon.ico"
-    Write-Host "[+] Using custom icon: wsus-icon.ico" -ForegroundColor Green
+$iconAssetPath = Get-BrandingAssetPath -FileName "wsus-icon.ico"
+if ($iconAssetPath) {
+    $buildParams.IconFile = $iconAssetPath
+    Write-Host "[+] Using custom icon: $(Split-Path $iconAssetPath -Leaf)" -ForegroundColor Green
 }
 
 Write-Host "[*] Converting to executable..." -ForegroundColor Yellow
@@ -440,7 +462,9 @@ try {
 
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if ($iconAssetPath) {
+            Copy-Item $iconAssetPath -Destination (Join-Path $packageDir "wsus-icon.ico")
+        }
         if (Test-Path ".\README.txt") {
             Copy-Item ".\README.txt" -Destination (Join-Path $packageDir "README.txt")
         } elseif (Test-Path ".\README.md") {
@@ -448,12 +472,14 @@ try {
         }
 
         # Copy logo files for sidebar and About page
-        if (Test-Path ".\general_atomics_logo_small.ico") {
-            Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+        $smallLogoPath = Get-BrandingAssetPath -FileName "general_atomics_logo_small.ico"
+        $bigLogoPath = Get-BrandingAssetPath -FileName "general_atomics_logo_big.ico"
+        if ($smallLogoPath) {
+            Copy-Item $smallLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_small.ico")
             Write-Host "    Included sidebar logo" -ForegroundColor Gray
         }
-        if (Test-Path ".\general_atomics_logo_big.ico") {
-            Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+        if ($bigLogoPath) {
+            Copy-Item $bigLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_big.ico")
             Write-Host "    Included About page logo" -ForegroundColor Gray
         }
 
@@ -519,8 +545,8 @@ try {
         # Copy exe, zip, and logo files to dist
         Copy-Item ".\$OutputName" -Destination $distDir -Force
         Copy-Item ".\$zipFileName" -Destination $distDir -Force
-        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir -Force }
-        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir -Force }
+        if ($smallLogoPath) { Copy-Item $smallLogoPath -Destination (Join-Path $distDir "general_atomics_logo_small.ico") -Force }
+        if ($bigLogoPath) { Copy-Item $bigLogoPath -Destination (Join-Path $distDir "general_atomics_logo_big.ico") -Force }
         Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 

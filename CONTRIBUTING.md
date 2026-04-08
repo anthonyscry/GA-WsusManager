@@ -18,19 +18,23 @@ Thanks for contributing to WSUS Manager. This repository is a PowerShell WPF pro
 - `Modules/` - reusable WSUS modules
 - `Tests/` - Pester test suites
 - `DomainController/` - GPO deployment assets
+- `Assets/Branding/` - source icon and logo assets used during build/package
 - `build.ps1` - build/test/review entry point
 
 ## Build
 
 ```powershell
+# Local validation helper (recommended before a PR)
+.\build\Invoke-LocalValidation.ps1
+
 # Full build (recommended)
-.\build.ps1
+.\build.ps1 -NoPush
 
 # Build without tests
-.\build.ps1 -SkipTests
+.\build.ps1 -SkipTests -NoPush
 
 # Build without code review
-.\build.ps1 -SkipCodeReview
+.\build.ps1 -SkipCodeReview -NoPush
 
 # Tests only
 .\build.ps1 -TestOnly
@@ -72,7 +76,7 @@ Before opening a PR with GUI changes, verify:
 8. ESC closes dialogs
 9. Script paths are validated before invocation
 10. Buttons are disabled/re-enabled correctly during operations
-11. Build passes (`.\build.ps1`)
+11. Build passes (`.\build.ps1 -NoPush`)
 12. Manual validation performed for changed operations
 
 ## Commit Messages
@@ -109,4 +113,4 @@ Examples:
 ## Notes
 
 - Distribution artifacts are generated in `dist/` and should not be committed.
-- `WsusManager.exe` distribution requires `Scripts/` and `Modules/` alongside the EXE.
+- `GA-WsusManager.exe` distribution requires `Scripts/` and `Modules/` alongside the EXE.

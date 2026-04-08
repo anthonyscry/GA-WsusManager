@@ -19,7 +19,7 @@
 
 1. Extract `WsusManager-v4.0.4.zip` to `C:\WSUS\`
 2. Place SQL installers in `C:\WSUS\SQLDB\`
-3. Right-click `WsusManager.exe` -- Run as Administrator
+3. Right-click `GA-WsusManager.exe` -- Run as Administrator
 4. Click **Install WSUS** and follow prompts
 5. Wait 15-30 minutes for SQL Express + WSUS installation
 6. Dashboard turns green when services are running
@@ -51,7 +51,7 @@ The sync runs a DNS preflight check, then:
 **On the online server:**
 
 1. Run Online Sync with export path set to a staging folder
-2. Click **Robocopy**, set source to your WSUS content folder (e.g. `C:\WSUS\WsusContent`) and destination to the USB drive, then click **Start Transfer**
+2. Click **Robocopy**, set source to `C:\WSUS\WsusContent` and destination to the USB drive, then click **Start Transfer**
 3. Eject USB
 
 **On the air-gapped server:**

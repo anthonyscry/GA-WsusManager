@@ -68,9 +68,10 @@ GA-WsusManager/
 ├── CHANGELOG.md                 # Version history
 ├── CLAUDE.md                    # AI assistant guide
 ├── README.md                    # User documentation
-├── wsus-icon.ico                # Application icon
+├── Assets/
+│   └── Branding/                # Source icon and logo assets
 ├── dist/                        # Build output (gitignored)
-│   ├── WsusManager.exe          # Compiled executable
+│   ├── GA-WsusManager.exe       # Compiled executable
 │   └── WsusManager-vX.X.X.zip  # Distribution package
 │
 ├── Scripts/                     # Main PowerShell scripts
@@ -170,17 +171,19 @@ GA-WsusManager/
 cd C:\Projects\GA-WsusManager
 
 # Full build with tests and code review
-.\build.ps1
+.\build.ps1 -NoPush
 
 # Quick build (skip tests)
-.\build.ps1 -SkipTests
+.\build.ps1 -SkipTests -NoPush
 
 # Skip code review only
-.\build.ps1 -SkipCodeReview
+.\build.ps1 -SkipCodeReview -NoPush
 
 # Skip both
-.\build.ps1 -SkipTests -SkipCodeReview
+.\build.ps1 -SkipTests -SkipCodeReview -NoPush
 ```
+
+Use `-NoPush` for normal local builds so `build.ps1` does not auto-commit and push `dist/`.
 
 ### Build Options
 
@@ -189,6 +192,7 @@ cd C:\Projects\GA-WsusManager
 | `-SkipTests` | Skip Pester unit tests |
 | `-SkipCodeReview` | Skip PSScriptAnalyzer |
 | `-TestOnly` | Run tests without building |
+| `-NoPush` | Prevent `build.ps1` from auto-committing and pushing `dist/` |
 | `-OutputName` | Custom output filename |
 
 ### Build Process
@@ -214,21 +218,22 @@ The build script performs:
 
 ```
 dist/
-├── WsusManager.exe              # ~260 KB executable
-└── WsusManager-vX.X.X.zip      # Full distribution package
+├── GA-WsusManager.exe           # Compiled executable
+└── WsusManager-vX.X.X.zip       # Full distribution package
 ```
 
 The distribution zip contains everything needed for deployment:
 
 ```
-WsusManager.exe
+GA-WsusManager.exe
 Scripts/                         # Required -- operation scripts
 Modules/                         # Required -- PowerShell modules
 DomainController/                # Optional -- air-gap GPO scripts
 general_atomics_logo_big.ico
 general_atomics_logo_small.ico
 QUICK-START.txt
-README.md
+README.txt
+CHANGELOG.txt
 ```
 
 **Important:** The EXE requires the `Scripts/` and `Modules/` folders in the same directory. Do not deploy the EXE alone.
