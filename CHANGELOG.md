@@ -5,6 +5,19 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.5] - 2026-05-11
+
+### Added
+- Exchange Server 2019 added to default sync products
+
+### Changed
+- Product subscription changed from REPLACE to ADDITIVE — selected products are now added to existing WSUS subscriptions instead of replacing them
+- Removed the "non-selected products decline" block; sub-product updates (Office LTSC 2024, SSMS v20) no longer get declined due to title mismatch with parent product names
+
+### Fixed
+- Office LTSC 2024 updates no longer missing after sync
+- SQL Server Management Studio v20 updates no longer missing after sync
+
 ## [4.0.4] - 2026-03-22
 
 ### Added
@@ -20,11 +33,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Fixed
 - All database operations (index rebuild, shrink, backup, purge) now work without SqlServer module
 - Age decline preserves already-approved updates (was declining them on subsequent syncs)
-
-### Documentation
-- README.txt Air-Gap Support features rewritten to Robocopy terminology (removed implied Export/Import nav operation references)
-- Air-Gap Transfer Workflow step 8 corrected: Robocopy performs a file copy only and does not import WSUS metadata
-- "Reset Content (under Diagnostics)" corrected to "Reset Content (in the DIAGNOSTICS section)" in the Air-Gap Transfer Workflow
 
 ## [4.0.3] - 2026-03-22
 
@@ -217,9 +225,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Shrink retry behavior while backups are active
 - Reduced expected noisy purge output errors
 
-[4.0.4]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.3...v4.0.4
-[4.0.3]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.2...v4.0.3
-[4.0.2]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/anthonyscry/GA-WsusManager/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.9.0...v4.0.0
 [3.9.0]: https://github.com/anthonyscry/GA-WsusManager/compare/v3.8.12...v3.9.0

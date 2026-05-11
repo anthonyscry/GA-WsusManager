@@ -22,14 +22,12 @@ BeforeAll {
 
 Describe "Product Decline Pattern (Word-Boundary Matching)" {
     Context "Pattern construction matches maintenance script logic" {
-        It "Uses word-boundary pattern (\b) for product matching in decline logic" {
-            $script:MaintContent | Should -Match '\\b\('
-            $script:MaintContent | Should -Match '\$enabledTitles'
+        It "Uses regex pattern for product matching in approval filter (non-selected decline removed in v4.1)" {
             $script:MaintContent | Should -Match '\$productPattern'
         }
 
-        It "Escapes product titles with [regex]::Escape before building pattern" {
-            $script:MaintContent | Should -Match '\[regex\]::Escape\(\$_\.Title\)'
+        It "Escapes product names with [regex]::Escape before building pattern" {
+            $script:MaintContent | Should -Match '\[regex\]::Escape\(\$_\)'
         }
     }
 
@@ -266,13 +264,18 @@ Describe "SQL Injection Safety" {
             $installScript = Get-Content (Join-Path $script:RepoRoot "Scripts\Install-WsusWithSqlExpress.ps1") -Raw
             # Old pattern was: -Q "CREATE LOGIN [$currentUser] FROM WINDOWS"
             # New pattern uses $(CurrentUser) which is sqlcmd variable, not PS interpolation
-            # Check that there's no bare $currentUser inside -Q strings
+            # Check that there's no bare $currentUser inside -Q quoted SQL strings
             $lines = $installScript -split "`n"
             $sqlLines = $lines | Where-Object { $_ -match '\-Q\s+"' }
             foreach ($line in $sqlLines) {
-                # If -Q contains variable syntax, it should be $(CurrentUser) not $currentUser
-                if ($line -match '\$currentUser' -and $line -notmatch '\$\(CurrentUser\)') {
-                    throw "Found potentially unsafe direct interpolation in SQL: $line"
+                # Extract the SQL string between -Q " and the closing "
+                if ($line -match '-Q\s+"([^"]+)"') {
+                    $sqlText = $matches[1]
+                    # Check if $currentUser appears as PS variable inside the SQL text
+                    # $currentUser appearing outside -Q (e.g., in -v values) is safe
+                    if ($sqlText -match '\$currentUser' -and $sqlText -notmatch '\$\(CurrentUser\)') {
+                        throw "Found potentially unsafe direct interpolation in SQL: $line"
+                    }
                 }
             }
             $true | Should -BeTrue

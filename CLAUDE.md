@@ -7,7 +7,7 @@ This file provides guidance for AI assistants working with this codebase.
 WSUS Manager is a PowerShell WPF automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides a modern GUI application for managing WSUS servers, including support for air-gapped networks.
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Current Version:** 4.0.4 (PowerShell)
+**Current Version:** 4.0.5 (PowerShell)
 
 ## Repository Structure
 
@@ -15,10 +15,8 @@ WSUS Manager is a PowerShell WPF automation suite for Windows Server Update Serv
 GA-WsusManager/
 ├── build.ps1                    # Build script using PS2EXE
 ├── dist/                        # Build output folder (gitignored)
-│   ├── GA-WsusManager.exe       # Compiled executable
+│   ├── WsusManager.exe          # Compiled executable
 │   └── WsusManager-vX.X.X.zip   # Distribution package
-├── Assets/
-│   └── Branding/                # Source icon/logo assets copied into release packages
 ├── Scripts/
 │   ├── WsusManagementGui.ps1    # Main GUI source (WPF/XAML)
 │   ├── Invoke-WsusManagement.ps1
@@ -53,27 +51,27 @@ The project uses PS2EXE to compile PowerShell scripts into standalone executable
 
 ```powershell
 # Full build with tests and code review (recommended)
-.\build.ps1 -NoPush
+.\build.ps1
 
 # Build without tests
-.\build.ps1 -SkipTests -NoPush
+.\build.ps1 -SkipTests
 
 # Build without code review
-.\build.ps1 -SkipCodeReview -NoPush
+.\build.ps1 -SkipCodeReview
 
 # Run tests only
 .\build.ps1 -TestOnly
 
 # Build with custom output name
-.\build.ps1 -OutputName "CustomName.exe" -NoPush
+.\build.ps1 -OutputName "CustomName.exe"
 ```
 
 The build process:
-1. Runs Pester test suites from `Tests/`
+1. Runs Pester unit tests (323 tests across 10 files)
 2. Runs PSScriptAnalyzer on `Scripts\WsusManagementGui.ps1` and `Scripts\Invoke-WsusManagement.ps1`
 3. Blocks build if errors are found
 4. Warns but continues if only warnings exist
-5. Compiles `WsusManagementGui.ps1` to `GA-WsusManager.exe` using PS2EXE
+5. Compiles `WsusManagementGui.ps1` to `WsusManager.exe` using PS2EXE
 6. Creates distribution zip with Scripts/, Modules/, DomainController/, and branding assets
 
 **Version:** Update in `build.ps1` and `Scripts\WsusManagementGui.ps1` (`$script:AppVersion`)
@@ -82,7 +80,7 @@ The build process:
 
 The build creates a complete distribution zip (`WsusManager-vX.X.X.zip`) containing:
 ```
-GA-WsusManager.exe        # Main GUI application
+WsusManager.exe           # Main GUI application
 Scripts/                  # Required - operation scripts
 ├── Invoke-WsusManagement.ps1
 ├── Invoke-WsusMonthlyMaintenance.ps1
@@ -96,8 +94,7 @@ DomainController/         # Optional - Air-gap GPO deployment scripts
 general_atomics_logo_big.ico
 general_atomics_logo_small.ico
 QUICK-START.txt
-README.txt
-CHANGELOG.txt
+README.md
 ```
 
 **IMPORTANT:** The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.
@@ -181,7 +178,7 @@ CHANGELOG.txt
 
 ### Standard Paths
 - WSUS Content: `C:\WSUS\`
-- SQL Express Installer: `C:\WSUS\SQLDB\` (installer script prompts if missing; SSMS optional)
+- SQL/SSMS Installers: `C:\WSUS\SQLDB\` (installer script prompts if missing)
 - Logs: `C:\WSUS\Logs\`
 - SQL Instance: `localhost\SQLEXPRESS`
 - WSUS Ports: 8530 (HTTP), 8531 (HTTPS)
@@ -201,7 +198,7 @@ CHANGELOG.txt
 
 ### Modifying the GUI
 1. Edit `Scripts\WsusManagementGui.ps1`
-2. Run `.\build.ps1 -NoPush` to compile and test locally
+2. Run `.\build.ps1` to compile and test
 3. Test the executable
 
 ### Running Tests
@@ -257,9 +254,20 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - Build artifacts (exe, zip) are NOT committed - they go to `dist/` folder (gitignored)
 - Use conventional commit messages
 - Run tests before committing: `.\build.ps1 -TestOnly`
-- Use `.\build\Invoke-LocalValidation.ps1` and `.\build.ps1 -NoPush` for local validation/builds before pushing changes
+- GitHub Actions builds the EXE on push/PR and creates releases
 
 ## Recent Changes
+
+### v4.0.5
+
+**Product Subscription & Approval:**
+- Added Exchange Server 2019 to default sync products
+- Changed product subscription from REPLACE to ADDITIVE — selected products are added to existing WSUS subscriptions instead of replacing them. Previously, unchecked products were silently removed from WSUS on every sync
+- Removed the "non-selected products decline" block that aggressively declined updates whose product title didn't exactly match a selected product name. This was the root cause of missing updates for Office LTSC 2024, SQL Server Management Studio v20, and other sub-products whose product title differs from the parent category
+
+**Testing:**
+- Updated ProductFilter.Tests.ps1 to match new code patterns
+- All 31 Pester tests passing
 
 ### v4.0.3 (post-release improvements)
 
@@ -878,12 +886,12 @@ Describe "Tests requiring EXE" {
 ```powershell
 # BeforeDiscovery runs BEFORE test discovery, so -Skip can use the variable
 BeforeDiscovery {
-    $script:ExeExists = Test-Path ".\GA-WsusManager.exe"
+    $script:ExeExists = Test-Path ".\WsusManager.exe"
 }
 
 # BeforeAll runs AFTER discovery, so variables set here aren't available for -Skip
 BeforeAll {
-    $script:ExePath = ".\GA-WsusManager.exe"  # Available during tests, not for -Skip
+    $script:ExePath = ".\WsusManager.exe"  # Available during tests, not for -Skip
 }
 ```
 
@@ -976,7 +984,7 @@ Before committing GUI changes, verify:
 9. [ ] All dialogs close with ESC key
 10. [ ] **Script paths are validated before use** (show error if not found)
 11. [ ] **Buttons are disabled during operations** (and re-enabled on completion/error/cancel)
-12. [ ] Build passes: `.\build.ps1 -NoPush`
+12. [ ] Build passes: `.\build.ps1`
 13. [ ] Manual test each affected operation
 14. [ ] **Test from extracted zip** (not just dev environment)
 
@@ -1039,11 +1047,15 @@ $script:StartupDuration = ((Get-Date) - $script:StartupTime).TotalMilliseconds
 Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
 ```
 
-### 5. Validation Pipeline Features
-- **Local validation helper:** `build\Invoke-LocalValidation.ps1` mirrors the expected quality gates locally (PSScriptAnalyzer, Pester, embedded XAML validation)
-- **Build orchestration:** `build.ps1` runs analyzer/tests, compiles the GUI with PS2EXE, and assembles the distribution package
-- **EXE validation:** `Tests\ExeValidation.Tests.ps1` checks PE headers, 64-bit architecture, version info, and startup expectations
-- **Distribution package:** Build output lands in `dist\` as `GA-WsusManager.exe` and `WsusManager-vX.X.X.zip`
+### 5. CI Pipeline Features (`.github\workflows\build.yml`)
+- **Code Review:** PSScriptAnalyzer with custom settings
+- **Security Scan:** Specific security-focused rules
+- **Pester Tests:** Unit tests with NUnit XML output (excludes ExeValidation.Tests.ps1)
+- **Build:** PS2EXE compilation with version embedding
+- **EXE Validation:** Runs AFTER build - PE header, 64-bit architecture, version info checks
+- **Startup Benchmark:** Parse time, module import time, EXE size validation
+- **Distribution Package:** Creates `dist/` folder with exe, Scripts/, Modules/, zip
+- **Release Automation:** GitHub release with artifacts from `dist/` folder
 
 **Important:** EXE validation tests are excluded from the main test job and run separately in the build job after the exe is created. This prevents test failures when no exe exists.
 

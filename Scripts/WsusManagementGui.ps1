@@ -3,13 +3,13 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 4.0.4
+Version: 4.0.5
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
 .DESCRIPTION
     Portable GUI for managing WSUS servers with SQL Express.
-    Features: Dashboard, Health Score, Diagnostics, Online Sync, Robocopy, History, Notifications
+    Features: Dashboard, Health Score, Diagnostics, Online Sync, Import/Export, History, Notifications
 #>
 
 param(
@@ -51,7 +51,7 @@ try {
 }
 #endregion
 
-$script:AppVersion = "4.0.4"
+$script:AppVersion = "4.0.5"
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -101,7 +101,7 @@ $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented -- remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
-$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Microsoft Edge", "Microsoft Defender Antivirus", "Microsoft Defender for Endpoint", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps")
+$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Microsoft Edge", "Microsoft Defender Antivirus", "Microsoft Defender for Endpoint", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps", "Exchange Server 2019")
 
 function Write-Log { param([string]$Msg)
     try {
@@ -436,7 +436,7 @@ $script:StdinFlushTimer = $null
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v4.0.4" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v4.0.5" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -664,7 +664,7 @@ $script:StdinFlushTimer = $null
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="WSUS Manager" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.4" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.5" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -680,7 +680,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server, Exchange 2019&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -851,36 +851,6 @@ $script:HasHealthModule = [bool](Get-Command Get-WsusHealthScore -ErrorAction Si
 $script:HasNotificationModule = [bool](Get-Command Show-WsusNotification -ErrorAction SilentlyContinue)
 $script:CachedSqlCmdPath = $null
 $script:SettingsCorrupt = $false
-
-function Get-WsusBrandingAssetPath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FileName
-    )
-
-    $parentScriptRoot = if ($script:ScriptRoot) { Split-Path -Parent $script:ScriptRoot -ErrorAction SilentlyContinue } else { $null }
-    $parentPSScriptRoot = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot -ErrorAction SilentlyContinue } else { $null }
-    $searchRoots = @(
-        $script:ScriptRoot,
-        $parentScriptRoot,
-        $PSScriptRoot,
-        $parentPSScriptRoot
-    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
-
-    foreach ($root in $searchRoots) {
-        $directPath = Join-Path $root $FileName
-        if (Test-Path $directPath) {
-            return $directPath
-        }
-
-        $assetPath = Join-Path $root (Join-Path "Assets\Branding" $FileName)
-        if (Test-Path $assetPath) {
-            return $assetPath
-        }
-    }
-
-    return $null
-}
 
 function Expand-LogPanel {
     if (-not $script:LogExpanded) {
@@ -1633,248 +1603,136 @@ function Show-Panel {
 #region Help Content
 $script:HelpContent = @{
     Overview = @"
-WSUS MANAGER v4.0.4
+WSUS MANAGER OVERVIEW
 
-A PowerShell WPF automation suite for deploying and managing Windows Server Update Services (WSUS) with SQL Server Express 2022. Designed for both connected and air-gapped networks.
+A toolkit for deploying and managing Windows Server Update Services with SQL Server Express 2022.
 
 FEATURES
-• Dark-themed WPF GUI with 30-second auto-refresh dashboard
-• Health Score (0-100) with color-coded grade (Green/Yellow/Red)
-• DB size trending with days-until-full estimate (10 GB SQL Express limit)
-• Operation history log (last 100 operations, stored in %APPDATA%\WsusManager)
-• Toast/balloon notifications on operation completion
-• Live Terminal mode — open operations in external PowerShell window
-• Air-gapped network support (Robocopy bi-directional copy + DB restore workflow)
-• Server Mode auto-detects Online vs Air-Gap based on internet connectivity
-• Startup splash screen with initialization progress
-
-SMART AUTO-DECLINE RULES
-Superseded, expired, >6 months old, ARM64, Preview/Beta
-Legacy builds: 21H2, 22H2, 23H2 and older
-Edge: Dev/Beta/Extended Stable channels (keeps Stable + WebView2)
-Office: 365/2019/LTSC 2021 (keeps Office 2024/LTSC 2024)
-WSL (Windows Subsystem for Linux)
-
-AUTO-APPROVE SCOPE
-Recent x64 updates only — x86, 25H2, and Upgrades are held for manual review
-
-KEYBOARD SHORTCUTS
-Ctrl+D = Diagnostics   Ctrl+S = Online Sync
-Ctrl+H = History       Ctrl+R / F5 = Refresh Dashboard
+• Modern dark-themed GUI with auto-refresh
+• Air-gapped network support (export/import)
+• Automated sync, cleanup, and deep cleanup
+• Smart decline: superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
+• Default products: Windows 11, Server 2019, Edge, Defender, Office, SQL Server, Exchange 2019
+• DNS preflight check before sync
+• Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)
 
 QUICK START
 1. Run WsusManager.exe as Administrator
-2. Click Install WSUS for a fresh installation
-3. Dashboard updates automatically every 30 seconds
-4. Use Online Sync for regular maintenance; Robocopy to transfer to air-gap
+2. Use 'Install WSUS' for fresh installation
+3. Dashboard shows real-time status
+4. Server Mode auto-detects Online vs Air-Gap based on internet access
 
 REQUIREMENTS
-• Windows Server 2019+   • PowerShell 5.1+
-• SQL Server Express 2022 (installed automatically)
-• 150 GB+ disk space recommended
+• Windows Server 2019+
+• PowerShell 5.1+
+• SQL Server Express 2022
+• 150 GB+ disk space
 
 PATHS
-• WSUS Content:    C:\WSUS\
-• SQL Installers:  C:\WSUS\SQLDB\
-• App Logs:        C:\WSUS\Logs\
-• Settings/History: %APPDATA%\WsusManager\
+• Content: C:\WSUS\
+• SQL Installers: C:\WSUS\SQLDB\
+• Logs: C:\WSUS\Logs\
 "@
 
     Dashboard = @"
 DASHBOARD GUIDE
 
-Auto-refreshes every 30 seconds. Refresh is skipped while an operation is running.
+Four status cards with 30-second auto-refresh.
 
-STATUS CARDS
+SERVICES CARD
+• Green: All 3 running (SQL, WSUS, IIS)
+• Orange: Partial
+• Red: Critical services stopped
 
-Services
-• Green: SQL Server, WSUS (WsusService), and IIS are all running
-• Orange: One or more services stopped but not critical
-• Red: SQL or WSUS service is down
+DATABASE CARD
+• Shows SUSDB vs 10GB SQL Express limit
+• Green: <7GB | Orange: 7-9GB | Red: >9GB
 
-Database (SUSDB)
-• Shows current size vs the 10 GB SQL Express limit
-• Green <7 GB | Orange 7–9 GB | Red >9 GB
-• Trending indicator shows estimated days until the 10 GB limit is reached
-• Alert shown when fewer than 90 days remain
+DISK CARD
+• Green: >50GB | Orange: 10-50GB | Red: <10GB (recommend 150 GB+ total)
 
-Disk (C:\WSUS)
-• Free space on the WSUS content drive
-• Green >50 GB | Orange 10–50 GB | Red <10 GB
-• Recommended: 150 GB+ total drive space
-
-Scheduled Task
-• Green: Task exists and is enabled
-• Orange: Task not yet configured — use Schedule Task to create it
-
-Health Score
-• Composite 0–100 score: Services 30 pts, DB 20 pts, Sync 20 pts, Disk 20 pts, Last Op 10 pts
-• Green ≥80 | Yellow 50–79 | Red <50 | Unknown if all checks fail
-
-Last Sync
-• Timestamp of the most recent successful sync with Microsoft Update
+TASK CARD
+• Green: Scheduled task ready
+• Orange: Not configured
 
 QUICK ACTIONS
-• Diagnostics   — Full health check with automatic repair
-• Deep Cleanup  — Remove obsolete updates, rebuild indexes, shrink DB
-• Online Sync   — Full sync + auto-decline + auto-approve + backup
-• Start Services — Start SQL Server, WSUS, and IIS in correct order
-
-LOG PANEL
-• All operation output streams to the embedded log
-• Right-click: Copy All or Save to File
-• Toggle Live Terminal to run operations in a floating PowerShell window
+• Diagnostics - Health check + auto-repair
+• Deep Cleanup - Aggressive cleanup
+• Online Sync - Sync with Microsoft
+• Start Services - Start all services
 "@
 
     Operations = @"
 OPERATIONS GUIDE
 
 SETUP
-Install WSUS
-  Fresh installation of WSUS with SQL Server Express 2022.
-  Auto-detects and removes Windows Internal Database (WID) if present.
-  Configures classifications, language (English only), and WSUS wizard suppression.
-  Requires SQL Express installer in C:\WSUS\SQLDB\ or prompts to locate it. SSMS is optional.
+• Install WSUS - Fresh installation with SQL Express
+• Restore DB - Restore SUSDB from backup
 
-Fix SQL Login
-  Adds the current Windows user as a sysadmin on the local SQL Express instance.
-  Use this if database operations fail with a permissions error.
-
-Restore DB
-  Restore a SUSDB .bak backup file to SQL Express.
-  Auto-detects .bak files in C:\WSUS\. Requires sysadmin SQL permission.
-
-Create GPO
-  Copies WSUS Group Policy files to C:\WSUS\WSUS GPO\.
-  Displays instructions for the domain admin to link the GPO and verify client check-in.
+TRANSFER
+• Export (Online) - Full export to USB
+• Import (Air-Gap) - Import from external media
 
 MAINTENANCE
-Online Sync
-  Full maintenance cycle: sync with Microsoft Update, apply auto-decline rules,
-  auto-approve recent x64 updates, run deep cleanup, and create a DB backup.
-  Profiles: Full (all steps), Quick (sync + approve only), Sync Only.
-  DNS preflight check runs before sync to prevent stuck syncs on broken DNS.
-  Sync timeout: 180 minutes (first sync can take 2–4 hours).
-
-Schedule Task
-  Create or update a Windows Scheduled Task to run Online Sync automatically.
-  Defaults: Tuesday 23:00, weekly. Requires domain credentials for unattended execution.
-
-Deep Cleanup
-  Six-step aggressive database maintenance:
-  1. WSUS built-in cleanup (decline superseded, remove obsolete)
-  2. Remove supersession records for declined updates
-  3. Remove supersession records for superseded updates (batched)
-  4. Delete declined updates via spDeleteUpdate stored procedure (batched)
-  5. Rebuild/reorganize fragmented indexes + update statistics
-  6. Shrink database to reclaim disk space
-  Reports database size before and after shrink.
-
-Robocopy
-  Copy WSUS content between two folders using Robocopy.
-  Specify a source folder and a destination folder, then click Start Transfer.
-  Non-destructive — only copies files, never deletes. Creates a subfolder at
-  the destination named after the source folder.
-  Use twice in the air-gap workflow: once on the online server (content → USB),
-  and once on the air-gap server (USB → C:\WSUS).
+• Online Sync (Online only) - Sync, auto-decline, approve recent x64 updates, deep cleanup, backup
+• Schedule Task (Online only) - Create/update the sync scheduled task
+• Deep Cleanup - Remove obsolete, shrink database
 
 DIAGNOSTICS
-Run Diagnostics
-  Comprehensive health scan across services, firewall, permissions, DB connectivity,
-  and SSL certificates. Automatically repairs issues found.
-  Shortcut: Ctrl+D
-
-Reset Content
-  Runs wsusutil reset to re-verify all downloaded content files against the database.
-  Use this after restoring a DB backup to fix "content still downloading" status
-  on the air-gap server.
+• Diagnostics - Comprehensive health check with auto-repair
+• Reset Content - Re-verify content files after import
 "@
 
     AirGap = @"
 AIR-GAP WORKFLOW
 
-Two-server model for networks with no internet access:
-• Online WSUS server  — Internet-connected, syncs from Microsoft Update
-• Air-Gap WSUS server — No internet, receives updates via physical media (USB)
+Two-server model for disconnected networks:
+• Online WSUS: Internet-connected
+• Air-Gap WSUS: Disconnected
 
-FULL WORKFLOW
+WORKFLOW
+1. On Online server: Run Online Sync, then Export
+2. Transfer USB to air-gap network
+3. On Air-Gap server: Import, then Restore DB
 
-On the Online server:
-  1. Run Online Sync (full cycle: sync, decline, approve, cleanup, backup)
-  2. Click Robocopy — set source to C:\WSUS\WsusContent and destination to USB drive
-     • Run a full copy for initial setup; repeat for routine transfers
-
-Physical Transfer:
-  3. Carry the USB drive to the air-gap network
-  4. Scan USB per your site security policy before connecting
-
-On the Air-Gap server:
-  5. Click Robocopy — set source to the USB drive folder and destination to C:\WSUS
-  6. Run Restore DB to load the exported SUSDB backup
-  7. Click Reset Content (in the DIAGNOSTICS section) to re-verify content files against the restored database
-  8. Clients pull approved updates on their next check-in (typically within 1 hour)
-
-GPO DEPLOYMENT (one-time setup)
-  Use Create GPO to generate the Group Policy files.
-  Provide the files to your domain admin to link to the target OU.
-  Force immediate client check-in: gpupdate /force && wuauclt /detectnow
+EXPORT
+• Full export: Complete DB + all content files
 
 TIPS
-• Format USB as NTFS — FAT32 has a 4 GB file size limit
-• Use USB 3.0 for faster transfers; content can exceed 50 GB
-• Keep both servers on the same update baseline for reliable transfers
-• Schedule Online Sync the night before your transfer window
-• SQL Express 10 GB limit: run Deep Cleanup on Online server regularly
+• Use USB 3.0 formatted as NTFS
+• Scan USB per security policy
+• Keep servers synchronized
 "@
 
     Troubleshooting = @"
 TROUBLESHOOTING
 
 SERVICES WON'T START
-  1. Start SQL Server Express first (it must be running before WSUS)
-  2. Click Start Services on the dashboard
-  3. Run Diagnostics — it will attempt automatic repair
-  4. Check Windows Event Viewer > Application and System logs
+1. Start SQL Server first
+2. Use 'Start Services' button
+3. Check Event Viewer
+4. Run Diagnostics
 
-DATABASE OFFLINE / SQL CONNECTION FAILED
-  • Start the SQL Server Express service (services.msc > SQL Server (SQLEXPRESS))
-  • Check disk space — SQL Express stops if the DB approaches 10 GB
-  • Run Fix SQL Login if you get a permissions/login error
-  • Run Diagnostics for automated repair
+DATABASE OFFLINE
+• Start SQL Server Express service
+• Check disk space
+• Run Diagnostics
 
-DATABASE APPROACHING 10 GB LIMIT
-  • Run Deep Cleanup to shrink the database
-  • Run Online Sync (auto-decline removes unneeded updates)
-  • Review subscribed products and remove unused ones
-  • Dashboard trending shows estimated days until full
+DATABASE >9 GB
+• Run Deep Cleanup
+• Decline unneeded updates
+• Run Online Sync
 
-SYNC STUCK OR NEVER COMPLETES
-  • DNS preflight check runs automatically — check the log for DNS failure messages
-  • Verify internet connectivity and DNS resolution from the server
-  • First sync can take 2–4 hours; subsequent syncs are much faster
-  • Cancel and retry if stuck beyond 3 hours
+CLIENTS NOT UPDATING
+• Verify GPO (gpresult /h)
+• Run gpupdate /force
+• Check ports 8530/8531
+• Verify WSUS URL in registry
 
-CLIENTS NOT RECEIVING UPDATES
-  • Verify the WSUS GPO is linked: gpresult /h report.html
-  • Force a check-in: gpupdate /force && wuauclt /detectnow
-  • Check WSUS ports 8530 (HTTP) and 8531 (HTTPS) are open
-  • Confirm the WSUS URL in registry: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
-  • Check client logs: C:\Windows\WindowsUpdate.log
-
-CONTENT STILL DOWNLOADING AFTER AIR-GAP IMPORT
-  • Click Reset Content (in the DIAGNOSTICS section) — runs wsusutil reset to re-verify all files
-  • Ensure the Import copied all files (check sizes on both servers)
-  • Wait 5–10 minutes after Reset Content completes before checking client status
-
-SYSADMIN / PERMISSION ERRORS ON DB OPERATIONS
-  • Use Fix SQL Login to add your account as SQL sysadmin
-  • Re-run the failed operation after fixing the login
-
-LOG LOCATIONS
-  • WSUS Manager:  C:\WSUS\Logs\
-  • WSUS Service:  C:\Program Files\Update Services\LogFiles\
-  • IIS:           C:\inetpub\logs\LogFiles\
-  • Operation history: %APPDATA%\WsusManager\history.json
+LOGS
+• App: C:\WSUS\Logs\
+• WSUS: C:\Program Files\Update Services\LogFiles\
+• IIS: C:\inetpub\logs\LogFiles\
 "@
 }
 
@@ -4042,7 +3900,7 @@ if ($controls.InternetStatusBorder) {
 
 $controls.BtnBrowseInstallPath.Add_Click({
     $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-    $fbd.Description = "Select folder containing SQL Server Express installer (SQLEXPRADV_x64_ENU.exe). SSMS is optional."
+    $fbd.Description = "Select folder containing SQL Server installers (SQLEXPRADV_x64_ENU.exe, SSMS-Setup-ENU.exe)"
     $fbd.SelectedPath = $script:InstallPath
     try {
         if ($fbd.ShowDialog() -eq "OK") {
@@ -4102,7 +3960,7 @@ $controls.BtnFixSqlLogin.Add_Click({
             Show-WsusPopup -Message "$currentUser has been added as sysadmin on $sqlInstance.`n`nYou can now connect to SQL Server." -Title "SQL Login Fixed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
         } else {
             Write-LogOutput "[Fix SQL Login] WARNING: Verification returned $check" -Level Warning
-            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running: sqlcmd -S localhost\SQLEXPRESS -E -Q `"SELECT IS_SRVROLEMEMBER('sysadmin')`"" -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running SSMS and connecting manually." -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
         }
     } catch {
         Write-LogOutput "[Fix SQL Login] ERROR: $($_.Exception.Message)" -Level Error
@@ -4228,16 +4086,18 @@ if ($script:LiveTerminalMode) {
 }
 
 try {
-    $iconPath = Get-WsusBrandingAssetPath -FileName "wsus-icon.ico"
-    if ($iconPath) {
+    $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
+    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
+    if (Test-Path $iconPath) {
         $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object System.Uri $iconPath))
     }
 } catch { <# Icon load failed - using default #> }
 
 # Load General Atomics logo for sidebar and About page
 try {
-    $logoPath = Get-WsusBrandingAssetPath -FileName "general_atomics_logo_small.ico"
-    if ($logoPath) {
+    $logoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico"
+    if (-not (Test-Path $logoPath)) { $logoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
+    if (Test-Path $logoPath) {
         $logoUri = New-Object System.Uri $logoPath
         $logoBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
         $logoBitmap.BeginInit()
@@ -4249,9 +4109,11 @@ try {
 } catch { <# Sidebar logo load failed #> }
 
 try {
-    $aboutLogoPath = Get-WsusBrandingAssetPath -FileName "general_atomics_logo_big.ico"
-    if (-not $aboutLogoPath) { $aboutLogoPath = Get-WsusBrandingAssetPath -FileName "general_atomics_logo_small.ico" }
-    if ($aboutLogoPath) {
+    $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_big.ico"
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_big.ico" }
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico" }
+    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
+    if (Test-Path $aboutLogoPath) {
         $aboutUri = New-Object System.Uri $aboutLogoPath
         $aboutBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
         $aboutBitmap.BeginInit()
@@ -4296,8 +4158,9 @@ try {
     $ni.Text = "WSUS Manager v$script:AppVersion"
     $ni.Visible = $false
     # Load app icon for tray; fall back to built-in application icon
-    $iconPath = Get-WsusBrandingAssetPath -FileName "wsus-icon.ico"
-    if ($iconPath) {
+    $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
+    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
+    if (Test-Path $iconPath) {
         $ni.Icon = New-Object System.Drawing.Icon($iconPath)
     } else {
         $ni.Icon = [System.Drawing.SystemIcons]::Application

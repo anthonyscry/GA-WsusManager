@@ -205,7 +205,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = "4.0.4"
+$ScriptVersion = "4.0.5"
 
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
@@ -739,11 +739,22 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                     }
                 }
                 if ($toEnable.Count -gt 0) {
+                    # Additive mode: add selected products to existing subscription (don't replace)
+                    $existingCategories = $subscription.GetUpdateCategories()
+                    $existingTitles = @($existingCategories | ForEach-Object { $_.Title })
                     $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
-                    foreach ($p in $toEnable) { $coll.Add($p) }
+                    foreach ($cat in $existingCategories) { $coll.Add($cat) }
+                    $addedCount = 0
+                    foreach ($p in $toEnable) {
+                        if ($p.Title -notin $existingTitles) {
+                            $coll.Add($p)
+                            $addedCount++
+                            Write-Log "  + Adding product: $($p.Title)"
+                        }
+                    }
                     $subscription.SetUpdateCategories($coll)
                     $subscription.Save()
-                    Write-Log "Enabled $($toEnable.Count) products for sync"
+                    Write-Log "Products subscribed: $($coll.Count) total ($addedCount new, $($existingCategories.Count) existing)"
                 }
             }
         }
@@ -852,56 +863,6 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
 } else {
     Write-Status "Skipping synchronization" -Type Info
     $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
-}
-
-# === DECLINE UPDATES FROM NON-SELECTED PRODUCTS (after sync) ===
-if ($SelectedProducts -and $SelectedProducts.Count -gt 0) {
-    # Products were already enabled before sync started (see above).
-    # Now decline updates that don't match the selected product list.
-    try {
-        $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
-        $toEnable = @()
-        foreach ($prod in $allProducts) {
-            foreach ($sel in $SelectedProducts) {
-                if ($prod.Title -eq $sel) { $toEnable += $prod; break }
-            }
-        }
-
-        if ($toEnable.Count -gt 0) {
-            # Decline updates from non-selected products
-            Write-Log "Cleaning up updates from non-selected products..."
-            $cleanupScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
-            $cleanupScope.IncludedInstallationStates = [Microsoft.UpdateServices.Administration.UpdateInstallationStates]::All
-            $staleUpdates = $wsus.GetUpdates($cleanupScope) | Where-Object { -not $_.IsDeclined }
-            $staleCount = 0
-
-            if ($staleUpdates.Count -gt 0) {
-                # Build word-boundary pattern from enabled product titles for exact matching
-                $enabledTitles = @($toEnable | ForEach-Object { [regex]::Escape($_.Title) })
-                $productPattern = '(?i)\b(' + ($enabledTitles -join "|") + ')\b'
-                foreach ($update in $staleUpdates) {
-                    $updateProductString = $update.ProductTitles -join ","
-                    if ($updateProductString -notmatch $productPattern) {
-                        # Extra filter: decline Office 365 updates that are NOT Office 2024 LTSC
-                        if ($updateProductString -like "*Microsoft 365*" -and $update.Title -notlike "*LTSC*" -and $update.Title -notlike "*2024*") {
-                            try { $update.Decline() | Out-Null; $staleCount++ } catch {}
-                            continue
-                        }
-                        try {
-                            $update.Decline() | Out-Null
-                            $staleCount++
-                        } catch {
-                            # Ignore individual decline failures
-                        }
-                    }
-                }
-            }
-            Write-Log "Declined $staleCount updates from non-selected products"
-        }
-    } catch {
-        Write-Warning "Failed to configure products: $($_.Exception.Message)"
-        Write-Log "WARNING: Product configuration failed"
-    }
 }
 
 # === CONFIGURATION CHECK ===

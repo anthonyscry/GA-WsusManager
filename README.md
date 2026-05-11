@@ -1,6 +1,6 @@
 # WSUS Manager
 
-**Version:** 4.0.4
+**Version:** 4.0.5
 **Author:** Tony Tran, ISSO, GA-ASI
 
 WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It handles the entire lifecycle of keeping Windows machines patched when they cannot reach the internet: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB, importing them, and pushing updates out to client machines through Group Policy.
@@ -47,7 +47,7 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 1. Go to the [Releases](../../releases) page.
 2. Download `WsusManager-vX.X.X.zip`.
 3. Extract the full archive to a folder (for example, `C:\WsusManager\`).
-4. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
+4. Right-click `WsusManager.exe` and select **Run as Administrator**.
 
 **Important:** The EXE requires the `Scripts/` and `Modules/` folders to be in the same directory. Do not move the EXE without also moving those folders.
 
@@ -76,46 +76,17 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 
 ### Server Management
 - One-click WSUS + SQL Server Express installation with guided setup.
-- Auto-detects and removes WID if present, reinstalls WSUS with SQL Express.
 - Unified Diagnostics (health check + auto-repair in a single operation).
 - Database backup, restore, and deep cleanup (6-step maintenance including index rebuild and database shrink).
-- Online Sync with Full, Quick, and Sync Only profiles. DNS preflight check prevents stuck syncs.
-- Sync timeout of 180 minutes (first sync can take 2-4 hours).
+- Online Sync with Full, Quick, and Sync Only profiles.
 - Scheduled task creation for recurring sync operations.
 - HTTPS configuration via `Set-WsusHttps.ps1`.
-- All database operations work without SqlServer PowerShell module (sqlcmd.exe fallback).
 
 ### Air-Gap Support
 - Server Mode toggle: Online vs Air-Gap.
-- **Robocopy** (MAINTENANCE section): single dialog with Source folder, Destination folder, and **Start Transfer** button. Non-destructive (never deletes). Creates a subfolder at the destination. Used in both directions: online server → USB drive, and USB drive → air-gapped server.
-- **Reset Content** (DIAGNOSTICS section): runs `wsusutil reset` to re-verify content files after an import.
-
-### Smart Update Policy
-
-The Online Sync workflow applies an automated decline and approval policy to keep the update catalog clean:
-
-**Auto-Decline Rules (removed from catalog):**
-- Expired and superseded updates
-- Updates older than 6 months by Microsoft release date (preserves already-approved updates)
-- ARM64 updates
-- Legacy builds: 21H2, 22H2, 23H2
-- Preview and Beta updates
-- Edge: Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2 only)
-- Office: Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024/LTSC 2024)
-- WSL (Windows Subsystem for Linux)
-
-**Auto-Approval Exclusions (kept but not approved):**
-- 25H2 updates (kept for manual review)
-- x86 and 32-bit updates (lab is x64 only)
-- Upgrades (require manual review)
-
-**Default Products:**
-- Windows 11, Windows Server 2019, Microsoft Edge
-- Microsoft Defender Antivirus, Microsoft Defender for Endpoint
-- Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
-
-**Default Classifications:**
-- Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups
+- Export updates and content to USB for transfer to disconnected networks.
+- Import updates and content from USB on the air-gapped server.
+- "Reset Content" button to fix content download status after import.
 
 ### Client Deployment
 - GPO deployment scripts for air-gapped domains.
@@ -124,14 +95,12 @@ The Online Sync workflow applies an automated decline and approval policy to kee
 
 ### GUI Features
 - Dark theme with light theme toggle in Settings (reserved).
-- Window size 800x1000 for improved layout.
 - Startup splash screen with progress bar.
-- Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Online Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
+- Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
 - Right-click context menu on log panel: Copy All / Save to File.
-- Operation history view showing last 100 operations.
+- Operation history view showing last 50 operations.
 - Desktop notifications on operation completion (toast, balloon, or log-only fallback).
 - Live Terminal Mode to open operations in an external PowerShell window.
-- Robocopy transfer shows file names in embedded log panel and creates destination subfolder.
 - DPI-aware rendering on high-DPI displays.
 
 ---
@@ -146,9 +115,9 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 2. **Copy the application.** Extract the `WsusManager-vX.X.X.zip` archive to a folder such as `C:\WsusManager\`.
 
-3. **Place the SQL installer.** If the server has no internet access, download `SQL Server Express 2022` on a connected machine and copy the installer to `C:\WSUS\SQLDB\` on the target server. The install script will look for it there. `SQL Server Management Studio (SSMS)` is optional -- if the installer is present it will be installed, otherwise it is skipped.
+3. **Place the SQL installer.** If the server has no internet access, download `SQL Server Express 2022` and `SQL Server Management Studio (SSMS)` on a connected machine and copy the installers to `C:\WSUS\SQLDB\` on the target server. The install script will look for them there.
 
-4. **Launch WSUS Manager.** Right-click `GA-WsusManager.exe` and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
+4. **Launch WSUS Manager.** Right-click `WsusManager.exe` and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
 
 5. **Run Install.** Click the **Install WSUS** button. The application will:
    - Prompt for the content directory (default: `C:\WSUS\`).
@@ -170,29 +139,27 @@ Run this monthly on the internet-connected WSUS server to download the latest up
 2. **Click Online Sync** in the navigation panel (or use the Quick Action button).
 
 3. **Choose a sync profile:**
-   - **Full** -- Decline superseded/expired/old updates, sync with Microsoft, approve new updates matching the smart update policy, clean up the database, and export.
-   - **Quick** -- Sync and approve only (skip cleanup).
+   - **Full Sync** -- Decline superseded updates, sync with Microsoft, approve new updates, clean up the database, and export.
+   - **Quick Sync** -- Sync and approve only (skip cleanup).
    - **Sync Only** -- Just sync with Microsoft, no approvals or cleanup.
 
 4. **Set the export path** (optional). If you plan to transfer updates to an air-gapped network, enter a destination folder (for example, a USB drive path like `E:\WSUS-Export`). If you leave this blank, the sync runs without exporting.
 
-5. **Click OK.** The operation runs in the log panel. A DNS preflight check runs first to ensure connectivity. A Full Sync typically takes 30-120 minutes depending on how many updates are available. The first sync on a new server can take 2-4 hours (timeout is 180 minutes).
+5. **Click OK.** The operation runs in the log panel. A Full Sync typically takes 30-120 minutes depending on how many updates are available.
 
 6. **Check the dashboard.** After the sync completes, the Last Sync timestamp should update and the database size may increase.
 
-**Tip:** To automate this, click **Schedule Task** to create a Windows Scheduled Task that runs the sync monthly.
+**Tip:** To automate this, click **Schedule** to create a Windows Scheduled Task that runs the sync monthly.
 
 ### Air-Gap Transfer Workflow
 
 This is how you move updates from an internet-connected WSUS server to an air-gapped WSUS server.
 
-> **Note:** Depending on your program, transferring files into SAP or collateral spaces may require a Data Transfer Request (DTR). Check with your security team before physically moving media across network boundaries.
-
 **On the online server:**
 
 1. Run an Online Sync (see above) with the export path set to a USB drive or staging folder.
 
-2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click **Robocopy**, set the source to `C:\WSUS\WsusContent` and the destination to the USB drive, then click **Start Transfer**.
+2. The sync will export the WSUS metadata and content files to the destination. Alternatively, click **Transfer > Export** and select the source (your WSUS content folder, default `C:\WSUS\`) and destination (USB drive).
 
 3. Safely eject the USB drive.
 
@@ -204,15 +171,13 @@ This is how you move updates from an internet-connected WSUS server to an air-ga
 
 6. Switch to **Air-Gap** mode using the Server Mode toggle (if not already set).
 
-7. Click **Robocopy**. Set the source to the USB drive and the destination to `C:\WSUS\`, then click **Start Transfer**.
+7. Click **Transfer > Import**. Select the USB drive as the source and `C:\WSUS\` as the destination.
 
-8. Robocopy copies content files from the USB drive to the WSUS content directory (non-destructive, copies only).
+8. The import copies content files and imports the WSUS metadata.
 
-9. Click **Restore DB** to import the SUSDB backup from the transfer set.
+9. After import completes, click **Reset Content** (under Diagnostics) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
 
-10. After the transfer completes, click **Reset Content** (in the DIAGNOSTICS section) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
-
-11. Run **Diagnostics** to verify everything is healthy.
+10. Run **Diagnostics** to verify everything is healthy.
 
 ### Deploying GPOs to Clients
 
@@ -361,10 +326,8 @@ This covers all domain-joined machines. If you have computers in other OUs, you 
 GA-WsusManager/
 |-- build.ps1                        # Build script (PS2EXE compiler)
 |-- dist/                            # Build output (gitignored)
-|   |-- GA-WsusManager.exe
+|   |-- WsusManager.exe
 |   +-- WsusManager-vX.X.X.zip
-|-- Assets/
-|   +-- Branding/                    # Source icons and logo files for build/package
 |-- Scripts/
 |   |-- WsusManagementGui.ps1        # Main GUI application (WPF/XAML)
 |   |-- Invoke-WsusManagement.ps1    # CLI for WSUS operations
@@ -417,13 +380,13 @@ The project uses PS2EXE to compile PowerShell scripts into a standalone `.exe`.
 
 ```powershell
 # Full build: tests + code analysis + compile
-.\build.ps1 -NoPush
+.\build.ps1
 
 # Build without running tests
-.\build.ps1 -SkipTests -NoPush
+.\build.ps1 -SkipTests
 
 # Build without code review (PSScriptAnalyzer)
-.\build.ps1 -SkipCodeReview -NoPush
+.\build.ps1 -SkipCodeReview
 
 # Run tests only (no build)
 .\build.ps1 -TestOnly
@@ -435,10 +398,9 @@ Invoke-Pester -Path .\Tests -Output Detailed
 Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
 ```
 
-Build output goes to `dist/` as `GA-WsusManager.exe` and `WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
+Build output goes to `dist/` as `WsusManager.exe` and `WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
 
-For a fuller local validation pass before building, run `.\build\Invoke-LocalValidation.ps1`. It checks PSScriptAnalyzer, Pester, and embedded XAML in addition to the main build flow.
-For normal local builds, keep `-NoPush` on `build.ps1` so the script does not auto-commit and push `dist/`.
+**CI pipeline** (`.github/workflows/build.yml`) runs PSScriptAnalyzer, Pester tests, PS2EXE compilation, EXE validation (PE header, 64-bit architecture, version info), and startup benchmarks on every push and pull request.
 
 ---
 
@@ -450,7 +412,7 @@ For normal local builds, keep `-NoPush` on `build.ps1` so the script does not au
 | SQL Server instance | `localhost\SQLEXPRESS` |
 | WSUS database | `SUSDB` |
 | Log files | `C:\WSUS\Logs\` |
-| SQL Express installer (SSMS optional) | `C:\WSUS\SQLDB\` |
+| SQL/SSMS installers (for offline install) | `C:\WSUS\SQLDB\` |
 | WSUS HTTP port | 8530 |
 | WSUS HTTPS port | 8531 |
 | Application settings | `%APPDATA%\WsusManager\settings.json` |
@@ -470,25 +432,19 @@ The WSUS Windows Server role is not present. Click Install WSUS to set it up.
 This is a known GUI pattern issue. If you see it, the operation should still work -- just wait for the dialog to appear.
 
 **"Content is still downloading" after air-gap import**
-After importing updates from USB, click **Reset Content** (in the DIAGNOSTICS section) to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
-
-**SqlServer module not installed**
-WSUS Manager v4.0.4+ automatically falls back to `sqlcmd.exe` for all database operations when the SqlServer PowerShell module is not installed. No manual module installation is needed.
-
-**Sync stuck at 0% in Categories phase**
-Check DNS configuration. The sync requires DNS resolution to reach Microsoft Update servers. WSUS Manager runs a DNS preflight check before starting sync to catch this early.
+After importing updates from USB, run Diagnostics > Reset Content to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
 
 **Client machines not finding the WSUS server**
 Verify GPOs are applied: run `gpresult /r` on the client. Check that the WSUS Outbound Allow GPO is linked to the client's OU. Check that the WSUS server firewall allows inbound on ports 8530/8531.
 
 **Database approaching 10 GB limit**
-Run a **Deep Cleanup**. This declines superseded updates, removes obsolete records, rebuilds indexes, and shrinks the database.
+Run a Deep Cleanup from the Database menu. This declines superseded updates, removes obsolete records, rebuilds indexes, and shrinks the database.
 
 **Buttons stay greyed out after an operation finishes**
 Close and reopen WSUS Manager. This can happen if an operation exits unexpectedly without resetting the operation-running flag.
 
 **Script not found errors**
-Make sure the `Scripts/` and `Modules/` folders are in the same directory as `GA-WsusManager.exe`. If you moved only the EXE, the application cannot find its scripts.
+Make sure the `Scripts/` and `Modules/` folders are in the same directory as `WsusManager.exe`. If you moved only the EXE, the application cannot find its scripts.
 
 See [CLAUDE.md](CLAUDE.md) for detailed developer documentation, architecture notes, and a full catalog of known GUI issues with solutions.
 

@@ -50,29 +50,8 @@ $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
-$Version = "4.0.4"
+$Version = "4.0.5"
 if (-not $OutputName) { $OutputName = "GA-WsusManager.exe" }
-
-function Get-BrandingAssetPath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FileName
-    )
-
-    $searchRoots = @(
-        (Join-Path $ScriptRoot "Assets\Branding"),
-        $ScriptRoot
-    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
-
-    foreach ($root in $searchRoots) {
-        $candidate = Join-Path $root $FileName
-        if (Test-Path $candidate) {
-            return $candidate
-        }
-    }
-
-    return $null
-}
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  WSUS Manager Executable Builder" -ForegroundColor Cyan
@@ -414,10 +393,9 @@ $buildParams = @{
 }
 
 # Add icon if exists
-$iconAssetPath = Get-BrandingAssetPath -FileName "wsus-icon.ico"
-if ($iconAssetPath) {
-    $buildParams.IconFile = $iconAssetPath
-    Write-Host "[+] Using custom icon: $(Split-Path $iconAssetPath -Leaf)" -ForegroundColor Green
+if (Test-Path ".\wsus-icon.ico") {
+    $buildParams.IconFile = ".\wsus-icon.ico"
+    Write-Host "[+] Using custom icon: wsus-icon.ico" -ForegroundColor Green
 }
 
 Write-Host "[*] Converting to executable..." -ForegroundColor Yellow
@@ -462,24 +440,16 @@ try {
 
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
-        if ($iconAssetPath) {
-            Copy-Item $iconAssetPath -Destination (Join-Path $packageDir "wsus-icon.ico")
-        }
-        if (Test-Path ".\README.txt") {
-            Copy-Item ".\README.txt" -Destination (Join-Path $packageDir "README.txt")
-        } elseif (Test-Path ".\README.md") {
-            Copy-Item ".\README.md" -Destination (Join-Path $packageDir "README.txt")
-        }
+        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
 
         # Copy logo files for sidebar and About page
-        $smallLogoPath = Get-BrandingAssetPath -FileName "general_atomics_logo_small.ico"
-        $bigLogoPath = Get-BrandingAssetPath -FileName "general_atomics_logo_big.ico"
-        if ($smallLogoPath) {
-            Copy-Item $smallLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_small.ico")
+        if (Test-Path ".\general_atomics_logo_small.ico") {
+            Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
             Write-Host "    Included sidebar logo" -ForegroundColor Gray
         }
-        if ($bigLogoPath) {
-            Copy-Item $bigLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_big.ico")
+        if (Test-Path ".\general_atomics_logo_big.ico") {
+            Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
             Write-Host "    Included About page logo" -ForegroundColor Gray
         }
 
@@ -499,16 +469,44 @@ try {
             Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
         }
 
-        # Use docs/QUICK-START.md as QUICK-START.txt (already accurate)
-        if (Test-Path ".\docs\QUICK-START.md") {
-            Copy-Item ".\docs\QUICK-START.md" -Destination (Join-Path $packageDir "QUICK-START.txt")
-        }
+        # Create quick start guide
+        $quickStart = @"
+WSUS Manager v$Version - Quick Start Guide
+============================================
 
-        # Include CHANGELOG as CHANGELOG.txt
-        if (Test-Path ".\CHANGELOG.md") {
-            Copy-Item ".\CHANGELOG.md" -Destination (Join-Path $packageDir "CHANGELOG.txt")
-        }
+REQUIREMENTS
+------------
+- Windows Server 2016, 2019, 2022, or 2025
+- Administrator privileges
+- .NET Framework 4.7.2 or later
 
+INSTALLATION
+------------
+1. Extract the entire folder to your WSUS server (e.g., C:\WSUS\WsusManager)
+2. Keep the folder structure intact:
+   WsusManager-v$Version\
+   ├── GA-WsusManager.exe   (main application)
+   ├── Scripts\             (required - operation scripts)
+   ├── Modules\             (required - PowerShell modules)
+   └── DomainController\    (optional - GPO scripts)
+3. Right-click GA-WsusManager.exe and select "Run as administrator"
+
+IMPORTANT: Do not move GA-WsusManager.exe without its Scripts and Modules folders!
+
+FIRST RUN
+---------
+1. Launch GA-WsusManager.exe as Administrator
+2. The dashboard will auto-detect your WSUS configuration
+3. Use the menu for WSUS operations
+
+DOMAIN CONTROLLER SETUP (Optional)
+----------------------------------
+The DomainController folder contains GPO deployment scripts.
+Run Set-WsusGroupPolicy.ps1 on your DC to configure clients.
+
+Author: Tony Tran, ISSO, GA-ASI
+"@
+        $quickStart | Out-File -FilePath (Join-Path $packageDir "QUICK-START.txt") -Encoding UTF8
 
         # Remove existing zip if present
         if (Test-Path ".\$zipFileName") { Remove-Item ".\$zipFileName" -Force }
@@ -545,8 +543,8 @@ try {
         # Copy exe, zip, and logo files to dist
         Copy-Item ".\$OutputName" -Destination $distDir -Force
         Copy-Item ".\$zipFileName" -Destination $distDir -Force
-        if ($smallLogoPath) { Copy-Item $smallLogoPath -Destination (Join-Path $distDir "general_atomics_logo_small.ico") -Force }
-        if ($bigLogoPath) { Copy-Item $bigLogoPath -Destination (Join-Path $distDir "general_atomics_logo_big.ico") -Force }
+        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir -Force }
+        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir -Force }
         Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 
