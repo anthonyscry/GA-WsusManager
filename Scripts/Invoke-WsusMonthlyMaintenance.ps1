@@ -1,0 +1,1607 @@
+<#
+.SYNOPSIS
+    Monthly WSUS maintenance automation script.
+
+.DESCRIPTION
+    Comprehensive WSUS maintenance automation that performs:
+    - Synchronizes WSUS with Microsoft Update and monitors download progress
+    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and older), Preview/Beta, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
+    - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
+    - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
+    - Optionally runs an aggressive "ultimate cleanup" stage before backup
+    - Exports full backup + content to export folder
+
+    Excludes Upgrades, ARM64, x86/32-bit, 25H2 updates from auto-approval (kept but not approved).
+
+    Author: Tony Tran, ISSO, GA-ASI
+    Version: 3.0.1
+
+.PARAMETER Unattended
+    Run in unattended mode (no prompts, uses all defaults). Ideal for scheduled tasks.
+
+.PARAMETER MaintenanceProfile
+    Preset configuration profiles: Quick, Full, or SyncOnly.
+    - Quick: Sync + Cleanup + Backup (skip heavy cleanup)
+    - Full: Sync + Cleanup + Ultimate Cleanup + Backup + Export
+    - SyncOnly: Just synchronize and approve updates
+
+.PARAMETER Operations
+    Specific operations to run. Valid values: Sync, Cleanup, UltimateCleanup, Backup, Export, All.
+    Default: All
+
+.PARAMETER SkipUltimateCleanup
+    Skip the heavy "ultimate cleanup" stage before the backup.
+
+.PARAMETER ExportPath
+    Root path for full exports. Full backup + complete content mirror goes here.
+    Default: empty (export skipped if not specified)
+
+.PARAMETER SkipExport
+    Skip the export step entirely.
+
+.PARAMETER SqlCredential
+    SQL Server credentials for database operations (prompted if not provided in unattended mode).
+
+.PARAMETER NoTranscript
+    Skip transcript logging. Use when called from GUI which captures stdout/stderr.
+
+.PARAMETER UseWindowsAuth
+    Force Windows Authentication (logged-in user) for all database operations.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1
+    Run interactively with menu selection.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full -Unattended
+    Run full maintenance in unattended mode.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile SyncOnly
+    Only synchronize and approve updates.
+
+.EXAMPLE
+    .\Invoke-WsusMonthlyMaintenance.ps1 -Operations Sync,Cleanup -SkipExport
+    Run only sync and cleanup operations, skip export.
+
+.NOTES
+    - Run as Administrator on the WSUS server.
+    - Requires SQL Express instance .\SQLEXPRESS and WSUS on port 8530.
+    - Use -Unattended for scheduled tasks (no prompts, uses defaults).
+    - Use -Profile to select preset configurations (Quick, Full, SyncOnly).
+    - Use -Operations to run specific phases only.
+#>
+
+[CmdletBinding()]
+param(
+    # Run in unattended mode (no prompts, uses all defaults) - ideal for scheduled tasks
+    [switch]$Unattended,
+
+    # Preset configuration profiles
+    [ValidateSet("Quick", "Full", "SyncOnly")]
+    [Alias("Profile")]
+    [string]$MaintenanceProfile,
+
+    # Specific operations to run (default: all)
+    [ValidateSet("Sync", "Cleanup", "UltimateCleanup", "Backup", "Export", "All")]
+    [string[]]$Operations = @("All"),
+
+    # Skip the heavy "ultimate cleanup" stage before the backup if needed.
+    [switch]$SkipUltimateCleanup,
+
+    # Root path for full exports (e.g., "\\server\share\WSUS-Full")
+    # Full backup + complete content mirror goes here
+    [string]$ExportPath = "C:\WSUS\Exports",
+
+    # Skip the export step entirely
+    [switch]$SkipExport,
+
+    # SQL Server credentials for database operations (prompted if not provided)
+    [System.Management.Automation.PSCredential]$SqlCredential,
+
+    # Skip transcript logging (use when called from GUI which captures stdout/stderr)
+    [switch]$NoTranscript,
+
+    # Force Windows Authentication (logged-in user) for all DB operations
+    [switch]$UseWindowsAuth,
+
+    # Products to sync (enables only these in WSUS, disables others)
+    [string[]]$SelectedProducts = @()
+)
+
+# Import shared modules
+# Support multiple deployment layouts:
+# 1. Standard: Script in Scripts\, Modules in ..\Modules (parent folder)
+# 2. Flat: Everything under one root folder (e.g., C:\WSUS\Scripts as root with Modules subfolder)
+# 3. Nested: Script in Scripts\Scripts\, Modules in ..\..\Modules (grandparent)
+# 4. Same folder: Modules copied directly alongside script
+
+# Resolve script location (handles symlinks and dot-sourcing)
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+
+$modulePath = $null
+$searchPaths = @(
+    (Join-Path $scriptDir "Modules"),                                          # Flat layout (Modules subfolder)
+    (Join-Path (Split-Path $scriptDir -Parent) "Modules"),                      # Standard layout (parent\Modules)
+    (Join-Path (Split-Path (Split-Path $scriptDir -Parent) -Parent) "Modules"), # Nested layout (grandparent\Modules)
+    $scriptDir                                                                   # Same folder (modules next to script)
+)
+
+foreach ($path in $searchPaths) {
+    $utilPath = Join-Path $path "WsusUtilities.psm1"
+    if (Test-Path $utilPath) {
+        # Verify the module file is not empty and has expected content
+        $content = Get-Content $utilPath -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -match 'function Start-WsusLogging') {
+            $modulePath = $path
+            break
+        }
+    }
+}
+
+if (-not $modulePath) {
+    Write-Error "Cannot find Modules folder with valid WsusUtilities.psm1"
+    Write-Error "Script location: $scriptDir"
+    Write-Error "Searched paths:"
+    foreach ($p in $searchPaths) {
+        $exists = if (Test-Path (Join-Path $p "WsusUtilities.psm1")) { "EXISTS" } else { "NOT FOUND" }
+        Write-Error "  $p - $exists"
+    }
+    exit 1
+}
+
+# Import modules with error handling
+try {
+    # Import in dependency order
+    Import-Module (Join-Path $modulePath "WsusUtilities.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusConfig.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -DisableNameChecking -ErrorAction Stop
+} catch {
+    Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
+    exit 1
+}
+
+$script:RuntimeConfig = Get-WsusRuntimeConfig
+$script:SqlInstance = $script:RuntimeConfig.SqlInstance
+$script:ContentPath = $script:RuntimeConfig.ContentPath
+$script:WsusContentPath = $script:RuntimeConfig.WsusContentPath
+$script:WsusPort = $script:RuntimeConfig.Ports.Wsus
+$script:LogPath = $script:RuntimeConfig.LogPath
+
+# Verify required functions are available after import
+$requiredFunctions = @('Start-WsusLogging', 'Stop-WsusLogging', 'Write-Log', 'Invoke-WsusSqlcmd', 'Get-WsusDatabaseSize')
+$missingFunctions = @()
+foreach ($func in $requiredFunctions) {
+    if (-not (Get-Command $func -ErrorAction SilentlyContinue)) {
+        $missingFunctions += $func
+    }
+}
+
+if ($missingFunctions.Count -gt 0) {
+    Write-Error "Module import incomplete. Missing functions: $($missingFunctions -join ', ')"
+    Write-Error "Module path used: $modulePath"
+    # Check module version
+    $moduleFile = Join-Path $modulePath "WsusUtilities.psm1"
+    if (Test-Path $moduleFile) {
+        $moduleContent = Get-Content $moduleFile -Raw -ErrorAction SilentlyContinue
+        # Check for version string
+        if ($moduleContent -match "Version:\s*([\d.]+)") {
+            Write-Error "Installed module version: $($Matches[1])"
+        } else {
+            Write-Error "Installed module version: UNKNOWN (old version without version marker)"
+        }
+        Write-Error "Required module version: 1.1.0 or later"
+    }
+    Write-Error ""
+    Write-Error "=== HOW TO FIX ==="
+    Write-Error "Your WsusUtilities.psm1 is outdated. Update from the repository:"
+    Write-Error "1. Download latest Modules folder from the repository"
+    Write-Error "2. Copy all .psm1 files to: $modulePath"
+    Write-Error "3. Re-run this script"
+    exit 1
+}
+
+# Suppress prompts
+$ConfirmPreference = 'None'
+$ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Continue'
+$WarningPreference = 'Continue'
+$VerbosePreference = 'SilentlyContinue'
+
+# Force output redirection to prevent pauses
+$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
+
+# === SCRIPT VERSION ===
+$ScriptVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+
+# === SQL CREDENTIAL HANDLING ===
+# UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
+# Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
+# Unattended/Scheduled task mode: Use stored SQL credential if available
+if ($UseWindowsAuth) {
+    # Force Windows Authentication (typically when called from GUI)
+    Write-Host "[i] Using Windows Integrated Authentication (logged-in user) for SQL operations" -ForegroundColor Cyan
+    $SqlCredential = $null
+    $script:UseSqlCredential = $false
+} elseif ($Unattended) {
+    # Scheduled task mode - use stored SQL credential
+    if (-not $SqlCredential) {
+        $SqlCredential = Get-WsusSqlCredential -Quiet
+        if ($SqlCredential) {
+            Write-Host "[i] Using stored SQL credential for $($SqlCredential.UserName)" -ForegroundColor Cyan
+        } else {
+            Write-Warning "No SQL credential available for unattended mode."
+            Write-Warning "Using Windows Integrated Authentication instead."
+        }
+    }
+    $script:UseSqlCredential = ($null -ne $SqlCredential)
+} else {
+    # Interactive mode - use Windows Integrated Authentication
+    Write-Host "[i] Using Windows Integrated Authentication for SQL operations" -ForegroundColor Cyan
+    $SqlCredential = $null
+    $script:UseSqlCredential = $false
+}
+
+# Store credential availability flag for later use
+$script:HasSqlCredential = $Unattended -and ($null -ne $SqlCredential)
+
+# === HELPER FUNCTIONS ===
+
+# Colored status output
+function Write-Status {
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet("Info", "Success", "Warning", "Error", "Header", "Phase")]
+        [string]$Type = "Info"
+    )
+    $colors = @{
+        Info    = "Cyan"
+        Success = "Green"
+        Warning = "Yellow"
+        Error   = "Red"
+        Header  = "Magenta"
+        Phase   = "White"
+    }
+    $prefixes = @{
+        Info    = "[i]"
+        Success = "[+]"
+        Warning = "[!]"
+        Error   = "[X]"
+        Header  = "==>"
+        Phase   = ">>>"
+    }
+    $prefix = $prefixes[$Type]
+    $color = $colors[$Type]
+    Write-Host "$prefix " -ForegroundColor $color -NoNewline
+    Write-Host $Message
+    # Force output buffer flush for GUI redirection
+    [Console]::Out.Flush()
+}
+
+function Start-Heartbeat {
+    param([string]$Message = "Still working... please wait.")
+    Stop-Heartbeat
+    $script:HeartbeatTimer = New-Object System.Timers.Timer 30000
+    $script:HeartbeatTimer.AutoReset = $true
+    $script:HeartbeatEvent = Register-ObjectEvent -InputObject $script:HeartbeatTimer -EventName Elapsed -MessageData $Message -Action {
+        Write-Status $Event.MessageData -Type Info
+    }
+    $script:HeartbeatTimer.Start()
+}
+
+function Stop-Heartbeat {
+    if ($script:HeartbeatTimer) {
+        $script:HeartbeatTimer.Stop()
+        $script:HeartbeatTimer.Dispose()
+        $script:HeartbeatTimer = $null
+    }
+    if ($script:HeartbeatEvent) {
+        Unregister-Event -SourceIdentifier $script:HeartbeatEvent.Name -ErrorAction SilentlyContinue
+        $script:HeartbeatEvent = $null
+    }
+}
+
+# Pre-flight validation
+function Test-Prerequisites {
+    param(
+        [string]$ExportPath,
+        [bool]$SkipExport
+    )
+
+    $results = @{
+        Success = $true
+        Errors = @()
+        Warnings = @()
+    }
+
+    Write-Host "  Pre-flight Checks" -ForegroundColor Cyan
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
+
+    # Check 1: SQL Server service exists
+    Write-Host "  SQL Server        " -NoNewline -ForegroundColor DarkGray
+    $sqlServiceName = if ($script:SqlInstance -match '\\([^\\]+)$') { "MSSQL`$$($Matches[1])" } else { 'MSSQLSERVER' }
+    if (Test-ServiceExists -ServiceName $sqlServiceName) {
+        Write-Host "OK" -ForegroundColor Green
+    } else {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "SQL Server Express service not found"
+        $results.Success = $false
+    }
+
+    # Check 2: WSUS service exists
+    Write-Host "  WSUS Service      " -NoNewline -ForegroundColor DarkGray
+    if (Test-ServiceExists -ServiceName "WSUSService") {
+        Write-Host "OK" -ForegroundColor Green
+    } else {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "WSUS Service not found"
+        $results.Success = $false
+    }
+
+    # Check 3: Local disk space (WSUS folder)
+    Write-Host "  Disk Space        " -NoNewline -ForegroundColor DarkGray
+    $wsusDrive = (Get-Item $script:ContentPath -ErrorAction SilentlyContinue).PSDrive
+    if ($wsusDrive) {
+        $freeGB = [math]::Round($wsusDrive.Free / 1GB, 2)
+        if ($freeGB -ge 5) {
+            Write-Host "OK " -ForegroundColor Green -NoNewline
+            Write-Host "($freeGB GB free)" -ForegroundColor DarkGray
+        } else {
+            Write-Host "LOW " -ForegroundColor Yellow -NoNewline
+            Write-Host "($freeGB GB free)" -ForegroundColor DarkGray
+            $results.Warnings += "Low disk space on WSUS drive: $freeGB GB"
+        }
+    } else {
+        Write-Host "SKIP" -ForegroundColor Yellow
+    }
+
+    # Check 4: Export path accessibility (if not skipping export)
+    if (-not $SkipExport -and $ExportPath) {
+        Write-Host "  Full Export Path  " -NoNewline -ForegroundColor DarkGray
+        $exportAccessible = Test-ExportPathAccess -ExportPath $ExportPath
+        if ($exportAccessible) {
+            Write-Host "OK" -ForegroundColor Green
+        } else {
+            Write-Host "SKIPPED (not accessible)" -ForegroundColor DarkGray
+        }
+    }
+
+    # Check 5: WSUS connection test
+    Write-Host "  WSUS Connection   " -NoNewline -ForegroundColor DarkGray
+    try {
+        Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
+        $testWsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost", $false, $script:WsusPort)
+        if ($testWsus) {
+            Write-Host "OK" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "Cannot connect to WSUS: $($_.Exception.Message)"
+        $results.Success = $false
+    }
+
+    # Check 6: SQL Server sysadmin permissions
+    Write-Host "  SQL Sysadmin      " -NoNewline -ForegroundColor DarkGray
+    try {
+        $sqlServiceName = if ($script:SqlInstance -match '\\([^\\]+)$') { "MSSQL`$$($Matches[1])" } else { 'MSSQLSERVER' }
+        $sqlService = Get-Service -Name $sqlServiceName -ErrorAction SilentlyContinue
+        if ($sqlService -and $sqlService.Status -eq 'Running') {
+            $isSysAdmin = $false
+            $sqlcmdExe = Get-Command sqlcmd.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
+
+            if (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue) {
+                $permResult = Invoke-Sqlcmd -ServerInstance $script:SqlInstance -Query "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin" -ErrorAction Stop
+                $isSysAdmin = ($permResult.IsSysAdmin -eq 1)
+            } elseif ($sqlcmdExe) {
+                $out = & $sqlcmdExe -S $script:SqlInstance -E -Q "SELECT IS_SRVROLEMEMBER('sysadmin')" -h -1 -W
+                $isSysAdmin = ($out -match '^\s*1\s*$')
+            } else {
+                Write-Host "SKIP (no SQL tools)" -ForegroundColor Yellow
+            }
+
+            if ($isSysAdmin) {
+                Write-Host "OK" -ForegroundColor Green
+            } else {
+                Write-Host "FAILED" -ForegroundColor Red
+                $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+                $results.Errors += "User '$currentUser' does not have SQL sysadmin permissions. Use 'Fix SQL Login' in the app."
+                $results.Success = $false
+            }
+        } else {
+            Write-Host "SKIP" -ForegroundColor Yellow
+            Write-Host "  (SQL not running)" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "FAILED" -ForegroundColor Red
+        $results.Errors += "Cannot verify SQL permissions: $($_.Exception.Message)"
+        $results.Success = $false
+    }
+
+    Write-Host ""
+    return $results
+}
+
+# Test export path with write access
+function Test-ExportPathAccess {
+    param([string]$ExportPath)
+
+    try {
+        # First check if path exists or parent exists
+        if (Test-Path $ExportPath) {
+            $testFile = Join-Path $ExportPath ".wsus_access_test_$(Get-Random).tmp"
+            New-Item -Path $testFile -ItemType File -Force -ErrorAction Stop | Out-Null
+            Remove-Item $testFile -Force -ErrorAction SilentlyContinue
+            return $true
+        } else {
+            # Try to create the path
+            New-Item -Path $ExportPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
+            return $true
+        }
+    } catch {
+        return $false
+    }
+}
+
+# Interactive menu
+function Show-MainMenu {
+    Clear-Host
+    Write-Host ""
+    Write-Host "  WSUS Monthly Maintenance v$ScriptVersion" -ForegroundColor Cyan
+    Write-Host "  $('=' * 40)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [1] Full Maintenance" -ForegroundColor White
+    Write-Host "      Sync > Cleanup > Ultimate Cleanup > Backup > Export" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [2] Quick Maintenance" -ForegroundColor White
+    Write-Host "      Sync > Cleanup > Backup (skip heavy cleanup)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [3] Sync Only" -ForegroundColor White
+    Write-Host "      Synchronize and approve updates only" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [4] Backup & Export Only" -ForegroundColor White
+    Write-Host "      Skip sync/cleanup, just backup and export" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [5] Database Maintenance Only" -ForegroundColor White
+    Write-Host "      Cleanup + index optimization (no sync/backup)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [Q] Quit" -ForegroundColor DarkGray
+    Write-Host ""
+
+    $choice = Read-Host "  Select option"
+    return $choice
+}
+
+# Apply profile settings
+function Set-ProfileSettings {
+    param([string]$ProfileName)
+
+    $settings = @{
+        Operations = @("All")
+        SkipUltimateCleanup = $false
+        SkipExport = $false
+    }
+
+    switch ($ProfileName) {
+        "Quick" {
+            $settings.SkipUltimateCleanup = $true
+        }
+        "Full" {
+            $settings.SkipUltimateCleanup = $false
+        }
+        "SyncOnly" {
+            $settings.Operations = @("Sync")
+            $settings.SkipExport = $true
+        }
+    }
+
+    return $settings
+}
+
+# Check if operation should run
+function Test-ShouldRunOperation {
+    param(
+        [string]$Operation,
+        [string[]]$SelectedOperations
+    )
+
+    if ($SelectedOperations -contains "All") { return $true }
+    return $SelectedOperations -contains $Operation
+}
+
+# Show operation summary before starting
+function Show-OperationSummary {
+    param(
+        [string[]]$Operations,
+        [bool]$SkipUltimateCleanup,
+        [bool]$SkipExport,
+        [string]$ExportPath,
+        [bool]$Unattended
+    )
+
+    Write-Host ""
+    Write-Host "  WSUS Online Sync v$ScriptVersion" -ForegroundColor Cyan
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
+    Write-Host ""
+
+    # Build operation flow
+    $flow = @()
+    if (Test-ShouldRunOperation "Sync" $Operations) { $flow += "Sync" }
+    if (Test-ShouldRunOperation "Cleanup" $Operations) { $flow += "Cleanup" }
+    if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltimateCleanup) {
+        $flow += "UltimateCleanup"
+    }
+    if (Test-ShouldRunOperation "Backup" $Operations) { $flow += "Backup" }
+    if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport) { $flow += "Export" }
+
+    Write-Host "  Operations:   " -NoNewline -ForegroundColor DarkGray
+    Write-Host ($flow -join " > ") -ForegroundColor White
+
+    if (-not $SkipExport -and $ExportPath) {
+        Write-Host "  Export Path:  " -NoNewline -ForegroundColor DarkGray
+        Write-Host $ExportPath -ForegroundColor White
+    }
+
+    Write-Host "  Mode:         " -NoNewline -ForegroundColor DarkGray
+    if ($Unattended) {
+        Write-Host "Unattended" -ForegroundColor Yellow
+    } else {
+        Write-Host "Interactive" -ForegroundColor Green
+    }
+
+    Write-Host ""
+
+    if (-not $Unattended) {
+        Write-Host "  Press Enter to continue or Ctrl+C to cancel..." -ForegroundColor DarkGray
+        Read-Host | Out-Null
+    }
+}
+
+# Initialize results tracking
+$MaintenanceResults = @{
+    Success = $true
+    StartTime = Get-Date
+    EndTime = $null
+    Phases = @()
+    DeclinedExpired = 0
+    DeclinedSuperseded = 0
+    DeclinedOld = 0
+    DeclinedArm64 = 0
+    Approved = 0
+    DatabaseSize = 0
+    BackupFile = ""
+    BackupSize = 0
+    ExportPath = ""
+    ExportedFiles = 0
+    ExportSize = 0
+    Warnings = @()
+    Errors = @()
+}
+
+# === INTERACTIVE MENU MODE ===
+# Show menu if no profile/operations specified and not unattended
+if (-not $Unattended -and -not $MaintenanceProfile -and ($Operations.Count -eq 1 -and $Operations[0] -eq "All")) {
+    $menuChoice = Show-MainMenu
+
+    switch ($menuChoice) {
+        "1" { $MaintenanceProfile = "Full" }
+        "2" { $MaintenanceProfile = "Quick" }
+        "3" { $MaintenanceProfile = "SyncOnly" }
+        "4" {
+            $Operations = @("Backup", "Export")
+        }
+        "5" {
+            $Operations = @("Cleanup", "UltimateCleanup")
+            $SkipExport = $true
+        }
+        "Q" { exit 0 }
+        "q" { exit 0 }
+        default { $MaintenanceProfile = "Full" }
+    }
+}
+
+# === APPLY PROFILE SETTINGS ===
+if ($MaintenanceProfile) {
+    $profileSettings = Set-ProfileSettings -ProfileName $MaintenanceProfile
+    if (-not $PSBoundParameters.ContainsKey('SkipUltimateCleanup')) {
+        $SkipUltimateCleanup = $profileSettings.SkipUltimateCleanup
+    }
+    if (-not $PSBoundParameters.ContainsKey('SkipExport')) {
+        $SkipExport = $profileSettings.SkipExport
+    }
+    if ($profileSettings.Operations[0] -ne "All") {
+        $Operations = $profileSettings.Operations
+    }
+}
+
+# Setup logging using module function
+# Use shared daily log when called from GUI, per-script log when run standalone
+if ($NoTranscript) {
+    # From GUI - use shared daily log (all operations in one file)
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -SharedLog
+} else {
+    # Standalone - use timestamped per-script log
+    $null = Start-WsusLogging -ScriptName "WsusMaintenance" -UseTimestamp $true
+}
+
+Write-Log "Starting WSUS monthly maintenance v$ScriptVersion"
+
+# UI note: some phases are long-running and may appear idle in the GUI log.
+Write-Status "Heads-up: some maintenance phases can take several minutes with minimal output. GUI status refreshes every ~30 seconds." -Type Info
+
+# === SHOW OPERATION SUMMARY ===
+Show-OperationSummary -Operations $Operations -SkipUltimateCleanup $SkipUltimateCleanup `
+    -SkipExport $SkipExport -ExportPath $ExportPath -Unattended $Unattended
+
+# === PRE-FLIGHT CHECKS ===
+$preflightResults = Test-Prerequisites -ExportPath $ExportPath -SkipExport $SkipExport
+
+if (-not $preflightResults.Success) {
+    Write-Status "Pre-flight checks failed!" -Type Error
+    foreach ($err in $preflightResults.Errors) {
+        Write-Status "  $err" -Type Error
+        $MaintenanceResults.Errors += $err
+    }
+    $MaintenanceResults.Success = $false
+    Stop-WsusLogging
+    exit 1
+}
+
+if ($preflightResults.Warnings.Count -gt 0) {
+    foreach ($warn in $preflightResults.Warnings) {
+        Write-Status $warn -Type Warning
+        $MaintenanceResults.Warnings += $warn
+    }
+}
+
+# === CONNECT TO WSUS ===
+Write-Status "Connecting to WSUS..." -Type Phase
+Write-Log "Connecting to WSUS..."
+# === CONNECT TO WSUS ===
+Write-Status "Connecting to WSUS..." -Type Phase
+Write-Log "Connecting to WSUS..."
+
+# Start services using module functions
+Start-SqlServerExpress | Out-Null
+Start-WsusServer | Out-Null
+
+try {
+    Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
+    $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer("localhost",$false,$script:WsusPort)
+
+    if ($null -eq $wsus) {
+        throw "GetUpdateServer returned null - WSUS service may not be running or configured"
+    }
+
+    Write-Log "WSUS connection successful"
+    Write-Status "WSUS connection successful" -Type Success
+
+    Start-Sleep -Seconds 2
+    $subscription = $wsus.GetSubscription()
+
+    if ($null -eq $subscription) {
+        throw "Failed to get WSUS subscription object"
+    }
+
+    Write-Log "Subscription object retrieved"
+} catch {
+    Write-Status "Failed to connect: $($_.Exception.Message)" -Type Error
+    $MaintenanceResults.Errors += "WSUS connection failed: $($_.Exception.Message)"
+    $MaintenanceResults.Success = $false
+    Stop-WsusLogging
+    exit 1
+}
+
+# === SYNCHRONIZE ===
+if (Test-ShouldRunOperation "Sync" $Operations) {
+    Write-Status "Starting synchronization..." -Type Phase
+    Write-Log "Starting synchronization..."
+    $syncStart = Get-Date
+    $syncPhase = @{ Name = "Synchronization"; Status = "In Progress"; Duration = "" }
+
+    Start-Heartbeat "Synchronization running... this may take several minutes."
+    try {
+        # DNS preflight - verify we can reach Microsoft Update before starting a multi-hour sync
+        Write-Log "Preflight: checking DNS resolution for windowsupdate.microsoft.com..."
+        $dnsResult = Resolve-DnsName windowsupdate.microsoft.com -ErrorAction SilentlyContinue
+        if (-not $dnsResult) {
+            Write-Log "ERROR: Cannot resolve windowsupdate.microsoft.com" "Red"
+            Write-Log "Sync will fail without DNS. Check network/DNS configuration:" "Yellow"
+            Write-Log "  Current DNS: $((Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1).ServerAddresses -join ', ')" "Yellow"
+            Write-Log "  Fix: Set-DnsClientServerAddress -ServerAddresses @('8.8.8.8','1.1.1.1')" "Yellow"
+            throw "DNS resolution failed - cannot reach Microsoft Update servers"
+        }
+        Write-Log "DNS OK: windowsupdate.microsoft.com resolves"
+
+        # Stop any existing sync before modifying subscription (can't save while syncing)
+        $syncStopped = $true
+        $syncStatus = $subscription.GetSynchronizationStatus()
+        if ($syncStatus -ne "NotProcessing") {
+            Write-Log "A sync is already running ($syncStatus) - stopping it first..."
+            $subscription.StopSynchronization()
+            $waitCount = 0
+            while ($subscription.GetSynchronizationStatus() -ne "NotProcessing" -and $waitCount -lt 24) {
+                Start-Sleep -Seconds 5
+                $waitCount++
+            }
+            if ($subscription.GetSynchronizationStatus() -ne "NotProcessing") {
+                Write-Log "Sync still running after 2 minutes - will skip product config and use existing"
+                $syncStopped = $false
+            } else {
+                Write-Log "Previous sync stopped"
+            }
+        }
+
+        # Configure products BEFORE starting sync (skip if sync wouldn't stop)
+        if ($syncStopped -and $SelectedProducts -and $SelectedProducts.Count -gt 0) {
+            Write-Log "Configuring products before sync: $($SelectedProducts -join ', ')"
+            $allProducts = $wsus.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
+            if ($allProducts.Count -gt 0) {
+                $toEnable = @()
+                foreach ($prod in $allProducts) {
+                    foreach ($sel in $SelectedProducts) {
+                        if ($prod.Title -eq $sel) { $toEnable += $prod; break }
+                    }
+                }
+                if ($toEnable.Count -gt 0) {
+                    # Additive mode: add selected products to existing subscription (don't replace)
+                    $existingCategories = $subscription.GetUpdateCategories()
+                    $existingTitles = @($existingCategories | ForEach-Object { $_.Title })
+                    $coll = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
+                    foreach ($cat in $existingCategories) { $coll.Add($cat) }
+                    $addedCount = 0
+                    foreach ($p in $toEnable) {
+                        if ($p.Title -notin $existingTitles) {
+                            $coll.Add($p)
+                            $addedCount++
+                            Write-Log "  + Adding product: $($p.Title)"
+                        }
+                    }
+                    $subscription.SetUpdateCategories($coll)
+                    $subscription.Save()
+                    Write-Log "Products subscribed: $($coll.Count) total ($addedCount new, $($existingCategories.Count) existing)"
+                }
+            }
+        }
+
+        $lastSync = $subscription.GetLastSynchronizationInfo()
+        if ($lastSync) {
+            Write-Log "Last sync: $($lastSync.StartTime) | Result: $($lastSync.Result) | New: $($lastSync.NewUpdates)"
+        }
+
+        $subscription.StartSynchronization()
+        Write-Log "Sync triggered, waiting for it to start..."
+        # Split sleep into smaller chunks with heartbeat to keep output flowing
+        for ($i = 0; $i -lt 3; $i++) {
+            Start-Sleep -Seconds 5
+            Write-Host "." -NoNewline
+            [Console]::Out.Flush()
+        }
+        Write-Host ""
+        [Console]::Out.Flush()
+
+        $syncIterations = 0
+        $maxIterations = 360  # 360 x 30s = 180 minutes (3 hours) - first sync can take a while
+        $lastPhase = ""
+        $lastProcessed = 0
+
+        do {
+            # Split the 30-second wait into smaller chunks with heartbeat
+            for ($i = 0; $i -lt 6; $i++) {
+                Start-Sleep -Seconds 5
+                # Output a dot every 5 seconds to show activity
+                if ($i -lt 5) {
+                    Write-Host "." -NoNewline
+                    [Console]::Out.Flush()
+                }
+            }
+            Write-Host ""
+            [Console]::Out.Flush()
+
+            $syncStatus = $subscription.GetSynchronizationStatus()
+            $syncProgress = $subscription.GetSynchronizationProgress()
+
+            if ($syncStatus -eq "Running") {
+                # Null-safe access to sync progress properties
+                $currentPhase = if ($null -ne $syncProgress -and $null -ne $syncProgress.Phase) {
+                    $syncProgress.Phase.ToString()
+                } else { "Unknown" }
+                $processed = if ($null -ne $syncProgress) { $syncProgress.ProcessedItems } else { 0 }
+                $total = if ($null -ne $syncProgress) { $syncProgress.TotalItems } else { 0 }
+                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } else { 0 }
+
+                # Log if: phase changed, 10% progress jump, first iteration, or near completion (95%+)
+                $phaseChanged = ($currentPhase -ne $lastPhase)
+                $progressJump = ($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1))
+                $nearCompletion = ($pct -ge 95) -and ($processed -ne $lastProcessed)
+
+                if ($phaseChanged -or $progressJump -or $nearCompletion -or $syncIterations -eq 0) {
+                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$total"
+                    $lastPhase = $currentPhase
+                    $lastProcessed = $processed
+                }
+                $syncIterations++
+            } elseif ($syncStatus -eq "NotProcessing") {
+                Write-Log "Sync completed or not running"
+                break
+            } else {
+                Write-Log "Sync status: $syncStatus"
+                $syncIterations++
+            }
+
+            if ($syncIterations -ge $maxIterations) {
+                Write-Warning "Sync timeout after 180 minutes"
+                break
+            }
+
+        } while ($syncStatus -eq "Running" -or $syncIterations -lt 5)
+
+        Start-Sleep -Seconds 5
+
+        $finalSync = $subscription.GetLastSynchronizationInfo()
+        if ($finalSync) {
+            Write-Log "Sync complete: Result=$($finalSync.Result) | New=$($finalSync.NewUpdates) | Revised=$($finalSync.RevisedUpdates)"
+
+            if ($finalSync.Result -ne "Succeeded") {
+                Write-Warning "Sync result: $($finalSync.Result)"
+                $MaintenanceResults.Warnings += "Sync result: $($finalSync.Result)"
+                if ($finalSync.Error) {
+                    Write-Error "Sync error: $($finalSync.Error.Message)"
+                }
+            }
+        } else {
+            Write-Warning "Could not retrieve final sync info"
+        }
+
+        $syncDuration = [math]::Round(((Get-Date) - $syncStart).TotalMinutes, 1)
+        $syncPhase.Status = "Completed"
+        $syncPhase.Duration = "$syncDuration min"
+        Write-Status "Synchronization completed: $syncDuration minutes" -Type Success
+    } catch {
+        Write-Status "Sync failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Sync failed: $($_.Exception.Message)"
+        $syncPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
+    }
+    $MaintenanceResults.Phases += $syncPhase
+} else {
+    Write-Status "Skipping synchronization" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "Synchronization"; Status = "Skipped"; Duration = "" }
+}
+
+# === CONFIGURATION CHECK ===
+Write-Log "Checking configuration..."
+
+$enabledProducts = $subscription.GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' }
+Write-Log "Enabled products: $($enabledProducts.Count)"
+
+if ($enabledProducts.Count -eq 0) {
+    Write-Warning "No products enabled! Configure in WSUS Console."
+}
+
+Write-Log "Note: Verify classifications are enabled in WSUS Console -> Options -> Products and Classifications"
+
+# === MONITOR DOWNLOADS ===
+Write-Log "Monitoring downloads..."
+$downloadIterations = 0
+do {
+    $progress = $wsus.GetContentDownloadProgress()
+    if ($progress.TotalFileCount -gt 0) {
+        $pct = [math]::Round(($progress.DownloadedFileCount / $progress.TotalFileCount) * 100, 1)
+        Write-Log "Downloaded: $($progress.DownloadedFileCount)/$($progress.TotalFileCount) - $($pct) percent"
+        if ($progress.DownloadedFileCount -ge $progress.TotalFileCount) { break }
+    } else {
+        Write-Log "No downloads queued"
+        break
+    }
+    # Split wait with heartbeat
+    for ($i = 0; $i -lt 6; $i++) {
+        Start-Sleep -Seconds 5
+        Write-Host "." -NoNewline
+        [Console]::Out.Flush()
+    }
+    Write-Host ""
+    [Console]::Out.Flush()
+    $downloadIterations++
+} while ($downloadIterations -lt 60)
+
+# === DECLINE UPDATES (BASED ON MICROSOFT RELEASE DATE) ===
+Write-Log "Fetching updates..."
+$allUpdates = @()
+
+try {
+    Write-Log "Calling GetUpdates - this may take several minutes..."
+    $getUpdatesStart = Get-Date
+    
+    $updateScope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+    $allUpdates = $wsus.GetUpdates($updateScope)
+    
+    $getUpdatesDuration = [math]::Round(((Get-Date) - $getUpdatesStart).TotalSeconds, 1)
+    Write-Log "GetUpdates completed in $getUpdatesDuration seconds"
+    Write-Log "Total updates: $($allUpdates.Count)"
+    
+} catch [System.Net.WebException] {
+    Write-Warning "GetUpdates timed out after 180 seconds"
+    Write-Warning "This indicates SUSDB needs optimization. Running cleanup first..."
+    $allUpdates = @()
+} catch {
+    Write-Warning "Failed to fetch updates: $($_.Exception.Message)"
+    $allUpdates = @()
+}
+
+# Initialize counters
+$expiredCount = 0
+$supersededCount = 0
+$oldCount = 0
+$arm64Count = 0
+$legacyBuildCount = 0
+$approvedCount = 0
+
+if ($allUpdates.Count -gt 0) {
+    Write-Log "Declining updates based on Microsoft RELEASE DATE and policy filters..."
+    
+    # Get target group early so we can check approvals in the age decline filter
+    $targetGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "All Computers" }
+
+    $expired = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsExpired })
+    $superseded = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.IsSuperseded })
+    $cutoff = (Get-Date).AddMonths(-6)
+    # Age decline: only decline old updates that are NOT already approved for install
+    $oldUpdates = @($allUpdates | Where-Object {
+        -not $_.IsDeclined -and -not $_.IsSuperseded -and -not $_.IsExpired -and
+        $_.CreationDate -lt $cutoff -and
+        (-not $targetGroup -or ($_.GetUpdateApprovals($targetGroup) | Where-Object { $_.Action -eq "Install" }).Count -eq 0)
+    })
+    $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
+    # 25H2: kept but not auto-approved (no decline, no approval - available for manual review)
+    $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
+    $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
+    # Edge: keep only Stable Channel and WebView2, decline everything else
+    $edgeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)Microsoft Edge' -and ($_.Title -notmatch '(?i)(Stable Channel|WebView2)' -or $_.Title -match '(?i)Extended Stable') })
+    # WSL: decline Windows Subsystem for Linux updates
+    $wslDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)(Windows Subsystem for Linux|WSL)' })
+    # Office: decline 365 Apps, Office 2019, Office LTSC 2021 (keep only Office 2024/LTSC 2024)
+    $officeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and (
+        $_.Title -match '(?i)Microsoft 365 Apps' -or
+        $_.Title -match '(?i)Office 2019' -or
+        $_.Title -match '(?i)Office LTSC 2021'
+    ) -and $_.Title -notmatch '(?i)(2024|LTSC 2024)' })
+
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
+
+    if ($expired.Count -gt 0) {
+        $expired | ForEach-Object { 
+            try { 
+                $_.Decline() | Out-Null
+                $expiredCount++
+            } catch { 
+                Write-Warning "Failed to decline expired: $($_.Title)"
+            } 
+        }
+    }
+    
+    if ($superseded.Count -gt 0) {
+        $superseded | ForEach-Object { 
+            try { 
+                $_.Decline() | Out-Null
+                $supersededCount++
+            } catch { 
+                Write-Warning "Failed to decline superseded: $($_.Title)"
+            } 
+        }
+    }
+    
+    if ($oldUpdates.Count -gt 0) {
+        $oldUpdates | ForEach-Object {
+            try { $_.Decline() | Out-Null; $oldCount++ } catch { Write-Verbose "Failed to decline old update: $($_.Exception.Message)" }
+        }
+    }
+
+    if ($arm64Updates.Count -gt 0) {
+        $arm64Updates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $arm64Count++
+            } catch {
+                Write-Warning "Failed to decline ARM64 update: $($_.Title)"
+            }
+        }
+    }
+
+    if ($legacyBuildUpdates.Count -gt 0) {
+        $legacyBuildUpdates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $legacyBuildCount++
+            } catch {
+                Write-Warning "Failed to decline legacy build update: $($_.Title)"
+            }
+        }
+    }
+
+    $previewCount = 0
+    if ($previewUpdates.Count -gt 0) {
+        $previewUpdates | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $previewCount++
+            } catch {
+                Write-Warning "Failed to decline preview/beta update: $($_.Title)"
+            }
+        }
+    }
+
+    $edgeDeclineCount = 0
+    if ($edgeDeclines.Count -gt 0) {
+        $edgeDeclines | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $edgeDeclineCount++
+            } catch {
+                Write-Warning "Failed to decline Edge update: $($_.Title)"
+            }
+        }
+    }
+
+    $officeDeclineCount = 0
+    if ($officeDeclines.Count -gt 0) {
+        $officeDeclines | ForEach-Object {
+            try {
+                $_.Decline() | Out-Null
+                $officeDeclineCount++
+            } catch {
+                Write-Warning "Failed to decline Office update: $($_.Title)"
+            }
+        }
+    }
+
+    $wslDeclineCount = 0
+    if ($wslDeclines.Count -gt 0) {
+        $wslDeclines | ForEach-Object {
+            try { $_.Decline() | Out-Null; $wslDeclineCount++ } catch { Write-Verbose "Failed to decline WSL update: $($_.Exception.Message)" }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
+
+    # === APPROVE UPDATES (CONSERVATIVE) ===
+    Write-Log "Checking for updates to approve..."
+    if ($targetGroup) {
+        # Conservative approval criteria based on enabled classifications
+        $pendingUpdates = @($allUpdates | Where-Object { 
+            -not $_.IsDeclined -and 
+            -not $_.IsSuperseded -and
+            -not $_.IsExpired -and
+            ($_.GetUpdateApprovals($targetGroup) | Where-Object { $_.Action -eq "Install" }).Count -eq 0 -and
+            $_.CreationDate -gt (Get-Date).AddMonths(-6) -and  # Only approve updates from last 6 months
+            $_.Title -notlike "*Preview*" -and
+            $_.Title -notlike "*Beta*" -and
+            $_.Title -notmatch '(?i)\bARM64\b' -and
+            $_.Title -notmatch '(?i)\b25H2\b' -and
+            $_.Title -notmatch '(?i)\b(21H2|22H2|23H2)\b' -and
+            $_.Title -notmatch '(?i)(x86|32-bit|32.bit)' -and
+            (
+                $_.UpdateClassificationTitle -eq "Critical Updates" -or
+                $_.UpdateClassificationTitle -eq "Security Updates" -or
+                $_.UpdateClassificationTitle -eq "Update Rollups" -or
+                $_.UpdateClassificationTitle -eq "Service Packs" -or
+                $_.UpdateClassificationTitle -eq "Updates" -or
+                $_.UpdateClassificationTitle -eq "Definition Updates"
+                # Excluding "Upgrades" (need manual review)
+            )
+        })
+        
+        # Additional filter: only approve updates from selected products (if specified)
+        if ($SelectedProducts -and $SelectedProducts.Count -gt 0 -and $pendingUpdates.Count -gt 0) {
+            $productPattern = '(?i)(' + (($SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                ($_.ProductTitles -join ",") -match $productPattern
+            })
+            # Extra filter: skip Office 365 updates that are NOT Office 2024 LTSC
+            $pendingUpdates = @($pendingUpdates | Where-Object {
+                $prodStr = $_.ProductTitles -join ","
+                if ($prodStr -like "*Microsoft 365*" -and $_.Title -notlike "*LTSC*" -and $_.Title -notlike "*2024*") {
+                    return $false
+                }
+                return $true
+            })
+            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products (Office 365 filtered to LTSC 2024 only)"
+        }
+        
+        Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
+        Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6 months, not superseded/expired"
+        Write-Log "  Excluded: Upgrades, ARM64, x86/32-bit, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
+        
+        if ($pendingUpdates.Count -gt 0) {
+            # Safety check - don't auto-approve more than 200 updates
+            if ($pendingUpdates.Count -gt 200) {
+                Write-Warning "Found $($pendingUpdates.Count) updates to approve - this seems high!"
+                Write-Warning "SKIPPING auto-approval for safety. Review updates in WSUS Console."
+                Write-Log "Top 10 pending updates:"
+                $pendingUpdates | Select-Object -First 10 | ForEach-Object {
+                    Write-Log "  - $($_.Title) ($($_.UpdateClassificationTitle))"
+                }
+            } else {
+                Write-Log "Approving $($pendingUpdates.Count) updates..."
+                $pendingUpdates | ForEach-Object {
+                    try { 
+                        $_.Approve("Install", $targetGroup) | Out-Null
+                        $approvedCount++
+                        if ($approvedCount % 10 -eq 0) {
+                            Write-Log "  Approved: $approvedCount / $($pendingUpdates.Count)"
+                        }
+                    } catch { 
+                        Write-Warning "Failed to approve: $($_.Title)" 
+                    }
+                }
+                Write-Log "Successfully approved: $approvedCount updates"
+            }
+        } else {
+            Write-Log "No updates meet approval criteria"
+        }
+    } else {
+        Write-Warning "Target group 'All Computers' not found"
+    }
+} else {
+    Write-Warning "No updates retrieved - skipping decline/approve operations"
+    Write-Warning "Proceeding with cleanup and database maintenance to improve performance"
+}
+
+# Store results for reporting
+$MaintenanceResults.DeclinedExpired = $expiredCount
+$MaintenanceResults.DeclinedSuperseded = $supersededCount
+$MaintenanceResults.DeclinedOld = $oldCount
+$MaintenanceResults.DeclinedArm64 = $arm64Count
+$MaintenanceResults.Approved = $approvedCount
+
+# === CLEANUP ===
+if (Test-ShouldRunOperation "Cleanup" $Operations) {
+    # Run the built-in WSUS cleanup tasks to prune obsolete data/files.
+    Write-Status "Running WSUS cleanup..." -Type Phase
+    Write-Log "Running WSUS cleanup..."
+    $cleanupPhase = @{ Name = "WSUS Cleanup"; Status = "In Progress"; Duration = "" }
+    $cleanupStart = Get-Date
+    Start-Heartbeat "Cleanup running... this may take several minutes."
+
+    try {
+        Import-Module UpdateServices -ErrorAction SilentlyContinue
+
+        Write-Log "This may take 10-30 minutes for large databases..."
+
+        $cleanup = Invoke-WsusServerCleanup `
+                             -CleanupObsoleteComputers `
+                             -CleanupObsoleteUpdates `
+                             -CleanupUnneededContentFiles `
+                             -CompressUpdates `
+                             -DeclineSupersededUpdates `
+                             -DeclineExpiredUpdates `
+                             -Confirm:$false
+
+        $cleanupDuration = [math]::Round(((Get-Date) - $cleanupStart).TotalMinutes, 1)
+        Write-Log "Cleanup completed in $cleanupDuration minutes"
+        Write-Log "Results: Obsolete Updates=$($cleanup.ObsoleteUpdatesDeleted) | Computers=$($cleanup.ObsoleteComputersDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB"
+
+        # Additional deep cleanup for declined updates
+        Write-Log "Running deep cleanup of old declined update metadata..."
+        $deepCleanupQuery = @'
+-- Remove update status for old declined updates (keeps DB lean)
+        # Additional deep cleanup for declined updates
+        Write-Log "Running deep cleanup of old declined update metadata..."
+        $deepCleanupQuery = @'
+-- Remove update status for old declined updates (keeps DB lean)
+-- Using correct schema: tbProperty has CreationDate (Microsoft's release date)
+-- Join through tbRevision to get to tbProperty
+DECLARE @Deleted INT = 0
+DECLARE @BatchSize INT = 1000
+
+DELETE TOP (@BatchSize) usc
+FROM tbUpdateStatusPerComputer usc
+INNER JOIN tbRevision r ON usc.LocalUpdateID = r.LocalUpdateID
+INNER JOIN tbProperty p ON r.RevisionID = p.RevisionID
+WHERE r.State = 2
+AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())
+
+SET @Deleted = @@ROWCOUNT
+
+SELECT
+    @Deleted AS StatusRecordsDeleted,
+    (SELECT COUNT(*)
+     FROM tbRevision r
+     INNER JOIN tbProperty p ON r.RevisionID = p.RevisionID
+     WHERE r.State = 2
+     AND p.CreationDate < DATEADD(MONTH, -6, GETDATE())) AS TotalOldDeclined
+'@
+
+        try {
+            if ($script:UseSqlCredential -and $SqlCredential) {
+                $deepResult = Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
+                    -Query $deepCleanupQuery -QueryTimeout 300 `
+                    -Credential $SqlCredential
+            } else {
+                $deepResult = Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
+                    -Query $deepCleanupQuery -QueryTimeout 300
+            }
+
+            if ($deepResult) {
+                Write-Log "Removed $($deepResult.StatusRecordsDeleted) old status records"
+                Write-Log "Total old declined updates (released over 6mo ago): $($deepResult.TotalOldDeclined)"
+                if ($deepResult.TotalOldDeclined -gt 5000) {
+                    Write-Warning "Large number of old declined updates ($($deepResult.TotalOldDeclined)) detected"
+                    Write-Warning "Consider running aggressive cleanup script for database optimization"
+                    $MaintenanceResults.Warnings += "Large number of old declined updates: $($deepResult.TotalOldDeclined)"
+                }
+            }
+        } catch {
+            Write-Warning "Deep cleanup query failed: $($_.Exception.Message)"
+        }
+
+        $cleanupPhase.Status = "Completed"
+        $cleanupPhase.Duration = "$cleanupDuration min"
+        Write-Status "Cleanup completed ($cleanupDuration min)" -Type Success
+    } catch {
+        Write-Status "Cleanup failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Cleanup failed: $($_.Exception.Message)"
+        $cleanupPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
+    }
+    $MaintenanceResults.Phases += $cleanupPhase
+
+    # === DATABASE MAINTENANCE ===
+    Write-Status "Running database maintenance..." -Type Phase
+    Write-Log "Database maintenance..."
+    Write-Log "Waiting 30 seconds for WSUS operations to complete..."
+    Start-Sleep -Seconds 30
+
+    try {
+        Write-Log "Optimizing indexes (may take 5-15 minutes)..."
+        $indexStart = Get-Date
+        $indexResult = Optimize-WsusIndexes -SqlInstance $script:SqlInstance
+        $indexDuration = [math]::Round(((Get-Date) - $indexStart).TotalMinutes, 1)
+        Write-Log "Index optimization complete in $indexDuration minutes (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))"
+        if (Update-WsusStatistics -SqlInstance $script:SqlInstance) {
+            Write-Log "Statistics updated"
+        }
+        Write-Status "Database maintenance completed" -Type Success
+    } catch {
+        Write-Warning "Index maintenance encountered errors: $($_.Exception.Message)"
+        Write-Log "Continuing with remaining maintenance tasks..."
+    }
+} else {
+    Write-Status "Skipping cleanup" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "WSUS Cleanup"; Status = "Skipped"; Duration = "" }
+}
+# === ULTIMATE CLEANUP (SUPSESSION + DECLINED PURGE) ===
+if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltimateCleanup) {
+    Write-Status "Running ultimate cleanup..." -Type Phase
+    Write-Log "Running ultimate cleanup steps before backup..."
+    $ultimatePhase = @{ Name = "Ultimate Cleanup"; Status = "In Progress"; Duration = "" }
+    $ultimateStart = Get-Date
+    Start-Heartbeat "Ultimate cleanup running... this may take several minutes."
+
+    try {
+        if (Test-ServiceRunning -ServiceName "WSUSService") {
+            Write-Log "Stopping WSUS Service for ultimate cleanup..."
+            if (Stop-WsusServer -Force) {
+                Write-Log "WSUS Service stopped"
+            } else {
+                Write-Warning "Failed to stop WSUS Service"
+            }
+        }
+
+        $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance $script:SqlInstance
+        Write-Log "Removed $deletedDeclined supersession records for declined updates"
+
+        $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance $script:SqlInstance -ShowProgress
+        Write-Log "Removed $deletedSuperseded supersession records for superseded updates"
+
+        try {
+            if (-not $allUpdates -or $allUpdates.Count -eq 0) {
+                Write-Log "Reloading updates for declined purge..."
+                $allUpdates = $wsus.GetUpdates()
+            }
+
+            $declinedIDs = @($allUpdates | Where-Object { $_.IsDeclined } |
+                Select-Object -ExpandProperty Id |
+                ForEach-Object { $_.UpdateId })
+
+            if ($declinedIDs.Count -gt 0) {
+                Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
+                $batchSize = 100
+                $totalDeleted = 0
+                $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
+                $currentBatch = 0
+
+                for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
+                    $currentBatch++
+                    $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+
+                    foreach ($updateId in $batch) {
+                        $deleteQuery = @'
+DECLARE @LocalUpdateID int
+DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
+SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
+IF @LocalUpdateID IS NOT NULL
+    EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
+'@
+                        try {
+                            if ($script:UseSqlCredential -and $SqlCredential) {
+                                Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB -Query $deleteQuery -QueryTimeout 300 `
+                                    -Variable "UpdateIdParam=$updateId" -Credential $SqlCredential | Out-Null
+                            } else {
+                                Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB -Query $deleteQuery -QueryTimeout 300 `
+                                    -Variable "UpdateIdParam=$updateId" | Out-Null
+                            }
+                            $totalDeleted++
+                        } catch {
+                            Write-Verbose "Skipping declined purge delete for ${updateId}: $($_.Exception.Message)"
+                        }
+                    }
+
+                    $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
+                }
+
+                Write-Log "Declined update purge complete: $totalDeleted deleted"
+            } else {
+                Write-Log "No declined updates found to delete"
+            }
+        } catch {
+            Write-Warning "Declined update purge failed: $($_.Exception.Message)"
+        }
+
+        Write-Log "Shrinking SUSDB after cleanup (this may take a while)..."
+        if (Invoke-WsusDatabaseShrink -SqlInstance $script:SqlInstance) {
+            Write-Log "SUSDB shrink completed"
+        }
+
+        if (-not (Test-ServiceRunning -ServiceName "WSUSService")) {
+            Write-Log "Starting WSUS Service..."
+            Start-WsusServer | Out-Null
+        }
+    } finally {
+        Stop-Heartbeat
+    }
+
+    $ultimateDuration = [math]::Round(((Get-Date) - $ultimateStart).TotalMinutes, 1)
+    $ultimatePhase.Status = "Completed"
+    $ultimatePhase.Duration = "$ultimateDuration min"
+    $MaintenanceResults.Phases += $ultimatePhase
+    Write-Status "Ultimate cleanup completed ($ultimateDuration min)" -Type Success
+} else {
+    Write-Status "Skipping ultimate cleanup" -Type Info
+    Write-Log "Skipping ultimate cleanup before backup (SkipUltimateCleanup specified or not selected)."
+}
+
+# === BACKUP ===
+if (Test-ShouldRunOperation "Backup" $Operations) {
+    Write-Status "Starting database backup..." -Type Phase
+    $backupPhase = @{ Name = "Database Backup"; Status = "In Progress"; Duration = "" }
+
+    $backupFolder = $script:ContentPath
+    $backupFile = Join-Path $backupFolder "SUSDB_$(Get-Date -Format 'yyyyMMdd').bak"
+    if (Test-Path $backupFile) {
+        $counter = 1
+        while (Test-Path "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak") { $counter++ }
+        $backupFile = "$backupFolder\SUSDB_$(Get-Date -Format 'yyyyMMdd')_$counter.bak"
+    }
+
+    Write-Log "Starting backup: $backupFile"
+    $backupStart = Get-Date
+    Start-Heartbeat "Backup running... this may take several minutes."
+
+    try {
+        $dbSize = Get-WsusDatabaseSize -SqlInstance $script:SqlInstance
+        Write-Log "Database size: $dbSize GB"
+        $MaintenanceResults.DatabaseSize = $dbSize
+
+        if ($script:UseSqlCredential -and $SqlCredential) {
+            Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -QueryTimeout 0 -Credential $SqlCredential | Out-Null
+        } else {
+            Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -QueryTimeout 0 | Out-Null
+        }
+
+        $duration = [math]::Round(((Get-Date) - $backupStart).TotalMinutes, 2)
+        $size = [math]::Round((Get-Item $backupFile).Length / 1MB, 2)
+        Write-Log "Backup complete: ${size}MB in ${duration} minutes"
+
+        $MaintenanceResults.BackupFile = $backupFile
+        $MaintenanceResults.BackupSize = $size
+        $backupPhase.Status = "Completed"
+        $backupPhase.Duration = "$duration min"
+        Write-Status "Backup completed: ${size}MB ($duration min)" -Type Success
+    } catch {
+        Write-Status "Backup failed: $($_.Exception.Message)" -Type Error
+        $MaintenanceResults.Errors += "Backup failed: $($_.Exception.Message)"
+        $backupPhase.Status = "Failed"
+    } finally {
+        Stop-Heartbeat
+    }
+    $MaintenanceResults.Phases += $backupPhase
+} else {
+    Write-Status "Skipping backup" -Type Info
+    $MaintenanceResults.Phases += @{ Name = "Database Backup"; Status = "Skipped"; Duration = "" }
+}
+
+# === CLEANUP OLD BACKUPS ===
+Write-Log "Cleaning old backups (90-day retention)..."
+$cutoffDate = (Get-Date).AddDays(-90)
+$oldBackups = Get-ChildItem -Path $backupFolder -Filter "SUSDB*.bak" -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt $cutoffDate }
+
+if ($oldBackups) {
+    $spaceFreed = [math]::Round(($oldBackups | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+    $oldBackups | ForEach-Object {
+        Write-Log "  Deleting: $($_.Name) ($([math]::Round($_.Length/1MB,2))MB)"
+        Remove-Item $_.FullName -Force -Confirm:$false
+    }
+    Write-Log "Freed: ${spaceFreed}MB"
+} else {
+    Write-Log "No old backups to delete"
+}
+
+$currentBackups = Get-ChildItem -Path $backupFolder -Filter "SUSDB*.bak" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+if ($currentBackups) {
+    $totalSize = [math]::Round(($currentBackups | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+    Write-Log "Current backups: $($currentBackups.Count) files | ${totalSize}MB total"
+}
+
+# === SUMMARY ===
+Write-Host ""
+Write-Host "  Progress Summary" -ForegroundColor Cyan
+Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
+Write-Log "MAINTENANCE SUMMARY"
+Write-Log "Declined: Expired=$expiredCount | Superseded=$supersededCount"
+Write-Log "Approved: $approvedCount updates (excluding Definition Updates)"
+
+try {
+    $dbSize = Get-WsusDatabaseSize -SqlInstance $script:SqlInstance
+    Write-Log "SUSDB size: $dbSize GB"
+    if ($dbSize -ge 9.0) { Write-Host "  Warning: Database approaching 10GB limit!" -ForegroundColor Yellow }
+} catch {
+    Write-Verbose "Could not retrieve database size: $($_.Exception.Message)"
+}
+
+Write-Log "Backup: $backupFile"
+if ($allUpdates.Count -eq 0) {
+    Write-Host "  Note: GetUpdates timed out - consider re-running after cleanup" -ForegroundColor Yellow
+}
+Write-Host ""
+
+# === EXPORT TO WSUS-EXPORTS (OPTIONAL) ===
+if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $ExportPath) {
+    Write-Status "Starting export to network share..." -Type Phase
+    Write-Log "Starting export to network share..."
+    $exportPhase = @{ Name = "Export"; Status = "In Progress"; Duration = "" }
+    $exportStart = Get-Date
+    Start-Heartbeat "Export running... this may take several minutes."
+
+    try {
+        Write-Log "Export path: $ExportPath"
+        if (-not (Test-ExportPathAccess -ExportPath $ExportPath)) {
+            Write-Status "Export path not accessible: $ExportPath - skipping export" -Type Info
+            Write-Log "Export path not accessible (may be offline or not configured) - skipping"
+            $exportPhase.Status = "Skipped"
+        } else {
+            Write-Log "[1/2] Copying database backup to export folder..."
+            if (-not $backupFile -or -not (Test-Path $backupFile)) {
+                $recentBackup = Get-ChildItem -Path $backupFolder -Filter "SUSDB*.bak" -ErrorAction SilentlyContinue |
+                    Sort-Object LastWriteTime -Descending |
+                    Select-Object -First 1
+                if ($recentBackup) {
+                    $backupFile = $recentBackup.FullName
+                    Write-Log "Using most recent backup: $(Split-Path $backupFile -Leaf) ($(Get-Date $recentBackup.LastWriteTime -Format 'yyyy-MM-dd HH:mm'))"
+                }
+            }
+
+            if ($backupFile -and (Test-Path $backupFile)) {
+                Copy-Item -Path $backupFile -Destination $ExportPath -Force
+                Write-Log "Database copied: $(Split-Path $backupFile -Leaf)"
+            } else {
+                Write-Warning "No database backup found in $script:ContentPath"
+            }
+
+            Write-Log "[2/2] Syncing content to export folder..."
+            $wsusContentSource = $script:WsusContentPath
+            $rootContentPath = Join-Path $ExportPath "WsusContent"
+            if (Test-Path $wsusContentSource) {
+                $robocopyLogDir = $script:LogPath
+                if (-not (Test-Path $robocopyLogDir)) {
+                    New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
+                }
+                $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+                $robocopyArgs = @(
+                    $wsusContentSource,
+                    $rootContentPath,
+                    "/E", "/XO", "/MT:16", "/R:2", "/W:5",
+                    "/XF", "*.bak", "*.log",
+                    "/XD", "Logs", "SQLDB", "Backup",
+                    "/LOG:$robocopyLog", "/TEE", "/NP", "/NDL"
+                )
+
+                $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+                if ($robocopyResult.ExitCode -lt 8) {
+                    Write-Log "Content sync completed successfully"
+                } else {
+                    Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
+                    $MaintenanceResults.Warnings += "Content sync robocopy exit code: $($robocopyResult.ExitCode)"
+                }
+
+                if (Test-Path $rootContentPath) {
+                    $rootFiles = Get-ChildItem -Path $rootContentPath -Recurse -File -ErrorAction SilentlyContinue
+                    $rootSize = [math]::Round(($rootFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                    Write-Log "Exported content: $($rootFiles.Count) files ($rootSize GB)"
+                }
+            } else {
+                Write-Warning "WsusContent folder not found: $wsusContentSource"
+            }
+
+            $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
+            $MaintenanceResults.ExportPath = $ExportPath
+            $exportPhase.Status = "Completed"
+            $exportPhase.Duration = "$exportDuration min"
+            Write-Log "Export complete: $ExportPath"
+            Write-Status "Export completed ($exportDuration min)" -Type Success
+        }
+    } finally {
+        Stop-Heartbeat
+    }
+    $MaintenanceResults.Phases += $exportPhase
+} elseif ($SkipExport) {
+    Write-Status "Skipping export (SkipExport specified)" -Type Info
+    Write-Log "Skipping export (SkipExport specified)"
+    $MaintenanceResults.Phases += @{ Name = "Export"; Status = "Skipped"; Duration = "" }
+} else {
+    Write-Status "Skipping export" -Type Info
+    Write-Log "Skipping export (no ExportPath specified or not selected)"
+    $MaintenanceResults.Phases += @{ Name = "Export"; Status = "Skipped"; Duration = "" }
+}
+$MaintenanceResults.EndTime = Get-Date
+$totalDuration = [math]::Round(($MaintenanceResults.EndTime - $MaintenanceResults.StartTime).TotalMinutes, 1)
+if ($MaintenanceResults.Errors.Count -gt 0) {
+    $MaintenanceResults.Success = $false
+}
+
+Write-Host ""
+$summaryColor = if ($MaintenanceResults.Success) { "Green" } else { "Red" }
+$statusText = if ($MaintenanceResults.Success) { "Maintenance Complete" } else { "Maintenance Complete (with errors)" }
+Write-Host "  $statusText" -ForegroundColor $summaryColor
+Write-Host "  $('=' * 50)" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "  Duration        " -NoNewline -ForegroundColor DarkGray
+Write-Host "$totalDuration minutes" -ForegroundColor White
+Write-Host "  Declined        " -NoNewline -ForegroundColor DarkGray
+Write-Host "Expired: $($MaintenanceResults.DeclinedExpired)  Superseded: $($MaintenanceResults.DeclinedSuperseded)  Old(>6mo): $($MaintenanceResults.DeclinedOld)  ARM64: $($MaintenanceResults.DeclinedArm64)" -ForegroundColor White
+Write-Host "  Approved        " -NoNewline -ForegroundColor DarkGray
+Write-Host "$($MaintenanceResults.Approved) updates" -ForegroundColor White
+if ($MaintenanceResults.DatabaseSize -gt 0) {
+    Write-Host "  Database Size   " -NoNewline -ForegroundColor DarkGray
+    Write-Host "$($MaintenanceResults.DatabaseSize) GB" -ForegroundColor White
+}
+if ($MaintenanceResults.BackupFile) {
+    Write-Host "  Backup          " -NoNewline -ForegroundColor DarkGray
+    Write-Host "$(Split-Path $MaintenanceResults.BackupFile -Leaf) ($($MaintenanceResults.BackupSize) MB)" -ForegroundColor White
+}
+if ($MaintenanceResults.ExportPath) {
+    Write-Host "  Export          " -NoNewline -ForegroundColor DarkGray
+    Write-Host $MaintenanceResults.ExportPath -ForegroundColor White
+}
+if ($MaintenanceResults.Warnings.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  Warnings: $($MaintenanceResults.Warnings.Count)" -ForegroundColor Yellow
+}
+if ($MaintenanceResults.Errors.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  Errors: $($MaintenanceResults.Errors.Count)" -ForegroundColor Red
+    foreach ($err in $MaintenanceResults.Errors) {
+        Write-Host "    $err" -ForegroundColor Red
+    }
+}
+
+Write-Host ""
+Write-Log "Maintenance complete"
+Stop-WsusLogging

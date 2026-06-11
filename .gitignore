@@ -1,0 +1,104 @@
+# WSUS Manager .gitignore
+
+# PowerShell
+*.ps1xml
+*.pssc
+!*.psd1
+
+# IDE / Editors
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+!.vscode/extensions.json
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs and database artifacts
+*.log
+*.sql.bak
+*.mdf
+*.ldf
+*.ndf
+
+# Secrets
+*.env
+.env.*
+credentials.json
+secrets.json
+*.pfx
+*.key
+*.pem
+*.crt
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.backup
+~$*
+tmpclaude-*
+package.ps1
+
+# Build artifacts
+/*.exe
+SQLDB/*.exe
+installers/*.exe
+/WsusManager-v*.zip
+/GA-WsusManager-v*.zip
+/dist/
+/staging/
+
+# Local workspace state
+/.gstack/
+/.worktrees/
+
+# Screenshots
+/screenshots/
+Tests/Screenshots/
+
+# Test outputs
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+CoverageReport/
+
+# Playwright outputs
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+test-logs/
+tmp/
+
+# AI tool state
+.claude-octopus/
+
+# AI planning artifacts
+docs/superpowers/
+
+# One-off dev/debug scripts
+fix_colors.py
+debug-flaui.ps1
+uia-debug.ps1
+run-debug.bat
+run-flaui-tests-interactive.ps1
+
+# Scratch/versioned GUI test iterations
+Tests/GuiTest-v*.ps1
+Tests/ExeTest.ps1

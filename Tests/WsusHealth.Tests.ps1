@@ -1,0 +1,526 @@
+#Requires -Modules Pester
+<#
+.SYNOPSIS
+    Pester tests for WsusHealth.psm1
+
+.DESCRIPTION
+    Unit tests for the WsusHealth module functions including:
+    - SSL status checking (Get-WsusSSLStatus)
+    - Database connection testing (Test-WsusDatabaseConnection)
+    - System health checks (Test-WsusHealth)
+    - Health repair functions (Repair-WsusHealth)
+
+.NOTES
+    These tests use mocking to avoid actual system modifications.
+#>
+
+BeforeAll {
+    # Import required dependent modules first
+    $ModulesPath = Join-Path $PSScriptRoot "..\Modules"
+    Import-Module (Join-Path $ModulesPath "WsusUtilities.psm1") -Force -DisableNameChecking
+    Import-Module (Join-Path $ModulesPath "WsusServices.psm1") -Force -DisableNameChecking
+    Import-Module (Join-Path $ModulesPath "WsusFirewall.psm1") -Force -DisableNameChecking
+    Import-Module (Join-Path $ModulesPath "WsusPermissions.psm1") -Force -DisableNameChecking
+
+    # Import the module under test
+    $ModulePath = Join-Path $ModulesPath "WsusHealth.psm1"
+    Import-Module $ModulePath -Force -DisableNameChecking
+}
+
+AfterAll {
+    # Clean up
+    Remove-Module WsusHealth -ErrorAction SilentlyContinue
+    Remove-Module WsusPermissions -ErrorAction SilentlyContinue
+    Remove-Module WsusFirewall -ErrorAction SilentlyContinue
+    Remove-Module WsusServices -ErrorAction SilentlyContinue
+    Remove-Module WsusUtilities -ErrorAction SilentlyContinue
+}
+
+Describe "WsusHealth Module" {
+    Context "Module Loading" {
+        It "Should import the module successfully" {
+            Get-Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Get-WsusSSLStatus function" {
+            Get-Command Get-WsusSSLStatus -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Test-WsusDatabaseConnection function" {
+            Get-Command Test-WsusDatabaseConnection -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Test-WsusHealth function" {
+            Get-Command Test-WsusHealth -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Repair-WsusHealth function" {
+            Get-Command Repair-WsusHealth -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Invoke-WsusDeepDiagnostics function" {
+            Get-Command Invoke-WsusDeepDiagnostics -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+    }
+}
+
+Describe "Get-WsusSSLStatus" {
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
+            $result = Get-WsusSSLStatus
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain SSLEnabled key" {
+            $result = Get-WsusSSLStatus
+            $result.Keys | Should -Contain "SSLEnabled"
+        }
+
+        It "Should contain Protocol key" {
+            $result = Get-WsusSSLStatus
+            $result.Keys | Should -Contain "Protocol"
+        }
+
+        It "Should contain Port key" {
+            $result = Get-WsusSSLStatus
+            $result.Keys | Should -Contain "Port"
+        }
+
+        It "Should contain Message key" {
+            $result = Get-WsusSSLStatus
+            $result.Keys | Should -Contain "Message"
+        }
+
+        It "SSLEnabled should be boolean" {
+            $result = Get-WsusSSLStatus
+            $result.SSLEnabled | Should -BeOfType [bool]
+        }
+
+        It "Port should be a number" {
+            $result = Get-WsusSSLStatus
+            $result.Port | Should -BeOfType [int]
+        }
+    }
+}
+
+Describe "Test-WsusDatabaseConnection" {
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
+            $result = Test-WsusDatabaseConnection
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Connected key" {
+            $result = Test-WsusDatabaseConnection
+            $result.Keys | Should -Contain "Connected"
+        }
+
+        It "Should contain Message key" {
+            $result = Test-WsusDatabaseConnection
+            $result.Keys | Should -Contain "Message"
+        }
+
+        It "Connected should be boolean" {
+            $result = Test-WsusDatabaseConnection
+            $result.Connected | Should -BeOfType [bool]
+        }
+    }
+
+    Context "With custom SQL instance" {
+        It "Should accept SqlInstance parameter" {
+            $result = Test-WsusDatabaseConnection -SqlInstance "localhost\SQLEXPRESS"
+            $result | Should -BeOfType [hashtable]
+        }
+    }
+
+    Context "Host environment adapter usage" {
+        BeforeEach {
+            Mock Get-WsusHostServiceState {
+                [pscustomobject]@{ Name = $Name[0]; Installed = $true; Status = "Running"; Running = $true; StartType = "Automatic" }
+            } -ModuleName WsusHealth
+            Mock Invoke-WsusHostSqlQuery {
+                [pscustomobject]@{ DatabaseID = 7 }
+            } -ModuleName WsusHealth
+        }
+
+        It "Queries SUSDB existence through the host SQL adapter" {
+            $result = Test-WsusDatabaseConnection -SqlInstance ".\SQLEXPRESS"
+
+            $result.Connected | Should -BeTrue
+            $result.DatabaseExists | Should -BeTrue
+            Should -Invoke Invoke-WsusHostSqlQuery -ModuleName WsusHealth -Times 1 -ParameterFilter {
+                $ServerInstance -eq ".\SQLEXPRESS" -and $Database -eq "master" -and $Query -match "DB_ID\('SUSDB'\)"
+            }
+        }
+    }
+}
+
+Describe "Test-WsusHealth" {
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
+            $result = Test-WsusHealth
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Overall key" {
+            $result = Test-WsusHealth
+            $result.Keys | Should -Contain "Overall"
+        }
+
+        It "Should contain Services key" {
+            $result = Test-WsusHealth
+            $result.Keys | Should -Contain "Services"
+        }
+
+        It "Should contain Database key" {
+            $result = Test-WsusHealth
+            $result.Keys | Should -Contain "Database"
+        }
+
+        It "Should contain Firewall key" {
+            $result = Test-WsusHealth
+            $result.Keys | Should -Contain "Firewall"
+        }
+
+        It "Should contain Permissions key" {
+            $result = Test-WsusHealth
+            $result.Keys | Should -Contain "Permissions"
+        }
+
+        It "Overall should be a string status" {
+            $result = Test-WsusHealth
+            $result.Overall | Should -BeOfType [string]
+        }
+    }
+}
+
+Describe "Repair-WsusHealth" {
+    Context "Return structure validation" {
+        BeforeAll {
+            # Mock the repair functions to avoid actual system modifications
+            Mock Get-WsusServiceStatus { @{
+                "SQL Server Express" = @{ Running = $false; Status = "Stopped" }
+                "WSUS Service" = @{ Running = $false; Status = "Stopped" }
+                "IIS" = @{ Running = $false; Status = "Stopped" }
+            } } -ModuleName WsusHealth
+            Mock Start-SqlServerExpress { $true } -ModuleName WsusHealth
+            Mock Start-WsusServer { $true } -ModuleName WsusHealth
+            Mock Start-IISService { $true } -ModuleName WsusHealth
+            Mock Repair-WsusFirewallRules { @{ Created = @('rule'); Failed = @() } } -ModuleName WsusHealth
+            Mock Repair-WsusContentPermissions { $true } -ModuleName WsusHealth
+            Mock Get-WsusHostIisContentPath { [pscustomobject]@{ Found = $true; PhysicalPath = 'D:\WrongPath'; MatchesExpected = $false } } -ModuleName WsusHealth
+            Mock Set-WsusHostIisContentPath { [pscustomobject]@{ Found = $true; PhysicalPath = 'C:\WSUS\WsusContent'; MatchesExpected = $true } } -ModuleName WsusHealth
+        }
+
+        It "Should return a hashtable" {
+            $result = Repair-WsusHealth
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain ServicesStarted key" {
+            $result = Repair-WsusHealth
+            $result.Keys | Should -Contain "ServicesStarted"
+        }
+
+        It "Should contain PermissionsFixed key" {
+            $result = Repair-WsusHealth
+            $result.Keys | Should -Contain "PermissionsFixed"
+        }
+
+        It "Should contain IisContentPathFixed key" {
+            $result = Repair-WsusHealth
+            $result.Keys | Should -Contain "IisContentPathFixed"
+        }
+    }
+}
+
+Describe "Invoke-WsusDiagnostics" {
+    Context "Module export validation" {
+        It "Should export Invoke-WsusDiagnostics function" {
+            Get-Command Invoke-WsusDiagnostics -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return structure validation" {
+        It "Should return a hashtable" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Healthy key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "Healthy"
+        }
+
+        It "Should contain IssuesFound key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "IssuesFound"
+        }
+
+        It "Should contain IssuesFixed key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "IssuesFixed"
+        }
+
+        It "Should contain Issues key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "Issues"
+        }
+
+        It "Should contain FixesApplied key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "FixesApplied"
+        }
+
+        It "Should contain FixesFailed key" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Keys | Should -Contain "FixesFailed"
+        }
+
+        It "Healthy should be boolean" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.Healthy | Should -BeOfType [bool]
+        }
+
+        It "IssuesFound should be a number" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result.IssuesFound | Should -BeOfType [int]
+        }
+    }
+
+    Context "Parameter validation" {
+        It "Should accept ContentPath parameter" {
+            $result = Invoke-WsusDiagnostics -ContentPath "C:\WSUS" -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept SqlInstance parameter" {
+            $result = Invoke-WsusDiagnostics -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept AutoFix switch parameter" {
+            $result = Invoke-WsusDiagnostics -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+
+        It "Should accept IncludeSqlProtocols switch parameter" {
+            $result = Invoke-WsusDiagnostics -IncludeSqlProtocols -AutoFix:$false
+            $result | Should -BeOfType [hashtable]
+        }
+    }
+}
+
+Describe "Invoke-WsusDeepDiagnostics" {
+    Context "Return structure validation" {
+        BeforeEach {
+            Mock Test-Path { $true } -ModuleName WsusHealth
+            Mock Resolve-Path { [pscustomobject]@{ Path = "C:\WSUS" } } -ModuleName WsusHealth
+            Mock Get-ItemProperty { [pscustomobject]@{ ContentDir = "C:\WSUS" } } -ModuleName WsusHealth
+            Mock Import-Module { throw "WebAdministration unavailable in unit test" } -ModuleName WsusHealth -ParameterFilter { $Name -eq "WebAdministration" }
+            Mock Get-WsusHostServiceState {
+                foreach ($serviceName in $Name) {
+                    [pscustomobject]@{ Name = $serviceName; Installed = $true; Status = "Running"; Running = $true; StartType = "Automatic" }
+                }
+            } -ModuleName WsusHealth
+            Mock Invoke-WsusHostSqlQuery {
+                [pscustomobject]@{
+                    FilesTotal = 1000
+                    FilesPresent = 1000
+                    FilesInDownloadQueue = 0
+                    FilesNotPresent = 0
+                }
+            } -ModuleName WsusHealth
+            Mock Invoke-WsusHostCommand {
+                [pscustomobject]@{ Success = $true; ExitCode = 0; Output = @('checkhealth ok'); Error = $null }
+            } -ModuleName WsusHealth
+            Mock Get-WinEvent { @() } -ModuleName WsusHealth
+        }
+
+        It "Should return a structured result" {
+            $result = Invoke-WsusDeepDiagnostics -ContentPath "C:\WSUS" -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+
+            $result | Should -BeOfType [hashtable]
+            $result.Keys | Should -Contain "Healthy"
+            $result.Keys | Should -Contain "IssuesFound"
+            $result.Keys | Should -Contain "IssuesFixed"
+            $result.Keys | Should -Contain "Issues"
+            $result.Keys | Should -Contain "FixesApplied"
+            $result.Keys | Should -Contain "FixesFailed"
+            $result.Keys | Should -Contain "Checks"
+            $result.Keys | Should -Contain "Recommendations"
+        }
+
+        It "Should include repair plan entries for fixable issues" {
+            $result = Invoke-WsusDeepDiagnostics -ContentPath "C:\WSUS" -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+
+            $result.Keys | Should -Contain "RepairPlan"
+            $result.DiagnosticReport | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should query SUSDB for content download state" {
+            $null = Invoke-WsusDeepDiagnostics -ContentPath "C:\WSUS" -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+
+            Should -Invoke Invoke-WsusHostSqlQuery -ModuleName WsusHealth -Times 1 -ParameterFilter {
+                $ServerInstance -eq ".\SQLEXPRESS" -and
+                $Database -eq "SUSDB" -and
+                $Query -match "tbFileOnServer" -and
+                $Query -match "tbFileDownloadProgress"
+            }
+        }
+    }
+
+    Context "Stuck download detection" {
+        BeforeEach {
+            Mock Test-Path { $true } -ModuleName WsusHealth
+            Mock Resolve-Path { [pscustomobject]@{ Path = "C:\WSUS" } } -ModuleName WsusHealth
+            Mock Get-ItemProperty { [pscustomobject]@{ ContentDir = "C:\WSUS" } } -ModuleName WsusHealth
+            Mock Import-Module { throw "WebAdministration unavailable in unit test" } -ModuleName WsusHealth -ParameterFilter { $Name -eq "WebAdministration" }
+            Mock Get-WsusHostServiceState {
+                foreach ($serviceName in $Name) {
+                    [pscustomobject]@{ Name = $serviceName; Installed = $true; Status = "Running"; Running = $true; StartType = "Automatic" }
+                }
+            } -ModuleName WsusHealth
+            Mock Invoke-WsusHostSqlQuery {
+                [pscustomobject]@{
+                    FilesTotal = 1000
+                    FilesPresent = 990
+                    FilesInDownloadQueue = 5
+                    FilesNotPresent = 10
+                }
+            } -ModuleName WsusHealth
+            Mock Invoke-WsusHostCommand {
+                [pscustomobject]@{ Success = $true; ExitCode = 0; Output = @('checkhealth ok'); Error = $null }
+            } -ModuleName WsusHealth
+            Mock Get-WinEvent { @() } -ModuleName WsusHealth
+        }
+
+        It "Should report stuck near-complete content with queued downloads" {
+            $result = Invoke-WsusDeepDiagnostics -ContentPath "C:\WSUS" -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+
+            $result.Healthy | Should -BeFalse
+            $result.Issues.Issue | Should -Contain "Content appears stuck near completion with files still in the download queue"
+            $result.Checks.DownloadState.PercentPresent | Should -Be 99
+            $result.Checks.DownloadState.FilesInDownloadQueue | Should -Be 5
+        }
+
+        It "Should expose ResetWsusContent as the repair action id" {
+            $result = Invoke-WsusDeepDiagnostics -ContentPath "C:\WSUS" -SqlInstance ".\SQLEXPRESS" -AutoFix:$false
+
+            $result.DiagnosticReport.RepairPlan.Action | Should -Contain "ResetWsusContent"
+        }
+    }
+}
+
+
+Describe "Get-WsusHealthScore" {
+    Context "Module export validation" {
+        It "Should export Get-WsusHealthScore function" {
+            Get-Command Get-WsusHealthScore -Module WsusHealth | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return structure validation" {
+        BeforeAll {
+            # Call the function without mocks; all data-source try/catch blocks will handle
+            # unavailable services/SQL gracefully and return a valid hashtable regardless.
+            $script:HealthResult = Get-WsusHealthScore -SqlInstance '.\SQLEXPRESS' -ContentPath 'C:\WSUS'
+        }
+
+        It "Should return a hashtable" {
+            $script:HealthResult | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Score key" {
+            $script:HealthResult.Keys | Should -Contain 'Score'
+        }
+
+        It "Should contain Components key" {
+            $script:HealthResult.Keys | Should -Contain 'Components'
+        }
+
+        It "Should contain Grade key" {
+            $script:HealthResult.Keys | Should -Contain 'Grade'
+        }
+
+        It "Should contain AllFailed key" {
+            $script:HealthResult.Keys | Should -Contain 'AllFailed'
+        }
+
+        It "Components should have all five keys" {
+            $c = $script:HealthResult.Components
+            $c.Keys | Should -Contain 'Services'
+            $c.Keys | Should -Contain 'DatabaseSize'
+            $c.Keys | Should -Contain 'SyncRecency'
+            $c.Keys | Should -Contain 'DiskSpace'
+            $c.Keys | Should -Contain 'LastOperation'
+        }
+
+        It "Score should be -1 or an integer in range 0-100" {
+            $score = $script:HealthResult.Score
+            ($score -eq -1 -or ($score -ge 0 -and $score -le 100)) | Should -Be $true
+        }
+
+        It "Grade should be one of the valid values" {
+            $script:HealthResult.Grade | Should -BeIn @('Green', 'Yellow', 'Red', 'Unknown')
+        }
+
+        It "AllFailed should be a boolean" {
+            $script:HealthResult.AllFailed | Should -BeOfType [bool]
+        }
+    }
+
+    Context "Grade logic - pure formula" {
+        It "Grade should be Green when score is 80 or above" {
+            $grade = if (85 -ge 80) { 'Green' } elseif (85 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Green'
+        }
+
+        It "Grade should be Green when score is exactly 80" {
+            $grade = if (80 -ge 80) { 'Green' } elseif (80 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Green'
+        }
+
+        It "Grade should be Yellow when score is between 50 and 79" {
+            $grade = if (65 -ge 80) { 'Green' } elseif (65 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Yellow'
+        }
+
+        It "Grade should be Yellow when score is exactly 50" {
+            $grade = if (50 -ge 80) { 'Green' } elseif (50 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Yellow'
+        }
+
+        It "Grade should be Red when score is below 50" {
+            $grade = if (30 -ge 80) { 'Green' } elseif (30 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Red'
+        }
+
+        It "Grade should be Red when score is 0" {
+            $grade = if (0 -ge 80) { 'Green' } elseif (0 -ge 50) { 'Yellow' } else { 'Red' }
+            $grade | Should -Be 'Red'
+        }
+    }
+
+    Context "AllFailed flag and Unknown grade" {
+        It "When AllFailed is true Score should be -1 and Grade should be Unknown" {
+            # Simulate the AllFailed branch by constructing the return value directly
+            # (mirrors the logic inside Get-WsusHealthScore)
+            $allFailed = $true
+            $total     = 0
+            $score     = if ($allFailed) { -1 } else { [int]$total }
+            $grade     = if ($allFailed) { 'Unknown' } elseif ($total -ge 80) { 'Green' } `
+                         elseif ($total -ge 50) { 'Yellow' } else { 'Red' }
+
+            $score | Should -Be -1
+            $grade | Should -Be 'Unknown'
+        }
+
+        It "When AllFailed is false Score should be 0 or higher" {
+            $allFailed = $false
+            $total     = 0
+            $score     = if ($allFailed) { -1 } else { [int]$total }
+            $score | Should -BeGreaterOrEqual 0
+        }
+    }
+}

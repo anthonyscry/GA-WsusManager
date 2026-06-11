@@ -1,0 +1,748 @@
+h1. WSUS Manager v4.1.0 - Standard Operating Procedure
+
+*Version:* 4.1.0
+*Author:* Tony Tran, ISSO, GA-ASI
+*Last Updated:* 2026-06-07
+*Classification:* Internal Use Only
+
+----
+
+{toc:printable=true|style=square|maxLevel=3|indent=20px|minLevel=2}
+
+----
+
+h2. Purpose
+
+WSUS Manager is a production-ready PowerShell automation suite for deploying, managing, and maintaining Windows Server Update Services (WSUS) backed by SQL Server Express 2022. Designed for both online and air-gapped (offline) network environments, it provides a centralized GUI for installing, configuring, operating, and monitoring WSUS servers — eliminating manual scripting for routine administration and enforcing consistent update policy across deployments.
+
+h3. Problem Statement
+
+Traditional WSUS workflows in air-gapped environments are slow, error-prone, and difficult to automate. A full metadata and content sync using the Windows Internal Database (WID) typically requires 3+ hours, largely due to:
+
+* Slow WID restore operations
+* Large, unoptimized metadata structures
+* Manual re-approval of updates after every import
+* Inefficient content transfer with no filtering
+* Lack of automated declination logic
+
+By migrating WSUS to SQL Server Express 2022, the entire process now completes in under 30 minutes, significantly reducing maintenance time and improving operational efficiency.
+
+h3. Limitations of WID (Windows Internal Database)
+
+* *Very slow imports* — WID restores often take hours
+* *No rich metadata support* — prevents automation of declination logic
+* *Difficult cleanup* — superseded and expired updates accumulate unchecked
+* *Database stability issues* — WID performance degrades as size approaches ~10 GB
+* *State loss* — update approvals and declines must be re-done after every import
+
+----
+
+h2. Benefits of SQL Server Express with WSUS
+
+h3. Performance & Reliability
+
+* Import/export completes in under 30 minutes
+* Faster metadata processing
+* Clean, consistent database structure for automation
+
+h3. Update State Preservation
+
+* Approved and declined updates are preserved across imports
+* No need to manually re-approve after air-gap import
+
+h3. Automation & Cleanup
+
+* Automatic declination of superseded, expired, and stale updates
+* Scheduled cleanup prevents the SQL Express 10 GB cap from being reached
+* Reduces WsusContent folder footprint
+
+h3. Content Efficiency
+
+* Holds only required updates for configured products and classifications
+* Prevents uncontrolled growth of the WsusContent directory
+* Ensures fast, predictable air-gap transfers
+
+h3. Workflow Comparison
+
+||Workflow Aspect||Old Method (WID-Based WSUS)||New Method (SQL Export/Import)||
+|Duration|>3 hours|<30 minutes total|
+|Manual Effort|High (re-approvals, declines after every import)|Minimal (import + reset content)|
+|Update States|Must re-approve and re-decline each cycle|Preserved automatically|
+|Old Updates (>6 mo.)|Scripts could not auto-decline|Automatically declined during sync|
+|Content Folder Size|Grows without limit|Trimmed via update cleanup routine|
+|Database Risk|WID degrades near 10 GB|SQL Express capped; cleanup routine manages growth|
+
+----
+
+h2. Scope
+
+*In scope:*
+
+* Installation of WSUS with SQL Server Express 2022 (including migration from Windows Internal Database)
+* Monthly online sync operations — update download, product classification, auto-decline, and auto-approval
+* Air-gap transfer workflow — export to media, physical transport, import, and database restore
+* Client targeting via Group Policy Objects deployed to Domain Controllers
+* Scheduled maintenance (index rebuild, database cleanup, shrink)
+* Health monitoring, diagnostics, and database size trending
+* Database backup and restore operations
+
+*Out of scope:*
+
+* Windows Server OS installation, hardening, or domain join
+* Active Directory domain setup or OU structure (covered by separate DC SOP)
+* Patch testing or change management approval workflows
+* Update approval for products outside the configured default list
+
+----
+
+h2. Applicability
+
+This SOP applies to:
+
+||Role||Applies To||
+|ISSO / System Administrator|Primary operators of WSUS Manager|
+|Online WSUS Server|Internet-connected server that syncs from Microsoft Update|
+|Air-Gapped WSUS Server|Isolated server that receives updates via physical media transfer|
+|Domain Controller Administrator|Responsible for GPO import and client targeting|
+|Security Team|Reviews DTR requirements before physical media transport|
+
+{note}A Data Transfer Request (DTR) may be required before moving update media across network boundaries. Confirm requirements with your security team before performing air-gap transfers.{note}
+
+----
+
+h2. Definitions
+
+||Term||Definition||
+|WSUS|Windows Server Update Services — Microsoft server role for centralized Windows update distribution|
+|SUSDB|The SQL Server database used by WSUS to store update metadata and approval state|
+|Air-Gap|A network with no direct internet connectivity; updates must be physically transferred via removable media|
+|DTR|Data Transfer Request — formal approval required to move data across classified or collateral network boundaries|
+|GPO|Group Policy Object — Active Directory policy applied to domain-joined computers to configure WSUS client settings|
+|SQL Express|Free edition of SQL Server; used by WSUS Manager for SUSDB; has a 10 GB database size limit|
+|sqlcmd.exe|SQL Server command-line tool used as automatic fallback when the PowerShell SqlServer module is unavailable|
+|WID|Windows Internal Database — built-in lightweight database engine; automatically migrated to SQL Express during installation|
+|Online Server|A WSUS server with internet access used to sync update metadata and content from Microsoft Update servers|
+|Health Score|Composite 0–100 score displayed on the dashboard: Green (≥80), Yellow (50–79), Red (<50); based on services, database, sync status, disk space, and last operation result|
+|Auto-Decline|Automatic rejection of update categories (superseded, expired, ARM64, legacy builds, preview) during sync|
+|Auto-Approve|Automatic approval of update categories (Critical, Security, Definition Updates, Updates, Update Rollups) after sync|
+|Deep Cleanup|Full database maintenance: decline superseded, purge obsolete records, rebuild indexes, shrink database|
+|Differential Export|Export of only updates newer than N days; used to minimize USB transfer size during recurring air-gap syncs|
+
+----
+
+h2. File Repository
+
+h3. SQL & WSUS Installers
+
+{note}Save these files to C:\WSUS\SQLDB\ on the target server before running installation.{note}
+
+||File||Description||
+|SQLEXPRADV_x64_ENU.exe|SQL Server Express 2022 with Advanced Services|
+|SSMS-Setup-ENU.exe|SQL Server Management Studio (optional)|
+
+h3. Distribution Package
+
+||File||Description||
+|WsusManager-v4.1.0.zip|Complete distribution package|
+
+*Package Contents:*
+
+{code}
+GA-WsusManager.exe        # Main GUI application
+Scripts/                  # Required - operation scripts
+Modules/                  # Required - PowerShell modules (26 modules)
+DomainController/         # Optional - GPO deployment scripts
+QUICK-START.txt           # Quick reference and setup guide
+README.txt                # Full documentation
+CHANGELOG.txt             # Version history and release notes
+{code}
+
+{warning}The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.{warning}
+
+h3. Source Code
+
+||Resource||Location||
+|GitHub Repository|https://github.com/anthonyscry/GA-WsusManager|
+
+----
+
+h2. Prerequisites
+
+h3. System Requirements
+
+||Requirement||Specification||
+|Operating System|Windows Server 2016, 2019, or 2022|
+|CPU|4 cores minimum|
+|RAM|16 GB minimum|
+|Disk Space|150 GB minimum (recommended)|
+|Network|Valid IPv4 configuration (static IP recommended)|
+|PowerShell|5.1 or higher (ships with Windows)|
+
+h3. Required Installers
+
+||File||Location||
+|SQLEXPRADV_x64_ENU.exe|C:\WSUS\SQLDB\|
+|SSMS-Setup-ENU.exe (optional)|C:\WSUS\SQLDB\|
+
+h3. Required Privileges
+
+||Privilege||Scope||Purpose||
+|Local Administrator|WSUS server|Script execution, service management|
+|sysadmin role|localhost\SQLEXPRESS|SUSDB backup/restore operations|
+
+h3. Granting SQL Server Sysadmin Privileges
+
+{note}Required for database backup/restore operations. Perform this on both the online and air-gapped WSUS servers.{note}
+
+h4. Option A: Use WSUS Manager GUI (Recommended)
+
+# Launch {{GA-WsusManager.exe}} as Administrator
+# Click *Fix SQL Login* in the Setup section
+# The app automatically adds the current user as sysadmin
+
+h4. Option B: Use PowerShell / sqlcmd (No SSMS Required)
+
+Open an *elevated PowerShell* prompt and run:
+
+{code:language=powershell}
+# Add a Windows login with sysadmin role (replace DOMAIN\Username with your account)
+sqlcmd -S localhost\SQLEXPRESS -E -Q "
+  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\Username')
+    CREATE LOGIN [DOMAIN\Username] FROM WINDOWS;
+  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\Username', @rolename = N'sysadmin';
+"
+{code}
+
+To add a domain group instead of an individual user:
+
+{code:language=powershell}
+sqlcmd -S localhost\SQLEXPRESS -E -Q "
+  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\System Administrators')
+    CREATE LOGIN [DOMAIN\System Administrators] FROM WINDOWS;
+  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\System Administrators', @rolename = N'sysadmin';
+"
+{code}
+
+{note}sqlcmd.exe is installed automatically with SQL Server Express. No additional downloads needed.{note}
+
+h4. Option C: Use SSMS (Optional)
+
+If SSMS is installed, you can also grant sysadmin via the GUI:
+
+# Launch SQL Server Management Studio (SSMS)
+# Server type: Database Engine
+# Server name: {{localhost\SQLEXPRESS}}
+# Authentication: SQL Server Authentication
+# Login: sa (or default admin account)
+# Check *Trust Server Certificate*
+# Click Connect
+# In Object Explorer, expand Security > Logins
+# Right-click Logins > New Login...
+# Click Search... to locate the account
+# Click Locations... > select Entire Directory
+# Enter domain group (e.g., {{DOMAIN\System Administrators}}) > OK
+# Go to Server Roles page
+# Check sysadmin > OK
+
+h4. Refresh Permissions
+
+# Log out of the WSUS server
+# Log back in to refresh group membership
+
+----
+
+h2. Installation
+
+h3. First-Time Setup
+
+{note}If downloaded from the internet, unblock the files first.{note}
+
+{code:language=powershell}
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1|Unblock-File
+{code}
+
+h3. Installation Steps
+
+||Step||Action||
+|1|Place SQL installers in C:\WSUS\SQLDB\|
+|2|Extract WsusManager-v4.1.0.zip to a folder under C:\WSUS\ such as C:\WSUS\WsusManager\|
+|3|Verify folder structure (EXE + Scripts/ + Modules/)|
+|4|Right-click GA-WsusManager.exe > Run as Administrator|
+|5|Click *Install WSUS* and keep the WSUS root/content path at C:\WSUS|
+|6|After install, confirm IIS WSUS Administration/Content resolves to C:\WSUS\WsusContent|
+
+{note}Priority for air-gapped operators: after installation, go next to *Air-Gapped Network Workflow*. The source-server sync material later in this document is FYSA only.{note}
+
+h3. Deployment Layout
+
+||Path||Purpose||
+|C:\WSUS\|WSUS root/content path used by WSUS and wsusutil|
+|C:\WSUS\WsusContent\|Update files served by IIS /Content|
+|C:\WSUS\SQLDB\|SQL Express installer (SSMS optional)|
+|C:\WSUS\Logs\|Log files|
+|C:\WSUS\WsusManager\GA-WsusManager.exe|GUI application (example extraction path)|
+|C:\WSUS\WsusManager\Scripts\|PowerShell scripts|
+|C:\WSUS\WsusManager\Modules\|PowerShell modules|
+|%APPDATA%\WsusManager\settings.json|User settings|
+|%APPDATA%\WsusManager\history.json|Operation history (last 100 entries)|
+|%APPDATA%\WsusManager\trending.json|Database size trend data|
+
+----
+
+h2. GUI Application
+
+h3. Overview
+
+WSUS Manager v4.1.0 includes a full WPF GUI application (GA-WsusManager.exe) providing:
+
+* *Dashboard* with auto-refresh (30-second interval) and Health Score (0-100)
+* *Server Mode* toggle (Online vs Air-Gap) with context-aware menus
+* *Live Terminal Mode* for external PowerShell window output
+* *Operation buttons* that disable during execution
+* *Log panel* showing real-time operation output (right-click: Copy All / Save to File)
+* *History view* showing last 50 operations
+* *Desktop notifications* on operation completion (toast/balloon/log fallback)
+* *Startup splash screen* with 4-stage progress bar
+* *Keyboard shortcuts*: Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R/F5 (Refresh)
+* *System tray icon* with health-colored indicator, minimize-to-tray support
+
+h3. Dashboard Metrics
+
+||Metric||Description||
+|Server Status|WSUS service state|
+|Database Size|Current SUSDB size (alerts at 8 GB+) with trend indicator|
+|DB Trend|Days-until-full estimate using linear regression over 30 days|
+|Last Sync|Most recent synchronization timestamp (green <7d, yellow 7-30d, red >30d)|
+|Health Score|Weighted composite score 0-100 (Green 80+, Yellow 50-79, Red <50)|
+|Update Count|Total updates in the SUSDB database|
+|Clients|Number of registered WSUS clients|
+|Scheduled Task|Next scheduled sync task status|
+
+h3. Dashboard Configuration Card
+
+||Item||Description||
+|Content Path|WSUS content folder path (default: C:\WSUS)|
+|SQL Instance|SQL Server instance name (default: localhost\SQLEXPRESS)|
+|Export Root|Configured export directory path|
+|Logs|Path to log folder with *Open* button|
+
+h3. Dashboard Quick Actions
+
+The dashboard includes a *Quick Actions* bar with shortcut buttons for the most common operations:
+
+||Button||Function||
+|*Diagnostics*|Launch Diagnostics (health check + auto-repair)|
+|*Deep Cleanup*|Launch Deep Cleanup|
+|*Online Sync*|Launch Online Sync|
+|*Start Services*|Start SQL Server, IIS, and WSUS services|
+
+h3. GUI Operations
+
+||Button||Function||
+|*Install WSUS*|Install WSUS + SQL Server Express 2022 (auto-removes WID if present)|
+|*Fix SQL Login*|Adds current Windows user as sysadmin on localhost\\SQLEXPRESS. Use when database operations fail with a permissions error.|
+|*Diagnostics*|Comprehensive health check with automatic repair|
+|*Deep Cleanup*|Full database cleanup: supersession records, index optimization, shrink|
+|*Online Sync*|Profile-based sync and maintenance (Full / Quick / Sync Only)|
+|*Robocopy*|Copy WSUS content between folders using robocopy. Non-destructive. Set source and destination for export (C:\\WSUS → USB) or import (USB → C:\\WSUS).|
+|*Restore Database*|Restore SUSDB from backup file|
+|*Reset Content*|Troubleshooting action to re-register content files when updates remain stuck in downloading state|
+|*Schedule Task*|Create a scheduled online sync task|
+|*Create GPO*|Copy GPO files to C:\WSUS\WSUS GPO with deployment instructions|
+|*History*|View last 50 operations with duration, result, and summary|
+|*Settings*|Configure content path, SQL instance, notifications, and preferences|
+|*Help*|Application documentation and reference|
+|*About*|Version information and credits|
+
+h3. Smart Update Policy
+
+*Auto-Declined (removed from catalog):*
+
+||Rule||Details||
+|Expired / Superseded|Updates replaced by newer versions|
+|Older than 6 months|By Microsoft release date - already-approved updates are preserved|
+|ARM64|Not applicable to x64 lab environments|
+|Legacy Windows builds|21H2, 22H2, 23H2|
+|Preview / Beta|Pre-release updates|
+|Edge non-stable|Dev Channel, Beta Channel, Extended Stable - keeps Stable + WebView2 only|
+|Office legacy|Microsoft 365 Apps, Office 2019, Office LTSC 2021 - keeps Office 2024/LTSC 2024|
+|WSL|Windows Subsystem for Linux|
+
+*Kept but not auto-approved (require manual review):*
+* 25H2 updates
+* x86 / 32-bit updates (lab is x64 only)
+* Feature upgrades
+
+*Default Products:* Windows 11, Windows Server 2019, Microsoft Edge, Microsoft Defender Antivirus, Microsoft Defender for Endpoint, Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials.
+
+*Default Classifications:* Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups.
+
+h3. Server Mode
+
+||Mode||Description||
+|*Online*|Full internet connectivity, direct sync with Microsoft Update|
+|*Air-Gap*|No internet, uses Robocopy for content transfer via physical media|
+
+h3. Settings Dialog
+
+||Setting||Description||
+|WSUS Content Path|Path to WSUS content folder (default: C:\WSUS)|
+|SQL Instance|SQL Server instance (default: localhost\SQLEXPRESS)|
+|Notifications|Enable/disable desktop notifications on operation completion|
+|Beep|Enable/disable audio beep on operation completion|
+|Minimize to Tray|Minimize window to system tray instead of taskbar|
+
+h3. Health Score
+
+||Component||Weight||Description||
+|Services|30|SQL Server, IIS, and WSUS service status|
+|Database|20|SUSDB size relative to 10 GB SQL Express limit|
+|Sync Recency|20|Time since last successful synchronization|
+|Disk Space|20|Free disk space on the WSUS content drive|
+|Last Operation|10|Result of the most recent operation|
+
+*Grade scale:* Green (80+), Yellow (50-79), Red (below 50), Unknown (all sources failed).
+
+h3. Operation Timeouts
+
+||Operation||Timeout||
+|Cleanup / Deep Cleanup|60 minutes|
+|Sync / Online Sync|180 minutes|
+|All other operations|30 minutes|
+
+----
+
+h2. Command Reference (CLI)
+
+h3. Interactive Menu
+
+{code:language=powershell}
+.\Scripts\Invoke-WsusManagement.ps1
+{code}
+
+||Option||Description||
+|1|Install WSUS with SQL Express 2022|
+|2|Restore Database from C:\WSUS|
+|3|Copy Data from External Media (import to air-gap server)|
+|4|Copy Data to External Media (export for air-gap transfer)|
+|5|Online Sync (Sync, Cleanup, Backup, Export)|
+|6|Deep Cleanup (Aggressive DB cleanup)|
+|7|Diagnostics (Health Check + Auto-Repair)|
+|8|Reset Content Download|
+|9|Force Client Check-In|
+
+h3. Command-Line Switches
+
+||Command||Description||
+|.\Invoke-WsusManagement.ps1 -Restore|Restore newest .bak from C:\WSUS|
+|.\Invoke-WsusManagement.ps1 -Cleanup -Force|Deep database cleanup|
+|.\Invoke-WsusManagement.ps1 -Health|Read-only health check|
+|.\Invoke-WsusManagement.ps1 -Repair|Health check + auto-repair|
+|.\Invoke-WsusManagement.ps1 -Reset|Reset content download|
+
+h3. Export / Import CLI Parameters
+
+{code:language=powershell}
+# Export
+.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport"
+
+# Import
+.\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\WsusExport" -DestinationPath "C:\WSUS"
+{code}
+
+h3. Online Sync Profiles
+
+||Profile||CLI Value||Description||
+|*Full Sync*|Full|Full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export. Recommended monthly.|
+|*Quick Sync*|Quick|Sync + auto-approve only. Good for weekly runs (15-30 min).|
+|*Sync Only*|SyncOnly|Sync with Microsoft only. No approvals or cleanup (10-20 min).|
+
+----
+
+h2. Air-Gapped Network Workflow
+
+{note}Depending on your program, transferring files into SAP or collateral spaces may require a Data Transfer Request (DTR). Check with your security team before physically moving media across network boundaries.{note}
+
+h3. Workflow Overview
+
+This is the primary operator workflow when the online/source WSUS server is already maintained and publishes the latest backup plus WsusContent to an approved share drive.
+
+||Step||Location||Action||
+|1|Air-Gapped WSUS Server|Install WSUS Manager and build the server using C:\WSUS as the WSUS root|
+|2|Share Drive / Transfer Media|Copy the latest SUSDB_YYYYMMDD.bak and WsusContent tree|
+|3|Air-Gapped WSUS Server|Run *Robocopy / Transfer Import* to copy the share or USB folder into C:\WSUS\|
+|4|Air-Gapped WSUS Server|Confirm update files are present in C:\WSUS\WsusContent|
+|5|Air-Gapped WSUS Server|Run *Restore Database* using the copied .bak file in C:\WSUS\|
+|6|Air-Gapped WSUS Server|Run *Diagnostics* and confirm ACL + IIS content-path health|
+|7|Domain Controller|Run .\Set-WsusGroupPolicy.ps1 (one-time setup)|
+
+h3. Use Reset Content only when needed
+
+* The install workflow already performs the normal post-install content step.
+* After import/restore, use *Reset Content* only if WSUS still shows files as downloading.
+* After running *Reset Content*, wait about 5-10 minutes for WSUS to register files before judging the result.
+* If the dashboard exposes file status, click *Refresh* and watch items move from *Downloading* to *Downloaded / Ready to Install*.
+
+h3. GUI Robocopy Dialog
+
+The Robocopy dialog (⇄ Robocopy) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped import, use source=share-drive copy or USB folder and destination=C:\WSUS\.
+
+h3. Import Folder Structure
+
+{code}
+C:\WSUS\
++-- SUSDB_YYYYMMDD.bak
+\-- WsusContent\
+{code}
+
+h3. Reference: Source Server Export
+
+This section is FYSA for the source-server maintainer only.
+
+||Purpose||Command||
+|Copy export to USB|robocopy "\\server\WSUS-Export" "E:\" /E /MT:16 /R:2 /W:5|
+|Copy USB to air-gap server|robocopy "E:\WSUS-Export" "C:\WSUS" /E /MT:16 /R:2 /W:5|
+
+----
+
+h2. Domain Controller Setup
+
+{warning}Run on the Domain Controller, NOT on the WSUS server!{warning}
+
+{warning}AIR-GAP ONLY: These GPOs direct all Windows Update traffic to the internal WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.{warning}
+
+h3. What the Script Does
+
+||Step||Action||
+|1|Auto-detect the domain|
+|2|Delete and reimport all 3 GPOs from backup (removes stale registry values)|
+|3|Reuse an existing Member Servers or Member_Servers OU if present; create child OUs such as WSUS Server when the parent structure already exists|
+|4|Link each GPO to appropriate OUs|
+|5|Push policy update to all domain computers via schtasks RPC (no WinRM required)|
+
+h3. GPO 1: WSUS Update Policy
+
+Configures Windows Update client behavior. Linked to all workstation/server OUs.
+
+||Setting||Value||Description||
+|WUServer|http://WSUS01:8530|WSUS server URL (auto-replaced by script)|
+|UseWUServer|Enabled|Master switch - use intranet WSUS instead of Microsoft|
+|DoNotConnectToWindowsUpdateInternetLocations|Enabled|Block direct internet updates (critical for air-gap)|
+|AUOptions|4 - Auto download and install|Auto-download and install on schedule|
+|ScheduledInstallTime|22:00|Install time|
+|ConfigureDeadlineForQualityUpdates|7 days|Force-install deadline|
+|ConfigureDeadlineForFeatureUpdates|7 days|Force-install deadline|
+|ConfigureDeadlineGracePeriod|0 days|No grace period after deadline|
+
+h3. GPO 2: WSUS Inbound Allow
+
+Opens WSUS server firewall for inbound client connections. Linked to Member Servers\WSUS Server OU.
+
+||Property||Value||
+|Direction|Inbound|
+|Protocol|TCP|
+|Local Ports|8530, 8531|
+|Profiles|Domain, Private|
+
+h3. GPO 3: WSUS Outbound Allow
+
+Opens client firewall to reach the WSUS server. Linked to Domain Controllers, Member Servers, and Workstations OUs.
+
+||Property||Value||
+|Direction|Outbound|
+|Protocol|TCP|
+|Remote Ports|8530, 8531|
+|Profiles|Domain, Private|
+
+h3. Verify on a Client
+
+{code:language=powershell}
+gpupdate /force
+wuauclt /detectnow /reportnow
+gpresult /r|findstr WSUS
+{code}
+
+----
+
+h2. HTTPS Configuration (Optional)
+
+{code:language=powershell}
+# Interactive (recommended)
+.\Scripts\Set-WsusHttps.ps1
+
+# Non-interactive
+.\Scripts\Set-WsusHttps.ps1 -CertificateThumbprint "1234567890ABCDEF..."
+{code}
+
+The script binds the certificate to port 8531, runs wsusutil configuressl, and exports the certificate to C:\WSUS\WSUS-SSL-Certificate.cer.
+
+After enabling HTTPS, update the GPO:
+
+{code:language=powershell}
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "https://WSUS01:8531"
+{code}
+
+----
+
+h2. Scheduled Tasks
+
+h3. Create via GUI
+
+# Click *Schedule Task* button
+# Select maintenance profile (Full / Quick / Sync Only)
+# Set schedule (Daily / Weekly / Monthly) and time (default: Tuesday 23:00)
+# Enter credentials (default username: .\dod_admin)
+# Click *Create*
+
+h3. Verify
+
+{code:language=powershell}
+Get-ScheduledTask -TaskName "WSUS*"|Format-Table TaskName, State, LastRunTime
+{code}
+
+----
+
+h2. Logging
+
+*Location:* C:\WSUS\Logs\WsusManagement_YYYY-MM-DD.log
+
+||Feature||Description||
+|Single daily file|All sessions and operations append to the same file per day|
+|Session markers|Each script run clearly marked with start/end timestamps|
+|No overwrites|Logs accumulate throughout the day|
+|GUI logging|GUI operations also write to the same log location|
+
+----
+
+h2. Troubleshooting
+
+||Issue||Solution||
+|Endless downloads / stuck content|Content path must be C:\WSUS (NOT C:\WSUS\wsuscontent)|
+|Dashboard shows "Not Installed"|WSUS service not detected - click Install WSUS|
+|Buttons greyed out|Operation already running, or WSUS not installed - wait or restart app|
+|Clients not checking in|Run gpupdate /force, verify GPOs are linked, check firewall ports 8530/8531|
+|GroupPolicy module not found|Run: Install-WindowsFeature GPMC|
+|Database restore fails|Verify sysadmin privileges on SQL Server (see Prerequisites)|
+|Database near 10 GB|Run Deep Cleanup; SQL Express hard limit is 10 GB|
+|Sync stuck at 0%|Check DNS configuration - GUI runs a DNS preflight check before syncing|
+|SqlServer module missing|v4.0.4+ auto-falls back to sqlcmd.exe; no manual install needed|
+|"Content is still downloading" after import|Click Reset Content, wait 5-10 minutes, then run Diagnostics to verify C:\WSUS ACLs and IIS /Content|
+|Clients can scan but never download|Confirm Authenticated Users read access on C:\WSUS and IIS /Content = C:\WSUS\WsusContent|
+
+h3. Diagnostic Commands
+
+||Purpose||Command||
+|Health check (read-only)|.\Invoke-WsusManagement.ps1 -Health|
+|Health check with auto-repair|.\Invoke-WsusManagement.ps1 -Repair|
+|Force client check-in|.\Scripts\Invoke-WsusClientCheckIn.ps1|
+|Check service status|Get-Service WsusService, MSSQL$SQLEXPRESS, W3SVC|
+
+{note}Critical: WSUS root/content path must be C:\WSUS. IIS WSUS Administration/Content must point to C:\WSUS\WsusContent. Authenticated Users must have read access on C:\WSUS or clients may scan successfully but never download content.{note}
+
+h2. Repository Structure
+
+h3. Scripts and Key Files
+
+||File / Folder||Description||
+|GA-WsusManager.exe|Main GUI application (compiled from WsusManagementGui.ps1)|
+|Scripts/WsusManagementGui.ps1|GUI source code|
+|Scripts/Invoke-WsusManagement.ps1|CLI entry point (interactive menu + switches)|
+|Scripts/Install-WsusWithSqlExpress.ps1|One-time installation script|
+|Scripts/Invoke-WsusMonthlyMaintenance.ps1|Scheduled maintenance / Online Sync|
+|Scripts/Invoke-WsusClientCheckIn.ps1|Client-side check-in|
+|Scripts/Set-WsusHttps.ps1|Optional HTTPS configuration|
+|DomainController/Set-WsusGroupPolicy.ps1|GPO import script|
+|DomainController/WSUS GPOs/|Pre-configured GPO backups (3 GPOs)|
+|Modules/*.psm1|26 shared PowerShell modules|
+
+h3. PowerShell Modules (26 Total)
+
+||Module||Purpose||
+|WsusUtilities.psm1|Logging, color output, admin checks, SQL helpers, path utilities|
+|WsusConfig.psm1|Centralized configuration, timeouts, health weights, GUI settings, version (`Get-WsusAppVersion`)|
+|WsusDatabase.psm1|DB size queries, supersession cleanup, index optimization, shrink, sqlcmd fallback|
+|WsusHealth.psm1|Health checks, auto-repair, health score (0-100)|
+|WsusServices.psm1|Start/stop/restart for SQL Server, IIS, WSUS services|
+|WsusPermissions.psm1|Content directory permission management|
+|WsusFirewall.psm1|Firewall rule creation, testing, and repair|
+|WsusExport.psm1|Robocopy wrapper, content export for air-gap transfer|
+|WsusScheduledTask.psm1|Windows Scheduled Task creation and management (daily/weekly/monthly)|
+|WsusAutoDetection.psm1|Server detection, dashboard data, 30-second TTL cache, auto-recovery|
+|WsusDialogs.psm1|Dialog factory - dark-themed window shell, folder browser, styled controls|
+|WsusOperationRunner.psm1|Unified operation lifecycle (start/stop/complete), timeout watchdog|
+|WsusOperationPlan.psm1|Cross-process plan for child PowerShell operations|
+|WsusProvisioning.psm1|Pre-install provisioning checks|
+|WsusGuiShell.psm1|WPF shell for GUI application|
+|WsusProcessHost.psm1|Long-running process management|
+|WsusHostEnvironment.psm1|Environment detection helpers|
+|WsusRepairPlan.psm1|Repair plan builder|
+|WsusRepairHarness.psm1|Repair execution harness|
+|WsusDiagnosticResult.psm1|Diagnostic result types|
+|WsusTestHarness.psm1|Test harness for modules|
+|WsusHistory.psm1|Operation history (JSON at %APPDATA%\WsusManager\history.json)|
+|WsusNotification.psm1|Toast/balloon/log-only notifications on operation completion|
+|WsusTrending.psm1|DB size trending - linear regression, days-until-full estimate|
+|WsusOfficeUpdates.psm1| *Office C2R update download (v4.1.0) - ODT integration for M365/Office LTSC 2024*|
+|AsyncHelpers.psm1|Runspace pool, async execution, UI thread dispatch for WPF|
+
+----
+
+h2. Features Summary
+
+||Feature||Description||
+|GUI Application|WPF dark-theme interface with dashboard, splash screen, and system tray|
+|Health Score|Weighted composite 0-100 (Services 30, DB 20, Sync 20, Disk 20, LastOp 10)|
+|DB Size Trending|Linear regression over 30 days; Critical <90 days, Warning <180 days to 10 GB limit|
+|Operation History|Last 50 operations with duration, result, and summary|
+|Desktop Notifications|Toast / balloon / log-only fallback on operation completion|
+|Operation Timeouts|Per-operation watchdog (Cleanup=60min, Sync=180min, Default=30min)|
+|Smart Update Policy|Auto-decline expired/superseded/old/ARM64/legacy; auto-approve by classification|
+|sqlcmd.exe Fallback|All DB operations work without SqlServer PowerShell module installed|
+|DNS Preflight|Sync checks DNS resolution before starting - prevents hours-long stuck syncs|
+|Automated Installation|One-click SQL Express 2022 + WSUS (auto-removes WID if present); SSMS installed only if present|
+|Air-Gap Support|Full content transfer via Robocopy for offline networks|
+|Database Management|Backup, restore, 6-step deep cleanup, index optimization|
+|Unified Diagnostics|Combined health check + auto-repair in a single operation|
+|Scheduled Sync|GUI and CLI support for Windows Task Scheduler|
+|GPO Deployment|Pre-configured GPOs with schtasks-based push (no WinRM required)|
+|Live Terminal Mode|External PowerShell window for operation output|
+|Auto-Refresh Dashboard|30-second status updates, skipped during active operations|
+|Keyboard Shortcuts|Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R/F5 (Refresh)|
+|DPI Awareness|Crisp rendering on high-DPI displays|
+|Modular Architecture|16 reusable PowerShell modules with 490+ Pester unit tests|
+
+----
+
+h2. Version History
+
+||Version||Date||Highlights||
+|4.1.0|Jun 2026| *Office C2R update download* (M365/Office LTSC 2024 via ODT), single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation|
+|4.0.4|Mar 2026|sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved), sysadmin check via sqlcmd|
+|4.0.3|Mar 2026|Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180-min sync timeout, default products, WID auto-migration|
+|4.0.2|Mar 2026|GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization|
+|4.0.1|Mar 2026|GUI automation tests (49), FlaUI test coverage (71), install script sync, version alignment|
+|4.0.0|Mar 2026|Dialog factory, operation runner, health score, operation history, notifications, DB trending, splash screen, keyboard shortcuts|
+|3.9.0|Mar 2026|ARM64/25H2 auto-decline, PowerShell-only distribution restored|
+|3.8.12|Feb 2026|TrustServerCertificate compatibility fix|
+|3.8.10|Feb 2026|Deep Cleanup 6-step workflow, unified Diagnostics|
+|3.8.9|Feb 2026|Online Sync rename, Definition Updates auto-approval, Reset Content button|
+|3.8.8|Jan 2026|Declined update purge fix, shrink retry logic|
+|3.8.7|Jan 2026|Live Terminal mode, Create GPO button, WSUS install detection|
+
+----
+
+h2. References
+
+|Distribution Package (v4.1.0)|[GitHub Releases - WsusManager-v4.1.0.zip|https://github.com/anthonyscry/GA-WsusManager/releases/tag/v4.1.0]|
+|All Releases|[GitHub Releases - WSUS Manager|https://github.com/anthonyscry/GA-WsusManager/releases]|
+|Source Code|[GitHub Repository - GA-WsusManager|https://github.com/anthonyscry/GA-WsusManager]|
+|WSUS Maintenance Guide|[Microsoft Learn - WSUS Maintenance|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/wsus-maintenance]|
+|WSUS Deployment Planning|[Microsoft Learn - Plan Your WSUS Deployment|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment]|
+|Configure WSUS|[Microsoft Learn - Configure WSUS|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/2-configure-wsus]|
+|SQL Server Express Download|[Microsoft Download Center|https://www.microsoft.com/en-us/sql-server/sql-server-downloads]|
+|SQL Server Installation|[Microsoft Learn - Install SQL Server|https://learn.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server]|
+
+----
+
+_Internal use - General Atomics Aeronautical Systems, Inc._

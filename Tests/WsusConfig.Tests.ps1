@@ -1,0 +1,403 @@
+#Requires -Modules Pester
+<#
+.SYNOPSIS
+    Pester tests for WsusConfig.psm1
+
+.DESCRIPTION
+    Unit tests for the WsusConfig module functions including:
+    - Configuration retrieval (Get-WsusConfig)
+    - Configuration setting (Set-WsusConfig)
+    - Helper functions for SQL, paths, services, timeouts
+#>
+
+BeforeAll {
+    Import-Module (Join-Path $PSScriptRoot '..\Modules\WsusTestHarness.psm1') -Force -DisableNameChecking -WarningAction SilentlyContinue
+    $script:RepoRoot = Resolve-WsusTestRepoRoot -StartPath $PSScriptRoot
+    Import-WsusTestModule -ModuleName 'WsusConfig' -RepoRoot $script:RepoRoot
+}
+
+AfterAll {
+    Remove-WsusTestModule -ModuleName 'WsusConfig'
+}
+
+Describe "WsusConfig Module" {
+    Context "Module Loading" {
+        It "Should import the module successfully" {
+            Get-Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Get-WsusConfig function" {
+            Get-Command Get-WsusConfig -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Set-WsusConfig function" {
+            Get-Command Set-WsusConfig -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should export Get-SqlInstanceName function" {
+            Get-Command Get-SqlInstanceName -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+    }
+}
+
+Describe "Get-WsusConfig" {
+    Context "Without Key parameter" {
+        It "Should return entire configuration hashtable" {
+            $config = Get-WsusConfig
+            $config | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain SqlInstance key" {
+            $config = Get-WsusConfig
+            $config.SqlInstance | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should contain Services key" {
+            $config = Get-WsusConfig
+            $config.Services | Should -BeOfType [hashtable]
+        }
+
+        It "Should contain Timeouts key" {
+            $config = Get-WsusConfig
+            $config.Timeouts | Should -BeOfType [hashtable]
+        }
+    }
+
+    Context "With Key parameter" {
+        It "Should return SqlInstance value" {
+            $result = Get-WsusConfig -Key "SqlInstance"
+            $result | Should -Be ".\SQLEXPRESS"
+        }
+
+        It "Should return DatabaseName value" {
+            $result = Get-WsusConfig -Key "DatabaseName"
+            $result | Should -Be "SUSDB"
+        }
+
+        It "Should return ContentPath value" {
+            $result = Get-WsusConfig -Key "ContentPath"
+            $result | Should -Be "C:\WSUS"
+        }
+
+        It "Should return WsusPort value" {
+            $result = Get-WsusConfig -Key "WsusPort"
+            $result | Should -Be 8530
+        }
+
+        It "Should return WsusSslPort value" {
+            $result = Get-WsusConfig -Key "WsusSslPort"
+            $result | Should -Be 8531
+        }
+    }
+
+    Context "With nested Key parameter (dot notation)" {
+        It "Should return Services.Wsus value" {
+            $result = Get-WsusConfig -Key "Services.Wsus"
+            $result | Should -Be "WSUSService"
+        }
+
+        It "Should return Services.SqlExpress value" {
+            $result = Get-WsusConfig -Key "Services.SqlExpress"
+            $result | Should -Be 'MSSQL$SQLEXPRESS'
+        }
+
+        It "Should return Timeouts.SqlQueryDefault value" {
+            $result = Get-WsusConfig -Key "Timeouts.SqlQueryDefault"
+            $result | Should -Be 30
+        }
+
+        It "Should return Maintenance.BackupRetentionDays value" {
+            $result = Get-WsusConfig -Key "Maintenance.BackupRetentionDays"
+            $result | Should -Be 90
+        }
+
+        It "Should return null for non-existent nested key" {
+            $result = Get-WsusConfig -Key "Services.NonExistent"
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "With invalid Key parameter" {
+        It "Should return null for non-existent key" {
+            $result = Get-WsusConfig -Key "NonExistentKey"
+            $result | Should -BeNullOrEmpty
+        }
+    }
+}
+
+Describe "Set-WsusConfig" {
+    BeforeEach {
+        # Store original values to restore after tests
+        $script:OriginalSqlInstance = Get-WsusConfig -Key "SqlInstance"
+    }
+
+    AfterEach {
+        # Restore original values
+        Set-WsusConfig -Key "SqlInstance" -Value $script:OriginalSqlInstance
+    }
+
+    It "Should set a top-level configuration value" {
+        Set-WsusConfig -Key "SqlInstance" -Value "localhost\TEST"
+        $result = Get-WsusConfig -Key "SqlInstance"
+        $result | Should -Be "localhost\TEST"
+    }
+
+    It "Should set a nested configuration value" {
+        $originalValue = Get-WsusConfig -Key "Timeouts.SqlQueryDefault"
+        Set-WsusConfig -Key "Timeouts.SqlQueryDefault" -Value 60
+        $result = Get-WsusConfig -Key "Timeouts.SqlQueryDefault"
+        $result | Should -Be 60
+        # Restore
+        Set-WsusConfig -Key "Timeouts.SqlQueryDefault" -Value $originalValue
+    }
+
+    It "Should throw for non-existent nested parent key" {
+        { Set-WsusConfig -Key "NonExistent.Key" -Value "test" } | Should -Throw
+    }
+}
+
+Describe "Get-SqlInstanceName" {
+    It "Should return Short format" {
+        $result = Get-SqlInstanceName -Format 'Short'
+        $result | Should -Be "SQLEXPRESS"
+    }
+
+    It "Should return Dot format" {
+        $result = Get-SqlInstanceName -Format 'Dot'
+        $result | Should -Be ".\SQLEXPRESS"
+    }
+
+    It "Should return Localhost format" {
+        $result = Get-SqlInstanceName -Format 'Localhost'
+        $result | Should -Be "localhost\SQLEXPRESS"
+    }
+
+    It "Should default to Dot format" {
+        $result = Get-SqlInstanceName
+        $result | Should -Be ".\SQLEXPRESS"
+    }
+}
+
+Describe "Get-WsusLogPath" {
+    It "Should return a valid path string" {
+        $result = Get-WsusLogPath
+        $result | Should -Be "C:\WSUS\Logs"
+    }
+}
+
+Describe "Get-WsusServiceName" {
+    It "Should return SqlExpress service name" {
+        $result = Get-WsusServiceName -Service 'SqlExpress'
+        $result | Should -Be 'MSSQL$SQLEXPRESS'
+    }
+
+    It "Should return Wsus service name" {
+        $result = Get-WsusServiceName -Service 'Wsus'
+        $result | Should -Be "WSUSService"
+    }
+
+    It "Should return Iis service name" {
+        $result = Get-WsusServiceName -Service 'Iis'
+        $result | Should -Be "W3SVC"
+    }
+
+    It "Should return WindowsUpdate service name" {
+        $result = Get-WsusServiceName -Service 'WindowsUpdate'
+        $result | Should -Be "wuauserv"
+    }
+
+    It "Should return Bits service name" {
+        $result = Get-WsusServiceName -Service 'Bits'
+        $result | Should -Be "bits"
+    }
+}
+
+Describe "Get-WsusTimeout" {
+    It "Should return SqlQueryDefault timeout" {
+        $result = Get-WsusTimeout -Type 'SqlQueryDefault'
+        $result | Should -Be 30
+    }
+
+    It "Should return SqlQueryLong timeout" {
+        $result = Get-WsusTimeout -Type 'SqlQueryLong'
+        $result | Should -Be 300
+    }
+
+    It "Should return SqlQueryUnlimited timeout (0)" {
+        $result = Get-WsusTimeout -Type 'SqlQueryUnlimited'
+        $result | Should -Be 0
+    }
+
+    It "Should return ServiceStart timeout" {
+        $result = Get-WsusTimeout -Type 'ServiceStart'
+        $result | Should -Be 10
+    }
+
+    It "Should return ServiceStop timeout" {
+        $result = Get-WsusTimeout -Type 'ServiceStop'
+        $result | Should -Be 5
+    }
+}
+
+Describe "Get-WsusMaintenanceSetting" {
+    It "Should return BackupRetentionDays" {
+        $result = Get-WsusMaintenanceSetting -Setting 'BackupRetentionDays'
+        $result | Should -Be 90
+    }
+
+    It "Should return IndexFragmentationThreshold" {
+        $result = Get-WsusMaintenanceSetting -Setting 'IndexFragmentationThreshold'
+        $result | Should -Be 10
+    }
+
+    It "Should return IndexRebuildThreshold" {
+        $result = Get-WsusMaintenanceSetting -Setting 'IndexRebuildThreshold'
+        $result | Should -Be 30
+    }
+
+    It "Should return BatchSize" {
+        $result = Get-WsusMaintenanceSetting -Setting 'BatchSize'
+        $result | Should -Be 100
+    }
+}
+
+Describe "Get-WsusConnectionString" {
+    It "Should return a valid connection string" {
+        $result = Get-WsusConnectionString
+        $result | Should -Match "Server=.*SQLEXPRESS"
+        $result | Should -Match "Database=SUSDB"
+        $result | Should -Match "Integrated Security=True"
+    }
+}
+
+Describe "Get-WsusContentPathFromConfig" {
+    It "Should return base path without subfolder" {
+        $result = Get-WsusContentPathFromConfig
+        $result | Should -Not -BeNullOrEmpty
+    }
+
+    It "Should return path with subfolder when IncludeSubfolder is set" {
+        $result = Get-WsusContentPathFromConfig -IncludeSubfolder
+        $result | Should -Match "WsusContent$"
+    }
+}
+
+Describe "Initialize-WsusConfigFromFile" {
+    It "Should return false when config file doesn't exist" {
+        $result = Initialize-WsusConfigFromFile -Path "C:\NonExistent\config.json"
+        $result | Should -Be $false
+    }
+}
+
+Describe "Export-WsusConfigToFile" {
+    BeforeAll {
+        $script:TestConfigRoot = New-WsusTempHarnessRoot -Prefix 'WsusConfigTests'
+        $script:TestConfigPath = Join-Path $script:TestConfigRoot 'wsus-test-config.json'
+    }
+
+    AfterAll {
+        if (Test-Path $script:TestConfigRoot) {
+            Remove-Item $script:TestConfigRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It "Should export configuration to JSON file" {
+        Export-WsusConfigToFile -Path $script:TestConfigPath
+        Test-Path $script:TestConfigPath | Should -Be $true
+    }
+
+    It "Should create valid JSON" {
+        Export-WsusConfigToFile -Path $script:TestConfigPath
+        $content = Get-Content $script:TestConfigPath -Raw
+        { $content | ConvertFrom-Json } | Should -Not -Throw
+    }
+}
+
+Describe "Get-WsusHealthWeights" {
+    Context "Module export validation" {
+        It "Should export Get-WsusHealthWeights function" {
+            Get-Command Get-WsusHealthWeights -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return value validation" {
+        BeforeAll {
+            $script:Weights = Get-WsusHealthWeights
+        }
+
+        It "Should return a hashtable" {
+            $script:Weights | Should -BeOfType [hashtable]
+        }
+
+        It "Services weight should be 30" {
+            $script:Weights.Services | Should -Be 30
+        }
+
+        It "DatabaseSize weight should be 20" {
+            $script:Weights.DatabaseSize | Should -Be 20
+        }
+
+        It "SyncRecency weight should be 20" {
+            $script:Weights.SyncRecency | Should -Be 20
+        }
+
+        It "DiskSpace weight should be 20" {
+            $script:Weights.DiskSpace | Should -Be 20
+        }
+
+        It "LastOperation weight should be 10" {
+            $script:Weights.LastOperation | Should -Be 10
+        }
+
+        It "Total of all weights should equal 100" {
+            $total = $script:Weights.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+            $total | Should -Be 100
+        }
+    }
+}
+
+Describe "Get-WsusOperationTimeout" {
+    Context "Module export validation" {
+        It "Should export Get-WsusOperationTimeout function" {
+            Get-Command Get-WsusOperationTimeout -Module WsusConfig | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Return value validation" {
+        It "Should return 60 for Cleanup" {
+            Get-WsusOperationTimeout -OperationType 'Cleanup' | Should -Be 60
+        }
+
+        It "Should return 120 for Sync" {
+            Get-WsusOperationTimeout -OperationType 'Sync' | Should -Be 120
+        }
+
+        It "Should return 60 for Install" {
+            Get-WsusOperationTimeout -OperationType 'Install' | Should -Be 60
+        }
+
+        It "Should return 90 for Export" {
+            Get-WsusOperationTimeout -OperationType 'Export' | Should -Be 90
+        }
+
+        It "Should return 90 for Import" {
+            Get-WsusOperationTimeout -OperationType 'Import' | Should -Be 90
+        }
+
+        It "Should return 30 for Diagnostics" {
+            Get-WsusOperationTimeout -OperationType 'Diagnostics' | Should -Be 30
+        }
+
+        It "Should return 30 for Default" {
+            Get-WsusOperationTimeout -OperationType 'Default' | Should -Be 30
+        }
+
+        It "Should default to 30 when no OperationType specified" {
+            Get-WsusOperationTimeout | Should -Be 30
+        }
+
+        It "Should reject invalid OperationType" {
+            { Get-WsusOperationTimeout -OperationType 'Invalid' } | Should -Throw
+        }
+    }
+}

@@ -1,0 +1,2301 @@
+﻿#Requires -RunAsAdministrator
+
+<#
+===============================================================================
+Script: Invoke-WsusManagement.ps1
+Author: Tony Tran, ISSO, GA-ASI
+Version: 4.0.5
+Date: 2026-01-10
+===============================================================================
+
+.SYNOPSIS
+    WSUS Management - Unified script for all WSUS server operations.
+
+.DESCRIPTION
+    Consolidated WSUS management with switches for each operation:
+    - No switch: Interactive menu
+    - -Restore: Restore database from backup
+    - -Health/-Repair: Run health check and optional repairs
+    - -Diagnostics/-DeepDiagnostics: Run standard plus deep content/download repair checks
+    - -Cleanup: Deep database cleanup
+    - -Reset: Reset content download
+
+.PARAMETER Restore
+    Restore WSUS database from backup.
+
+.PARAMETER Health
+    Run WSUS health check.
+
+.PARAMETER Repair
+    Run health check with automatic repairs.
+
+.PARAMETER Cleanup
+    Run deep database cleanup (aggressive).
+
+.PARAMETER Reset
+    Reset WSUS content download (re-verify all files).
+
+.PARAMETER Force
+    Skip confirmation prompts (for Cleanup operation).
+
+.PARAMETER ExportRoot
+    Root folder for exports (default: C:\WSUS\Exports).
+
+.PARAMETER SinceDays
+    For Export: copy content modified within last N days (default: 30).
+
+.PARAMETER SkipDatabase
+    For Export: skip database backup.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1
+    Launch interactive menu.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -Restore
+    Restore database from backup.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -Health
+    Run health check without repairs.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -Repair
+    Run health check with automatic repairs.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -Diagnostics
+    Run standard diagnostics plus deep content/download repair checks for stuck imports.
+
+.EXAMPLE
+    .\Invoke-WsusManagement.ps1 -Cleanup -Force
+    Run deep cleanup without confirmation.
+#>
+
+[CmdletBinding(DefaultParameterSetName = 'Menu')]
+param(
+    [Parameter(ParameterSetName = 'Restore')]
+    [switch]$Restore,
+
+    [Parameter(ParameterSetName = 'Import')]
+    [switch]$Import,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [switch]$Export,
+
+    [Parameter(ParameterSetName = 'Health')]
+    [switch]$Health,
+
+    [Parameter(ParameterSetName = 'Repair')]
+    [switch]$Repair,
+
+    [Parameter(ParameterSetName = 'Diagnostics')]
+    [switch]$Diagnostics,
+
+    [Parameter(ParameterSetName = 'DeepDiagnostics')]
+    [switch]$DeepDiagnostics,
+
+    [Parameter(ParameterSetName = 'Cleanup')]
+    [switch]$Cleanup,
+
+    [Parameter(ParameterSetName = 'Reset')]
+    [switch]$Reset,
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [switch]$OfficeUpdates,
+
+    # Cleanup parameters
+    [Parameter(ParameterSetName = 'Cleanup')]
+    [switch]$Force,
+
+    # Restore parameters
+    [Parameter(ParameterSetName = 'Restore')]
+    [string]$BackupPath,
+
+    # Export/Import parameters (for non-interactive mode)
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [string]$SourcePath,
+
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [string]$DestinationPath,
+
+    # Non-interactive mode (skip prompts, fail on missing required paths)
+    [Parameter(ParameterSetName = 'Export')]
+    [Parameter(ParameterSetName = 'Import')]
+    [switch]$NonInteractive,
+
+    # Common
+    [string]$ExportRoot = 'C:\WSUS\Exports',
+    [string]$ContentPath,
+    [string]$SqlInstance,
+
+    # Office C2R Update parameters (non-interactive mode)
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [string]$OfficeSharePath,
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [string]$OfficeOdtPath,
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [ValidateSet("MonthlyEnterprise", "Current", "SemiAnnual", "SemiAnnualPreview", "LTSC", "LTSCPreview")]
+    [string]$OfficeChannel = "MonthlyEnterprise",
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [ValidateSet("M365Apps", "OfficeLTSC2024", "VisioLTSC2024", "ProjectLTSC2024")]
+    [string]$OfficeProductId = "OfficeLTSC2024",
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [string]$OfficeLanguage = "en-us",
+
+    [Parameter(ParameterSetName = 'OfficeUpdates')]
+    [ValidateSet("64", "32")]
+    [string]$OfficeClientEdition = "64"
+)
+
+$ErrorActionPreference = 'Continue'
+
+# ============================================================================
+# CENTRALIZED LOGGING SETUP
+# ============================================================================
+# Single daily log file - all operations append to same file
+    $script:LogDirectory = $ContentPath
+    if (-not $script:LogDirectory) { $script:LogDirectory = "C:\WSUS" }
+    $script:LogDirectory = Join-Path $script:LogDirectory "Logs"
+    $script:LogFileName = "WsusManagement_$(Get-Date -Format 'yyyy-MM-dd').log"
+    $script:LogFilePath = Join-Path $script:LogDirectory $script:LogFileName
+
+# Create log directory if needed
+if (-not (Test-Path $script:LogDirectory)) {
+    New-Item -Path $script:LogDirectory -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+}
+
+# Write session start marker
+$sessionMarker = @"
+
+================================================================================
+SESSION START: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+ ================================================================================
+"@
+Add-Content -Path $script:LogFilePath -Value $sessionMarker -ErrorAction SilentlyContinue
+
+# Determine the project root and scripts folder
+# Handle multiple deployment scenarios:
+# 1. Standard: Invoke-WsusManagement.ps1 at root, subscripts in Scripts\ subfolder
+# 2. Flat: All scripts in same folder (user copied main script into Scripts folder)
+# 3. Nested: Script in Scripts\Scripts\ folder
+
+# Resolve script location (handles symlinks and dot-sourcing)
+$ScriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ScriptsFolder = $ScriptRoot
+
+# Check flat layout FIRST (scripts in same folder as main script)
+# This prevents double-Scripts path issue when running from Scripts folder
+if (Test-Path (Join-Path $ScriptRoot "Invoke-WsusMonthlyMaintenance.ps1")) {
+    # Flat layout - all scripts in same folder (or user is running from Scripts folder)
+    $ScriptsFolder = $ScriptRoot
+} elseif (Test-Path (Join-Path $ScriptRoot "Scripts\Invoke-WsusMonthlyMaintenance.ps1")) {
+    # Standard layout - scripts are in Scripts\ subfolder
+    $ScriptsFolder = Join-Path $ScriptRoot "Scripts"
+}
+
+# Find modules folder - search multiple locations for flexibility
+$ModulesFolder = $null
+$moduleSearchPaths = @(
+    (Join-Path $ScriptRoot "Modules"),                                      # Standard (root\Modules)
+    (Join-Path (Split-Path $ScriptRoot -Parent) "Modules"),                 # Parent folder
+    (Join-Path (Split-Path (Split-Path $ScriptRoot -Parent) -Parent) "Modules"),  # Grandparent (nested)
+    $ScriptsFolder                                                           # Same folder as scripts
+)
+
+foreach ($path in $moduleSearchPaths) {
+    $utilPath = Join-Path $path "WsusUtilities.psm1"
+    if (Test-Path $utilPath) {
+        # Verify the module file has expected content
+        $content = Get-Content $utilPath -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content -match 'function Start-WsusLogging') {
+            $ModulesFolder = $path
+            break
+        }
+    }
+}
+
+if ($ModulesFolder) {
+    try {
+        $configModulePath = Join-Path $ModulesFolder "WsusConfig.psm1"
+        if (Test-Path $configModulePath) {
+            Import-Module $configModulePath -Force -DisableNameChecking -ErrorAction Stop
+            $script:RuntimeConfig = Get-WsusRuntimeConfig
+            if (-not $PSBoundParameters.ContainsKey('ContentPath')) {
+                $ContentPath = $script:RuntimeConfig.ContentPath
+            }
+            if (-not $PSBoundParameters.ContainsKey('SqlInstance')) {
+                $SqlInstance = $script:RuntimeConfig.SqlInstance
+            }
+            $script:LogDirectory = $script:RuntimeConfig.LogPath
+            $script:LogFilePath = Join-Path $script:LogDirectory $script:LogFileName
+        }
+
+        $exportModulePath = Join-Path $ModulesFolder "WsusExport.psm1"
+        if (Test-Path $exportModulePath) {
+            Import-Module $exportModulePath -Force -DisableNameChecking -ErrorAction Stop
+        }
+
+        $provisioningModulePath = Join-Path $ModulesFolder "WsusProvisioning.psm1"
+        if (Test-Path $provisioningModulePath) {
+            Import-Module $provisioningModulePath -Force -DisableNameChecking -ErrorAction Stop
+        }
+
+        $officeUpdatesModulePath = Join-Path $ModulesFolder "WsusOfficeUpdates.psm1"
+        if (Test-Path $officeUpdatesModulePath) {
+            Import-Module $officeUpdatesModulePath -Force -DisableNameChecking -ErrorAction Stop
+        }
+    } catch {
+        Write-Warning "Runtime module initialization failed: $($_.Exception.Message)"
+    }
+}
+
+if (-not $script:RuntimeConfig) {
+    $script:RuntimeConfig = [pscustomobject]@{
+        ContentPath = if ($ContentPath) { $ContentPath } else { 'C:\WSUS' }
+        SqlInstance = if ($SqlInstance) { $SqlInstance } else { '.\SQLEXPRESS' }
+        LogPath = $script:LogDirectory
+        Ports = @{ Wsus = 8530; WsusSsl = 8531; Sql = 1433; SqlBrowser = 1434 }
+    }
+}
+$script:WsusPort = $script:RuntimeConfig.Ports.Wsus
+$script:WsusSslPort = $script:RuntimeConfig.Ports.WsusSsl
+$script:ContentPath = if ($ContentPath) { $ContentPath } else { $script:RuntimeConfig.ContentPath }
+$script:SqlInstance = if ($SqlInstance) { $SqlInstance } else { $script:RuntimeConfig.SqlInstance }
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+function Write-Log($msg, $color = "White") {
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $logMessage = "$timestamp - $msg"
+
+    # Write to console
+    Write-Host $logMessage -ForegroundColor $color
+
+    # Append to daily log file
+    Add-Content -Path $script:LogFilePath -Value $logMessage -ErrorAction SilentlyContinue
+}
+
+function Write-Banner($title) {
+    # Banner sized for 90-column console window
+    $lineWidth = 88
+    $line = "=" * $lineWidth
+    # Center the title
+    $padding = [math]::Max(0, [math]::Floor(($lineWidth - $title.Length) / 2))
+    $centeredTitle = (" " * $padding) + $title
+    $banner = @"
+
+$line
+$centeredTitle
+$line
+
+"@
+    Write-Host $banner -ForegroundColor Cyan
+
+    # Also log to file
+    Add-Content -Path $script:LogFilePath -Value $banner -ErrorAction SilentlyContinue
+}
+
+function Get-SqlCmd {
+    $candidates = @(
+        (Get-Command sqlcmd.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source),
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\110\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\120\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\130\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\140\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+
+    return $candidates
+}
+
+function Test-ValidPath {
+    <#
+    .SYNOPSIS
+        Validates a user-provided path for safety and existence
+    .PARAMETER Path
+        The path to validate
+    .PARAMETER MustExist
+        If true, the path must already exist
+    .PARAMETER PathType
+        Expected type: 'Container' (directory), 'Leaf' (file), or 'Any'
+    .OUTPUTS
+        Hashtable with IsValid, Message, and CleanPath properties
+    #>
+    param(
+        [string]$Path,
+        [switch]$MustExist,
+        [ValidateSet('Container', 'Leaf', 'Any')]
+        [string]$PathType = 'Any'
+    )
+
+    $result = @{ IsValid = $false; Message = ""; CleanPath = "" }
+
+    # Check for empty/null
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        $result.Message = "Path cannot be empty"
+        return $result
+    }
+
+    # Trim whitespace
+    $Path = $Path.Trim()
+
+    # Check for dangerous characters that could enable injection
+    if ($Path -match '[`$;|&<>]') {
+        $result.Message = "Path contains invalid characters"
+        return $result
+    }
+
+    # Must start with valid drive letter or UNC path
+    if ($Path -notmatch '^[A-Za-z]:\\' -and $Path -notmatch '^\\\\[^\\]+\\') {
+        $result.Message = 'Path must be a valid Windows path (e.g., C:\folder or \\server\share)'
+        return $result
+    }
+
+    # Check existence if required
+    if ($MustExist) {
+        if (-not (Test-Path $Path)) {
+            $result.Message = "Path does not exist: $Path"
+            return $result
+        }
+
+        if ($PathType -ne 'Any') {
+            if (-not (Test-Path $Path -PathType $PathType)) {
+                $typeDesc = if ($PathType -eq 'Container') { 'directory' } else { 'file' }
+                $result.Message = "Path is not a $typeDesc': $Path"
+                return $result
+            }
+        }
+    }
+
+    $result.IsValid = $true
+    $result.CleanPath = $Path
+    return $result
+}
+
+function Test-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Checks if the current user has sysadmin permissions on SQL Server
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .OUTPUTS
+        Hashtable with HasPermission (bool), Message (string), and UserName (string)
+    #>
+    param(
+        [string]$SqlInstance
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SqlInstance)) {
+        $SqlInstance = $script:SqlInstance
+    }
+
+    $result = @{
+        HasPermission = $false
+        Message = ""
+        UserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    }
+
+    try {
+        # First check if SQL Server is running
+        $serviceName = if ($SqlInstance -match '\\([^\\]+)$') { "MSSQL`$$($Matches[1])" } else { 'MSSQLSERVER' }
+        $sqlService = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+        if (-not $sqlService -or $sqlService.Status -ne 'Running') {
+            $result.Message = "SQL Server is not running"
+            return $result
+        }
+
+        # Check sysadmin membership using Invoke-Sqlcmd (or sqlcmd.exe fallback)
+        if (-not (Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue)) {
+            # SqlServer module not installed - try sqlcmd.exe fallback
+            $sqlcmd = @(
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($sqlcmd) {
+                $out = & $sqlcmd -S $SqlInstance -E -Q "SELECT IS_SRVROLEMEMBER('sysadmin')" -h -1 -W 2>$null
+                $result.HasPermission = ($out -match '^\s*1\s*$')
+                if ($result.HasPermission) { $result.Message = "User has sysadmin permissions" }
+                else { $result.Message = "User '$($result.UserName)' does not have sysadmin permissions" }
+                return $result
+            }
+            $result.Message = "Cannot check permissions: SqlServer module and sqlcmd.exe not found"
+            return $result
+        }
+        $query = "SELECT IS_SRVROLEMEMBER('sysadmin') AS IsSysAdmin"
+        $checkResult = Invoke-Sqlcmd -ServerInstance $SqlInstance -Query $query -ErrorAction Stop
+
+        if ($checkResult.IsSysAdmin -eq 1) {
+            $result.HasPermission = $true
+            $result.Message = "User has sysadmin permissions"
+        } else {
+            $result.Message = "User '$($result.UserName)' does not have sysadmin permissions on SQL Server"
+        }
+    } catch {
+        $result.Message = "Failed to check SQL permissions: $($_.Exception.Message)"
+    }
+
+    return $result
+}
+
+function Assert-SqlSysadmin {
+    <#
+    .SYNOPSIS
+        Verifies sysadmin permissions and exits with error if not granted
+    .PARAMETER SqlInstance
+        SQL Server instance to check
+    .PARAMETER OperationName
+        Name of the operation being attempted (for error message)
+    .OUTPUTS
+        Returns $true if permissions OK, exits script if not
+    #>
+    param(
+        [string]$SqlInstance,
+        [string]$OperationName = "database operation"
+    )
+
+    if ([string]::IsNullOrWhiteSpace($SqlInstance)) {
+        $SqlInstance = $script:SqlInstance
+    }
+
+    Write-Host "Checking SQL Server permissions..." -ForegroundColor Yellow
+
+    $permCheck = Test-SqlSysadmin -SqlInstance $SqlInstance
+
+    if (-not $permCheck.HasPermission) {
+        $errLine = "=" * 88
+        Write-Host ""
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host "  PERMISSION ERROR - Operation Cancelled" -ForegroundColor Red
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  User: $($permCheck.UserName)" -ForegroundColor White
+        Write-Host "  Error: $($permCheck.Message)" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  The '$OperationName' operation requires SQL Server sysadmin permissions." -ForegroundColor White
+        Write-Host ""
+        Write-Host "  To grant sysadmin permissions, run as SA or existing sysadmin:" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "    USE [master]" -ForegroundColor Gray
+        Write-Host "    ALTER SERVER ROLE [sysadmin] ADD MEMBER [$($permCheck.UserName)]" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host $errLine -ForegroundColor Red
+        Write-Host ""
+
+        Write-Log "PERMISSION ERROR: $($permCheck.Message)" "Red"
+        return $false
+    }
+
+    Write-Host "  Permissions OK: $($permCheck.UserName)" -ForegroundColor Green
+    return $true
+}
+
+# ============================================================================
+# RESTORE OPERATION
+# ============================================================================
+
+function Invoke-CheckedSqlcmd {
+    param(
+        [Parameter(Mandatory = $true)][string]$SqlCmdExe,
+        [Parameter(Mandatory = $true)][string]$SqlInstance,
+        [Parameter(Mandatory = $true)][string]$Query,
+        [string]$Description = "SQL command"
+    )
+
+    $output = & $SqlCmdExe -S $SqlInstance -Q $Query -b 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        $message = ($output | ForEach-Object { $_.ToString() }) -join '; '
+        if ([string]::IsNullOrWhiteSpace($message)) {
+            $message = "sqlcmd.exe exited with code $exitCode"
+        }
+        throw "$Description failed (sqlcmd exit $exitCode): $message"
+    }
+    return $output
+}
+
+
+function Invoke-WsusRestore {
+    param(
+        [string]$ContentPath,
+        [string]$SqlInstance,
+        [string]$BackupPath
+    )
+
+    Write-Banner "WSUS DATABASE RESTORE"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Database Restore")) {
+        return
+    }
+
+    $SqlCmdExe = Get-SqlCmd
+    if (-not $SqlCmdExe) {
+        Write-Log "ERROR: sqlcmd.exe not found" "Red"
+        return
+    }
+
+    $backupResolution = if (Get-Command Resolve-WsusRestoreBackup -ErrorAction SilentlyContinue) {
+        Resolve-WsusRestoreBackup -BackupPath $BackupPath -ContentPath $ContentPath
+    } else {
+        $null
+    }
+
+    if ($backupResolution -and -not $backupResolution.Success) {
+        Write-Log "ERROR: $($backupResolution.Message)" "Red"
+        return
+    }
+
+    if ($backupResolution -and $backupResolution.Success) {
+        $selectedBackup = Get-Item $backupResolution.BackupFile
+        Write-Host "Using backup file:" -ForegroundColor Cyan
+        Write-Host "  $($selectedBackup.Name)" -ForegroundColor Green
+        Write-Host "  Size: $([math]::Round($selectedBackup.Length / 1GB, 2)) GB"
+        Write-Host "  Date: $($selectedBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+        Write-Host ""
+    } else {
+        # Back-compat path if provisioning helper unavailable
+        if ($BackupPath -and (Test-Path $BackupPath)) {
+            $selectedBackup = Get-Item $BackupPath
+            Write-Host "Using specified backup file:" -ForegroundColor Cyan
+            Write-Host "  $($selectedBackup.Name)" -ForegroundColor Green
+            Write-Host "  Size: $([math]::Round($selectedBackup.Length / 1GB, 2)) GB"
+            Write-Host "  Date: $($selectedBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+            Write-Host ""
+        } else {
+            Write-Host "Searching for database backups in $ContentPath..." -ForegroundColor Yellow
+            $backupFiles = Get-ChildItem -Path $ContentPath -Filter "*.bak" -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+            if (-not $backupFiles -or $backupFiles.Count -eq 0) {
+                Write-Log "ERROR: No .bak files found in $ContentPath" "Red"
+                return
+            }
+            $selectedBackup = $backupFiles | Select-Object -First 1
+            Write-Host "Newest backup: $($selectedBackup.Name)" -ForegroundColor Green
+            Write-Host "  Size: $([math]::Round($selectedBackup.Length / 1GB, 2)) GB"
+            Write-Host "  Date: $($selectedBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+            Write-Host ""
+            $confirm = Read-Host "Restore this backup? (Y/n)"
+            if ($confirm -notin @("Y", "y", "")) { return }
+        }
+    }
+
+    # Verify backup before taking WSUS offline. Restore must not proceed on a
+    # corrupt or unreadable .bak file.
+    Write-Log "Verifying backup integrity..." "Yellow"
+    # Escape single quotes in path for SQL safety (double them)
+    $safePath = $selectedBackup.FullName -replace "'", "''"
+    try {
+        Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "RESTORE VERIFYONLY FROM DISK=N'$safePath' WITH CHECKSUM" -Description "Backup verification" | Out-Null
+        Write-Log "[OK] Backup verification completed" "Green"
+    } catch {
+        Write-Log "ERROR: Backup verification failed: $($_.Exception.Message)" "Red"
+        return
+    }
+
+    # Stop services
+    Write-Log "Stopping services..." "Yellow"
+    @("WSUSService", "W3SVC") | ForEach-Object {
+        Stop-Service -Name $_ -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 3
+
+    # Restore database. Each sqlcmd call is checked; do not report success or run
+    # postinstall if any database transition fails.
+    Write-Log "Restoring database..." "Yellow"
+    $restoreSucceeded = $false
+    try {
+        Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;" -Description "Set SUSDB single-user" | Out-Null
+        Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "RESTORE DATABASE SUSDB FROM DISK='$safePath' WITH REPLACE, STATS=10" -Description "RESTORE DATABASE SUSDB" | Out-Null
+        Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "ALTER DATABASE SUSDB SET MULTI_USER;" -Description "ALTER DATABASE SUSDB SET MULTI_USER" | Out-Null
+        $restoreSucceeded = $true
+    } catch {
+        Write-Log "ERROR: Database restore failed: $($_.Exception.Message)" "Red"
+        try {
+            Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "IF EXISTS (SELECT 1 FROM sys.databases WHERE name='SUSDB') ALTER DATABASE SUSDB SET MULTI_USER;" -Description "Restore failure cleanup" | Out-Null
+        } catch {
+            Write-Log "WARNING: Failed to return SUSDB to multi-user mode: $($_.Exception.Message)" "Yellow"
+        }
+    }
+
+    if (-not $restoreSucceeded) {
+        Write-Log "Restarting services after failed restore..." "Yellow"
+        @("W3SVC", "WSUSService") | ForEach-Object {
+            Start-Service -Name $_ -ErrorAction SilentlyContinue
+        }
+        return
+    }
+
+    # Start services
+    Write-Log "Starting services..." "Yellow"
+    @("W3SVC", "WSUSService") | ForEach-Object {
+        Start-Service -Name $_ -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 5
+
+    # Post-install
+    Write-Log "Running WSUS postinstall..." "Yellow"
+    $wsusutil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
+    if (Test-Path $wsusutil) {
+        & $wsusutil postinstall SQL_INSTANCE_NAME="$SqlInstance" CONTENT_DIR="$ContentPath" 2>$null
+    }
+
+    # Content reset -- must stop WSUS before resetting so the service picks up
+    # the re-verification flags on startup (matches standalone Reset behavior)
+    if (Test-Path $wsusutil) {
+        Write-Log "Stopping WSUS for content reset..." "Yellow"
+        Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        Write-Log "Running WSUS reset (flags content for re-verification)..." "Yellow"
+        & $wsusutil reset 2>$null
+        Write-Log "Starting WSUS..." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    } else {
+        Write-Log "wsusutil.exe not found - skipping content reset. Start WSUS manually." "Yellow"
+        Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    }
+
+    Write-Banner "RESTORE COMPLETE"
+    Write-Log "[OK] Database restored" "Green"
+    Write-Log "[OK] Content reset flagged -- WSUS will re-verify and re-download missing files" "Green"
+}
+
+# ============================================================================
+# COPY FOR AIR-GAP OPERATION
+# ============================================================================
+
+function Get-FolderSize {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return 0 }
+    $size = (Get-ChildItem -Path $Path -Recurse -File -ErrorAction SilentlyContinue |
+        Measure-Object -Property Length -Sum).Sum
+    return [math]::Round($size / 1GB, 2)
+}
+
+function Format-SizeDisplay {
+    param([decimal]$SizeGB)
+    if ($SizeGB -lt 1) {
+        return "$([math]::Round($SizeGB * 1024, 0)) MB"
+    }
+    return "$SizeGB GB"
+}
+
+function Copy-ToDestination {
+    param(
+        [string]$SourceFolder,
+        [string]$Destination,
+        [switch]$IncludeDatabase,
+        [switch]$IncludeContent
+    )
+
+    # Create destination if needed
+    if (-not (Test-Path $Destination)) {
+        New-Item -Path $Destination -ItemType Directory -Force | Out-Null
+    }
+
+    $step = 1
+    $totalSteps = ([int]$IncludeDatabase.IsPresent + [int]$IncludeContent.IsPresent)
+
+    # Copy database file(s)
+    if ($IncludeDatabase) {
+        Write-Log "[$step/$totalSteps] Copying database backup..." "Yellow"
+        $bakFiles = Get-ChildItem -Path $SourceFolder -Filter "*.bak" -File -ErrorAction SilentlyContinue
+        foreach ($bak in $bakFiles) {
+            $destBakPath = Join-Path $Destination $bak.Name
+            Copy-Item -Path $bak.FullName -Destination $destBakPath -Force
+            $copiedMsg = "  Copied: {0} ({1})" -f $bak.Name, (Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2)))
+            Write-Host $copiedMsg -ForegroundColor Cyan
+        }
+        Write-Log "[OK] Database copied" "Green"
+        $step++
+    }
+
+    # Copy content using shared transfer plan
+    if ($IncludeContent) {
+        $wsusContentSource = Join-Path $SourceFolder "WsusContent"
+        if (Test-Path $wsusContentSource) {
+            Write-Log "[$step/$totalSteps] Copying content (this may take a while)..." "Yellow"
+            $plan = if (Get-Command New-WsusTransferPlan -ErrorAction SilentlyContinue) {
+                New-WsusTransferPlan -Direction Import -SourcePath $SourceFolder -DestinationPath $Destination
+            } else {
+                $null
+            }
+
+            if ($plan -and (Get-Command Invoke-WsusTransferPlan -ErrorAction SilentlyContinue)) {
+                Invoke-WsusTransferPlan -Plan $plan | Out-Null
+                $destContent = $plan.ContentDestination
+                Write-Log "[OK] Content copied" "Green"
+            } else {
+                $destContent = Join-Path $Destination "WsusContent"
+                $robocopyArgs = @(
+                    "`"$wsusContentSource`"", "`"$destContent`"",
+                    "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+                )
+                $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+                if ($proc.ExitCode -lt 8) {
+                    Write-Log "[OK] Content copied" "Green"
+                } else {
+                    Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+                }
+            }
+
+            $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+            $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+            Write-Host "  Destination content: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
+        } else {
+            Write-Log "[$step/$totalSteps] No WsusContent folder in source" "Yellow"
+        }
+    }
+}
+
+function Select-Destination {
+    param([string]$DefaultPath)
+
+    while ($true) {
+        Write-Host ""
+        Write-Host "Destination options:" -ForegroundColor Yellow
+        Write-Host "  1. $DefaultPath (default)"
+        Write-Host "  2. Custom path"
+        Write-Host ""
+        $destChoice = Read-Host "Select destination (1/2)"
+
+        # Validate input - only accept 1, 2, or empty (default)
+        if ($destChoice -eq "" -or $destChoice -eq "1") {
+            return $DefaultPath
+        }
+        elseif ($destChoice -eq "2") {
+            $customPath = Read-Host "Enter destination path"
+            # Validate the custom path
+            $validation = Test-ValidPath -Path $customPath
+            if (-not $validation.IsValid) {
+                Write-Log "ERROR: $($validation.Message)" "Red"
+                return $null
+            }
+            return $validation.CleanPath
+        }
+        else {
+            Write-Host "Invalid selection '$destChoice'. Please enter 1 or 2." -ForegroundColor Red
+            # Loop continues to re-prompt
+        }
+    }
+}
+
+function Invoke-FullCopy {
+    param(
+        [string]$ExportSource,
+        [string]$ContentPath,
+        [string]$DestinationPath  # When provided, skips interactive destination selection
+    )
+
+    Write-Banner "FULL COPY - LATEST EXPORT"
+
+    # Check for root-level database
+    $rootBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $rootContent = Join-Path $ExportSource "WsusContent"
+    $hasRootContent = Test-Path $rootContent
+
+    if (-not $rootBak -and -not $hasRootContent) {
+        Write-Host "No database or content found in root folder." -ForegroundColor Yellow
+        Write-Host "Looking for newest backup in archive..." -ForegroundColor Yellow
+        Write-Host ""
+
+        # Fall back to finding newest in archive
+        $archiveBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+        if ($archiveBak) {
+            $ExportSource = $archiveBak.DirectoryName
+            $rootBak = $archiveBak
+            $rootContent = Join-Path $ExportSource "WsusContent"
+            $hasRootContent = Test-Path $rootContent
+        } else {
+            Write-Log "ERROR: No backups found anywhere in $ExportSource" "Red"
+            return
+        }
+    }
+
+    Write-Host "Source: $ExportSource" -ForegroundColor Cyan
+    Write-Host ""
+
+    if ($rootBak) {
+        Write-Host "Database:" -ForegroundColor Yellow
+        Write-Host "  $($rootBak.Name) ($(Format-SizeDisplay ([math]::Round($rootBak.Length / 1GB, 2))))"
+        Write-Host "  Modified: $($rootBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    }
+
+    if ($hasRootContent) {
+        $contentSize = Get-FolderSize $rootContent
+        $contentFiles = (Get-ChildItem -Path $rootContent -Recurse -File -ErrorAction SilentlyContinue).Count
+        Write-Host ""
+        Write-Host "Content:" -ForegroundColor Yellow
+        Write-Host "  $contentFiles files ($(Format-SizeDisplay $contentSize))"
+    }
+
+    # Use DestinationPath if provided (non-interactive), otherwise prompt
+    if ($DestinationPath) {
+        $destination = $DestinationPath
+    } else {
+        $destination = Select-Destination -DefaultPath $ContentPath
+        if (-not $destination) { return }
+    }
+
+    Write-Host ""
+    Write-Host "Configuration:" -ForegroundColor Yellow
+    Write-Host "  Source: $ExportSource"
+    Write-Host "  Destination: $destination"
+    Write-Host "  Mode: Copy (only newer/missing files)"
+    Write-Host ""
+
+    # Skip confirmation if DestinationPath was provided (non-interactive mode)
+    if (-not $DestinationPath) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
+
+    Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
+        -IncludeDatabase:($null -ne $rootBak) -IncludeContent:$hasRootContent
+
+    Write-Banner "COPY COMPLETE"
+    Write-Host "Files copied to: $destination" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+}
+
+function Invoke-BrowseArchive {
+    param(
+        [string]$ExportSource,
+        [string]$ContentPath
+    )
+
+    $archivePath = Join-Path $ExportSource "Archive"
+    $searchPath = if (Test-Path $archivePath) { $archivePath } else { $ExportSource }
+
+    # YEAR SELECTION
+    :yearLoop while ($true) {
+        Clear-Host
+        Write-Host ("=" * 88) -ForegroundColor Cyan
+        Write-Host "              BROWSE ARCHIVE - SELECT YEAR" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
+        Write-Host ""
+
+        $years = Get-ChildItem -Path $searchPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^\d{4}$' } |
+            Sort-Object Name -Descending
+
+        if (-not $years -or $years.Count -eq 0) {
+            Write-Host "No year folders found in $searchPath" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Expected structure:" -ForegroundColor Gray
+            Write-Host "  $searchPath\2026\Jan\9\" -ForegroundColor Gray
+            Write-Host ""
+            Read-Host "Press Enter to go back"
+            return
+        }
+
+        $i = 1
+        foreach ($year in $years) {
+            $backupCount = (Get-ChildItem -Path $year.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
+            $yearMsg = '  [{0}] {1} ({2} backups)' -f $i, $year.Name, $backupCount
+            Write-Host $yearMsg -ForegroundColor White
+            $i++
+        }
+
+        Write-Host ""
+        Write-Host "  [B] Back" -ForegroundColor Red
+        Write-Host ""
+
+        $yearChoice = Read-Host "Select year"
+        if ($yearChoice -eq 'B' -or $yearChoice -eq 'b') { return }
+
+        $yearIndex = 0
+        if ([int]::TryParse($yearChoice, [ref]$yearIndex) -and $yearIndex -ge 1 -and $yearIndex -le $years.Count) {
+            $selectedYear = $years[$yearIndex - 1]
+
+            # MONTH SELECTION
+            :monthLoop while ($true) {
+                Clear-Host
+                Write-Host ("=" * 88) -ForegroundColor Cyan
+                Write-Host "              BROWSE ARCHIVE - SELECT MONTH ($($selectedYear.Name))" -ForegroundColor Cyan
+                Write-Host ("=" * 88) -ForegroundColor Cyan
+                Write-Host ""
+
+                $months = Get-ChildItem -Path $selectedYear.FullName -Directory -ErrorAction SilentlyContinue |
+                    Sort-Object {
+                        # Sort by month number or alphabetically
+                        $monthNames = @{Jan=1;Feb=2;Mar=3;Apr=4;May=5;Jun=6;Jul=7;Aug=8;Sep=9;Oct=10;Nov=11;Dec=12}
+                        if ($monthNames.ContainsKey($_.Name)) { $monthNames[$_.Name] }
+                        elseif ($_.Name -match '^\d+$') { [int]$_.Name }
+                        else { 99 }
+                    }
+
+                if (-not $months -or $months.Count -eq 0) {
+                    Write-Host "No month folders found in $($selectedYear.FullName)" -ForegroundColor Yellow
+                    Read-Host "Press Enter to go back"
+                    continue yearLoop
+                }
+
+                $i = 1
+                foreach ($month in $months) {
+                    $backupCount = (Get-ChildItem -Path $month.FullName -Filter "*.bak" -File -Recurse -ErrorAction SilentlyContinue).Count
+                    $monthMsg = '  [{0}] {1} ({2} backups)' -f $i, $month.Name, $backupCount
+                    Write-Host $monthMsg -ForegroundColor White
+                    $i++
+                }
+
+                Write-Host ""
+                Write-Host "  [B] Back" -ForegroundColor Red
+                Write-Host ""
+
+                $monthChoice = Read-Host "Select month"
+                if ($monthChoice -eq 'B' -or $monthChoice -eq 'b') { continue yearLoop }
+
+                $monthIndex = 0
+                if ([int]::TryParse($monthChoice, [ref]$monthIndex) -and $monthIndex -ge 1 -and $monthIndex -le $months.Count) {
+                    $selectedMonth = $months[$monthIndex - 1]
+
+                    # BACKUP SELECTION
+                    :backupLoop while ($true) {
+                        Clear-Host
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
+                        Write-Host "       SELECT BACKUP ($($selectedYear.Name) / $($selectedMonth.Name))" -ForegroundColor Cyan
+                        Write-Host ("=" * 88) -ForegroundColor Cyan
+                        Write-Host ""
+
+                        # Find all .bak files directly in the month folder
+                        $bakFiles = Get-ChildItem -Path $selectedMonth.FullName -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+                            Sort-Object Name -Descending
+
+                        if (-not $bakFiles -or $bakFiles.Count -eq 0) {
+                            Write-Host "No backups found in $($selectedMonth.FullName)" -ForegroundColor Yellow
+                            Read-Host "Press Enter to go back"
+                            continue monthLoop
+                        }
+
+                        # Check if WsusContent folder exists alongside the backups
+                        $contentPath = Join-Path $selectedMonth.FullName "WsusContent"
+                        $hasContent = Test-Path $contentPath
+
+                        $i = 1
+                        $backupInfo = @()
+                        foreach ($bakFile in $bakFiles) {
+                            $sizeDisplay = Format-SizeDisplay ([math]::Round($bakFile.Length / 1GB, 2))
+
+                            $type = if ($bakFile.Name -like "FULL*") { "FULL" }
+                                    elseif ($bakFile.Name -like "DIFF*") { "DIFF" }
+                                    else { "    " }
+
+                            $contentMarker = if ($hasContent) { "+ Content" } else { "DB only" }
+
+                            Write-Host "  [$i] $($bakFile.Name) ($sizeDisplay) - $type $contentMarker" -ForegroundColor White
+                            $backupInfo += @{
+                                Folder = $selectedMonth
+                                BakFile = $bakFile
+                                HasContent = $hasContent
+                            }
+                            $i++
+                        }
+
+                        Write-Host ""
+                        Write-Host "  [A] Copy ALL backups listed above" -ForegroundColor Green
+                        Write-Host "  [B] Back" -ForegroundColor Red
+                        Write-Host ""
+
+                        $backupChoice = Read-Host "Select backup"
+                        if ($backupChoice -eq 'B' -or $backupChoice -eq 'b') { continue monthLoop }
+
+                        if ($backupChoice -eq 'A' -or $backupChoice -eq 'a') {
+                            # Copy all backups
+                            $destination = Select-Destination -DefaultPath $ContentPath
+                            if (-not $destination) { continue backupLoop }
+
+                            Write-Host ""
+                            Write-Host "Will copy $($bakFiles.Count) backup(s) to: $destination" -ForegroundColor Yellow
+                            $confirm = Read-Host "Proceed? (Y/n)"
+                            if ($confirm -notin @("Y", "y", "")) { continue backupLoop }
+
+                            foreach ($info in $backupInfo) {
+                                Write-Host ""
+                                Write-Host "Copying: $($info.Folder.Name)" -ForegroundColor Cyan
+                                Copy-ToDestination -SourceFolder $info.Folder.FullName -Destination $destination `
+                                    -IncludeDatabase:($null -ne $info.BakFile) -IncludeContent:$info.HasContent
+                            }
+
+                            Write-Banner "COPY COMPLETE"
+                            Write-Host "All backups copied to: $destination" -ForegroundColor Green
+                            Write-Host ""
+                            Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+                            Read-Host "Press Enter to continue"
+                            return
+                        }
+
+                        $backupIndex = 0
+                        if ([int]::TryParse($backupChoice, [ref]$backupIndex) -and $backupIndex -ge 1 -and $backupIndex -le $bakFiles.Count) {
+                            $selected = $backupInfo[$backupIndex - 1]
+
+                            # Show details and confirm
+                            Clear-Host
+                            Write-Banner "COPY: $($selected.Folder.Name)"
+
+                            Write-Host "Source: $($selected.Folder.FullName)" -ForegroundColor Cyan
+                            Write-Host ""
+
+                            if ($selected.BakFile) {
+                                Write-Host "Database:" -ForegroundColor Yellow
+                                Write-Host "  $($selected.BakFile.Name) ($(Format-SizeDisplay ([math]::Round($selected.BakFile.Length / 1GB, 2))))"
+                            }
+
+                            if ($selected.HasContent) {
+                                $contentPath = Join-Path $selected.Folder.FullName "WsusContent"
+                                $contentSize = Get-FolderSize $contentPath
+                                Write-Host ""
+                                Write-Host "Content:" -ForegroundColor Yellow
+                                Write-Host "  $(Format-SizeDisplay $contentSize)"
+                            }
+
+                            $destination = Select-Destination -DefaultPath $ContentPath
+                            if (-not $destination) { continue backupLoop }
+
+                            Write-Host ""
+                            $confirm = Read-Host "Proceed with copy? (Y/n)"
+                            if ($confirm -notin @("Y", "y", "")) { continue backupLoop }
+
+                            Copy-ToDestination -SourceFolder $selected.Folder.FullName -Destination $destination `
+                                -IncludeDatabase:($null -ne $selected.BakFile) -IncludeContent:$selected.HasContent
+
+                            Write-Banner "COPY COMPLETE"
+                            Write-Host "Files copied to: $destination" -ForegroundColor Green
+                            Write-Host ""
+                            Write-Host "Next step: Run option 2 (Restore Database) to restore the database" -ForegroundColor Yellow
+                            Read-Host "Press Enter to continue"
+                            return
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function Invoke-CopyForAirGap {
+    <#
+    .SYNOPSIS
+        Import WSUS data from external media (Apricorn, optical, USB) to air-gap server
+    .DESCRIPTION
+        Prompts for source path (where external media is mounted) and copies to local WSUS
+    .PARAMETER SourcePath
+        Path to external media containing WSUS export data
+    .PARAMETER DestinationPath
+        Destination path on WSUS server (default: C:\WSUS)
+    .PARAMETER NonInteractive
+        Skip all interactive prompts - requires SourcePath and DestinationPath
+    #>
+    param(
+        [string]$DefaultSource = 'C:\WSUS\Exports',
+        [string]$ContentPath,
+        [string]$SourcePath,
+        [string]$DestinationPath,
+        [switch]$NonInteractive
+    )
+
+    Write-Banner "IMPORT FROM EXTERNAL MEDIA"
+
+    Write-Host "This will import WSUS data from external media to this server." -ForegroundColor Yellow
+    Write-Host "Use this on the AIR-GAP server to import transported data." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Validate DefaultSource - use C:\ if empty
+    if ([string]::IsNullOrWhiteSpace($DefaultSource)) {
+        $DefaultSource = "C:\"
+    }
+
+    $ExportSource = if ($SourcePath) { $SourcePath } else { $DefaultSource }
+
+    if (-not $NonInteractive) {
+        # Prompt for source path
+        Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
+        Write-Host ""
+        $sourceInput = Read-Host "Enter source path (or press Enter for default)"
+
+        $ExportSource = if ($sourceInput) { $sourceInput } else { $DefaultSource }
+    }
+
+    # Validate the source path
+    $validation = Test-ValidPath -Path $ExportSource -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        Write-Host "Make sure the path exists and media is connected." -ForegroundColor Yellow
+        return
+    }
+    $ExportSource = $validation.CleanPath
+
+    if ($NonInteractive) {
+        # Use DestinationPath if provided, otherwise fall back to ContentPath
+        $destPath = if ($DestinationPath) { $DestinationPath } else { $ContentPath }
+        Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath -DestinationPath $destPath
+        return
+    }
+
+    :mainLoop while ($true) {
+        Clear-Host
+        Write-Host ("=" * 88) -ForegroundColor Cyan
+        Write-Host "              IMPORT FROM EXTERNAL MEDIA" -ForegroundColor Cyan
+        Write-Host ("=" * 88) -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Source: $ExportSource" -ForegroundColor Gray
+        Write-Host ""
+
+        # Check what's available
+        $rootBak = Get-ChildItem -Path $ExportSource -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $rootContent = Join-Path $ExportSource "WsusContent"
+        $hasRootContent = Test-Path $rootContent
+
+        if ($rootBak -or $hasRootContent) {
+            $rootInfo = ""
+            if ($rootBak) {
+                $rootInfo += "DB: $($rootBak.LastWriteTime.ToString('yyyy-MM-dd'))"
+            }
+            if ($hasRootContent) {
+                $contentSize = Get-FolderSize $rootContent
+                if ($rootInfo) { $rootInfo += ", " }
+                $rootInfo += "Content: $(Format-SizeDisplay $contentSize)"
+            }
+            Write-Host "[F] Full Copy - Import from root ($rootInfo)" -ForegroundColor White
+        } else {
+            Write-Host "[F] Full Copy - Search for newest backup" -ForegroundColor White
+        }
+
+        Write-Host "[B] Browse Archive - Navigate Year/Month folders" -ForegroundColor White
+        Write-Host "[C] Change Source Path" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "[X] Back to Main Menu" -ForegroundColor Red
+        Write-Host ""
+
+        $choice = Read-Host "Select"
+
+        switch ($choice.ToUpper()) {
+            'F' { Invoke-FullCopy -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
+            'B' { Invoke-BrowseArchive -ExportSource $ExportSource -ContentPath $ContentPath; break mainLoop }
+            'C' {
+                Write-Host ""
+                $newSource = Read-Host "Enter new source path"
+                $validation = Test-ValidPath -Path $newSource -MustExist -PathType Container
+                if ($validation.IsValid) {
+                    $ExportSource = $validation.CleanPath
+                } else {
+                    Write-Host "$($validation.Message)" -ForegroundColor Red
+                    Start-Sleep -Seconds 2
+                }
+            }
+            'X' { return }
+            default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        }
+    }
+}
+
+# ============================================================================
+# EXPORT TO EXTERNAL MEDIA (FOR AIR-GAP TRANSFER)
+# ============================================================================
+
+function Invoke-ExportToDvd {
+    <#
+    .SYNOPSIS
+        Export WSUS data as split zip files for DVD burning
+    .DESCRIPTION
+        Zips source data and splits into 4.3GB chunks for single-layer DVD burning
+    #>
+    param(
+        [string]$DefaultSource = 'C:\WSUS\Exports',
+        [string]$ContentPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ContentPath)) {
+        $ContentPath = $script:ContentPath
+    }
+
+    Write-Banner "EXPORT FOR DVD BURNING"
+
+    # Check for 7-Zip
+    $sevenZip = $null
+    $sevenZipPaths = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe",
+        (Get-Command 7z.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+    )
+    foreach ($path in $sevenZipPaths) {
+        if ($path -and (Test-Path $path)) {
+            $sevenZip = $path
+            break
+        }
+    }
+
+    if (-not $sevenZip) {
+        Write-Log "ERROR: 7-Zip not found" "Red"
+        Write-Host "Please install 7-Zip from https://www.7-zip.org/" -ForegroundColor Yellow
+        Write-Host "Required for creating split archives for DVD burning." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "This will create split zip files sized for single-layer DVDs (4.3GB each)." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Prompt for source
+    Write-Host "Source options:" -ForegroundColor Cyan
+    Write-Host "  1. Network share: $DefaultSource"
+    Write-Host "  2. Local WSUS: $ContentPath"
+    Write-Host "  3. Custom path"
+    Write-Host ""
+    $sourceChoice = Read-Host "Select source (1/2/3)"
+
+    $source = switch ($sourceChoice) {
+        "1" { $DefaultSource }
+        "2" { $ContentPath }
+        "3" {
+            $customSource = Read-Host "Enter source path"
+            $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+            if ($validation.IsValid) { $validation.CleanPath } else { $null }
+        }
+        default { $DefaultSource }
+    }
+
+    if (-not $source) {
+        Write-Log "ERROR: Invalid source path" "Red"
+        return
+    }
+
+    $validation = Test-ValidPath -Path $source -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $source = $validation.CleanPath
+
+    # Calculate source size
+    Write-Host ""
+    Write-Host "Calculating source size..." -ForegroundColor Yellow
+    $sourceSize = Get-FolderSize $source
+    $estimatedDvds = [math]::Ceiling($sourceSize / 4.3)
+    Write-Host "Source: $source" -ForegroundColor Cyan
+    Write-Host "  Total size: $(Format-SizeDisplay $sourceSize)"
+    Write-Host "  Estimated DVDs needed: $estimatedDvds (4.3GB each)"
+    Write-Host ""
+
+    # Prompt for output location
+    Write-Host "Output location for zip files:" -ForegroundColor Cyan
+    Write-Host "  Example: D:\DVD-Export  C:\Temp\WSUS-DVDs" -ForegroundColor Gray
+    Write-Host ""
+    $outputPath = Read-Host "Enter output path"
+
+    # Validate output path format (doesn't need to exist yet)
+    $validation = Test-ValidPath -Path $outputPath
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $outputPath = $validation.CleanPath
+
+    # Create output if needed
+    if (-not (Test-Path $outputPath)) {
+        New-Item -Path $outputPath -ItemType Directory -Force | Out-Null
+    }
+
+    # Check available space
+    $outputDrive = (Get-Item $outputPath).PSDrive
+    if ($outputDrive) {
+        $freeGB = [math]::Round($outputDrive.Free / 1GB, 2)
+        Write-Host "  Available space: $freeGB GB" -ForegroundColor $(if ($freeGB -lt $sourceSize) { "Red" } else { "Green" })
+        if ($freeGB -lt $sourceSize) {
+            Write-Host "  WARNING: May not have enough space for compressed archive" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    $confirm = Read-Host "Proceed with DVD export? (Y/n)"
+    if ($confirm -notin @("Y", "y", "")) { return }
+
+    # Create split archive using 7-Zip
+    $archiveName = "WSUS_Export_$(Get-Date -Format 'yyyyMMdd')"
+    $archivePath = Join-Path $outputPath "$archiveName.7z"
+
+    Write-Log "Creating split archive (4.3GB volumes)..." "Yellow"
+    Write-Host "This may take a while depending on data size..." -ForegroundColor Gray
+    Write-Host ""
+
+    # 7z a -v4300m = split into 4300MB volumes
+    $sevenZipArgs = @(
+        "a",                    # add to archive
+        "-v4300m",              # split into 4.3GB volumes (DVD size)
+        "-mx=1",                # fast compression (speed over size)
+        "-mmt=on",              # multi-threading
+        "`"$archivePath`"",     # output archive
+        "`"$source\*`""         # source files
+    )
+
+    $proc = Start-Process -FilePath $sevenZip -ArgumentList $sevenZipArgs -Wait -PassThru -NoNewWindow
+    if ($proc.ExitCode -eq 0) {
+        Write-Log "[OK] Archive created successfully" "Green"
+    } else {
+        Write-Log "[WARN] 7-Zip exit code: $($proc.ExitCode)" "Yellow"
+    }
+
+    # List created files
+    Write-Host ""
+    Write-Host "Created files:" -ForegroundColor Cyan
+    $createdFiles = Get-ChildItem -Path $outputPath -Filter "$archiveName.*" | Sort-Object Name
+    $totalParts = $createdFiles.Count
+    foreach ($file in $createdFiles) {
+        Write-Host "  $($file.Name) ($(Format-SizeDisplay ([math]::Round($file.Length / 1GB, 2))))"
+    }
+
+    Write-Banner "DVD EXPORT COMPLETE"
+    Write-Host "Output location: $outputPath" -ForegroundColor Green
+    Write-Host "Total parts: $totalParts" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Burning instructions:" -ForegroundColor Yellow
+    Write-Host "  1. Burn each .7z.001, .7z.002, etc. to separate DVDs"
+    Write-Host "  2. Label DVDs: 'WSUS Export $(Get-Date -Format 'yyyy-MM-dd') - Disc N of $totalParts'"
+    Write-Host "  3. On air-gap server, copy all parts to one folder"
+    Write-Host "  4. Extract with: 7z x $archiveName.7z.001"
+    Write-Host "  5. Run option 3 to import the extracted data"
+    Write-Host ""
+}
+
+function Invoke-ExportToMedia {
+    <#
+    .SYNOPSIS
+        Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
+    .DESCRIPTION
+        Prompts for source and destination, copies all content.
+        When DestinationPath is provided, runs in non-interactive mode (for GUI).
+    #>
+    param(
+        [string]$DefaultSource = 'C:\WSUS\Exports',
+        [string]$ContentPath,
+        [string]$SourcePath,
+        [string]$DestinationPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ContentPath)) {
+        $ContentPath = $script:ContentPath
+    }
+
+    # Determine if running in non-interactive mode (GUI mode)
+    $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
+
+    Write-Banner "COPY DATA TO EXTERNAL MEDIA"
+
+    Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
+    Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Validate paths - use defaults if empty
+    if ([string]::IsNullOrWhiteSpace($DefaultSource)) {
+        $DefaultSource = "C:\"
+    }
+    if ([string]::IsNullOrWhiteSpace($ContentPath)) {
+        $ContentPath = $script:ContentPath
+    }
+
+    # Determine source path
+    if ($nonInteractive) {
+        # Non-interactive: Use SourcePath if provided, otherwise use ContentPath (local WSUS)
+        $source = if (-not [string]::IsNullOrWhiteSpace($SourcePath)) { $SourcePath } else { $ContentPath }
+    } else {
+        # Interactive mode: Prompt for source
+        Write-Host "Source options:" -ForegroundColor Cyan
+        Write-Host "  1. Network share: $DefaultSource [Default]"
+        Write-Host "  2. Local WSUS: $ContentPath"
+        Write-Host "  3. Custom path"
+        Write-Host ""
+        $sourceChoice = Read-Host "Select source (1/2/3) [1]"
+        if ([string]::IsNullOrWhiteSpace($sourceChoice)) { $sourceChoice = "1" }
+
+        $source = switch ($sourceChoice) {
+            "1" { $DefaultSource }
+            "2" { $ContentPath }
+            "3" {
+                $customSource = Read-Host "Enter source path"
+                $validation = Test-ValidPath -Path $customSource -MustExist -PathType Container
+                if ($validation.IsValid) { $validation.CleanPath } else { $null }
+            }
+            default { $DefaultSource }
+        }
+    }
+
+    # Validate source path
+    if (-not $source) {
+        Write-Log "ERROR: Invalid source path" "Red"
+        return
+    }
+    $validation = Test-ValidPath -Path $source -MustExist -PathType Container
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $source = $validation.CleanPath
+
+    # Check what's in source
+    $sourceBak = Get-ChildItem -Path $source -Filter "*.bak" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $sourceContent = Join-Path $source "WsusContent"
+    $hasContent = Test-Path $sourceContent -ErrorAction SilentlyContinue
+
+    Write-Host ""
+    Write-Host "Source: $source" -ForegroundColor Cyan
+    if ($sourceBak) {
+        Write-Host "  Database: $($sourceBak.Name) ($(Format-SizeDisplay ([math]::Round($sourceBak.Length / 1GB, 2))))"
+        Write-Host "  Modified: $($sourceBak.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    } else {
+        Write-Host "  Database: None found" -ForegroundColor Yellow
+    }
+    if ($hasContent) {
+        $contentSize = Get-FolderSize $sourceContent
+        $contentFiles = (Get-ChildItem -Path $sourceContent -Recurse -File -ErrorAction SilentlyContinue).Count
+        Write-Host "  Content: $contentFiles files ($(Format-SizeDisplay $contentSize))"
+    } else {
+        Write-Host "  Content: None found" -ForegroundColor Yellow
+    }
+    Write-Host ""
+
+    # Determine destination path
+    if ($nonInteractive) {
+        # Non-interactive: Use provided DestinationPath
+        $destination = $DestinationPath
+    } else {
+        # Interactive mode: Prompt for destination
+        Write-Host "Destination (external media path):" -ForegroundColor Cyan
+        Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
+        Write-Host ""
+        $destination = Read-Host "Enter destination path"
+    }
+
+    # Validate destination path format
+    $validation = Test-ValidPath -Path $destination
+    if (-not $validation.IsValid) {
+        Write-Log "ERROR: $($validation.Message)" "Red"
+        return
+    }
+    $destination = $validation.CleanPath
+
+    # Create destination if needed
+    if (-not (Test-Path $destination)) {
+        Write-Host "Creating destination: $destination" -ForegroundColor Yellow
+        try {
+            New-Item -Path $destination -ItemType Directory -Force | Out-Null
+        } catch {
+            Write-Log "ERROR: Cannot create destination: $($_.Exception.Message)" "Red"
+            return
+        }
+    }
+
+    # Show summary
+    Write-Host ""
+    Write-Host "Configuration:" -ForegroundColor Yellow
+    Write-Host "  Source:      $source"
+    Write-Host "  Destination: $destination"
+    Write-Host "  Mode:        Full (all files)"
+    Write-Host ""
+
+    # Skip confirmation in non-interactive mode
+    if (-not $nonInteractive) {
+        $confirm = Read-Host "Proceed with copy? (Y/n)"
+        if ($confirm -notin @("Y", "y", "")) { return }
+    }
+
+    # Copy database
+    if ($sourceBak) {
+        Write-Log "[1/2] Copying database backup..." "Yellow"
+        Copy-Item -Path $sourceBak.FullName -Destination $destination -Force
+        Write-Log "[OK] Database copied: $($sourceBak.Name)" "Green"
+    } else {
+        Write-Log "[1/2] No database backup to copy" "Yellow"
+    }
+
+    # Copy content using shared transfer plan
+    if ($hasContent) {
+        Write-Log "[2/2] Copying content (this may take a while)..." "Yellow"
+        $plan = if (Get-Command New-WsusTransferPlan -ErrorAction SilentlyContinue) {
+            New-WsusTransferPlan -Direction Export -SourcePath $source -DestinationPath $destination
+        } else {
+            $null
+        }
+
+        if ($plan -and (Get-Command Invoke-WsusTransferPlan -ErrorAction SilentlyContinue)) {
+            Invoke-WsusTransferPlan -Plan $plan | Out-Null
+            $destContent = $plan.ContentDestination
+            Write-Log "[OK] Content copied" "Green"
+        } else {
+            $destContent = Join-Path $destination "WsusContent"
+            $robocopyArgs = @(
+                "`"$sourceContent`"", "`"$destContent`"",
+                "/E", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
+            )
+            $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+            if ($proc.ExitCode -lt 8) {
+                Write-Log "[OK] Content copied" "Green"
+            } else {
+                Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+            }
+        }
+
+        $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+        $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+        Write-Host "  Exported: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
+    } else {
+        Write-Log "[2/2] No content folder to copy" "Yellow"
+    }
+
+    Write-Banner "COPY COMPLETE"
+    Write-Host "Data copied to: $destination" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next steps:" -ForegroundColor Yellow
+    Write-Host "  1. Safely eject the external media"
+    Write-Host "  2. Transport to air-gap server"
+    Write-Host "  3. Import to air-gap server using WSUS Manager"
+    Write-Host ""
+}
+
+# ============================================================================
+# HEALTH CHECK OPERATION
+# ============================================================================
+
+function Invoke-WsusHealthCheck {
+    param(
+        [string]$ContentPath,
+        [string]$SqlInstance,
+        [switch]$Repair
+    )
+
+    Write-Banner "WSUS HEALTH CHECK"
+
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusHealth.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusPermissions.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusFirewall.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusServices.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHostEnvironment.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusRepairPlan.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHealth.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
+
+        if ($Repair) {
+            Write-Host "Running health check with AUTO-REPAIR..." -ForegroundColor Yellow
+            $result = Test-WsusHealth -ContentPath $ContentPath -SqlInstance $SqlInstance -IncludeDatabase
+            if ($result.Overall -ne "Healthy") {
+                Repair-WsusHealth -ContentPath $ContentPath -SqlInstance $SqlInstance
+                Test-WsusHealth -ContentPath $ContentPath -SqlInstance $SqlInstance -IncludeDatabase
+            }
+        } else {
+            Test-WsusHealth -ContentPath $ContentPath -SqlInstance $SqlInstance -IncludeDatabase
+        }
+    } else {
+        # Inline basic health check
+        Write-Host "Service Status:" -ForegroundColor Yellow
+        $sqlServiceName = if ($script:SqlInstance -match '\\([^\\]+)$') { "MSSQL`$$($Matches[1])" } else { 'MSSQLSERVER' }
+        @("WSUSService", "W3SVC", $sqlServiceName) | ForEach-Object {
+            try {
+                $svc = Get-Service -Name $_ -ErrorAction Stop
+                $color = if ($svc.Status -eq "Running") { "Green" } else { "Red" }
+                Write-Host "  $_`: $($svc.Status)" -ForegroundColor $color
+            } catch {
+                Write-Host "  $_`: NOT FOUND" -ForegroundColor Red
+            }
+        }
+
+        Write-Host ""
+        Write-Host "Content Path:" -ForegroundColor Yellow
+        if (Test-Path $ContentPath) {
+            $size = [math]::Round((Get-ChildItem $ContentPath -Recurse -File -ErrorAction SilentlyContinue |
+                Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+            Write-Host "  $ContentPath`: $size GB" -ForegroundColor Green
+        } else {
+            Write-Host "  $ContentPath`: NOT FOUND" -ForegroundColor Red
+        }
+    }
+}
+
+# ============================================================================
+# COMPREHENSIVE DIAGNOSTICS OPERATION
+# ============================================================================
+
+function Invoke-WsusDiagnosticsOperation {
+    <#
+    .SYNOPSIS
+        Runs comprehensive WSUS diagnostics with automatic fixes.
+
+    .DESCRIPTION
+        Performs system scan including services, SQL protocols, database checks,
+        firewall rules, permissions, WSUS app pool, plus deep content/download
+        diagnostics for stuck 99% downloads and post-import install failures.
+    #>
+    param(
+        [string]$ContentPath,
+        [string]$SqlInstance
+    )
+
+    Write-Banner "WSUS COMPREHENSIVE DIAGNOSTICS"
+
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusHealth.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusPermissions.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusFirewall.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusServices.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHostEnvironment.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusRepairPlan.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusHealth.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
+
+        # Run comprehensive diagnostics with auto-fix enabled, then run deeper
+        # content/download checks that target stuck post-import downloads.
+        $result = Invoke-WsusDiagnostics -ContentPath $ContentPath -SqlInstance $SqlInstance -AutoFix
+        $deepResult = Invoke-WsusDeepDiagnostics -ContentPath $ContentPath -SqlInstance $SqlInstance -AutoFix
+        $mergedReport = $null
+        if ($result.DiagnosticReport -and $deepResult.DiagnosticReport -and (Get-Command Merge-WsusDiagnosticReports -ErrorAction SilentlyContinue)) {
+            $mergedReport = Merge-WsusDiagnosticReports -Reports @($result.DiagnosticReport, $deepResult.DiagnosticReport)
+        }
+
+        $combined = if ($result -and $deepResult) {
+            $combinedHealthy = [bool]($result.Healthy -and $deepResult.Healthy)
+            if ($mergedReport) {
+                $mergedReport.Healthy = $combinedHealthy
+            }
+            if ($mergedReport -and (Get-Command ConvertTo-WsusLegacyDiagnosticResult -ErrorAction SilentlyContinue)) {
+                $legacyCombined = ConvertTo-WsusLegacyDiagnosticResult -Report $mergedReport
+                $legacyCombined['Healthy'] = $combinedHealthy
+                $legacyCombined['Standard'] = $result
+                $legacyCombined['Deep'] = $deepResult
+                $legacyCombined
+            } else {
+                @{
+                    Healthy = $combinedHealthy
+                    IssuesFound = [int]($result.IssuesFound + $deepResult.IssuesFound)
+                    IssuesFixed = [int]($result.IssuesFixed + $deepResult.IssuesFixed)
+                    Standard = $result
+                    Deep = $deepResult
+                    DiagnosticReport = $mergedReport
+                }
+            }
+        } else {
+            $result
+        }
+
+        $reportPath = $env:WSUS_REPORT_PATH
+        if ($mergedReport -and -not [string]::IsNullOrWhiteSpace($reportPath)) {
+            try {
+                $reportDirectory = Split-Path -Parent $reportPath
+                if ($reportDirectory -and -not (Test-Path $reportDirectory)) {
+                    New-Item -Path $reportDirectory -ItemType Directory -Force | Out-Null
+                }
+                $mergedReport | ConvertTo-Json -Depth 8 | Set-Content -Path $reportPath -Encoding UTF8
+                Write-Host "[INFO] Diagnostic report written to $reportPath" -ForegroundColor Cyan
+            } catch {
+                Write-Warning "Failed to write diagnostic report to ${reportPath}: $($_.Exception.Message)"
+            }
+        }
+
+        if ($combined.Healthy) {
+            Write-Host "`n[SUCCESS] System is healthy!" -ForegroundColor Green
+        } elseif ($combined.IssuesFixed -gt 0) {
+            Write-Host "`n[INFO] $($combined.IssuesFixed) issue(s) were automatically fixed." -ForegroundColor Yellow
+        } else {
+            Write-Host "`n[WARNING] Issues detected that require manual intervention." -ForegroundColor Red
+        }
+
+        return $combined
+    } else {
+        # Fallback to basic health check if modules not found
+        Write-Host "Modules not found, falling back to basic check..." -ForegroundColor Yellow
+        Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair
+    }
+}
+
+# ============================================================================
+# CLEANUP OPERATION
+# ============================================================================
+
+function Invoke-WsusCleanup {
+    param(
+        [switch]$Force
+    )
+
+    Write-Banner "WSUS DEEP CLEANUP"
+
+    # Check sysadmin permissions before proceeding
+    if (-not (Assert-SqlSysadmin -SqlInstance $SqlInstance -OperationName "Deep Cleanup")) {
+        return
+    }
+
+    # Use the globally resolved modules folder
+    if ($ModulesFolder -and (Test-Path (Join-Path $ModulesFolder "WsusDatabase.psm1"))) {
+        try {
+            Import-Module (Join-Path $ModulesFolder "WsusUtilities.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusDatabase.psm1") -Force -ErrorAction Stop
+            Import-Module (Join-Path $ModulesFolder "WsusServices.psm1") -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to import modules: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
+    } else {
+        Write-Host "ERROR: WsusDatabase.psm1 module not found. Cannot perform deep cleanup." -ForegroundColor Red
+        return
+    }
+
+    Write-Host "This performs comprehensive WSUS database cleanup:" -ForegroundColor Yellow
+    Write-Host "  1. Runs WSUS built-in cleanup (decline superseded, remove obsolete)"
+    Write-Host "  2. Removes supersession records from database"
+    Write-Host "  3. Deletes declined updates from database"
+    Write-Host "  4. Rebuilds/reorganizes fragmented indexes"
+    Write-Host "  5. Updates database statistics"
+    Write-Host "  6. Shrinks database to reclaim space"
+    Write-Host ""
+    Write-Host "WARNING: WSUS will be offline for 30-90 minutes" -ForegroundColor Red
+    Write-Host ""
+
+    if (-not $Force) {
+        $response = Read-Host "Proceed? (yes/no)"
+        if ($response -ne "yes") {
+            Write-Host "Cancelled." -ForegroundColor Yellow
+            return
+        }
+    }
+
+    $cleanupStart = Get-Date
+
+    # Stop WSUS to reduce contention during database operations
+    Write-Log "Stopping WSUS Service..." "Yellow"
+    Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 5
+
+    # Verify SQL is still accepting connections after WSUS stop
+    $sqlReady = $false
+    for ($retry = 1; $retry -le 3; $retry++) {
+        try {
+            $sqlcmdPath = @(
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+                "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($sqlcmdPath) {
+                $null = & $sqlcmdPath -S $SqlInstance -E -Q "SELECT 1" -W -h -1 2>&1
+                if ($LASTEXITCODE -eq 0) { $sqlReady = $true; break }
+            }
+        } catch {
+            Write-Verbose "SQL readiness probe failed: $($_.Exception.Message)"
+        }
+        Write-Log "Waiting for SQL connection (attempt $retry/3)..." "Yellow"
+        Start-Sleep -Seconds 5
+    }
+    if (-not $sqlReady) {
+        Write-Log "[WARN] SQL connection not ready - database operations may fail" "Yellow"
+    }
+
+    # Step 1: Run WSUS built-in cleanup
+    Write-Log "Step 1/6: Running WSUS built-in cleanup..." "Yellow"
+    try {
+        Import-Module UpdateServices -ErrorAction SilentlyContinue
+        $cleanupResult = Invoke-WsusServerCleanup -CleanupObsoleteUpdates -CleanupUnneededContentFiles -CompressUpdates -DeclineSupersededUpdates -Confirm:$false
+        Write-Log "[OK] WSUS cleanup completed" "Green"
+        if ($cleanupResult) {
+            Write-Host $cleanupResult -ForegroundColor Gray
+        }
+    } catch {
+        Write-Log "[WARN] WSUS cleanup warning: $_" "Yellow"
+    }
+
+    # Step 2: Remove supersession records for declined updates
+    Write-Log "Step 2/6: Removing supersession records for declined updates..." "Yellow"
+    try {
+        $deletedDeclined = Remove-DeclinedSupersessionRecords -SqlInstance $SqlInstance
+        Write-Log "[OK] Removed $deletedDeclined supersession records for declined updates" "Green"
+    } catch {
+        Write-Log "[WARN] Failed to remove declined supersession records: $_" "Yellow"
+    }
+
+    # Step 3: Remove supersession records for superseded updates (batched)
+    Write-Log "Step 3/6: Removing supersession records for superseded updates (batched)..." "Yellow"
+    try {
+        $deletedSuperseded = Remove-SupersededSupersessionRecords -SqlInstance $SqlInstance -ShowProgress
+        Write-Log "[OK] Removed $deletedSuperseded supersession records for superseded updates" "Green"
+    } catch {
+        Write-Log "[WARN] Failed to remove superseded supersession records: $_" "Yellow"
+    }
+
+    # Step 4: Delete declined updates from database using spDeleteUpdate
+    Write-Log "Step 4/6: Deleting declined updates from database..." "Yellow"
+    try {
+        # Get declined updates via WSUS API
+        $wsus = Get-WsusServer -Name localhost -PortNumber $script:WsusPort -ErrorAction Stop
+        $declinedUpdates = $wsus.GetUpdates() | Where-Object { $_.IsDeclined }
+        $declinedIDs = @($declinedUpdates | Select-Object -ExpandProperty Id | ForEach-Object { $_.UpdateId })
+
+        if ($declinedIDs.Count -gt 0) {
+            Write-Log "Found $($declinedIDs.Count) declined updates to delete..." "Yellow"
+
+            $batchSize = 100
+            $totalDeleted = 0
+            $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
+            $currentBatch = 0
+
+            for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
+                $currentBatch++
+                $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+
+                foreach ($updateId in $batch) {
+                    # Use single-quote here-string to prevent PowerShell variable expansion
+                    $deleteQuery = @'
+DECLARE @LocalUpdateID int
+DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
+SELECT @LocalUpdateID = LocalUpdateID FROM tbUpdate WHERE UpdateID = @UpdateGuid
+IF @LocalUpdateID IS NOT NULL
+    EXEC spDeleteUpdate @localUpdateID = @LocalUpdateID
+'@
+                    # Suppress errors - spDeleteUpdate errors are expected for updates with dependencies
+                    # Use Invoke-WsusSqlcmd wrapper for TrustServerCertificate compatibility
+                    try {
+                        Invoke-WsusSqlcmd -ServerInstance $SqlInstance `
+                            -Query $deleteQuery -QueryTimeout 300 `
+                            -Variable "UpdateIdParam=$updateId" | Out-Null
+                        $totalDeleted++
+                    } catch {
+                        Write-Verbose "Skipping declined update delete for ${updateId}: $($_.Exception.Message)"
+                    }
+                }
+
+                $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
+                Write-Log "  Progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted" "Gray"
+            }
+            Write-Log "[OK] Deleted $totalDeleted declined updates from database" "Green"
+        } else {
+            Write-Log "[OK] No declined updates found to delete" "Green"
+        }
+    } catch {
+        Write-Log "[WARN] Failed to delete declined updates: $_" "Yellow"
+    }
+
+    # Step 5: Rebuild/reorganize fragmented indexes
+    Write-Log "Step 5/6: Optimizing database indexes (may take 5-15 minutes)..." "Yellow"
+    try {
+        $indexResult = Optimize-WsusIndexes -SqlInstance $SqlInstance -ShowProgress
+        Write-Log "[OK] Index optimization complete (Rebuilt: $($indexResult.Rebuilt), Reorganized: $($indexResult.Reorganized))" "Green"
+
+        # Also update statistics
+        Write-Log "Updating database statistics..." "Yellow"
+        if (Update-WsusStatistics -SqlInstance $SqlInstance) {
+            Write-Log "[OK] Statistics updated" "Green"
+        }
+    } catch {
+        Write-Log "[WARN] Index optimization failed: $_" "Yellow"
+    }
+
+    # Step 6: Shrink database to reclaim space
+    Write-Log "Step 6/6: Shrinking database to reclaim space..." "Yellow"
+    try {
+        # Get size before shrink
+        $sizeBefore = Get-WsusDatabaseSize -SqlInstance $SqlInstance
+
+        if (Invoke-WsusDatabaseShrink -SqlInstance $SqlInstance) {
+            $sizeAfter = Get-WsusDatabaseSize -SqlInstance $SqlInstance
+            $savedGB = [math]::Round($sizeBefore - $sizeAfter, 2)
+            Write-Log "[OK] Database shrink completed (Before: ${sizeBefore}GB, After: ${sizeAfter}GB, Saved: ${savedGB}GB)" "Green"
+        } else {
+            Write-Log "[WARN] Database shrink did not complete successfully" "Yellow"
+        }
+    } catch {
+        Write-Log "[WARN] Database shrink failed: $_" "Yellow"
+    }
+
+    # Start WSUS back up
+    Write-Log "Starting WSUS Service..." "Yellow"
+    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 5
+
+    # Verify WSUS started
+    $wsusService = Get-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+    if ($wsusService.Status -eq 'Running') {
+        Write-Log "[OK] WSUS Service started successfully" "Green"
+    } else {
+        Write-Log "[WARN] WSUS Service may not have started properly. Please check manually." "Yellow"
+    }
+
+    $cleanupDuration = [math]::Round(((Get-Date) - $cleanupStart).TotalMinutes, 1)
+    Write-Banner "DEEP CLEANUP COMPLETE ($cleanupDuration minutes)"
+    Write-Host "Review the daily log in $script:LogDirectory for detailed cleanup output." -ForegroundColor Green
+}
+
+# ============================================================================
+# RESET OPERATION
+# ============================================================================
+
+function Invoke-WsusReset {
+    Write-Banner "WSUS CONTENT RESET"
+
+    Write-Host "This will re-verify all files and re-download missing content." -ForegroundColor Yellow
+    Write-Host "Expected duration: 30-60 minutes" -ForegroundColor Yellow
+    Write-Host ""
+
+    $wsusutil = "C:\Program Files\Update Services\Tools\wsusutil.exe"
+    if (-not (Test-Path $wsusutil)) {
+        Write-Log "ERROR: wsusutil.exe not found" "Red"
+        return
+    }
+
+    Write-Log "Stopping WSUS..." "Yellow"
+    Stop-Service -Name "WSUSService" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+
+    Write-Log "Running wsusutil reset..." "Yellow"
+    & $wsusutil reset
+
+    Write-Log "Starting WSUS..." "Yellow"
+    Start-Service -Name "WSUSService" -ErrorAction SilentlyContinue
+
+    Write-Banner "RESET COMPLETE"
+    Write-Log "Content will now be re-verified and re-downloaded" "Green"
+}
+
+# ============================================================================
+# OFFICE C2R UPDATES OPERATION
+# ============================================================================
+
+function Invoke-WsusOfficeUpdateDownload {
+    <#
+    .SYNOPSIS
+        Download Microsoft 365 Apps / Office LTSC 2024 C2R updates via ODT
+
+    .DESCRIPTION
+        Uses the Office Deployment Tool to download Click-to-Run update files
+        to a network share that clients can use for local update source.
+
+    .PARAMETER SharePath
+        Network share path for downloaded updates
+
+    .PARAMETER OdtPath
+        Path to ODT setup.exe (auto-detected if omitted)
+
+    .PARAMETER Channel
+        Update channel (default: MonthlyEnterprise)
+
+    .PARAMETER ProductId
+        Product to download (default: OfficeLTSC2024)
+
+    .PARAMETER Language
+        Language code (default: en-us)
+
+    .PARAMETER OfficeClientEdition
+        Architecture (default: 64)
+    #>
+    param(
+        [string]$SharePath,
+        [string]$OdtPath,
+        [string]$Channel = "MonthlyEnterprise",
+        [string]$ProductId = "OfficeLTSC2024",
+        [string]$Language = "en-us",
+        [string]$OfficeClientEdition = "64"
+    )
+
+    # Try to load Office C2R config defaults
+    $officeConfig = if (Get-Command Get-WsusOfficeC2RConfig -ErrorAction SilentlyContinue) {
+        Get-WsusOfficeC2RConfig
+    } else { $null }
+
+    if (-not $SharePath -and $officeConfig) {
+        $SharePath = $officeConfig.DefaultUpdateShare
+    }
+
+    Write-Banner "OFFICE C2R UPDATE DOWNLOAD"
+
+    Write-Host "This downloads Microsoft 365 Apps / Office LTSC 2024 Click-to-Run" -ForegroundColor Yellow
+    Write-Host "update files to a network share for local client updates." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Step 1: Configure share path
+    if ([string]::IsNullOrWhiteSpace($SharePath)) {
+        Write-Host "Network share for Office C2R updates:" -ForegroundColor Cyan
+        Write-Host "  Example: \\FILESERVER\Software\OfficeC2R" -ForegroundColor Gray
+        $SharePath = Read-Host "Enter share path (required)"
+        while ([string]::IsNullOrWhiteSpace($SharePath)) {
+            Write-Host "Share path is required." -ForegroundColor Red
+            $SharePath = Read-Host "Enter share path"
+        }
+    }
+
+    # Validate/share check
+    $shareCheck = Test-WsusOfficeShareAccess -Path $SharePath
+    if (-not $shareCheck.Accessible) {
+        Write-Host "  Share not accessible. Will attempt to create/download anyway." -ForegroundColor Yellow
+        Write-Host "  $($shareCheck.Message)" -ForegroundColor Gray
+    } else {
+        Write-Host "  Share: $($shareCheck.Path)" -ForegroundColor Green
+        Write-Host "  Free space: $($shareCheck.FreeSpaceGB)GB" -ForegroundColor Cyan
+        if ($shareCheck.ExistingFiles -gt 0) {
+            Write-Host "  Existing: $($shareCheck.ExistingFiles) files ($($shareCheck.ExistingSizeGB)GB)" -ForegroundColor Cyan
+        }
+    }
+    Write-Host ""
+
+    # Step 2: Configure product and channel
+    if (-not $PSBoundParameters.ContainsKey('Channel') -or -not $PSBoundParameters.ContainsKey('ProductId')) {
+        Write-Host "Select product to download:" -ForegroundColor Yellow
+        Write-Host "  1. Office LTSC 2024 (ProPlus2024Volume) [default]" -ForegroundColor White
+        Write-Host "  2. Microsoft 365 Apps (O365ProPlusRetail)" -ForegroundColor White
+        Write-Host "  3. Visio LTSC 2024" -ForegroundColor White
+        Write-Host "  4. Project LTSC 2024" -ForegroundColor White
+        Write-Host ""
+        $prodChoice = Read-Host "Select (1-4) [1]"
+
+        switch ($prodChoice) {
+            "2" { $ProductId = "M365Apps"; $Channel = "MonthlyEnterprise" }
+            "3" { $ProductId = "VisioLTSC2024"; $Channel = "LTSC" }
+            "4" { $ProductId = "ProjectLTSC2024"; $Channel = "LTSC" }
+            default { $ProductId = "OfficeLTSC2024"; $Channel = "LTSC" }
+        }
+
+        # For M365 Apps, let user choose channel
+        if ($ProductId -eq "M365Apps") {
+            Write-Host ""
+            Write-Host "Select update channel:" -ForegroundColor Yellow
+            Write-Host "  1. Monthly Enterprise Channel [default] - Most stable for managed environments" -ForegroundColor White
+            Write-Host "  2. Current Channel - Latest features, more frequent updates" -ForegroundColor White
+            Write-Host "  3. Semi-Annual Enterprise Channel - Twice per year" -ForegroundColor White
+            Write-Host ""
+            $chanChoice = Read-Host "Select (1-3) [1]"
+            switch ($chanChoice) {
+                "2" { $Channel = "Current" }
+                "3" { $Channel = "SemiAnnual" }
+                default { $Channel = "MonthlyEnterprise" }
+            }
+        }
+    }
+
+    Write-Host ""
+    Write-Host "Download configuration:" -ForegroundColor Yellow
+    Write-Host "  Product:  $ProductId" -ForegroundColor White
+    Write-Host "  Channel:  $Channel" -ForegroundColor White
+    Write-Host "  Language: $Language" -ForegroundColor White
+    Write-Host "  Arch:     $OfficeClientEdition-bit" -ForegroundColor White
+    Write-Host "  Target:   $SharePath" -ForegroundColor White
+    Write-Host ""
+
+    # Step 3: Find ODT
+    $odtExe = Get-WsusOfficeOdtPath -CustomPath $OdtPath
+    if (-not $odtExe) {
+        Write-Log "ERROR: Office Deployment Tool (setup.exe) not found" "Red"
+        Write-Host "" -ForegroundColor Yellow
+        Write-Host "Download ODT from Microsoft:" -ForegroundColor Yellow
+        Write-Host "  https://www.microsoft.com/en-us/download/details.aspx?id=49117" -ForegroundColor Cyan
+        Write-Host "" -ForegroundColor Yellow
+        Write-Host "Extract setup.exe to a folder (e.g. C:\ODT\) and try again." -ForegroundColor Yellow
+        return
+    }
+    Write-Host "ODT: $odtExe" -ForegroundColor Green
+    Write-Host ""
+
+    # Step 4: Confirm
+    $confirm = Read-Host "Proceed with download? (Y/n)"
+    if ($confirm -notin @("Y", "y", "")) {
+        Write-Log "Office C2R download cancelled" "Yellow"
+        return
+    }
+    Write-Host ""
+
+    # Step 5: Run download
+    $logDir = Join-Path $script:LogDirectory "OfficeC2R"
+    if (-not (Test-Path $logDir)) {
+        New-Item -Path $logDir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $logFile = Join-Path $logDir "OfficeC2R_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+    $result = Invoke-WsusOfficeDownload -SourcePath $SharePath -OdtPath $OdtPath `
+        -Channel $Channel -ProductId $ProductId -Language $Language `
+        -OfficeClientEdition $OfficeClientEdition -LogPath $logFile
+
+    Write-Host ""
+
+    if ($result.Success) {
+        Write-Banner "OFFICE C2R DOWNLOAD COMPLETE"
+        Write-Log "Office C2R download completed successfully" "Green"
+
+        if ($result.DownloadedFiles -gt 0) {
+            Write-Host "  Files downloaded: $($result.DownloadedFiles)" -ForegroundColor Cyan
+            Write-Host "  Size: $($result.DownloadedSizeGB) GB" -ForegroundColor Cyan
+        }
+
+        # Show share structure summary
+        $statusResults = Get-WsusOfficeDownloadStatus -Path $SharePath
+        if ($statusResults) {
+            Write-Host ""
+            Write-Host "Share contents:" -ForegroundColor Yellow
+            foreach ($s in $statusResults) {
+                if ($s.HasData) {
+                    Write-Host "  [$($s.ChannelName)] $($s.Message) - Last: $($s.LastModified.ToString('yyyy-MM-dd'))" -ForegroundColor Green
+                } else {
+                    Write-Host "  [$($s.ChannelName)] $($s.Message)" -ForegroundColor Gray
+                }
+            }
+        }
+
+        Write-Host ""
+        Write-Host "To configure clients via GPO:" -ForegroundColor Yellow
+        Write-Host "  1. Set UpdatePath to: $SharePath" -ForegroundColor White
+        Write-Host "  2. Set Update Channel to match the downloaded channel" -ForegroundColor White
+        Write-Host "  3. Ensure Domain Computers have Read access to the share" -ForegroundColor White
+    } else {
+        Write-Log "Office C2R download failed" "Red"
+        Write-Host "  Error: $($result.Message)" -ForegroundColor Red
+
+        if ($result.OdtFound -and $result.ExitCode -ne 0) {
+            Write-Host ""
+            Write-Host "Troubleshooting:" -ForegroundColor Yellow
+            Write-Host "  • Ensure the target path is writable" -ForegroundColor White
+            Write-Host "  • Check the ODT XML config at: $($result.XmlFile)" -ForegroundColor White
+            Write-Host "  • Run setup.exe /download manually to see detailed output" -ForegroundColor White
+            Write-Host "  • Verify internet connectivity (M365 channels require CDN access)" -ForegroundColor White
+        }
+    }
+    Write-Host ""
+    Write-Host "Press any key to continue..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+# ============================================================================
+# INTERACTIVE MENU
+# ============================================================================
+
+function Show-Menu {
+    Clear-Host
+    Write-Host ("=" * 88) -ForegroundColor Cyan
+    $cliVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+    Write-Host "              WSUS Management v$cliVersion" -ForegroundColor Cyan
+    Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
+    Write-Host ("=" * 88) -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "INSTALLATION" -ForegroundColor Yellow
+    Write-Host "  1. Install WSUS with SQL Express 2022"
+    Write-Host ""
+    Write-Host "DATABASE" -ForegroundColor Yellow
+    Write-Host "  2. Restore Database from $script:ContentPath"
+    Write-Host "  3. Copy Data from External Media (Apricorn)"
+    Write-Host "  4. Copy Data to External Media (Apricorn)"
+    Write-Host ""
+    Write-Host "MAINTENANCE" -ForegroundColor Yellow
+    Write-Host "  5. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  6. Deep Cleanup (Aggressive DB cleanup)"
+    Write-Host ""
+    Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow
+    Write-Host "  7. Diagnostics + Deep Content Repair"
+    Write-Host "  8. Reset Content Download (30+ min)"
+    Write-Host ""
+    Write-Host "CLIENT" -ForegroundColor Yellow
+    Write-Host "  9. Force Client Check-In (run on client)"
+    Write-Host ""
+    Write-Host "OFFICE C2R UPDATES" -ForegroundColor Yellow
+    Write-Host "  10. Download Office LTSC / M365 Apps Updates to Share" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  Q. Quit" -ForegroundColor Red
+    Write-Host ""
+    Write-Host ("=" * 88) -ForegroundColor Cyan
+}
+
+function Invoke-MenuScript {
+    param([string]$Path, [string]$Desc)
+    Write-Log "Launching: $Desc" "Green"
+    if (Test-Path $Path) { & $Path } else { Write-Log "Script not found: $Path" "Red" }
+    Write-Host ""
+    Write-Host "Press any key to continue..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
+function Start-InteractiveMenu {
+    param(
+        [string]$MenuExportRoot
+    )
+    do {
+        Show-Menu
+        $choice = Read-Host "Select"
+
+        # Log user menu selection
+        Add-Content -Path $script:LogFilePath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - Menu selection: $choice" -ErrorAction SilentlyContinue
+
+        switch ($choice) {
+            '1'  { Invoke-MenuScript -Path "$ScriptsFolder\Install-WsusWithSqlExpress.ps1" -Desc "Install WSUS + SQL Express" }
+            '2'  { Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '3'  { Invoke-CopyForAirGap -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }
+            '4'  { Invoke-ExportToMedia -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }
+            '5'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusMonthlyMaintenance.ps1" -Desc "Monthly Maintenance" }
+            '6'  { Invoke-WsusCleanup; pause }
+            '7'  { $null = Invoke-WsusDiagnosticsOperation -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
+            '8'  { Invoke-WsusReset; pause }
+            '9'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
+            '10' { Invoke-WsusOfficeUpdateDownload; pause }
+            'D'  { Invoke-ExportToDvd -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
+            'Q'  { Write-Log "Exiting WSUS Management" "Green"; return }
+            default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        }
+    } while ($choice -ne 'Q')
+}
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
+
+# Handle CLI switches directly to avoid PSScriptAnalyzer unused parameter warnings
+if ($Restore) {
+    Invoke-WsusRestore -ContentPath $ContentPath -SqlInstance $SqlInstance -BackupPath $BackupPath
+} elseif ($Import) {
+    # Use SourcePath if provided, otherwise fall back to ExportRoot
+    $importSource = if ($SourcePath) { $SourcePath } else { $ExportRoot }
+    Invoke-CopyForAirGap -DefaultSource $ExportRoot -ContentPath $ContentPath -SourcePath $importSource -DestinationPath $DestinationPath -NonInteractive
+} elseif ($Export) {
+    # For backward compatibility with current GUI:
+    # - If DestinationPath is set explicitly, use it
+    # - Otherwise, if ExportRoot differs from default, interpret it as the destination
+    $actualDestination = $DestinationPath
+    $actualSource = $SourcePath
+    $defaultExportRoot = 'C:\WSUS\Exports'
+
+    if ([string]::IsNullOrWhiteSpace($actualDestination) -and $ExportRoot -ne $defaultExportRoot) {
+        # GUI is passing destination as ExportRoot - use it as destination, use ContentPath as source
+        $actualDestination = $ExportRoot
+        $actualSource = $ContentPath
+    }
+
+    Invoke-ExportToMedia -DefaultSource $defaultExportRoot -ContentPath $ContentPath `
+        -SourcePath $actualSource -DestinationPath $actualDestination
+} elseif ($Health) {
+    Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance
+} elseif ($Repair) {
+    Invoke-WsusHealthCheck -ContentPath $ContentPath -SqlInstance $SqlInstance -Repair
+} elseif ($Diagnostics -or $DeepDiagnostics) {
+    Invoke-WsusDiagnosticsOperation -ContentPath $ContentPath -SqlInstance $SqlInstance
+} elseif ($Cleanup) {
+    Invoke-WsusCleanup -Force:$Force
+} elseif ($Reset) {
+    Invoke-WsusReset
+} elseif ($OfficeUpdates) {
+    Invoke-WsusOfficeUpdateDownload -SharePath $OfficeSharePath -OdtPath $OfficeOdtPath `
+        -Channel $OfficeChannel -ProductId $OfficeProductId `
+        -Language $OfficeLanguage -OfficeClientEdition $OfficeClientEdition
+} else {
+    Start-InteractiveMenu -MenuExportRoot $ExportRoot
+}
