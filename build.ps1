@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Build portable executable from WSUS Manager PowerShell script.
 
@@ -7,7 +7,7 @@
     Includes code review with PSScriptAnalyzer before building.
 
 .PARAMETER OutputName
-    Name of the output executable (default: WsusManager.exe)
+    Name of the output executable (default: GA-WsusManager.exe)
 
 .PARAMETER SkipCodeReview
     Skip the PSScriptAnalyzer code review step.
@@ -55,7 +55,7 @@ $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptRoot
 
 # Read version from metadata.json (single source of truth)
-$Version = "4.0.5"  # fallback if metadata.json missing
+$Version = "4.1.0"  # fallback if metadata.json missing
 $metadataPath = Join-Path $ScriptRoot "metadata.json"
 if (Test-Path $metadataPath) {
     try {
@@ -638,45 +638,16 @@ if ($GuiTests) {
         Write-Host "  GUI Automation Tests" -ForegroundColor Cyan
         Write-Host "========================================`n" -ForegroundColor Cyan
 
-        $harnessPath = Join-Path $ScriptRoot "Tests\FlaUITestHarness\FlaUITestHarness.psm1"
-        $installScript = Join-Path $ScriptRoot "Tests\FlaUITestHarness\Install-FlaUI.ps1"
-
-        if (-not (Test-Path $harnessPath)) {
-            Write-Host "[!] FlaUI Test Harness not found: $harnessPath" -ForegroundColor Red
+        $guiRunnerPath = Join-Path $ScriptRoot "Tests\Run-GuiTests.ps1"
+        if (-not (Test-Path $guiRunnerPath)) {
+            Write-Host "[!] GUI test runner not found: $guiRunnerPath" -ForegroundColor Red
         }
         elseif (-not (Get-Module -ListAvailable Pester -ErrorAction SilentlyContinue | Where-Object { $_.Version -ge [version]"5.0.0" })) {
             Write-Host "[!] Pester 5+ not installed. GUI tests require Pester." -ForegroundColor Red
         }
         else {
-            if (Test-Path $installScript) {
-                Write-Host "[*] Installing FlaUI packages..." -ForegroundColor Yellow
-                & $installScript
-            }
-
-            Write-Host "[*] Running FlaUI GUI tests..." -ForegroundColor Yellow
-            Import-Module $harnessPath -Force
-
-            $guiTestsPath = Join-Path $ScriptRoot "Tests\FlaUI.Tests.ps1"
-            if (Test-Path $guiTestsPath) {
-                $guiConfig = New-PesterConfiguration
-                $guiConfig.Run.Path = $guiTestsPath
-                $guiConfig.Run.Exit = $false
-                $guiConfig.Output.Verbosity = 'Normal'
-                $guiResult = Invoke-Pester -Configuration $guiConfig
-
-                Write-Host ""
-                Write-Host "========================================" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
-                Write-Host "  GUI Test Results" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
-                Write-Host "========================================" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Green" })
-                Write-Host "  Passed:  $($guiResult.PassedCount)" -ForegroundColor Green
-                Write-Host "  Failed:  $($guiResult.FailedCount)" -ForegroundColor $(if ($guiResult.FailedCount -gt 0) { "Red" } else { "Gray" })
-                Write-Host "  Skipped: $($guiResult.SkippedCount)" -ForegroundColor Yellow
-                Write-Host ""
-
-                if ($guiResult.FailedCount -gt 0) {
-                    Write-Host "[!] GUI tests failed. Check Tests\Screenshots\ for evidence." -ForegroundColor Red
-                }
-            }
+            Write-Host "[*] Running FlaUI GUI tests via interactive-session wrapper..." -ForegroundColor Yellow
+            & $guiRunnerPath -ResultsPath (Join-Path $ScriptRoot "Tests\flaui-test-results.txt") -TimeoutSeconds 300
         }
     }
 }

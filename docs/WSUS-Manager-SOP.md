@@ -51,8 +51,7 @@ Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules (26 modules)
 DomainController/         # Optional - GPO deployment scripts
 QUICK-START.txt           # Quick reference guide
-README.txt                # Full documentation
-CHANGELOG.txt             # Version history and release notes
+README.md                 # Full documentation
 ```
 
 > **IMPORTANT:** The EXE requires Scripts/ and Modules/ folders in the same directory. Do not deploy the EXE alone.
@@ -193,7 +192,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | C:\WSUS\WsusManager\Modules\ | PowerShell modules |
 | %APPDATA%\WsusManager\settings.json | User settings |
 | %APPDATA%\WsusManager\history.json | Operation history (last 100 entries) |
-| %APPDATA%\WsusManager\trending.json | Database size trend data |
+| %APPDATA%\WsusManager\trends.json | Database size trend data |
 
 ---
 

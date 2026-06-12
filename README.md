@@ -33,9 +33,9 @@ WSUS Manager v4.1.0 also adds Office Click-to-Run (C2R) update downloads for Mic
 
 ## Quick Start
 
-1. Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page.
+1. Download `WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page.
 2. Extract the full archive to a folder under `C:\WSUS\` (for example, `C:\WSUS\WsusManager\`).
-3. Right-click `WsusManager.exe` and select **Run as Administrator**.
+3. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
 
 > **Important:** The EXE requires the `Scripts/` and `Modules/` folders in the same directory. Do not move the EXE without also moving those folders.
 
@@ -114,7 +114,7 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 1. **Copy the application.** Extract `WsusManager-vX.X.X.zip` to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`).
 2. **Place the SQL installer.** If the server has no internet access, download SQL Server Express 2022 and SSMS on a connected machine and copy the installers to `C:\WSUS\SQLDB\` on the target server.
-3. **Launch WSUS Manager.** Right-click `WsusManager.exe` and select **Run as Administrator**. The dashboard will show "WSUS Not Installed" — this is expected.
+3. **Launch WSUS Manager.** Right-click `GA-WsusManager.exe` and select **Run as Administrator**. The dashboard will show "WSUS Not Installed" — this is expected.
 4. **Run Install.** Click the **Install WSUS** button. The application will:
    - Use `C:\WSUS` as the WSUS root/content directory by default.
    - Install SQL Server Express 2022 if not already present.
@@ -222,7 +222,7 @@ See [wiki/Office-C2R-Updates.md](wiki/Office-C2R-Updates.md) for the full guide 
 GA-WsusManager/
 ├── Scripts/             # PowerShell entry points (GUI, CLI, install, monthly maintenance, HTTPS, client check-in)
 ├── Modules/             # 26 shared PowerShell modules
-├── Tests/               # 752 Pester tests across 23 test files
+├── Tests/               # 752 Pester tests across 25 test files
 ├── DomainController/    # GPO deployment script + backed-up GPOs
 ├── build/               # Local validation + ship-readiness scripts
 ├── docs/                # SOP, quick-start, CI/CD docs, Confluence export
@@ -236,7 +236,7 @@ GA-WsusManager/
 
 ## Modules
 
-25 PowerShell modules live in `Modules/`. Key ones:
+26 PowerShell modules live in `Modules/`. Key ones:
 
 | Module | Purpose |
 |--------|---------|
@@ -303,9 +303,9 @@ Two-tier CI model — see [docs/ci-cd.md](docs/ci-cd.md) for the full design.
 
 ### Test counts (as of v4.1.0)
 
-- **752 tests** across 23 test files
-- **751 pass, 0 fail, 1 skip** (admin-elevation guard)
-- **40 new tests** for the Office C2R module
+- **752 tests** across 25 test files
+- **Last full documented run:** 751 pass, 0 fail, 1 skip (admin-elevation guard)
+- Office C2R module coverage included
 
 ---
 
@@ -360,6 +360,8 @@ See [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) for the full refe
 | [wiki/Office-C2R-Updates.md](wiki/Office-C2R-Updates.md) | Office C2R feature guide |
 | [wiki/Module-Reference.md](wiki/Module-Reference.md) | Module function reference |
 | [wiki/Changelog.md](wiki/Changelog.md) | Wiki changelog mirror |
+| [docs/ai-audit/README.md](docs/ai-audit/README.md) | AI ship-readiness audit instruction pack |
+| [docs/reports/ship-readiness/ship_readiness_final_report.md](docs/reports/ship-readiness/ship_readiness_final_report.md) | Latest ship-readiness assessment and evidence summary |
 
 ---
 

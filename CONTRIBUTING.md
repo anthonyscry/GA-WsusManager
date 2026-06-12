@@ -18,7 +18,7 @@ Thanks for contributing to WSUS Manager. This repository is a PowerShell WPF pro
 - `Modules/` - reusable WSUS modules
 - `Tests/` - Pester test suites
 - `DomainController/` - GPO deployment assets
-- `Assets/Branding/` - source icon and logo assets used during build/package
+- `Assets/Branding/` - source icon and logo assets; `build.ps1` currently packages root-level copies named `wsus-icon.ico` and `general_atomics_logo_*.ico` when present
 - `build.ps1` - build/test/review entry point
 
 ## Build

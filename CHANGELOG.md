@@ -40,7 +40,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   correct `ScheduleByMonth/DaysOfMonth` Win32 schema
 - **Single-source version** — Added `Get-WsusAppVersion` in `WsusConfig.psm1` that reads
   `metadata.json` (single source of truth). GUI/CLI/maintenance scripts delegate to it
-- **metadata.json version** — Synced from 4.0.4 to 4.0.5 to match real code version
+- **metadata.json version** — Bumped to 4.1.0 so build output, GUI, CLI, and documentation share the same release number
 
 ### Automation
 - `build/Invoke-SyntaxCheck.ps1` — Quick PS parser check across all repo files
@@ -105,7 +105,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **`CLAUDE.md`** — Current Version bumped to 4.1.0
 - **Version inconsistencies** — All v4.0.4/v4.0.5 mismatches across docs resolved.
   All public docs now reference v4.1.0 (with historical version history preserved)
-
+- **Repository cleanup** — Moved AI audit instructions under `docs/ai-audit/`,
+  ship-readiness reports under `docs/reports/`, and removed stale generated root artifacts
 
 ## [4.0.5] - 2026-05-11
 

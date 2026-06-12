@@ -358,16 +358,16 @@ Copy-Item -Path "C:\Temp\file" -ToSession $s2 -Destination "dest\"
 ### Recommended Project Structure
 ```
 Tests/
-├── FlaUI.Tests.ps1              # Unit tests (71 tests, run on dev machine)
-├── FlaUITestHarness/
-│   └── FlaUITestHarness.psm1    # COM UIA helper module
-└── GuiInstallTest.ps1           # E2E install test (run on VM)
+├── FlaUI.Tests.ps1              # FlaUI/Pester tests
+├── GuiFullTest.ps1              # full GUI smoke/navigation harness
+├── Run-GuiTests.ps1             # scheduled-task wrapper for interactive sessions
+└── StartupE2E.Tests.ps1         # startup probe tests
 ```
 
 ### Recommended Test Execution Flow
-1. **Local unit tests** (FlaUI.Tests.ps1) — fast, no VM needed
-2. **VM E2E test** (GuiInstallTest.ps1) — scheduled task via SSH tunnel
-3. **Verification** — check logs + service status + registry
+1. **Local/unit tests** (`Invoke-Pester -Path .\Tests -ExcludeTag 'E2E','GUI','Integration','FlaUI'`) — fast, no VM needed
+2. **GUI automation** (`.\Tests\Run-GuiTests.ps1`) — scheduled task in an interactive desktop session
+3. **Verification** — check logs, service status, registry, and FlaUI result output
 
 ### Deployment Script Pattern
 Write a deploy script that handles everything in one shot:

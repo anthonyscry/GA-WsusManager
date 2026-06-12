@@ -91,7 +91,7 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 
 ### Option 1: Distribution Package (Recommended)
 
-1. Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page
+1. Download `WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page
 2. Extract to `C:\WSUS\` (EXE requires Scripts/ and Modules/ in the same directory)
 3. Right-click `GA-WsusManager.exe` -- Run as Administrator
 
@@ -130,7 +130,7 @@ See [[Changelog]] for complete version history.
 
 ## Support
 
-- **Issues**: [GitHub Issues](../../issues)
+- **Issues**: [GitHub Issues](https://github.com/anthonyscry/GA-WsusManager/issues)
 - **Documentation**: This wiki
 - **Author**: Tony Tran, ISSO, GA-ASI
 

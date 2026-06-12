@@ -2,7 +2,7 @@
 
 **Application:** GA-WsusManager v4.1.0
 **Date:** 2026-06-07
-**Auditor:** AI Agent (per AI_SHIP_READINESS_AUDIT.md protocol)
+**Auditor:** AI Agent (per `docs/ai-audit/AI_SHIP_READINESS_AUDIT.md` protocol)
 
 ---
 
@@ -404,7 +404,7 @@ WSUS Manager does not implement its own authentication — it uses the Windows u
 
 **Existing VMs blocked:** The `LAB\LabAdmin` credential documented in AutomatedLab (`P@ssw0rd-LAB-ONLY-ChangeMe`) does not work on existing VMs. CIM session returns "Access denied". Password differs from documented standard.
 
-**Action taken:** Per AI_LAB_ENVIRONMENT.md instructions, a new Hyper-V VM (`WsusLab-Test01`) was created with known credentials:
+**Action taken:** Per `docs/ai-audit/AI_LAB_ENVIRONMENT.md` instructions, a new Hyper-V VM (`WsusLab-Test01`) was created with known credentials:
 - **VM name:** WsusLab-Test01
 - **Guest OS:** Windows Server 2019 Standard (from AutomatedLab base VHDX)
 - **Credentials (LAB ONLY):** `LabAdmin / WsusLab-Adm1n!2026`
@@ -642,5 +642,5 @@ All fixes from the prior assessment cycle and hardening pass:
 **Final recommendation: SHIP WITH KNOWN RISKS**  
 **Score: 88/100**
 
-Signed: AI Audit Agent per AI_SHIP_READINESS_AUDIT.md protocol
+Signed: AI Audit Agent per `docs/ai-audit/AI_SHIP_READINESS_AUDIT.md` protocol
 Date: 2026-06-07

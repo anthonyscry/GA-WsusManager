@@ -53,7 +53,7 @@ Download these files and save to `C:\WSUS\SQLDB\` (or select their folder when p
 
 ### Option 1: Distribution Package (Recommended)
 
-Download `WsusManager-vX.X.X.zip` from the [Releases](../../releases) page and extract to `C:\WSUS\`.
+Download `WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page and extract to `C:\WSUS\`.
 
 The package includes the EXE, Scripts/, Modules/, DomainController/, and documentation. The EXE requires the Scripts/ and Modules/ folders in the same directory.
 

@@ -105,10 +105,11 @@ GA-WsusManager/
 │   ├── WsusHistory.psm1         # Operation history
 │   ├── WsusNotification.psm1    # Toast/balloon notifications
 │   ├── WsusTrending.psm1        # DB size trending with linear regression
+│   ├── WsusOfficeUpdates.psm1   # Office C2R download via Office Deployment Tool
 │   ├── WsusTestHarness.psm1     # Shared test helpers and evidence paths
 │   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
 │
-├── Tests/                       # Pester test files (19 test files)
+├── Tests/                       # Pester test files (25 *.Tests.ps1 suites)
 │   ├── WsusUtilities.Tests.ps1
 │   ├── WsusConfig.Tests.ps1
 │   ├── WsusDatabase.Tests.ps1
@@ -244,8 +245,7 @@ DomainController/                # Optional -- air-gap GPO scripts
 general_atomics_logo_big.ico
 general_atomics_logo_small.ico
 QUICK-START.txt
-README.txt
-CHANGELOG.txt
+README.md
 ```
 
 **Important:** The EXE requires the `Scripts/` and `Modules/` folders in the same directory. Do not deploy the EXE alone.
@@ -324,10 +324,10 @@ AfterAll {
 
 ### Test Statistics
 
-Current coverage:
-- **490+ tests** across 19 test files
-- All tests passing
-- Covers all exported module functions
+Current coverage inventory:
+- **25 `*.Tests.ps1` suites** plus GUI/run harness scripts
+- Run Pester for current pass/fail counts
+- Covers exported module functions and key integration seams
 - Includes unit, integration, CLI, and GUI tests
 
 Key test file contributions:
@@ -479,7 +479,7 @@ The GUI (`WsusManagementGui.ps1`) uses:
 - **Startup Probe** (`Tests/StartupE2E.Tests.ps1`) launches the GUI in `-E2EStartupProbe` mode and asserts the JSON result file rather than relying on screenshots.
 - **GUI VM Harness** (`Tests/GuiFullTest.ps1`) validates post-install navigation and control state in an interactive desktop session.
 - **Shared Test Harness** (`WsusTestHarness.psm1`) owns repo-root resolution, module-path lookup, STA harness setup, temp/evidence roots, and GUI executable discovery.
-- **VM Evidence Boundary** (`Integrated_GUI_Test_Report_MS01.md`) is the current source of truth for what was actually executed in MS01/WS01 versus what remains unproven.
+- **VM Evidence Boundary** (`docs/reports/Integrated_GUI_Test_Report_MS01.md`) is the current source of truth for what was actually executed in MS01/WS01 versus what remains unproven.
 - **DB Size Trending** (`WsusTrending.psm1`) - Linear regression over last 30 days estimates days until the 10GB SQL Express limit. Shows Critical/Warning alerts on the dashboard.
 
 ### Key Design Patterns
@@ -685,10 +685,9 @@ Types:
 Version format: `MAJOR.MINOR.PATCH`
 
 Update version in:
-1. `build.ps1` - `$script:Version`
-2. `Scripts/WsusManagementGui.ps1` - `$script:AppVersion`
-3. `CHANGELOG.md` - Add new version entry with changes
-4. `CLAUDE.md` - Current Version (in Project Overview section)
+1. `metadata.json` - `"version"` (single source of truth read by build, GUI, CLI, and maintenance scripts)
+2. `CHANGELOG.md` - Add new version entry with changes
+3. `wiki/Changelog.md` - Mirror release-facing changes when the wiki is updated
 
 ---
 

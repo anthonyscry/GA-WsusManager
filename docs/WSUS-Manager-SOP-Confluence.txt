@@ -153,8 +153,7 @@ Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules (26 modules)
 DomainController/         # Optional - GPO deployment scripts
 QUICK-START.txt           # Quick reference and setup guide
-README.txt                # Full documentation
-CHANGELOG.txt             # Version history and release notes
+README.md                 # Full documentation
 {code}
 
 {warning}The EXE requires the Scripts/ and Modules/ folders to be in the same directory. Do not deploy the EXE alone.{warning}
@@ -286,7 +285,7 @@ h3. Deployment Layout
 |C:\WSUS\WsusManager\Modules\|PowerShell modules|
 |%APPDATA%\WsusManager\settings.json|User settings|
 |%APPDATA%\WsusManager\history.json|Operation history (last 100 entries)|
-|%APPDATA%\WsusManager\trending.json|Database size trend data|
+|%APPDATA%\WsusManager\trends.json|Database size trend data|
 
 ----
 

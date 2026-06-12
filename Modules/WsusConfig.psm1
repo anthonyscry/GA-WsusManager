@@ -1,4 +1,4 @@
-﻿<#
+<#
 ===============================================================================
 Module: WsusConfig.psm1
 Author: Tony Tran, ISSO, GA-ASI
@@ -655,13 +655,13 @@ function Get-WsusAppVersion {
         individual files.
 
     .OUTPUTS
-        String with semver-style version (e.g. "4.0.5")
+        String with semver-style version (e.g. "4.1.0")
 
     .EXAMPLE
         Get-WsusAppVersion
-        # Returns "4.0.5"
+        # Returns "4.1.0"
     #>
-    $metadataPath = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'metadata.json'
+    $metadataPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'metadata.json'
     if ($PSScriptRoot -and (Test-Path $metadataPath)) {
         try {
             $meta = Get-Content $metadataPath -Raw | ConvertFrom-Json -ErrorAction Stop
@@ -673,7 +673,7 @@ function Get-WsusAppVersion {
         }
     }
     # Hard-coded fallback. Keep in sync with metadata.json.
-    return '4.0.5'
+    return '4.1.0'
 }
 
 

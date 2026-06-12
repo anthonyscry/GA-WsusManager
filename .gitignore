@@ -56,7 +56,6 @@ package.ps1
 SQLDB/*.exe
 installers/*.exe
 /WsusManager-v*.zip
-/GA-WsusManager-v*.zip
 /dist/
 /staging/
 

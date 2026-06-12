@@ -4,16 +4,13 @@ This document describes the release process for the PowerShell WSUS Manager (v4.
 
 ## Version Source of Truth
 
-Keep version aligned in both files:
-- `build.ps1` (`$Version = "x.y.z"`)
-- `Scripts/WsusManagementGui.ps1` (`$script:AppVersion = "x.y.z"`)
+`metadata.json` (`"version"`) is the release version source of truth. `build.ps1`, the GUI, CLI, and maintenance scripts read it through `Get-WsusAppVersion`; fallback literals in scripts should only change when intentionally changing missing-metadata behavior.
 
-Current release line: **4.0.x**
+Current release line: **4.1.x**
 
 ## Pre-Release Checklist
 
-- [ ] Update version in `build.ps1`
-- [ ] Update version in `Scripts/WsusManagementGui.ps1`
+- [ ] Update `metadata.json`
 - [ ] Update `CHANGELOG.md`
 - [ ] Run local validation: `.\build\Invoke-LocalValidation.ps1`
 - [ ] Run tests: `Invoke-Pester -Path .\Tests -Output Detailed`

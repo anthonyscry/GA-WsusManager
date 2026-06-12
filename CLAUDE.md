@@ -29,33 +29,26 @@ WSUS Manager is a PowerShell WPF automation suite for Windows Server Update Serv
 GA-WsusManager/
 ├── build.ps1                    # Build script using PS2EXE
 ├── dist/                        # Build output folder (gitignored)
-│   ├── WsusManager.exe          # Compiled executable
+│   ├── GA-WsusManager.exe       # Compiled executable
 │   └── WsusManager-vX.X.X.zip   # Distribution package
-├── Scripts/
-│   ├── WsusManagementGui.ps1    # Main GUI source (WPF/XAML)
-│   ├── Invoke-WsusManagement.ps1
-│   ├── Invoke-WsusMonthlyMaintenance.ps1
-│   ├── Install-WsusWithSqlExpress.ps1
-│   ├── Invoke-WsusClientCheckIn.ps1
-│   └── Set-WsusHttps.ps1
-├── Modules/                     # Reusable PowerShell modules (16 modules)
-│   ├── WsusUtilities.psm1       # Logging, colors, helpers
-│   ├── WsusDatabase.psm1        # Database operations
-│   ├── WsusHealth.psm1          # Health checks, repair, + health score (0-100)
+├── Scripts/                     # GUI, CLI/router, maintenance, install, HTTPS, client check-in
+├── Modules/                     # Reusable PowerShell modules (26 modules)
+│   ├── WsusUtilities.psm1       # Logging, admin checks, SQL helpers, paths
+│   ├── WsusConfig.psm1          # Defaults, operation timeouts, health weights, version helpers
+│   ├── WsusDatabase.psm1        # Database operations with SqlServer/sqlcmd fallback
+│   ├── WsusHealth.psm1          # Health checks, repair, health score
 │   ├── WsusServices.psm1        # Service management
 │   ├── WsusFirewall.psm1        # Firewall rules
 │   ├── WsusPermissions.psm1     # Directory permissions
-│   ├── WsusConfig.psm1          # Configuration, timeouts, health weights
 │   ├── WsusExport.psm1          # Export/import
 │   ├── WsusScheduledTask.psm1   # Scheduled tasks
-│   ├── WsusAutoDetection.psm1   # Server detection, auto-recovery, dashboard data
-│   ├── AsyncHelpers.psm1        # Async/background operation helpers for WPF
-│   ├── WsusDialogs.psm1         # [v4.0] Dialog factory — New-WsusDialog, New-WsusFolderBrowser
-│   ├── WsusOperationRunner.psm1 # [v4.0] Unified operation lifecycle — Start/Stop/Complete-WsusOperation
-│   ├── WsusHistory.psm1         # [v4.0] Operation history — Write/Get/Clear-WsusOperationHistory
-│   ├── WsusNotification.psm1    # [v4.0] Toast/balloon notifications — Show-WsusNotification
-│   └── WsusTrending.psm1        # [v4.0] DB size trending — Add/Get/Clear trend snapshots
-├── Tests/                       # Pester unit tests (one file per module)
+│   ├── WsusAutoDetection.psm1   # Dashboard detection and cache
+│   ├── WsusOfficeUpdates.psm1   # Office C2R download via ODT
+│   ├── WsusOperationRunner.psm1 # Unified operation lifecycle
+│   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
+├── Tests/                       # Pester tests (25 test files)
+├── docs/                        # SOP, quick start, CI/CD, reports, AI audit instructions
+├── wiki/                        # User/developer/configuration guides
 └── DomainController/            # Air-gap GPO deployment scripts
 ```
 
@@ -81,32 +74,23 @@ The project uses PS2EXE to compile PowerShell scripts into standalone executable
 ```
 
 The build process:
-1. Runs Pester unit tests (323 tests across 10 files)
+1. Runs Pester unit tests unless `-SkipTests` is passed
 2. Runs PSScriptAnalyzer on `Scripts\WsusManagementGui.ps1` and `Scripts\Invoke-WsusManagement.ps1`
-3. Blocks build if errors are found
+3. Blocks build if analyzer errors are found
 4. Warns but continues if only warnings exist
-5. Compiles `WsusManagementGui.ps1` to `WsusManager.exe` using PS2EXE
+5. Compiles `WsusManagementGui.ps1` to `GA-WsusManager.exe` using PS2EXE
 6. Creates distribution zip with Scripts/, Modules/, DomainController/, and branding assets
 
-**Version:** Update in `build.ps1` and `Scripts\WsusManagementGui.ps1` (`$script:AppVersion`)
+**Version:** Update `metadata.json`; build, GUI, CLI, and maintenance scripts read it via `Get-WsusAppVersion`.
 
 ### Distribution Package Structure
 
 The build creates a complete distribution zip (`WsusManager-vX.X.X.zip`) containing:
 ```
-WsusManager.exe           # Main GUI application
-Scripts/                  # Required - operation scripts
-├── Invoke-WsusManagement.ps1
-├── Invoke-WsusMonthlyMaintenance.ps1
-├── Install-WsusWithSqlExpress.ps1
-└── ...
-Modules/                  # Required - PowerShell modules
-├── WsusUtilities.psm1
-├── WsusHealth.psm1
-└── ...
-DomainController/         # Optional - Air-gap GPO deployment scripts
-general_atomics_logo_big.ico
-general_atomics_logo_small.ico
+GA-WsusManager.exe       # Main GUI application
+Scripts/                 # Required - operation scripts
+Modules/                 # Required - PowerShell modules
+DomainController/        # Optional - air-gap GPO deployment scripts
 QUICK-START.txt
 README.md
 ```
@@ -121,7 +105,7 @@ README.md
 - Modules export functions explicitly via `Export-ModuleMember`
 - `WsusHealth.psm1` automatically imports dependent modules (Services, Firewall, Permissions)
 - `WsusAutoDetection.psm1` provides auto-recovery, dashboard data functions, and 30s TTL cache
-- **v4.0 additions:** `WsusDialogs.psm1`, `WsusOperationRunner.psm1`, `WsusHistory.psm1`, `WsusNotification.psm1`, `WsusTrending.psm1`
+- **Current support modules:** `WsusDialogs.psm1`, `WsusOperationRunner.psm1`, `WsusHistory.psm1`, `WsusNotification.psm1`, `WsusTrending.psm1`, `WsusOperationPlan.psm1`, `WsusProvisioning.psm1`, `WsusGuiShell.psm1`, `WsusProcessHost.psm1`, `WsusHostEnvironment.psm1`, `WsusRepairPlan.psm1`, `WsusRepairHarness.psm1`, `WsusDiagnosticResult.psm1`, `WsusTestHarness.psm1`, `WsusOfficeUpdates.psm1`
 
 ### v4.0 Module Architecture
 
@@ -271,6 +255,17 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 - GitHub Actions builds the EXE on push/PR and creates releases
 
 ## Recent Changes
+
+### v4.1.0
+
+**Office C2R Updates:**
+- Added `WsusOfficeUpdates.psm1` and `-OfficeUpdates` CLI flow for Microsoft 365 Apps and Office LTSC 2024 Click-to-Run downloads through ODT.
+- Documented Office C2R staging, share permissions, channel/product choices, and GPO `UpdatePath` configuration.
+
+**Build, Versioning, and Docs:**
+- `metadata.json` is the single source of truth for the app version.
+- Default executable name is `GA-WsusManager.exe`; distribution zip remains `WsusManager-vX.X.X.zip`.
+- Ship-readiness audit instructions now live under `docs/ai-audit/`; evidence reports live under `docs/reports/`.
 
 ### v4.0.5
 
@@ -900,12 +895,12 @@ Describe "Tests requiring EXE" {
 ```powershell
 # BeforeDiscovery runs BEFORE test discovery, so -Skip can use the variable
 BeforeDiscovery {
-    $script:ExeExists = Test-Path ".\WsusManager.exe"
+    $script:ExeExists = Test-Path ".\GA-WsusManager.exe"
 }
 
 # BeforeAll runs AFTER discovery, so variables set here aren't available for -Skip
 BeforeAll {
-    $script:ExePath = ".\WsusManager.exe"  # Available during tests, not for -Skip
+    $script:ExePath = ".\GA-WsusManager.exe"  # Available during tests, not for -Skip
 }
 ```
 

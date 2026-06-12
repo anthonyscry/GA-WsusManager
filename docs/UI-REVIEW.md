@@ -2,7 +2,7 @@
 
 **Audit Date:** 2026-03-17
 **Auditor:** 6-Pillar Visual Audit (Retroactive)
-**Scope:** Full application — `Scripts/WsusManagementGui.ps1` (4140 lines), `Modules/WsusDialogs.psm1`, `Modules/WsusConfig.psm1`, plus 13 supporting modules
+**Scope:** Full application — `Scripts/WsusManagementGui.ps1` (3766 lines), `Modules/WsusDialogs.psm1`, `Modules/WsusConfig.psm1`, plus 24 other modules
 **Target:** PowerShell WPF desktop application (Windows Server admin tool)
 
 ---

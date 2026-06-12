@@ -25,6 +25,9 @@ All notable changes to WSUS Manager are documented here.
 - **Documentation** — README, QUICK-START, SOP, and Confluence export consolidated
   and synced to v4.1.0. Module count 16 to 26. Version mismatches fixed throughout
 
+- **Repository cleanup** — AI audit instructions now live under `docs/ai-audit/`;
+  ship-readiness reports now live under `docs/reports/`; stale root artifacts removed
+
 ### Fixed
 - **Emoji corruption in GUI menus** — Replaced non-BMP emoji (U+1F511) with BMP-safe
   text. Added UTF-8 BOM to all PS files with non-ASCII content. PowerShell 5.1
@@ -634,13 +637,9 @@ PATCH - Bug fixes (backwards compatible)
 ### Version Locations
 
 Update version in:
-1. `build.ps1` - `$Version`
-2. `Scripts/WsusManagementGui.ps1` - `$script:AppVersion`
-3. `Scripts/Invoke-WsusManagement.ps1` - header comment + `Show-Menu` banner
-4. `Scripts/Invoke-WsusMonthlyMaintenance.ps1` - `$ScriptVersion`
-5. `metadata.json` - `"version"`
-6. `CLAUDE.md` - Current Version
-7. `CHANGELOG.md` - New release entry
+1. `metadata.json` - `"version"` (single source of truth read by build, GUI, CLI, and maintenance scripts)
+2. `CHANGELOG.md` - New release entry
+3. `wiki/Changelog.md` - Wiki mirror when publishing docs
 
 ---
 

@@ -631,7 +631,7 @@ If you can't resolve the issue:
 1. Collect logs from `C:\WSUS\Logs\`
 2. Note the exact error message
 3. Document steps to reproduce
-4. Open issue on [GitHub](../../issues)
+4. Open issue on [GitHub](https://github.com/anthonyscry/GA-WsusManager/issues)
 
 ### Useful Links
 

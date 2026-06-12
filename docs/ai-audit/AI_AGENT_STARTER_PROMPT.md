@@ -8,9 +8,9 @@ Act as a senior software architect, QA lead, DevOps engineer, security reviewer,
 
 Before doing anything else, read and follow these repository instruction files:
 
-- `AI_SHIP_READINESS_AUDIT.md`
-- `AI_LAB_ENVIRONMENT.md`
-- `AI_AUDIT_OUTPUT_TEMPLATE.md`
+- `docs/ai-audit/AI_SHIP_READINESS_AUDIT.md`
+- `docs/ai-audit/AI_LAB_ENVIRONMENT.md`
+- `docs/ai-audit/AI_AUDIT_OUTPUT_TEMPLATE.md`
 
 Your mission is to determine whether this application is truly ready to ship to real users.
 
@@ -28,7 +28,7 @@ You must validate backend/API behavior directly where applicable.
 
 You must review security, privacy, deployment, operations, rollback, recovery, and test coverage.
 
-If testing requires a lab environment, follow `AI_LAB_ENVIRONMENT.md`. Assume lab VMs are hosted on Hyper-V running on localhost unless told otherwise. Use AutomatedLab targeting local Hyper-V when practical. If AutomatedLab is not available, document why and use localhost Hyper-V PowerShell automation as the default fallback. Document VMs, credentials, checkpoints, restore tests, rollback tests, and lab limitations.
+If testing requires a lab environment, follow `docs/ai-audit/AI_LAB_ENVIRONMENT.md`. Assume lab VMs are hosted on Hyper-V running on localhost unless told otherwise. Use AutomatedLab targeting local Hyper-V when practical. If AutomatedLab is not available, document why and use localhost Hyper-V PowerShell automation as the default fallback. Document VMs, credentials, checkpoints, restore tests, rollback tests, and lab limitations.
 
 Do not perform destructive testing on production, shared staging, developer workstations, or unknown environments unless explicitly approved.
 
@@ -45,7 +45,7 @@ After the assessment, begin fixing issues autonomously in this priority order:
 
 For every fix, document what changed, why it changed, what tests were rerun, and whether the issue is now Proven, Partially Proven, Failed, Not Proven, or Blocked.
 
-Use `AI_AUDIT_OUTPUT_TEMPLATE.md` for the final report.
+Use `docs/ai-audit/AI_AUDIT_OUTPUT_TEMPLATE.md` for the final report.
 
 Do not mark anything production-ready without evidence.
 

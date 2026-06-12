@@ -1,43 +1,31 @@
 # How to Use These AI Audit Instructions
 
-## Recommended File Placement
+## File Placement
 
-Place these files at the root of the repository:
-
-```text
-/AI_SHIP_READINESS_AUDIT.md
-/AI_LAB_ENVIRONMENT.md
-/AI_AUDIT_OUTPUT_TEMPLATE.md
-/AI_AGENT_STARTER_PROMPT.md
-```
-
-Optional folder layout:
+These ship-readiness audit instructions live under `docs/ai-audit/`:
 
 ```text
-/docs/ai-audit/AI_SHIP_READINESS_AUDIT.md
-/docs/ai-audit/AI_LAB_ENVIRONMENT.md
-/docs/ai-audit/AI_AUDIT_OUTPUT_TEMPLATE.md
-/docs/ai-audit/AI_AGENT_STARTER_PROMPT.md
+docs/ai-audit/AI_SHIP_READINESS_AUDIT.md
+docs/ai-audit/AI_LAB_ENVIRONMENT.md
+docs/ai-audit/AI_AUDIT_OUTPUT_TEMPLATE.md
+docs/ai-audit/AI_AGENT_STARTER_PROMPT.md
 ```
-
-If you place them under `/docs/ai-audit/`, update the starter prompt paths.
 
 ---
 
 ## Best Way to Use
 
-1. Add the Markdown files to the repo.
-2. Open the repo in your AI coding tool.
-3. Paste the contents of `AI_AGENT_STARTER_PROMPT.md`.
-4. Tell the AI to read the Markdown files before making changes.
-5. Require the AI to produce the final report using `AI_AUDIT_OUTPUT_TEMPLATE.md`.
+1. Open the repo in your AI coding tool.
+2. Paste the contents of `docs/ai-audit/AI_AGENT_STARTER_PROMPT.md`.
+3. Tell the AI to read the Markdown files before making changes.
+4. Require the AI to produce the final report using `docs/ai-audit/AI_AUDIT_OUTPUT_TEMPLATE.md`.
 
 ---
 
 ## Suggested Command to Give the AI
 
 ```text
-Read AI_AGENT_STARTER_PROMPT.md and follow it exactly.
+Read docs/ai-audit/AI_AGENT_STARTER_PROMPT.md and follow it exactly.
 ```
 
 Or paste the full starter prompt manually.

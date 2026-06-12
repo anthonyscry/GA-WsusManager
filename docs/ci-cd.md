@@ -4,11 +4,11 @@ This repository uses a **two-tier CI model** plus a local validation harness:
 
 | Pipeline | Trigger | Runner | Purpose |
 |----------|---------|--------|---------|
-| `.github/workflows/ci.yml` | every push, every PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, EXE build |
-| `.github/workflows/gui-tests.yml` | manual dispatch + daily schedule | `self-hosted, windows, triton-ajt` | FlaUI GUI automation, full test suite |
+| `.github/workflows/ci.yml` | every push, every PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, Office C2R tests, EXE build |
+| `.github/workflows/gui-tests.yml` | manual dispatch + daily schedule | `self-hosted, windows, triton-ajt` | Pester subset plus FlaUI GUI automation through interactive session |
 | `build/Invoke-ShipReadiness.ps1` | local | dev workstation | aggregate verification gate |
 
-The local validation scripts (`build/Invoke-LocalValidation.ps1`, `build/Invoke-ShipReadiness.ps1`) are the source of truth for what CI runs. They mirror the CI job steps exactly.
+The GitHub workflow files are the source of truth for CI. The local scripts under `build/` provide overlapping gates for developer workstations and release readiness.
 
 ## Tier 1: `ci.yml` (Standard CI)
 
@@ -34,22 +34,25 @@ Cancels in-progress runs on the same branch when a new push lands. This means PR
 
 ### Triggering Locally
 
-You can reproduce what CI does without pushing:
+You can reproduce the standard CI gate locally with the same commands:
 
 ```powershell
-# Full CI mirror
-./build/Invoke-ShipReadiness.ps1
-
-# Just the steps CI runs (no self-hosted needed)
+# Syntax
 ./build/Invoke-SyntaxCheck.ps1
+
+# Unit tests (same tag exclusions as ci.yml)
 Invoke-Pester -Path ./Tests -Output Detailed -ExcludeTag 'E2E','GUI','Integration','FlaUI'
+
+# Office C2R focused tests
 ./build/Invoke-OfficeC2R-Tests.ps1
+
+# Build artifact generation
 ./build.ps1 -SkipTests -NoPush
 ```
 
 ## Tier 2: `gui-tests.yml` (Self-Hosted GUI Tests)
 
-Runs the **full** Pester suite including FlaUI GUI automation. Requires the `triton-ajt` self-hosted runner, which is a Windows desktop with an interactive session — the only environment where FlaUI can drive WPF windows.
+Runs a Pester subset plus FlaUI GUI automation. Requires the `triton-ajt` self-hosted runner, which is a Windows desktop with an interactive session — the only environment where FlaUI can drive WPF windows.
 
 ### Triggers
 
@@ -83,11 +86,11 @@ Add a new self-hosted runner label (e.g. `windows, sql-express`) if you need tes
 
 ## Tier 3: Local Validation
 
-The local scripts are the source of truth — CI and the self-hosted runner both mirror them.
-
+The local scripts overlap with CI but are not a byte-for-byte workflow mirror. Use them as developer and release-readiness gates:
 ```powershell
-# Aggregate gate - matches what CI runs
+# Aggregate release-readiness gate
 .\build\Invoke-ShipReadiness.ps1
+
 
 # What local validation covers (additional XAML validation)
 .\build\Invoke-LocalValidation.ps1
@@ -109,7 +112,8 @@ The distribution zip is expected to include companion folders required by the EX
 - `Scripts/`
 - `Modules/`
 - optional `DomainController/`
-- release documentation files copied by `build.ps1`
+- `README.md` copied by `build.ps1`
+- generated `QUICK-START.txt`
 
 CI uploads the artifacts from the build job and retains them for 14 days.
 
