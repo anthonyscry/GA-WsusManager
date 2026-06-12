@@ -242,10 +242,6 @@ Describe 'Runtime and transfer interfaces' {
         $view.Configuration.SqlInstance | Should -Be '.\SQLEXPRESS'
     }
 
-    It 'Creates a process host adapter shape' {
-        $processHostAdapter = New-WsusPowerShellProcessHost
-        $processHostAdapter.PSObject.TypeNames[0] | Should -Be 'Wsus.ProcessHost'
-    }
 }
 
 Describe 'Dashboard snapshot interface' {

@@ -87,6 +87,9 @@ tmp/
 
 # AI tool state
 .claude-octopus/
+.agents/
+.claude/skills/
+.planning-archive-reverted-c#-era/
 
 # AI planning artifacts
 docs/superpowers/

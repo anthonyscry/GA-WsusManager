@@ -106,7 +106,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Version inconsistencies** — All v4.0.4/v4.0.5 mismatches across docs resolved.
   All public docs now reference v4.1.0 (with historical version history preserved)
 - **Repository cleanup** — Moved AI audit instructions under `docs/ai-audit/`,
-  ship-readiness reports under `docs/reports/`, and removed stale generated root artifacts
+  ship-readiness reports under `docs/reports/`, removed stale generated root artifacts,
+  and removed stale `.planning-archive-reverted-c#-era/` C#-era planning archive,
+  `.agents/skills/`, and `.claude/skills/` vendored agent artifacts
 
 ## [4.0.5] - 2026-05-11
 

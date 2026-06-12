@@ -806,11 +806,14 @@ function Test-WsusDatabaseConsistency {
 function Add-WsusSqlLogin {
     <#
     .SYNOPSIS
-        Creates a Windows SQL login and grants dbcreator role.
+        Creates a Windows SQL login and grants sysadmin role.
     .PARAMETER SqlInstance
         SQL Server instance name (default: .\SQLEXPRESS)
     .PARAMETER LoginName
         Windows principal name (default: NT AUTHORITY\NETWORK SERVICE)
+    .OUTPUTS
+        Boolean: $true if the login is a sysadmin after the call, $false otherwise.
+        Throws if the SQL connection itself fails.
     #>
     param(
         [string]$SqlInstance = '.\SQLEXPRESS',
@@ -818,7 +821,12 @@ function Add-WsusSqlLogin {
     )
     $loginSafe = $LoginName -replace "'", "''"
     Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$loginSafe') CREATE LOGIN [$LoginName] FROM WINDOWS;" -QueryTimeout 10
-    Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "ALTER SERVER ROLE [dbcreator] ADD MEMBER [$LoginName];" -QueryTimeout 10
+    Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$LoginName];" -QueryTimeout 10
+
+    # Verify the target login is now a sysadmin by querying with the explicit LoginName.
+    $verifiedLogin = $LoginName -replace "'", "''"
+    $check = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "SELECT COUNT(*) AS cnt FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name=N'$verifiedLogin';" -QueryTimeout 10
+    return ($check.cnt -gt 0)
 }
 
 function Test-WsusSqlLogin {
@@ -841,10 +849,31 @@ function Test-WsusSqlLogin {
     return ($result.cnt -gt 0)
 }
 
+
+function Test-WsusSqlLoginIsSysAdmin {
+    <#
+    .SYNOPSIS
+        Checks if a Windows SQL login is a member of the sysadmin role.
+    .PARAMETER SqlInstance
+        SQL Server instance name (default: .\SQLEXPRESS)
+    .PARAMETER LoginName
+        Windows principal name (default: NT AUTHORITY\NETWORK SERVICE)
+    .OUTPUTS
+        Boolean indicating whether the login has sysadmin role membership
+    #>
+    param(
+        [string]$SqlInstance = '.\SQLEXPRESS',
+        [string]$LoginName = 'NT AUTHORITY\NETWORK SERVICE'
+    )
+    $loginSafe = $LoginName -replace "'", "''"
+    $result = Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query "SELECT COUNT(*) AS cnt FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name=N'$loginSafe';" -QueryTimeout 10
+    return ($result.cnt -gt 0)
+}
 # Export functions
 Export-ModuleMember -Function @(
     'Add-WsusSqlLogin',
     'Test-WsusSqlLogin',
+    'Test-WsusSqlLoginIsSysAdmin',
     'Get-WsusDatabaseSize',
     'Get-WsusDatabaseStats',
     'Remove-DeclinedSupersessionRecords',

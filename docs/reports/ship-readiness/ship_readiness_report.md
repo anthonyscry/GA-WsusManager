@@ -443,7 +443,7 @@ Known from docs/UI-REVIEW.md and docs/GUI-TESTING-LESSONS.md:
 |---|-------|-----|--------|
 | 12 | Version consistency | Derive version from single source (metadata.json) | Small |
 | 13 | Log rotation note | Add to operations documentation | Small |
-| 14 | Archived planning docs | Clean up .planning-archive-reverted-c#-era (200+ files) | Small |
+| 14 | Archived planning docs | Cleaned up — .planning-archive-reverted-c#-era removed (200+ files) | Done ✅ |
 | 15 | env var documentation | Create env var reference table in wiki | Small |
 
 ### Phase 5: UX, Polish, Documentation

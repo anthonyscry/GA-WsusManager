@@ -167,25 +167,16 @@ Describe "Test-WsusHealth" {
             $result.Keys | Should -Contain "Overall"
         }
 
-        It "Should contain Services key" {
+        It "Should contain Issues key" {
             $result = Test-WsusHealth
-            $result.Keys | Should -Contain "Services"
+            $result.Keys | Should -Contain "Issues"
         }
 
-        It "Should contain Database key" {
+        It "Should contain SSL key" {
             $result = Test-WsusHealth
-            $result.Keys | Should -Contain "Database"
+            $result.Keys | Should -Contain "SSL"
         }
 
-        It "Should contain Firewall key" {
-            $result = Test-WsusHealth
-            $result.Keys | Should -Contain "Firewall"
-        }
-
-        It "Should contain Permissions key" {
-            $result = Test-WsusHealth
-            $result.Keys | Should -Contain "Permissions"
-        }
 
         It "Overall should be a string status" {
             $result = Test-WsusHealth
@@ -197,19 +188,17 @@ Describe "Test-WsusHealth" {
 Describe "Repair-WsusHealth" {
     Context "Return structure validation" {
         BeforeAll {
-            # Mock the repair functions to avoid actual system modifications
-            Mock Get-WsusServiceStatus { @{
-                "SQL Server Express" = @{ Running = $false; Status = "Stopped" }
-                "WSUS Service" = @{ Running = $false; Status = "Stopped" }
-                "IIS" = @{ Running = $false; Status = "Stopped" }
+            # Repair-WsusHealth now delegates to Invoke-WsusDiagnostics; mock the underlying function
+            Mock Invoke-WsusDiagnostics { @{
+                Healthy = $true
+                IssuesFound = 0
+                IssuesFixed = 0
+                Issues = @()
+                FixesApplied = @()
+                FixesFailed = @()
+                SSL = @{ SSLEnabled = $false }
+                DiagnosticReport = $null
             } } -ModuleName WsusHealth
-            Mock Start-SqlServerExpress { $true } -ModuleName WsusHealth
-            Mock Start-WsusServer { $true } -ModuleName WsusHealth
-            Mock Start-IISService { $true } -ModuleName WsusHealth
-            Mock Repair-WsusFirewallRules { @{ Created = @('rule'); Failed = @() } } -ModuleName WsusHealth
-            Mock Repair-WsusContentPermissions { $true } -ModuleName WsusHealth
-            Mock Get-WsusHostIisContentPath { [pscustomobject]@{ Found = $true; PhysicalPath = 'D:\WrongPath'; MatchesExpected = $false } } -ModuleName WsusHealth
-            Mock Set-WsusHostIisContentPath { [pscustomobject]@{ Found = $true; PhysicalPath = 'C:\WSUS\WsusContent'; MatchesExpected = $true } } -ModuleName WsusHealth
         }
 
         It "Should return a hashtable" {

@@ -215,7 +215,6 @@ function Get-WsusHealthScore {
     $totalSources  = 5
 
     $servicesScore = 0
-    $servicesFailed = $false
     try {
         $sqlSvcName = Get-WsusSqlServiceName -SqlInstance $SqlInstance
         $serviceNames = @($sqlSvcName, 'WSUSService', 'W3SVC')

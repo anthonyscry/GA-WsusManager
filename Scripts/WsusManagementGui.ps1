@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 ===============================================================================
 Script: WsusManagementGui.ps1
@@ -185,7 +185,7 @@ if ($script:ModulesDir) {
     # Bypass execution policy for this process so UNC-path modules load without signing requirement
     try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch { $null = $_.Exception.Message }
 
-    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusAutoDetection","WsusDiagnosticResult","WsusGuiShell","WsusHostEnvironment","WsusRepairPlan","WsusHealth","WsusDialogs","WsusOperationPlan","WsusProvisioning","WsusProcessHost","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
+    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusAutoDetection","WsusDiagnosticResult","WsusGuiShell","WsusHostEnvironment","WsusRepairPlan","WsusHealth","WsusDialogs","WsusOperationPlan","WsusProvisioning","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
         $modPath = Join-Path $script:ModulesDir "$mod.psm1"
         if (Test-Path $modPath) {
             try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction Stop }
@@ -3410,27 +3410,34 @@ $controls.BtnFixSqlLogin.Add_Click({
     }
 
     try {
-        $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
+        if (-not (Get-Command Add-WsusSqlLogin -ErrorAction SilentlyContinue)) {
+            Write-LogOutput "[Fix SQL Login] ERROR: Add-WsusSqlLogin not available" -Level Error
+            Show-WsusPopup -Message "Database module not available. Cannot add SQL login." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
+            return
+        }
 
-        # Create login if not exists (SQL-escape apostrophes for N'...' context)
-        $currentUserSafe = $currentUser -replace "'", "''"
-        $output = & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'$currentUserSafe') CREATE LOGIN [$currentUser] FROM WINDOWS; PRINT 'Login created';" -b 2>&1
-        Write-LogOutput "[Fix SQL Login] $output"
+        $alreadySysAdmin = $false
+        if (Get-Command Test-WsusSqlLoginIsSysAdmin -ErrorAction SilentlyContinue) {
+            $alreadySysAdmin = Test-WsusSqlLoginIsSysAdmin -SqlInstance $sqlInstance -LoginName $currentUser
+        } elseif (Get-Command Test-WsusSqlLogin -ErrorAction SilentlyContinue) {
+            # Fallback: if sysadmin check not available, test at least checks login existence
+            $alreadySysAdmin = Test-WsusSqlLogin -SqlInstance $sqlInstance -LoginName $currentUser
+        }
 
-        # Add to sysadmin role
-        $output = & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]; PRINT 'sysadmin granted';" -b 2>&1
-        Write-LogOutput "[Fix SQL Login] $output"
 
-        # Verify via sys.server_role_members (IS_SRVROLEMEMBER caches per-connection)
-        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = SUSER_SNAME()" -h -1 -W 2>$null
-        Write-LogOutput "[Fix SQL Login] Verification (1=sysadmin): $check"
+        if ($alreadySysAdmin) {
+            Write-LogOutput "[Fix SQL Login] $currentUser is already a sysadmin on $sqlInstance" -Level Info
+            Show-WsusPopup -Message "$currentUser is already a sysadmin on $sqlInstance.`n`nNo changes needed." -Title "SQL Login Already Configured" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
+            return
+        }
 
-        if ($check -eq 1) {
-            Write-LogOutput "[Fix SQL Login] SUCCESS: $currentUser is now a sysadmin on $sqlInstance"
+        $verified = Add-WsusSqlLogin -SqlInstance $sqlInstance -LoginName $currentUser
+        if ($verified) {
+            Write-LogOutput "[Fix SQL Login] SUCCESS: $currentUser added as sysadmin on $sqlInstance" -Level Success
             Show-WsusPopup -Message "$currentUser has been added as sysadmin on $sqlInstance.`n`nYou can now connect to SQL Server." -Title "SQL Login Fixed" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Information) | Out-Null
         } else {
-            Write-LogOutput "[Fix SQL Login] WARNING: Verification returned $check" -Level Warning
-            Show-WsusPopup -Message "Login may not have been set correctly.`n`nVerification result: $check`nTry running SSMS and connecting manually." -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Write-LogOutput "[Fix SQL Login] WARNING: Post-add verification did not confirm sysadmin membership" -Level Warning
+            Show-WsusPopup -Message "SQL login command completed but post-add verification did not confirm sysadmin membership.`n`nTry running SSMS and connecting manually to confirm." -Title "Check Results" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
         }
     } catch {
         Write-LogOutput "[Fix SQL Login] ERROR: $($_.Exception.Message)" -Level Error
@@ -3467,16 +3474,24 @@ $controls.QBtnStart.Add_Click({
     Expand-LogPanel
 
     Write-LogOutput "Starting WSUS services..." -Level Info
-    @(
-        @{Name="MSSQL`$SQLEXPRESS"; Display="SQL Server Express"},
-        @{Name="W3SVC"; Display="IIS"},
-        @{Name="WSUSService"; Display="WSUS Service"}
-    ) | ForEach-Object {
-        try {
-            Start-Service -Name $_.Name -ErrorAction Stop
-            Write-LogOutput "$($_.Display) started" -Level Success
-        } catch {
-            Write-LogOutput "Failed to start $($_.Display): $_" -Level Warning
+    if (Get-Command Start-AllWsusServices -ErrorAction SilentlyContinue) {
+        $results = Start-AllWsusServices
+        foreach ($key in $results.Keys) {
+            if ($results[$key]) { Write-LogOutput "$key started" -Level Success }
+            else { Write-LogOutput "Failed to start $key" -Level Warning }
+        }
+    } else {
+        @(
+            @{Name="MSSQL`$SQLEXPRESS"; Display="SQL Server Express"},
+            @{Name="W3SVC"; Display="IIS"},
+            @{Name="WSUSService"; Display="WSUS Service"}
+        ) | ForEach-Object {
+            try {
+                Start-Service -Name $_.Name -ErrorAction Stop
+                Write-LogOutput "$($_.Display) started" -Level Success
+            } catch {
+                Write-LogOutput "Failed to start $($_.Display): $_" -Level Warning
+            }
         }
     }
     Start-Sleep -Seconds 2

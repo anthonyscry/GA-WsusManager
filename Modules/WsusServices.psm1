@@ -142,12 +142,23 @@ function Stop-AllWsusServices {
     return $results
 }
 
-# Narrowed export list: 5 core functions only
+# Full export list for module consumers
 Export-ModuleMember -Function @(
     'Start-WsusService',
     'Stop-WsusService',
     'Restart-WsusService',
     'Get-WsusServiceStatus',
+    'Test-ServiceRunning',
+    'Test-ServiceExists',
+    'Wait-ServiceState',
+    'Start-SqlServerExpress',
+    'Stop-SqlServerExpress',
+    'Start-WsusServer',
+    'Stop-WsusServer',
+    'Start-IISService',
+    'Stop-IISService',
+    'Start-SqlBrowserService',
+    'Stop-SqlBrowserService',
     'Start-AllWsusServices',
     'Stop-AllWsusServices'
 )

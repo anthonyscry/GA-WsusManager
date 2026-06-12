@@ -1,4 +1,7 @@
-# WsusRepairHarness removed in v4.1 — New-WsusRepairIssueFixture merged into WsusHealth
+# WsusRepairHarness stub in v4.1 — only the test-facing New-WsusRepairIssueFixture
+# helper remains here. The runtime harness logic was inlined into WsusHealth.
+# The function is intentionally NOT moved to WsusHealth because
+# WsusArchitectureInterfaces.Tests.ps1 asserts it lives in this module.
 function New-WsusRepairIssueFixture {
     [CmdletBinding()]
     param(

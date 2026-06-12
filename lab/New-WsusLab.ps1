@@ -31,7 +31,7 @@
       2. Ensure Hyper-V is enabled
       3. Run as Administrator
 #>
-
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '')]
 param(
     [string]$LabName = 'WsusLab',
     [switch]$SkipDeploy
@@ -39,52 +39,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ── Credentials (LAB ONLY) ────────────────────────────────
-$labAdmin = New-Object System.Management.Automation.PSCredential(
-    'LabAdmin',
-    (ConvertTo-SecureString 'WsusLab-Adm1n!2026' -AsPlainText -Force)
-)
 
 # ── Network ───────────────────────────────────────────────
-$ipRange = '192.168.100.0/24'
-$gateway = '192.168.100.1'
 $dns = '192.168.100.10'
 
-# ── Lab Definition ────────────────────────────────────────
-$lab = @{
-    Name = $LabName
-    Credential = $labAdmin
-    PostInstall = @{
-        # Placeholder for WSUS Manager deployment script
-    }
-}
 
-$dc = @{
-    Name = "$LabName-DC01"
-    Role = 'RootDC'
-    OperatingSystem = 'Windows Server 2019 Datacenter Evaluation (Desktop Experience)'
-    Memory = 4GB
-    Cpu = 2
-    Network = @{
-        Interface = 'LAB'
-        IPAddress = $dns
-        Gateway = $gateway
-    }
-}
 
-$wsus = @{
-    Name = "$LabName-WSUS01"
-    Role = 'MemberServer'
-    OperatingSystem = 'Windows Server 2019 Datacenter Evaluation (Desktop Experience)'
-    Memory = 8GB
-    Cpu = 4
-    Network = @{
-        Interface = 'LAB'
-        IPAddress = '192.168.100.20'
-        Gateway = $gateway
-        DnsServer = $dns
-    }
-}
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host " AutomatedLab Lab Definition: $LabName" -ForegroundColor Green

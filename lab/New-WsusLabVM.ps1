@@ -92,7 +92,7 @@ try {
 } catch {
     Write-Host "WARNING: VHDX mount failed: $($_.Exception.Message). Will continue, but first boot may need manual OOBE." -ForegroundColor Yellow
 } finally {
-    try { Dismount-VHD -Path $diffVhdx -ErrorAction SilentlyContinue } catch {}
+    try { Dismount-VHD -Path $diffVhdx -ErrorAction SilentlyContinue } catch { Write-Verbose "VHD dismount cleanup failed (expected if not mounted)" }
 }
 
 # ── Create VM ───────────────────────────────────────────────

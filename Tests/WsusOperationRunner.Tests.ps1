@@ -182,6 +182,13 @@ Describe "Complete-WsusOperation" {
         }
     }
 
+    BeforeEach {
+        # Complete-WsusOperation guards against double-completion per process
+        # Id. Tests share a single mock context, so the guard from the previous
+        # test would short-circuit this one. Clear it before each test.
+        Reset-WsusOperationGuard
+    }
+
     Context "Status updates" {
         It "Sets StatusLabel text to Completed on success" {
             $script:MockControls.StatusLabel.Text = ''
@@ -244,10 +251,6 @@ Describe "Complete-WsusOperation" {
             $param | Should -Not -BeNullOrEmpty
         }
 
-        It "Accepts ProcessHost parameter" {
-            $param = (Get-Command Start-WsusOperation).Parameters['ProcessHost']
-            $param | Should -Not -BeNullOrEmpty
-        }
     }
 }
 

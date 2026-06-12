@@ -86,9 +86,8 @@
 
 ## Housekeeping — ✅ Complete
 
-### TODO: Clean Up Stale .planning/ Directory
 - **Priority:** P3 | **Effort:** S | **Status:** ✅ Done
-- **Delivered:** `.planning/` renamed to `.planning-archive-reverted-c#-era/` (C#-era plans preserved but clearly archived)
+- **Delivered:** `.planning-archive-reverted-c#-era/` removed from working tree (C#-era plans were preserved but subsequently cleaned up per ship-readiness recommendation)
 
 ---
 

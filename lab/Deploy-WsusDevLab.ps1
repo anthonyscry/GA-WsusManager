@@ -36,6 +36,8 @@
     SQL Server ISO is optional - WSUS Manager handles SQL Express download.
 #>
 
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '')]
+
 [CmdletBinding()]
 param(
     [switch]$SkipInstall,
@@ -62,9 +64,6 @@ if (-not (Test-Path $isoPath)) {
 }
 Write-Host "  ISO found: $isoPath" -ForegroundColor Green
 
-# ── Credentials (LAB ONLY) ────────────────────────────────
-$securePass = ConvertTo-SecureString 'WsusLab-Adm1n!2026' -AsPlainText -Force
-$labCred = New-Object System.Management.Automation.PSCredential('LabAdmin', $securePass)
 
 # ── Lab Definition ────────────────────────────────────────
 Write-Host ''

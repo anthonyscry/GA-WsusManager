@@ -16,13 +16,19 @@
 
 #region Internal state
 
-$script:CurrentProcess   = $null
-$script:WatchdogTimer    = $null
-$script:KeystrokeTimer   = $null
-$script:StdinFlushTimer  = $null
-$script:OutputEventJob   = $null
-$script:ErrorEventJob    = $null
-$script:ExitEventJob     = $null
+$script:CurrentProcess    = $null
+$script:WatchdogTimer     = $null
+$script:KeystrokeTimer    = $null
+$script:StdinFlushTimer   = $null
+$script:OutputEventJob    = $null
+$script:ErrorEventJob     = $null
+$script:ExitEventJob      = $null
+# Tracks operations that have already run Complete-WsusOperation once, so the
+# watchdog Tick and the Exited event do not both fire the user's OnComplete
+# callback (duplicate history rows, duplicate notifications). Keyed by
+# process Id for live operations; tests can clear entries via
+# Reset-WsusOperationGuard.
+$script:CompletedOperations = @{}
 
 
 try {
@@ -38,42 +44,6 @@ try {
 #endregion
 
 #region Private helpers
-
-function Disable-RunnerButtons {
-    param([hashtable]$Context)
-    foreach ($name in $Context.OperationButtons) {
-        $btn = $Context.Controls[$name]
-        if ($null -ne $btn) {
-            $btn.IsEnabled = $false
-            $btn.Opacity   = 0.5
-        }
-    }
-    foreach ($name in $Context.OperationInputs) {
-        $inp = $Context.Controls[$name]
-        if ($null -ne $inp) {
-            $inp.IsEnabled = $false
-            $inp.Opacity   = 0.5
-        }
-    }
-}
-
-function Enable-RunnerButtons {
-    param([hashtable]$Context)
-    foreach ($name in $Context.OperationButtons) {
-        $btn = $Context.Controls[$name]
-        if ($null -ne $btn) {
-            $btn.IsEnabled = $true
-            $btn.Opacity   = 1.0
-        }
-    }
-    foreach ($name in $Context.OperationInputs) {
-        $inp = $Context.Controls[$name]
-        if ($null -ne $inp) {
-            $inp.IsEnabled = $true
-            $inp.Opacity   = 1.0
-        }
-    }
-}
 
 function Stop-RunnerTimers {
     foreach ($timerVar in @('WatchdogTimer','KeystrokeTimer','StdinFlushTimer')) {
@@ -189,6 +159,14 @@ function Complete-WsusOperation {
 
         [scriptblock]$OnComplete = $null
     )
+
+    # Guard against double-completion when the watchdog and exit handler race.
+    # Uses the (ProcessId, OnComplete-target) pair so concurrent operations on
+    # different processes are not affected, and tests that share a mock context
+    # can complete the same operation multiple times by clearing the entry.
+    $guardKey = if ($Context.ContainsKey('Process') -and $null -ne $Context.Process) { $Context.Process.Id } else { [string]$Context.GetHashCode() }
+    if ($script:CompletedOperations.ContainsKey($guardKey)) { return }
+    $script:CompletedOperations[$guardKey] = $true
 
     Stop-RunnerTimers
     Unregister-RunnerEvents
@@ -411,6 +389,7 @@ function Start-WsusOperation {
     $proc.EnableRaisingEvents = $true
 
     $script:CurrentProcess = $proc
+    $Context['Process'] = $proc
 
     try {
         $proc.Start() | Out-Null
@@ -548,27 +527,31 @@ function Start-WsusOperation {
         $wdTimer.Interval = [TimeSpan]::FromMilliseconds($wdMs)
         $wdData['Timer'] = $wdTimer
         $wdTimer.Add_Tick({
-            $wdData.Timer.Stop()
-            $p = $wdData.Proc
-            if ($null -ne $p -and -not $p.HasExited) {
-                try { Stop-WsusOperation -Process $p } catch { Write-Verbose $_.Exception.Message }
-            }
-            $wdData.Context.Window.Dispatcher.Invoke([Action]{
-                $lbl = $wdData.Context.Controls['StatusLabel']
-                if ($null -ne $lbl) {
-                    if (Get-Command New-WsusGuiStatusText -ErrorAction SilentlyContinue) {
-                        $lbl.Text = New-WsusGuiStatusText -State TimedOut -Title $wdData.Title
-                    } else {
-                        $lbl.Text = "Timed out: $($wdData.Title)"
+            try {
+                $wdData.Timer.Stop()
+                $p = $wdData.Proc
+                if ($null -ne $p -and -not $p.HasExited) {
+                    try { Stop-WsusOperation -Process $p } catch { Write-Verbose $_.Exception.Message }
+                }
+                $wdData.Context.Window.Dispatcher.Invoke([Action]{
+                    $lbl = $wdData.Context.Controls['StatusLabel']
+                    if ($null -ne $lbl) {
+                        if (Get-Command New-WsusGuiStatusText -ErrorAction SilentlyContinue) {
+                            $lbl.Text = New-WsusGuiStatusText -State TimedOut -Title $wdData.Title
+                        } else {
+                            $lbl.Text = "Timed out: $($wdData.Title)"
+                        }
                     }
-                }
-                $logOut = $wdData.Context.Controls['LogOutput']
-                if ($null -ne $logOut) {
-                    $logOut.AppendText("`n[!] Operation timed out after $TimeoutMinutes minute(s).`n")
-                    $logOut.ScrollToEnd()
-                }
-            }.GetNewClosure())
-            Complete-WsusOperation -Context $wdData.Context -Title $wdData.Title -Success $false -OnComplete $wdData.OnComplete
+                    $logOut = $wdData.Context.Controls['LogOutput']
+                    if ($null -ne $logOut) {
+                        $logOut.AppendText("`n[!] Operation timed out after $TimeoutMinutes minute(s).`n")
+                        $logOut.ScrollToEnd()
+                    }
+                }.GetNewClosure())
+                Complete-WsusOperation -Context $wdData.Context -Title $wdData.Title -Success $false -OnComplete $wdData.OnComplete
+            } catch {
+                Write-Verbose $_.Exception.Message
+            }
         }.GetNewClosure())
         $wdTimer.Start()
         $script:WatchdogTimer = $wdTimer
@@ -578,11 +561,29 @@ function Start-WsusOperation {
     return $proc
 }
 
+function Reset-WsusOperationGuard {
+<#
+.SYNOPSIS
+    Clears the runner's internal double-completion guard.
+.DESCRIPTION
+    Tests that share a mock context across multiple Complete-WsusOperation
+    calls need to clear the guard between calls. Production callers should
+    not need this: each Start-WsusOperation creates a fresh process entry
+    that is cleaned up automatically.
+.EXAMPLE
+    Reset-WsusOperationGuard
+#>
+    [CmdletBinding()]
+    param()
+    $script:CompletedOperations.Clear()
+}
+
 #endregion
 
 Export-ModuleMember -Function @(
     'Start-WsusOperation',
     'Stop-WsusOperation',
     'Complete-WsusOperation',
-    'Find-WsusScript'
+    'Find-WsusScript',
+    'Reset-WsusOperationGuard'
 )
