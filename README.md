@@ -377,7 +377,7 @@ See [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) for the full refe
 | Database restore fails | Verify sysadmin privileges on SQL Server |
 | `SqlServer` module missing | v4.0.4+ auto-falls back to `sqlcmd.exe` — no manual install needed |
 | GroupPolicy module not found | Install RSAT: `Install-WindowsFeature GPMC` |
-| GUI shows `?` for emoji/symbols | Ensure `Scripts/WsusManagementGui.ps1` has UTF-8 BOM; non-BMP characters (above U+FFFF) will corrupt — use BMP symbols only |
+| GUI shows `?` for emoji/symbols | v4.1.0+ has UTF-8 BOM applied; symbols verified against Segoe UI font coverage |
 | Operation hangs | Check whether running in non-interactive mode; GUI passes `-NonInteractive` |
 
 For the full troubleshooting guide see [wiki/Troubleshooting.md](wiki/Troubleshooting.md) and [docs/WSUS-Manager-SOP.md § Troubleshooting](docs/WSUS-Manager-SOP.md#troubleshooting).

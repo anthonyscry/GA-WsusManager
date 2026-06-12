@@ -447,7 +447,7 @@ $script:StdinFlushTimer = $null
                     <Button x:Name="BtnHistory" Content="☰ History" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnHelp" Content="? Help" Style="{StaticResource NavBtn}"/>
                     <Button x:Name="BtnSettings" Content="⚙ Settings" Style="{StaticResource NavBtn}"/>
-                    <Button x:Name="BtnAbout" Content="ℹ About" Style="{StaticResource NavBtn}"/>
+                    <Button x:Name="BtnAbout" Content="ⓘ About" Style="{StaticResource NavBtn}"/>
                 </StackPanel>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
@@ -462,12 +462,12 @@ $script:StdinFlushTimer = $null
 
                         <TextBlock Text="MAINTENANCE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
                         <Button x:Name="BtnMaintenance" Content="↻ Online Sync" Style="{StaticResource NavBtn}"/>
-                        <Button x:Name="BtnSchedule" Content="⏱ Schedule Task" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnSchedule" Content="⌛ Schedule Task" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnCleanup" Content="✧ Deep Cleanup" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnTransfer" Content="⇄ Robocopy" Style="{StaticResource NavBtn}"/>
 
                         <TextBlock Text="DIAGNOSTICS" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Blue}" Margin="16,16,0,4"/>
-                        <Button x:Name="BtnDiagnostics" Content="⊘ Deep Diagnostics" Style="{StaticResource NavBtn}"/>
+                        <Button x:Name="BtnDiagnostics" Content="◎ Deep Diagnostics" Style="{StaticResource NavBtn}"/>
                         <Button x:Name="BtnReset" Content="↺ Reset Content" Style="{StaticResource NavBtn}" ToolTip="Re-verify all downloaded content files against the database"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -1113,6 +1113,10 @@ function Update-ServerMode {
     if ($controls.BtnSchedule) {
         $controls.BtnSchedule.IsEnabled = $isOnline
         $controls.BtnSchedule.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
+    }
+    if ($controls.QBtnMaint) {
+        $controls.QBtnMaint.IsEnabled = $isOnline
+        $controls.QBtnMaint.Opacity = if ($isOnline) { 1.0 } else { 0.5 }
     }
 }
 

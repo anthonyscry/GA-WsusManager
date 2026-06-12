@@ -138,4 +138,4 @@ Recommended path:
 - **PS2EXE missing in CI:** the `build.ps1 -SkipTests` path requires `ps2exe` installed. The CI build job installs Pester and PSScriptAnalyzer; add ps2exe to the install step if you need EXE build in CI.
 - **EXE works in repo but not after deployment:** confirm `Scripts/` and `Modules/` are alongside `GA-WsusManager.exe`.
 - **Version mismatch between GUI and CLI:** both call `Get-WsusAppVersion` which reads `metadata.json`. Update `metadata.json` and rebuild.
-- **Emoji/special chars render as `?` in GUI:** ensure `Scripts/WsusManagementGui.ps1` has a UTF-8 BOM. Non-BMP characters (outside U+FFFF) will corrupt in PowerShell 5.1 — use BMP symbols only.
+- **Emoji/special chars render as `?` in GUI:** v4.1.0+ has UTF-8 BOM applied to `Scripts/WsusManagementGui.ps1` and all menu symbols replaced with Segoe-UI-safe BMP alternatives.

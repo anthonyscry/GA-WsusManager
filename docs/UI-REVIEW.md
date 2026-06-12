@@ -62,7 +62,7 @@ Scores 3/4 because copywriting is clear, professional, and well-suited to the IT
 
 | Issue | Location | Fix |
 |---|---|---|
-| **Unicode emoji for nav icons render inconsistently** across Windows versions and DPI settings. 📜, 🧹, 🔍, ⇄ may appear as black-and-white Segoe UI Symbol glyphs on Server 2019 or as color emoji on Win 11 | Lines 395-420 | Replace with WPF `Path` data or embedded vector icons for consistent rendering. Alternatively, use Segoe MDL2 Assets icon font (available on all target Windows versions) |
+| **Unicode emoji for nav icons render inconsistently** across Windows versions and DPI settings. `ℹ` (info), `⏱` (stopwatch), `⊘` (diagnostics) may render as boxes on Server 2019 | Menu buttons in XAML | **v4.1.0:** Replaced with BMP-safe alternatives `ⓘ`, `⌛`, `◎`; UTF-8 BOM added to ensure correct PowerShell parsing |
 | **No transitions between panels.** Switching from Dashboard to Install is an instant visibility toggle — feels jarring | `Show-Panel` function, line 1479 | Add a 150ms fade-in via `DoubleAnimation` on Opacity. Even a simple opacity transition from 0→1 adds perceived quality |
 | **History view is a raw ListBox** with monospace text — no visual hierarchy | Line 691 | Use a styled `ItemTemplate` with separate columns for timestamp, status icon, operation name, and duration. Add alternating row backgrounds (`#161B22` / `#21262D`) |
 | **Progress bars are 4px tall** — easy to miss during operations | Lines 579, 582, 603, 604 | Increase to 6-8px and add an indeterminate mode for operations where progress can't be measured. Consider placing a spinner/icon next to the status label |
