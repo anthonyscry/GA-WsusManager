@@ -7,12 +7,13 @@ Welcome to the WSUS Manager documentation! This wiki provides comprehensive guid
 | Page | Description |
 |------|-------------|
 | [[Installation Guide]] | System requirements and setup instructions |
+| [Deployment Runbook](../docs/DEPLOYMENT.md) | Production deployment checklist and validation |
+| [Rollback Runbook](../docs/ROLLBACK.md) | Application, settings, SUSDB, and service rollback |
 | [[User Guide]] | How to use the GUI application |
 | [[Air-Gap Workflow]] | Managing updates on disconnected networks |
 | [[Troubleshooting]] | Common issues and solutions |
 | [[Developer Guide]] | Building from source and contributing |
 | [[Configuration Guide]] | Environment variables, paths, ports, and timeouts |
-| [[Office C2R Updates]] | M365 / Office LTSC update downloads via ODT |
 | [[Module Reference]] | PowerShell module documentation |
 
 ## What is WSUS Manager?
@@ -111,7 +112,7 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 4.1.0 | Jun 2026 | **Office C2R update download** (M365/Office LTSC 2024 via ODT), single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
+| 4.1.0 | Jun 2026 | Single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
 | 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB ops, 6-month age decline (preserves approved), sysadmin check via sqlcmd |
 | 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180min sync timeout, default products, WID auto-migration |
 | 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, robocopy fix, removed differential export, stream piping fix |

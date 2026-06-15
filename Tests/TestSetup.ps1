@@ -27,6 +27,7 @@ $script:WsusModules = @(
     "WsusExport"
     "WsusScheduledTask"
     "WsusAutoDetection"
+    "WsusDashboardViewModel"
     "AsyncHelpers"
 )
 
@@ -56,7 +57,7 @@ $script:TestConfig = @{
 
     # Skip conditions
     SkipServiceTests = -not (Get-Service -Name 'W3SVC' -ErrorAction SilentlyContinue)
-    SkipFlaUITests = -not (Test-Path "C:\projects\FlaUI-TestHarness\FlaUITestHarness.psm1")
+    SkipFlaUITests = -not (Test-Path (Join-Path $PSScriptRoot "FlaUITestHarness\FlaUITestHarness.psm1"))
     SkipInteractiveTests = $true  # Always skip tests requiring user input
 
     # Paths

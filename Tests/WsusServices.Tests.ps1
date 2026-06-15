@@ -50,6 +50,32 @@ Describe "WsusServices Module" {
         It "Should export Get-WsusServiceStatus function" {
             Get-Command Get-WsusServiceStatus -Module WsusServices | Should -Not -BeNullOrEmpty
         }
+
+        It "Should export Get-WsusServiceDefinitions function" {
+            Get-Command Get-WsusServiceDefinitions -Module WsusServices | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Get-WsusServiceDefinitions" {
+        It "Should return service definitions with at least 3 entries" {
+            $defs = @(Get-WsusServiceDefinitions)
+            $defs.Count | Should -BeGreaterOrEqual 3
+        }
+
+        It "Should include core WSUS services" {
+            $defs = @(Get-WsusServiceDefinitions)
+            $names = $defs | ForEach-Object { $_.Name }
+            $names | Should -Contain "WSUS Service"
+            $names | Should -Contain "IIS (W3SVC)"
+        }
+
+        It "Each definition should have Name and ServiceName" {
+            $defs = @(Get-WsusServiceDefinitions)
+            foreach ($def in $defs) {
+                $def.Keys | Should -Contain "Name"
+                $def.Keys | Should -Contain "ServiceName"
+            }
+        }
     }
 }
 
@@ -165,9 +191,9 @@ Describe "Get-WsusServiceStatus" {
         $result.Keys | Should -Contain "WSUS Service"
     }
 
-    It "Should contain IIS key" {
+    It "Should contain IIS (W3SVC) key" {
         $result = Get-WsusServiceStatus
-        $result.Keys | Should -Contain "IIS"
+        $result.Keys | Should -Contain "IIS (W3SVC)"
     }
 
     It "Should return status info for each service" {
@@ -315,102 +341,14 @@ Describe "Restart-WsusService" {
     }
 }
 
-Describe "Start-SqlServerExpress" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Start-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Start-WsusService with correct service name" {
-            Start-SqlServerExpress
-            Should -Invoke Start-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq 'MSSQL$SQLEXPRESS'
-            }
-        }
-    }
-}
-
-Describe "Stop-SqlServerExpress" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Stop-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Stop-WsusService with correct service name" {
-            Stop-SqlServerExpress
-            Should -Invoke Stop-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq 'MSSQL$SQLEXPRESS'
-            }
-        }
-    }
-}
-
-Describe "Start-WsusServer" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Start-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Start-WsusService with WSUSService" {
-            Start-WsusServer
-            Should -Invoke Start-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq "WSUSService"
-            }
-        }
-    }
-}
-
-Describe "Stop-WsusServer" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Stop-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Stop-WsusService with WSUSService" {
-            Stop-WsusServer
-            Should -Invoke Stop-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq "WSUSService"
-            }
-        }
-    }
-}
-
-Describe "Start-IISService" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Start-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Start-WsusService with W3SVC" {
-            Start-IISService
-            Should -Invoke Start-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq "W3SVC"
-            }
-        }
-    }
-}
-
-Describe "Stop-IISService" {
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Stop-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Stop-WsusService with W3SVC" {
-            Stop-IISService
-            Should -Invoke Stop-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq "W3SVC"
-            }
-        }
-    }
-}
+# Per-service wrappers (Start-SqlServerExpress, Stop-WsusServer, etc.)
+# are now internal helpers not exported from the module.
+# They are tested indirectly via Start-AllWsusServices and Stop-AllWsusServices.
 
 Describe "Start-AllWsusServices" {
     Context "With mocked services" {
         BeforeAll {
-            Mock Start-SqlServerExpress { $true } -ModuleName WsusServices
-            Mock Start-IISService { $true } -ModuleName WsusServices
-            Mock Start-WsusServer { $true } -ModuleName WsusServices
+            Mock Start-WsusService { $true } -ModuleName WsusServices
         }
 
         It "Should return a hashtable with results" {
@@ -438,9 +376,7 @@ Describe "Start-AllWsusServices" {
 Describe "Stop-AllWsusServices" {
     Context "With mocked services" {
         BeforeAll {
-            Mock Stop-SqlServerExpress { $true } -ModuleName WsusServices
-            Mock Stop-IISService { $true } -ModuleName WsusServices
-            Mock Stop-WsusServer { $true } -ModuleName WsusServices
+            Mock Stop-WsusService { $true } -ModuleName WsusServices
         }
 
         It "Should return a hashtable with results" {
@@ -465,65 +401,9 @@ Describe "Stop-AllWsusServices" {
     }
 }
 
-Describe "Start-SqlBrowserService" {
-    Context "Module export validation" {
-        It "Should export Start-SqlBrowserService function" {
-            Get-Command Start-SqlBrowserService -Module WsusServices | Should -Not -BeNullOrEmpty
-        }
-    }
-
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Get-Service {
-                [PSCustomObject]@{
-                    Name = "SQLBrowser"
-                    Status = "Stopped"
-                }
-            } -ModuleName WsusServices
-            Mock Set-Service { } -ModuleName WsusServices
-            Mock Start-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Start-WsusService with SQLBrowser" {
-            Start-SqlBrowserService
-            Should -Invoke Start-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq 'SQLBrowser'
-            }
-        }
-    }
-
-    Context "When service does not exist" {
-        BeforeAll {
-            Mock Get-Service { $null } -ModuleName WsusServices
-        }
-
-        It "Should return false when service does not exist" {
-            $result = Start-SqlBrowserService
-            $result | Should -Be $false
-        }
-    }
-}
-
-Describe "Stop-SqlBrowserService" {
-    Context "Module export validation" {
-        It "Should export Stop-SqlBrowserService function" {
-            Get-Command Stop-SqlBrowserService -Module WsusServices | Should -Not -BeNullOrEmpty
-        }
-    }
-
-    Context "With mocked service" {
-        BeforeAll {
-            Mock Stop-WsusService { $true } -ModuleName WsusServices
-        }
-
-        It "Should call Stop-WsusService with SQLBrowser" {
-            Stop-SqlBrowserService
-            Should -Invoke Stop-WsusService -ModuleName WsusServices -ParameterFilter {
-                $ServiceName -eq 'SQLBrowser'
-            }
-        }
-    }
-}
+# Start-SqlBrowserService and Stop-SqlBrowserService are now internal helpers.
+# Their behaviour is exercised indirectly through Start-AllWsusServices / Stop-AllWsusServices
+# and through the Invoke-WsusRepairAction dispatch in WsusRepairPlan.psm1.
 
 Describe "Get-WsusServiceStatus with SQL Browser" {
     Context "With IncludeSqlBrowser switch" {

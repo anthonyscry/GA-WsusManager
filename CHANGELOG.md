@@ -8,31 +8,22 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [4.1.0] - 2026-06-07
 
 ### Added
-- **Office C2R Update Download** — Download Microsoft 365 Apps and Office LTSC 2024
-  Click-to-Run updates to a network share using the Office Deployment Tool (ODT)
-- `Modules/WsusOfficeUpdates.psm1` — New module with functions:
-  `Get-WsusOfficeOdtPath`, `New-WsusOfficeDownloadConfig`,
-  `New-WsusOfficeUpdateTrayConfig`, `Invoke-WsusOfficeDownload`,
-  `Test-WsusOfficeShareAccess`, `Get-WsusOfficeDownloadStatus`
-- `Get-WsusOfficeC2RConfig` in `WsusConfig.psm1` — Office C2R path/product defaults
-- `-OfficeUpdates` CLI parameter in `Invoke-WsusManagement.ps1` for non-interactive mode
-- Menu option 10 in interactive menu: "Download Office LTSC / M365 Apps Updates to Share"
-
-### Configuration
-- Office C2R default paths, share, product, and channel settings in WsusConfig OfficeC2R block
+- **CI pipeline** — `.github/workflows/ci.yml` runs on every push/PR via
+  `windows-latest`: syntax check, PSScriptAnalyzer, unit tests, and EXE build
+- `build/Invoke-SyntaxCheck.ps1` — Quick PS parser check across all repo files
+- `Get-WsusAppVersion` — Single-source version reader from `metadata.json`
 
 ### Fixed
 - **Hardcoded dev paths removed** — `\\lab-hyperv\d\WSUS-Exports` replaced with `C:\WSUS\Exports`
   in all default parameters across CLI, monthly maintenance, and config
-- **Office C2R default share** — Changed from `\\FILESERVER\Software\OfficeC2R` to empty
-  string (always prompts interactively)
-- **Office C2R share prompt** — Now requires user entry instead of falling back to
-  non-existent server default
+- **Emoji corruption in GUI menus** — Replaced non-BMP emoji (🔑, U+1F511) with
+  BMP-safe text (`[+]`) and added UTF-8 BOM to all PS files with non-ASCII content.
+  PowerShell 5.1 here-strings corrupt surrogate pairs without a BOM, which
+  displayed as `?` boxes in the compiled EXE
 
 ### Tests
-- `Tests/WsusOfficeUpdates.Tests.ps1` — 40 new tests for Office C2R module covering:
-  XML generation (all 4 products, 6 channels), ODT path detection, share access validation,
-  download status reporting, and download error handling
+- Added targeted coverage for version consistency, scheduled task registration,
+  and repository validation flows
 
 ### Hardening
 - **ScheduledTask -Monthly parameter** — Replaced invalid `-Monthly` switch with XML-based
@@ -44,13 +35,39 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Automation
 - `build/Invoke-SyntaxCheck.ps1` — Quick PS parser check across all repo files
-- `build/Invoke-OfficeC2R-Tests.ps1` — Focused runner for the new Office C2R test suite
-- `build/Invoke-ShipReadiness.ps1` — Aggregated 4-step verification (syntax + lint + tests + Office C2R)
+- `build/Invoke-ShipReadiness.ps1` — Aggregated 3-step verification (syntax + lint + tests)
+
+### CI
+- **`.github/workflows/ci.yml`** — New tier-1 standard CI. Runs on every push and
+  PR via `windows-latest` (no self-hosted runner needed). Jobs: syntax check,
+  PSScriptAnalyzer, Pester unit tests, EXE build
+- **`.github/workflows/gui-tests.yml`** — Renamed from "triton-ajt" to
+  "self-hosted, daily" for clarity. Now documented as the tier-2 GUI pipeline
+  (tier-1 is ci.yml)
+- **Concurrency** — CI cancels in-progress runs on the same branch when a new
+  push lands (`concurrency.cancel-in-progress: true`)
 
 ### Documentation
+- `docs/ci-cd.md` — Full rewrite documenting the two-tier CI model, what each
+  job does, why GUI tests need a self-hosted runner, and how to add a new
+  self-hosted runner label
 - `wiki/Configuration-Guide.md` — Environment variables, paths, ports, timeouts
-- `wiki/Office-C2R-Updates.md` — Full feature documentation for Office C2R downloads
-- Linked both new pages from `wiki/Home.md` quick links
+- **README.md** — Full rewrite for v4.1.0 with env vars, CI table,
+  troubleshooting, and documentation index
+- **`docs/QUICK-START.md`** — Updated title to v4.1.0 and synced quick-start steps
+- **`docs/WSUS-Manager-SOP.md`** — Version bumped to v4.1.0. Module list expanded
+  from 16 to 25 with new modules documented. Two-Tier CI added to Features Summary.
+  v4.1.0 row added to version history
+- **`docs/WSUS-Manager-SOP-Confluence.txt`** — All v4.0.4 to v4.1.0 references
+  updated. Module list expanded to all 25. v4.1.0 row added to version history.
+  Distribution link updated to v4.1.0
+- **`wiki/Home.md`** — v4.1.0 row added to version history
+- **`wiki/Developer-Guide.md`** — Current Version bumped to 4.1.0
+- **`wiki/Module-Reference.md`** — TOC expanded from 16 to 25 modules
+- **`wiki/Changelog.md`** — v4.1.0 section added with the full changelog
+- **`CLAUDE.md`** — Current Version bumped to 4.1.0
+- **Version inconsistencies** — All v4.0.4/v4.0.5 mismatches across docs resolved.
+  All public docs now reference v4.1.0 (with historical version history preserved)
 
 ### Cleanup
 - **Empty catch blocks fixed** — All 8 empty `catch { }` blocks in GUI test files
@@ -62,53 +79,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   `Go-Dash` → `Open-Dashboard`
 - **Unused variable removed** — `$ctx = Start-GuiApplication ...` in
   `Tests/FlaUI.Tests.ps1` performance test piped to `Out-Null` instead
-
-### Lint
-- PSScriptAnalyzer errors: 11 → 0 across 70 files
-
-### Fixed
-- **Emoji corruption in GUI menus** — Replaced non-BMP emoji (🔑, U+1F511) with
-  BMP-safe text (`[+]`) and added UTF-8 BOM to all PS files with non-ASCII content.
-  PowerShell 5.1 here-strings corrupt surrogate pairs without a BOM, which
-  displayed as `?` boxes in the compiled EXE
-
-### CI
-- **`.github/workflows/ci.yml`** — New tier-1 standard CI. Runs on every push and
-  PR via `windows-latest` (no self-hosted runner needed). Jobs: syntax check,
-  PSScriptAnalyzer, Pester unit tests, Office C2R focused tests, EXE build
-- **`.github/workflows/gui-tests.yml`** — Renamed from "triton-ajt" to
-  "self-hosted, daily" for clarity. Now documented as the tier-2 GUI pipeline
-  (tier-1 is ci.yml)
-- **Concurrency** — CI cancels in-progress runs on the same branch when a new
-  push lands (`concurrency.cancel-in-progress: true`)
-
-### Documentation
-- `docs/ci-cd.md` — Full rewrite documenting the two-tier CI model, what each
-  job does, why GUI tests need a self-hosted runner, and how to add a new
-  self-hosted runner label
-
-### Documentation (Consolidation Pass)
-- **README.md** — Full rewrite for v4.1.0 with Office C2R workflow, env vars,
-  CI table, troubleshooting, and documentation index
-- **`docs/QUICK-START.md`** — Updated title to v4.1.0, added Office C2R section
-  (option 6) with quick steps and link to the full wiki guide
-- **`docs/WSUS-Manager-SOP.md`** — Version bumped to 4.1.0. Module list expanded
-  from 16 to 26 with new modules documented. Office C2R and Two-Tier CI added
-  to Features Summary. v4.1.0 row added to version history
-- **`docs/WSUS-Manager-SOP-Confluence.txt`** — All v4.0.4 to v4.1.0 references
-  updated. Module list expanded to all 26. v4.1.0 row added to version history.
-  Distribution link updated to v4.1.0
-- **`wiki/Home.md`** — v4.1.0 row added to version history
-- **`wiki/Developer-Guide.md`** — Current Version bumped to 4.1.0
-- **`wiki/Module-Reference.md`** — TOC expanded from 16 to 26 modules
-- **`wiki/Changelog.md`** — v4.1.0 section added with the full changelog
-- **`CLAUDE.md`** — Current Version bumped to 4.1.0
-- **Version inconsistencies** — All v4.0.4/v4.0.5 mismatches across docs resolved.
-  All public docs now reference v4.1.0 (with historical version history preserved)
 - **Repository cleanup** — Moved AI audit instructions under `docs/ai-audit/`,
   ship-readiness reports under `docs/reports/`, removed stale generated root artifacts,
   and removed stale `.planning-archive-reverted-c#-era/` C#-era planning archive,
   `.agents/skills/`, and `.claude/skills/` vendored agent artifacts
+
+### Lint
+- PSScriptAnalyzer errors: 11 → 0 across 70 files
 
 ## [4.0.5] - 2026-05-11
 

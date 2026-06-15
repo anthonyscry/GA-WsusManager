@@ -15,7 +15,6 @@ This is a quick-start guide for new operators. For the full reference see [WSUS-
 | Installers | `SQLEXPRADV_x64_ENU.exe` in `C:\WSUS\SQLDB\` (SSMS optional) |
 | Package | `WsusManager-v4.1.0.zip` extracted to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`) |
 | Privileges | Local Administrator |
-| Office C2R (optional) | Office Deployment Tool `setup.exe` (see [Office C2R Updates](../wiki/Office-C2R-Updates.md)) |
 
 ---
 
@@ -100,17 +99,6 @@ gpresult /r | findstr WSUS
 
 ---
 
-## 6. Office C2R Updates (Optional)
-
-If your environment also has Microsoft 365 Apps or Office LTSC 2024 on the air-gap network, use this workflow to download the Click-to-Run update content:
-
-1. On an internet-connected staging machine, install the [Office Deployment Tool](https://www.microsoft.com/en-us/download/details.aspx?id=49117) (place `setup.exe` in `C:\ODT\`).
-2. Run WSUS Manager, choose option **10. Download Office LTSC / M365 Apps Updates to Share**.
-3. Enter the network share (e.g. `\\FILESERVER\Software\OfficeC2R`).
-4. Pick the product (Office LTSC 2024, M365 Apps, Visio LTSC 2024, or Project LTSC 2024), channel, and language.
-5. Click through. The download runs `setup.exe /download` and reports file count, size, and per-channel summary.
-
-For the full guide including GPO client configuration see [wiki/Office-C2R-Updates.md](../wiki/Office-C2R-Updates.md).
 
 ---
 

@@ -28,10 +28,9 @@ Complete reference for all PowerShell modules in WSUS Manager v4.1.0.
 20. [WsusHistory](#wsushistory)
 21. [WsusNotification](#wsusnotification)
 22. [WsusTrending](#wsustrending)
-23. [WsusOfficeUpdates](#wsusofficeupdates)
-24. [WsusDialogs](#wsusdialogs)
-25. [WsusOperationRunner](#wsusoperationrunner)
-26. [AsyncHelpers](#asynchelpers)
+23. [WsusDialogs](#wsusdialogs)
+24. [WsusOperationRunner](#wsusoperationrunner)
+25. [AsyncHelpers](#asynchelpers)
 
 ---
 

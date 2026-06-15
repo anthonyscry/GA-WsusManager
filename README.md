@@ -5,7 +5,6 @@
 
 WSUS Manager is a PowerShell GUI + CLI application for managing Windows Server Update Services (WSUS) on air-gapped and controlled networks. It handles the entire lifecycle of keeping Windows machines patched: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB or share, importing them, configuring HTTPS, and pushing updates out to client machines through Group Policy.
 
-WSUS Manager v4.1.0 also adds Office Click-to-Run (C2R) update downloads for Microsoft 365 Apps and Office LTSC 2024 — the same content Microsoft bundles with the Office Deployment Tool — hosted on a local share so clients update from your network instead of the Microsoft CDN.
 
 ---
 
@@ -19,7 +18,6 @@ WSUS Manager v4.1.0 also adds Office Click-to-Run (C2R) update downloads for Mic
   - [Air-Gapped Server Build + Import Workflow](#air-gapped-server-build--import-workflow)
   - [Reference: Online Sync Workflow (Source Server Only)](#reference-online-sync-workflow-source-server-only)
   - [Deploying GPOs to Clients](#deploying-gpos-to-clients)
-  - [Office C2R Update Download](#office-c2r-update-download)
 - [Project Structure](#project-structure)
 - [Modules](#modules)
 - [Build, Test, and CI](#build-test-and-ci)
@@ -55,7 +53,6 @@ For step-by-step installation including the SQL Server Express prerequisite, see
 | WSUS role | Installed by the setup workflow if not present |
 | SQL Server | SQL Server Express 2022 (installed by the setup workflow) |
 | Disk space | At least 40 GB free on the WSUS content drive |
-| Office C2R (optional) | Office Deployment Tool (setup.exe) from [Microsoft](https://www.microsoft.com/en-us/download/details.aspx?id=49117) on a staging machine with internet access |
 
 ---
 
@@ -82,13 +79,6 @@ For step-by-step installation including the SQL Server Express prerequisite, see
 - "Reset Content" button for troubleshooting content registration issues after import.
 - Diagnostics verify both WSUS root permissions on `C:\WSUS` and the IIS `/Content` path to `C:\WSUS\WsusContent`.
 
-### Office C2R Update Downloads (v4.1.0+)
-- New menu option 10 / `-OfficeUpdates` CLI switch.
-- Downloads Microsoft 365 Apps and Office LTSC 2024 Click-to-Run updates using the Office Deployment Tool.
-- Supports Monthly Enterprise, Current, Semi-Annual, and LTSC channels.
-- Supports M365 Apps, Office LTSC 2024, Visio LTSC 2024, Project LTSC 2024.
-- Designed for air-gapped networks: stage on an internet-connected machine, then transfer to the air-gap share.
-- See [wiki/Office-C2R-Updates.md](wiki/Office-C2R-Updates.md) for the full guide.
 
 ### Client Deployment
 - GPO deployment scripts for air-gapped domains (no WinRM required).
@@ -186,33 +176,6 @@ Group Policy Objects (GPOs) tell Windows client machines where the WSUS server i
 gpresult /r | findstr WSUS
 ```
 
-### Office C2R Update Download
-
-Office 2024 LTSC and Microsoft 365 Apps use Click-to-Run delivery. WSUS only mirrors traditional Windows updates, so Office C2R update approval through WSUS shows updates as **stubs** that never receive content. WSUS Manager solves this by automating the Microsoft-recommended workaround: host C2R content on a local share and point clients at it through the Office ADMX templates.
-
-**Prerequisites:**
-- A staging machine (can be the WSUS server) that can reach the Microsoft CDN.
-- The Office Deployment Tool (ODT) `setup.exe` from [Microsoft](https://www.microsoft.com/en-us/download/details.aspx?id=49117). Place it in `C:\ODT\` or `C:\Program Files\Office\ODT\`.
-- A network share writable by the staging machine, readable by `Domain Computers`.
-
-**Steps:**
-
-1. Open WSUS Manager (GUI) or the CLI.
-2. Select **Download Office LTSC / M365 Apps Updates to Share** (menu option 10).
-3. Enter the network share path (e.g. `\\FILESERVER\Software\OfficeC2R`).
-4. Choose the product (Office LTSC 2024 by default), channel, language, and architecture.
-5. Click through the confirmation. The download runs `setup.exe /download` and reports the file count, size, and per-channel summary.
-6. Apply the Office ADMX templates and configure the GPO UpdatePath to the share.
-
-**Schedule it:** the same download can be triggered unattended:
-```powershell
-.\Scripts\Invoke-WsusManagement.ps1 -OfficeUpdates `
-    -OfficeChannel LTSC `
-    -OfficeProductId OfficeLTSC2024 `
-    -OfficeSharePath "\\FILESERVER\Software\OfficeC2R"
-```
-
-See [wiki/Office-C2R-Updates.md](wiki/Office-C2R-Updates.md) for the full guide including GPO client configuration and gotchas.
 
 ---
 
@@ -264,7 +227,6 @@ GA-WsusManager/
 | `WsusRepairHarness.psm1` | Repair execution harness |
 | `WsusDiagnosticResult.psm1` | Diagnostic result types |
 | `WsusTestHarness.psm1` | Test harness for modules |
-| `WsusOfficeUpdates.psm1` | **Office C2R update download (v4.1.0)** |
 | `AsyncHelpers.psm1` | Async/background operation helpers for WPF |
 
 See [wiki/Module-Reference.md](wiki/Module-Reference.md) for the full reference.
@@ -282,8 +244,6 @@ See [wiki/Module-Reference.md](wiki/Module-Reference.md) for the full reference.
 # Quick syntax check across all PS files
 .\build\Invoke-SyntaxCheck.ps1
 
-# Office C2R focused test runner
-.\build\Invoke-OfficeC2R-Tests.ps1
 
 # Full local validation (lint + tests + XAML)
 .\build\Invoke-LocalValidation.ps1
@@ -298,14 +258,13 @@ Two-tier CI model — see [docs/ci-cd.md](docs/ci-cd.md) for the full design.
 
 | Workflow | Trigger | Runner | Purpose |
 |----------|---------|--------|---------|
-| `.github/workflows/ci.yml` | every push + PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, Office C2R tests, EXE build |
+| `.github/workflows/ci.yml` | every push + PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, EXE build |
 | `.github/workflows/gui-tests.yml` | manual + daily | `self-hosted, windows, triton-ajt` | full Pester suite including FlaUI GUI automation |
 
 ### Test counts (as of v4.1.0)
 
-- **752 tests** across 25 test files
-- **Last full documented run:** 751 pass, 0 fail, 1 skip (admin-elevation guard)
-- Office C2R module coverage included
+- **791 tests** in the standard unit suite gate
+- **Last standard validation run:** 790 pass, 0 fail, 1 skip (excluding E2E / GUI / Integration / FlaUI)
 
 ---
 
@@ -344,6 +303,8 @@ See [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) for the full refe
 | Document | Purpose |
 |----------|---------|
 | [README.md](README.md) | This file — project overview and quick start |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment runbook |
+| [docs/ROLLBACK.md](docs/ROLLBACK.md) | Application, settings, SUSDB, and service rollback runbook |
 | [docs/QUICK-START.md](docs/QUICK-START.md) | Step-by-step install guide |
 | [docs/WSUS-Manager-SOP.md](docs/WSUS-Manager-SOP.md) | Full operator Standard Operating Procedure |
 | [docs/WSUS-Manager-SOP-Confluence.txt](docs/WSUS-Manager-SOP-Confluence.txt) | Confluence wiki markup version of the SOP |
@@ -357,11 +318,9 @@ See [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) for the full refe
 | [wiki/Troubleshooting.md](wiki/Troubleshooting.md) | Common issues |
 | [wiki/Developer-Guide.md](wiki/Developer-Guide.md) | Building from source |
 | [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) | Env vars, paths, ports, timeouts |
-| [wiki/Office-C2R-Updates.md](wiki/Office-C2R-Updates.md) | Office C2R feature guide |
 | [wiki/Module-Reference.md](wiki/Module-Reference.md) | Module function reference |
 | [wiki/Changelog.md](wiki/Changelog.md) | Wiki changelog mirror |
 | [docs/ai-audit/README.md](docs/ai-audit/README.md) | AI ship-readiness audit instruction pack |
-| [docs/reports/ship-readiness/ship_readiness_final_report.md](docs/reports/ship-readiness/ship_readiness_final_report.md) | Latest ship-readiness assessment and evidence summary |
 
 ---
 

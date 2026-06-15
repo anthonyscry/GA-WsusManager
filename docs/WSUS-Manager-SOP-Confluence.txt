@@ -682,7 +682,6 @@ h3. PowerShell Modules (26 Total)
 |WsusHistory.psm1|Operation history (JSON at %APPDATA%\WsusManager\history.json)|
 |WsusNotification.psm1|Toast/balloon/log-only notifications on operation completion|
 |WsusTrending.psm1|DB size trending - linear regression, days-until-full estimate|
-|WsusOfficeUpdates.psm1| *Office C2R update download (v4.1.0) - ODT integration for M365/Office LTSC 2024*|
 |AsyncHelpers.psm1|Runspace pool, async execution, UI thread dispatch for WPF|
 
 ----
@@ -716,7 +715,7 @@ h2. Features Summary
 h2. Version History
 
 ||Version||Date||Highlights||
-|4.1.0|Jun 2026| *Office C2R update download* (M365/Office LTSC 2024 via ODT), single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation|
+|4.1.0|Jun 2026| Single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation|
 |4.0.4|Mar 2026|sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved), sysadmin check via sqlcmd|
 |4.0.3|Mar 2026|Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180-min sync timeout, default products, WID auto-migration|
 |4.0.2|Mar 2026|GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization|

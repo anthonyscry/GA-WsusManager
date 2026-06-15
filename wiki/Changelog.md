@@ -6,16 +6,12 @@ All notable changes to WSUS Manager are documented here.
 ## [4.1.0] - 2026-06-07
 
 ### Added
-- **Office C2R Update Download** — Download M365 Apps and Office LTSC 2024 Click-to-Run
-  updates via the Office Deployment Tool. New module `WsusOfficeUpdates.psm1` with 6
-  functions and 40 Pester tests
 - **Configuration Guide** — `wiki/Configuration-Guide.md` documents env vars, paths,
   ports, and timeouts
-- **Office C2R Updates guide** — `wiki/Office-C2R-Updates.md` for the new feature
 - **CI pipeline** — `.github/workflows/ci.yml` runs on every push/PR via
-  `windows-latest`: syntax check, PSScriptAnalyzer, unit tests, Office C2R tests, EXE build
-- **Automation scripts** — `build/Invoke-SyntaxCheck.ps1`,
-  `build/Invoke-OfficeC2R-Tests.ps1`, `build/Invoke-ShipReadiness.ps1`
+  `windows-latest`: syntax check, PSScriptAnalyzer, unit tests, and EXE build
+- **Automation scripts** — `build/Invoke-SyntaxCheck.ps1`
+  and `build/Invoke-ShipReadiness.ps1`
 - `Get-WsusAppVersion` — single-source version reader from `metadata.json`
 
 ### Changed
@@ -23,7 +19,7 @@ All notable changes to WSUS Manager are documented here.
   `New-ScheduledTaskTrigger` (PS 5.1) with `Register-ScheduledTask -Xml` and
   `ScheduleByMonth/DaysOfMonth` Win32 schema
 - **Documentation** — README, QUICK-START, SOP, and Confluence export consolidated
-  and synced to v4.1.0. Module count 16 to 26. Version mismatches fixed throughout
+  and synced to v4.1.0. Module count 16 to 25. Version mismatches fixed throughout
 
 - **Repository cleanup** — AI audit instructions now live under `docs/ai-audit/`;
   ship-readiness reports now live under `docs/reports/`; stale root artifacts removed
@@ -34,8 +30,6 @@ All notable changes to WSUS Manager are documented here.
   corrupts surrogate pairs without a BOM
 - **Hardcoded dev paths removed** — `\\lab-hyperv\d\WSUS-Exports` replaced with
   `C:\WSUS\Exports` in all defaults
-- **Office C2R default share** — Replaced `\\FILESERVER\Software\OfficeC2R` with
-  empty string (always prompts)
 
 ### Lint
 - PSScriptAnalyzer errors: 11 to 0 across 70 files

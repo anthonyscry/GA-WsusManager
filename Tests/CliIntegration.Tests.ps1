@@ -152,6 +152,11 @@ Describe "Invoke-WsusManagement.ps1 Parameter Validation" {
             $param | Should -Not -BeNullOrEmpty
             $param.StaticType.Name | Should -Be 'SwitchParameter'
         }
+        It "Does not expose the removed OfficeUpdates switch" {
+            $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'OfficeUpdates' }
+            $param | Should -BeNullOrEmpty
+        }
+
     }
 
     Context "Path Parameters" {

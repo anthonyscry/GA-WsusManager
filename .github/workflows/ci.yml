@@ -104,36 +104,10 @@ jobs:
           path: TestResults/
           retention-days: 14
 
-  office-c2r-tests:
-    name: Office C2R Module Tests
-    runs-on: windows-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Pester
-        shell: pwsh
-        run: |
-          Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
-
-      - name: Run Office C2R tests
-        shell: pwsh
-        run: |
-          ./build/Invoke-OfficeC2R-Tests.ps1 -OutputFile 'TestResults/office-c2r.xml'
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: office-c2r-results-${{ github.sha }}
-          path: TestResults/
-          retention-days: 14
 
   build:
     name: Build EXE
-    needs: [syntax, lint, unit-tests, office-c2r-tests]
+    needs: [syntax, lint, unit-tests]
     runs-on: windows-latest
     timeout-minutes: 15
 
@@ -150,7 +124,7 @@ jobs:
       - name: Build EXE
         shell: pwsh
         run: |
-          .\build.ps1 -SkipTests -NoPush
+          .\build.ps1 -SkipCodeReview -SkipTests -NoPush
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4

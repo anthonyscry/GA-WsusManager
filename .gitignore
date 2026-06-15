@@ -68,6 +68,7 @@ installers/*.exe
 Tests/Screenshots/
 
 # Test outputs
+Tests/FlaUITestHarness/packages/
 TestResults/
 *.trx
 coverage/

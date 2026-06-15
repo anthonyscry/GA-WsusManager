@@ -105,7 +105,6 @@ GA-WsusManager/
 │   ├── WsusHistory.psm1         # Operation history
 │   ├── WsusNotification.psm1    # Toast/balloon notifications
 │   ├── WsusTrending.psm1        # DB size trending with linear regression
-│   ├── WsusOfficeUpdates.psm1   # Office C2R download via Office Deployment Tool
 │   ├── WsusTestHarness.psm1     # Shared test helpers and evidence paths
 │   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
 │

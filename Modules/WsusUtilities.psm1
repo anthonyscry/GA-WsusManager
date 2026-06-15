@@ -616,14 +616,26 @@ function Test-WsusPath {
 # ===========================
 
 # Module-level constants for credential storage
-$script:WsusConfigPath = "C:\WSUS"
+$script:WsusConfigPath = $null  # resolved lazily by Get-WsusSqlCredentialPath
 $script:WsusSqlCredentialFile = "sql_credential.xml"
 
 function Get-WsusSqlCredentialPath {
     <#
     .SYNOPSIS
-        Returns the full path to the SQL credential file
+        Returns the full path to the SQL credential file.
+    .DESCRIPTION
+        Resolves the credential file path using the following priority:
+        1. WsusConfig ContentPath if available (from Get-WsusContentPath)
+        2. Default: C:\WSUS
+        This allows administrators to override the credential storage location
+        by setting the ContentPath in WsusConfig.
     #>
+    if (-not $script:WsusConfigPath) {
+        $configPath = if (Get-Command 'Get-WsusContentPath' -ErrorAction SilentlyContinue) {
+            try { Get-WsusContentPath } catch { $null }
+        }
+        $script:WsusConfigPath = if ($configPath) { $configPath } else { "C:\WSUS" }
+    }
     return Join-Path $script:WsusConfigPath $script:WsusSqlCredentialFile
 }
 
@@ -886,6 +898,72 @@ function Remove-WsusSqlCredential {
     }
 }
 
+function Get-WsusAppDataPath {
+    <#
+    .SYNOPSIS
+        Resolves the per-user WSUS Manager application data path.
+    .OUTPUTS
+        String path to the AppData WsusManager directory.
+    .EXAMPLE
+        Get-WsusAppDataPath -FileName 'settings.json'
+        Returns the full path to settings.json in the WsusManager AppData folder.
+    #>
+    [CmdletBinding()]
+    param([string]$FileName = '')
+
+    $root = Join-Path $env:APPDATA 'WsusManager'
+    if ([string]::IsNullOrWhiteSpace($FileName)) { return $root }
+    return Join-Path $root $FileName
+}
+
+# ===========================
+# SECRET HELPER FUNCTIONS
+# ===========================
+
+function New-WsusSecretEnvironment {
+    [CmdletBinding()]
+    param(
+        [hashtable]$Values = @{}
+    )
+
+    $environment = @{}
+    $cleanupKeys = New-Object System.Collections.Generic.List[string]
+    foreach ($entry in $Values.GetEnumerator()) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry.Key)) { continue }
+        $environment[[string]$entry.Key] = [string]$entry.Value
+        $null = $cleanupKeys.Add([string]$entry.Key)
+    }
+
+    [pscustomobject]@{
+        PSTypeName = 'Wsus.SecretEnvironment'
+        Environment = $environment
+        CleanupKeys = @($cleanupKeys)
+    }
+}
+
+function Clear-WsusSecretEnvironment {
+    [CmdletBinding()]
+    param(
+        [string[]]$Keys = @()
+    )
+
+    foreach ($key in @($Keys | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        Remove-Item "Env:\$key" -ErrorAction SilentlyContinue
+    }
+}
+
+function ConvertTo-WsusSecureString {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Value)
+
+    $secure = New-Object Security.SecureString
+    foreach ($char in $Value.ToCharArray()) {
+        $secure.AppendChar($char)
+    }
+    $secure.MakeReadOnly()
+    $secure
+}
+
 # Export functions
 Export-ModuleMember -Function @(
     'Write-ColorOutput',
@@ -908,5 +986,9 @@ Export-ModuleMember -Function @(
     'Set-WsusSqlCredential',
     'Get-WsusSqlCredential',
     'Test-WsusSqlCredential',
-    'Remove-WsusSqlCredential'
+    'Remove-WsusSqlCredential',
+    'Get-WsusAppDataPath',
+    'New-WsusSecretEnvironment',
+    'Clear-WsusSecretEnvironment',
+    'ConvertTo-WsusSecureString'
 )

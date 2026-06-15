@@ -95,10 +95,35 @@ function Restart-WsusService {
     return (Start-WsusService -ServiceName $ServiceName)
 }
 
+<#
+.SYNOPSIS
+    Returns the canonical WSUS service definitions.
+.DESCRIPTION
+    Single source of truth for WSUS-related service names. All modules should
+    call this function instead of duplicating service-name strings.
+.OUTPUTS
+    Array of hashtables with Name, ServiceName keys.
+.EXAMPLE
+    Get-WsusServiceDefinitions
+    Returns the canonical service list used by WsusHealth, WsusAutoDetection, etc.
+#>
+function Get-WsusServiceDefinitions {
+    [hashtable[]]@(
+        @{ Name = 'SQL Server Express'; ServiceName = "MSSQL`$SQLEXPRESS"; Group = 'Core' },
+        @{ Name = 'WSUS Service';      ServiceName = 'WSUSService';        Group = 'Core' },
+        @{ Name = 'IIS (W3SVC)';       ServiceName = 'W3SVC';              Group = 'Core' },
+        @{ Name = 'SQL Browser';       ServiceName = 'SQLBrowser';         Group = 'Auxiliary' }
+    )
+}
+
 function Get-WsusServiceStatus {
     param([switch]$IncludeSqlBrowser)
-    $serviceMap = @{ "SQL Server Express" = "MSSQL`$SQLEXPRESS"; "WSUS Service" = "WSUSService"; "IIS" = "W3SVC" }
-    if ($IncludeSqlBrowser) { $serviceMap["SQL Browser"] = "SQLBrowser" }
+    $definitions = Get-WsusServiceDefinitions
+    $serviceMap = @{}
+    foreach ($def in $definitions) {
+        if ($def.ServiceName -eq 'SQLBrowser' -and -not $IncludeSqlBrowser) { continue }
+        $serviceMap[$def.Name] = $def.ServiceName
+    }
     $allServices = Get-Service -Name $serviceMap.Values -ErrorAction SilentlyContinue
     $svcByName = @{}; foreach ($s in $allServices) { $svcByName[$s.Name] = $s }
     $status = @{}
@@ -142,8 +167,11 @@ function Stop-AllWsusServices {
     return $results
 }
 
-# Full export list for module consumers
+# Narrowed export list: only generic service operations.
+# Per-service wrappers (Start-SqlServerExpress, Start-WsusServer, etc.)
+# remain as private helpers used by Start-AllWsusServices / Stop-AllWsusServices.
 Export-ModuleMember -Function @(
+    'Get-WsusServiceDefinitions',
     'Start-WsusService',
     'Stop-WsusService',
     'Restart-WsusService',
@@ -151,14 +179,6 @@ Export-ModuleMember -Function @(
     'Test-ServiceRunning',
     'Test-ServiceExists',
     'Wait-ServiceState',
-    'Start-SqlServerExpress',
-    'Stop-SqlServerExpress',
-    'Start-WsusServer',
-    'Stop-WsusServer',
-    'Start-IISService',
-    'Stop-IISService',
-    'Start-SqlBrowserService',
-    'Stop-SqlBrowserService',
     'Start-AllWsusServices',
     'Stop-AllWsusServices'
 )

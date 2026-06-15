@@ -7,7 +7,6 @@
       1. Syntax check (parse all PS files)
       2. PSScriptAnalyzer lint (errors only)
       3. Pester test suite (full)
-      4. Office C2R module tests (focused)
 
     Aggregates results into a single pass/fail summary. Use this as the
     pre-release gate before tagging a release.
@@ -68,7 +67,7 @@ function Write-StepResult {
 }
 
 # Step 1: Syntax check
-Write-StepHeader "Syntax Check" 1 4
+Write-StepHeader "Syntax Check" 1 3
 $allFiles = Get-ChildItem -Path $root -Include '*.ps1', '*.psm1', '*.psd1' -Recurse -File |
     Where-Object { $_.FullName -notmatch '[\\/](\.git|node_modules|bin|obj|dist|\.planning-archive-reverted-c#-era)[\\/]' }
 $syntaxErrors = 0
@@ -87,7 +86,7 @@ if ($syntaxErrors -gt 0) { $overallPass = $false }
 
 # Step 2: PSScriptAnalyzer
 if (-not $SkipLint) {
-    Write-StepHeader "PSScriptAnalyzer" 2 4
+    Write-StepHeader "PSScriptAnalyzer" 2 3
     $analyzer = Get-Module -ListAvailable PSScriptAnalyzer | Select-Object -First 1
     if (-not $analyzer) {
         Write-StepResult "PSScriptAnalyzer" $false "Not installed (run: Install-Module PSScriptAnalyzer -Scope CurrentUser)"
@@ -114,7 +113,7 @@ if (-not $SkipLint) {
 
 # Step 3: Pester tests
 if (-not $SkipTests) {
-    Write-StepHeader "Pester Tests" 3 4
+    Write-StepHeader "Pester Tests" 3 3
     $pester = Get-Module -ListAvailable -Name Pester | Where-Object Version -ge '5.0.0' | Select-Object -First 1
     if (-not $pester) {
         Write-StepResult "Pester" $false "Not installed (run: Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force)"
@@ -151,31 +150,6 @@ if (-not $SkipTests) {
     $results['Tests'] = @{ Pass = $true; Skipped = $true }
 }
 
-# Step 4: Office C2R focused tests
-if (-not $SkipTests) {
-    Write-StepHeader "Office C2R Module Tests" 4 4
-    $testFile = Join-Path $root 'Tests\WsusOfficeUpdates.Tests.ps1'
-    if (Test-Path $testFile) {
-        $config = New-PesterConfiguration
-        $config.Run.Path = $testFile
-        $config.Run.PassThru = $true
-        $config.Output.Verbosity = 'None'
-        $officeResult = Invoke-Pester -Configuration $config
-        $officePass = ($officeResult.FailedCount -eq 0)
-        Write-StepResult "Office C2R" $officePass "$($officeResult.PassedCount)/$($officeResult.TotalCount) passed"
-        $results['OfficeC2R'] = @{
-            Pass = $officePass
-            Passed = $officeResult.PassedCount
-            Failed = $officeResult.FailedCount
-            Total = $officeResult.TotalCount
-        }
-        if (-not $officePass) { $overallPass = $false }
-    } else {
-        Write-StepResult "Office C2R" $false "Test file not found"
-        $results['OfficeC2R'] = @{ Pass = $false; Error = 'Test file not found' }
-        $overallPass = $false
-    }
-}
 
 # Final summary
 Write-Host ""

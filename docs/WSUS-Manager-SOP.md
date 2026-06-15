@@ -802,7 +802,6 @@ SESSION START: 2026-01-19 10:30:00
 | WsusRepairHarness.psm1 | Repair execution harness |
 | WsusDiagnosticResult.psm1 | Diagnostic result types |
 | WsusTestHarness.psm1 | Test harness for modules |
-| WsusOfficeUpdates.psm1 | **Office C2R update download (v4.1.0)** — ODT integration |
 | AsyncHelpers.psm1 | Async/background operation helpers for WPF |
 
 ---
@@ -831,8 +830,7 @@ SESSION START: 2026-01-19 10:30:00
 | Auto-Refresh Dashboard | 30-second interval status updates with operation skip |
 | Keyboard Shortcuts | Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R/F5 for quick navigation |
 | DPI Awareness | Crisp rendering on high-DPI displays |
-| **Office C2R Updates** | **Download M365 Apps / Office LTSC 2024 updates via ODT for air-gapped client updates** |
-| Modular Architecture | 26 reusable PowerShell modules |
+| Modular Architecture | 25 reusable PowerShell modules |
 | Two-Tier CI | GitHub-hosted standard CI (every push) + self-hosted daily GUI test runs |
 
 ---
@@ -840,7 +838,7 @@ SESSION START: 2026-01-19 10:30:00
 ## Version History
 
 | Version | Date | Highlights |
-| 4.1.0 | Jun 2026 | **Office C2R update download** (M365/Office LTSC 2024 via ODT), single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
+| 4.1.0 | Jun 2026 | Single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
 |---------|------|------------|
 | 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved updates), sysadmin check via sqlcmd, explicit SQLPS module import |
 | 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight check, 180-minute sync timeout, default products and classifications, WID auto-migration, exact product name matching |

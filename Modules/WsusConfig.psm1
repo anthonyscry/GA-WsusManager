@@ -77,26 +77,6 @@ $script:WsusConfig = @{
         VolumeSizeMB = 4300  # 4.3 GB for single-layer DVD
     }
 
-    # Office C2R Update Settings
-    OfficeC2R = @{
-        # Default paths for Office Deployment Tool
-        OdtSearchPaths = @(
-            "C:\Program Files\Office\ODT\setup.exe",
-            "C:\ODT\setup.exe",
-            "C:\Program Files\Microsoft Office\ODT\setup.exe"
-        )
-        # Default network share for downloaded updates (empty = always prompt)
-        DefaultUpdateShare = ""
-        # Default product to download (ProPlus2024Volume = Office LTSC 2024)
-        DefaultProduct = "OfficeLTSC2024"
-        # Default update channel
-        DefaultChannel = "MonthlyEnterprise"
-        # Default architecture
-        DefaultOfficeClientEdition = "64"
-        # Default language
-        DefaultLanguage = "en-us"
-    }
-
     # GUI Configuration
     Gui = @{
         # Main Window
@@ -404,6 +384,75 @@ function Get-WsusConnectionString {
     return "Server=$instance;Database=$database;Integrated Security=True"
 }
 
+function Test-WsusConfigJsonNode {
+    param(
+        [Parameter(Mandatory)]
+        $Value,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Schema,
+
+        [string]$Path = 'configuration'
+    )
+
+    if ($null -eq $Value -or $Value -isnot [PSCustomObject]) {
+        throw "Invalid config shape at '$Path': expected a JSON object."
+    }
+
+    foreach ($prop in @($Value.PSObject.Properties)) {
+        $keyPath = "$Path.$($prop.Name)"
+        if (-not $Schema.ContainsKey($prop.Name)) {
+            throw "Unknown config key '$keyPath'."
+        }
+
+        $expected = $Schema[$prop.Name]
+        if ($expected -is [hashtable]) {
+            Test-WsusConfigJsonNode -Value $prop.Value -Schema $expected -Path $keyPath
+        } elseif ($prop.Value -is [PSCustomObject] -or $prop.Value -is [System.Array]) {
+            throw "Invalid config shape at '$keyPath': expected a scalar value."
+        }
+    }
+}
+
+function ConvertTo-WsusConfigHashtable {
+    param(
+        [Parameter(Mandatory)]
+        [PSCustomObject]$Value,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Schema
+    )
+
+    $result = @{}
+    foreach ($prop in @($Value.PSObject.Properties)) {
+        if ($Schema[$prop.Name] -is [hashtable]) {
+            $result[$prop.Name] = ConvertTo-WsusConfigHashtable -Value $prop.Value -Schema $Schema[$prop.Name]
+        } else {
+            $result[$prop.Name] = $prop.Value
+        }
+    }
+
+    return $result
+}
+
+function Merge-WsusConfigHashtable {
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$Target,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Source
+    )
+
+    foreach ($key in $Source.Keys) {
+        if ($Target[$key] -is [hashtable] -and $Source[$key] -is [hashtable]) {
+            Merge-WsusConfigHashtable -Target $Target[$key] -Source $Source[$key]
+        } else {
+            $Target[$key] = $Source[$key]
+        }
+    }
+}
+
 function Initialize-WsusConfigFromFile {
     <#
     .SYNOPSIS
@@ -424,23 +473,15 @@ function Initialize-WsusConfigFromFile {
     }
 
     try {
-        $jsonConfig = Get-Content $Path -Raw | ConvertFrom-Json
-
-        # Merge JSON config into script config
-        foreach ($prop in $jsonConfig.PSObject.Properties) {
-            if ($script:WsusConfig.ContainsKey($prop.Name)) {
-                if ($prop.Value -is [PSCustomObject]) {
-                    # Convert PSCustomObject to hashtable for nested objects
-                    $hashtable = @{}
-                    foreach ($nestedProp in $prop.Value.PSObject.Properties) {
-                        $hashtable[$nestedProp.Name] = $nestedProp.Value
-                    }
-                    $script:WsusConfig[$prop.Name] = $hashtable
-                } else {
-                    $script:WsusConfig[$prop.Name] = $prop.Value
-                }
-            }
+        $jsonText = Get-Content $Path -Raw
+        if (-not $jsonText.TrimStart().StartsWith('{')) {
+            throw "Invalid config shape at 'configuration': expected a JSON object."
         }
+
+        $jsonConfig = $jsonText | ConvertFrom-Json -ErrorAction Stop
+        Test-WsusConfigJsonNode -Value $jsonConfig -Schema $script:WsusConfig
+        $validatedConfig = ConvertTo-WsusConfigHashtable -Value $jsonConfig -Schema $script:WsusConfig
+        Merge-WsusConfigHashtable -Target $script:WsusConfig -Source $validatedConfig
 
         return $true
     } catch {
@@ -572,74 +613,11 @@ function Get-WsusTimerInterval {
     return $script:WsusConfig.Gui.Timers[$Timer]
 }
 
-#region Health and Operation Config
-
-function Get-WsusHealthWeights {
-    <#
-    .SYNOPSIS
-        Returns the component weights used by Get-WsusHealthScore.
-    .DESCRIPTION
-        Provides the canonical point allocations for each health component so
-        callers and tests can reference a single source of truth.
-    .OUTPUTS
-        Hashtable with keys: Services, DatabaseSize, SyncRecency, DiskSpace, LastOperation
-    #>
-    return @{
-        Services      = 30
-        DatabaseSize  = 20
-        SyncRecency   = 20
-        DiskSpace     = 20
-        LastOperation = 10
-    }
-}
-
-function Get-WsusOperationTimeout {
-    <#
-    .SYNOPSIS
-        Returns the timeout in minutes for a given operation type.
-    .DESCRIPTION
-        Centralised operation timeout table used by GUI and CLI scripts to
-        enforce per-operation time limits.
-    .PARAMETER OperationType
-        One of: Cleanup, Sync, Install, Export, Import, Diagnostics, Health, Repair, Default.
-    .OUTPUTS
-        Integer timeout value in minutes.
-    .EXAMPLE
-        $mins = Get-WsusOperationTimeout -OperationType 'Sync'
-        # Returns 120
-    #>
-    param(
-        [ValidateSet('Cleanup', 'Sync', 'Install', 'Export', 'Import', 'Diagnostics', 'Health', 'Repair', 'Default')]
-        [string]$OperationType = 'Default'
-    )
-    $timeouts = @{
-        Cleanup     = 60
-        Sync        = 120
-        Install     = 60
-        Export      = 90
-        Import      = 90
-        Diagnostics = 30
-        Health      = 30
-        Repair      = 45
-        Default     = 30
-    }
-    return $timeouts[$OperationType]
-}
-
-function Get-WsusOfficeC2RConfig {
-    <#
-    .SYNOPSIS
-        Gets the Office C2R update configuration defaults
-
-    .OUTPUTS
-        Hashtable with OfficeC2R configuration settings
-
-    .EXAMPLE
-        Get-WsusOfficeC2RConfig
-        # Returns @{ DefaultChannel = "MonthlyEnterprise"; DefaultProduct = "OfficeLTSC2024"; ... }
-    #>
-    return $script:WsusConfig.OfficeC2R
-}
+#region Health and Operation Config (moved to domain modules)
+# Get-WsusHealthWeights  → WsusHealth
+# Get-WsusOperationTimeout → WsusOperationRunner
+# Get-WsusAppDataPath      → WsusUtilities
+#endregion
 
 function Get-WsusAppVersion {
     <#
@@ -715,20 +693,7 @@ function Get-WsusRuntimeConfig {
     }
 }
 
-function Get-WsusAppDataPath {
-    <#
-    .SYNOPSIS
-        Resolves the per-user WSUS Manager application data path.
-    #>
-    [CmdletBinding()]
-    param([string]$FileName = '')
-
-    $root = Join-Path $env:APPDATA 'WsusManager'
-    if ([string]::IsNullOrWhiteSpace($FileName)) { return $root }
-    return Join-Path $root $FileName
-}
-
-#endregion Health and Operation Config
+#endregion Health and Operation Config (moved to domain modules)
 
 # ===========================
 # INITIALIZATION
@@ -757,10 +722,6 @@ Export-ModuleMember -Function @(
     'Get-WsusRetrySetting',
     'Get-WsusDialogSize',
     'Get-WsusTimerInterval',
-    'Get-WsusHealthWeights',
-    'Get-WsusOperationTimeout',
-    'Get-WsusOfficeC2RConfig',
     'Get-WsusAppVersion',
-    'Get-WsusRuntimeConfig',
-    'Get-WsusAppDataPath'
+    'Get-WsusRuntimeConfig'
 )

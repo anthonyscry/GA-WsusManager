@@ -89,6 +89,8 @@ Describe "Module Loading" {
                 @{ ModuleName = "WsusScheduledTask"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusAutoDetection"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusDiagnosticResult"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusStartupProbe"; ModulesPath = $script:TestModulesPath }
+                @{ ModuleName = "WsusOperationCompletion"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusGuiShell"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusHostEnvironment"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusProcessHost"; ModulesPath = $script:TestModulesPath }
@@ -113,6 +115,8 @@ Describe "Module Loading" {
             Get-ChildItem -Path $script:ModulesPath -Filter "*.psm1" | ForEach-Object {
                 Import-Module $_.FullName -Force -DisableNameChecking -ErrorAction SilentlyContinue
             }
+            Import-Module (Join-Path $script:ModulesPath 'WsusDatabase.psm1') -Force -DisableNameChecking -ErrorAction SilentlyContinue
+            Import-Module (Join-Path $script:ModulesPath 'WsusUtilities.psm1') -Force -DisableNameChecking -ErrorAction SilentlyContinue
         }
 
         It "Write-Log function is available" {
@@ -154,7 +158,7 @@ Describe "Security Validation" {
         }
 
         It "Environment variables are cleaned up after use" {
-            $content = Get-Content (Join-Path $script:ModulesPath 'WsusGuiShell.psm1') -Raw
+            $content = Get-Content (Join-Path $script:ModulesPath 'WsusUtilities.psm1') -Raw
             $content | Should -Match 'Clear-WsusSecretEnvironment'
         }
 

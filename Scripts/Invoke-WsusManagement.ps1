@@ -1,4 +1,4 @@
-﻿#Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 
 <#
 ===============================================================================
@@ -101,9 +101,6 @@ param(
     [Parameter(ParameterSetName = 'Reset')]
     [switch]$Reset,
 
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [switch]$OfficeUpdates,
-
     # Cleanup parameters
     [Parameter(ParameterSetName = 'Cleanup')]
     [switch]$Force,
@@ -129,29 +126,7 @@ param(
     # Common
     [string]$ExportRoot = 'C:\WSUS\Exports',
     [string]$ContentPath,
-    [string]$SqlInstance,
-
-    # Office C2R Update parameters (non-interactive mode)
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [string]$OfficeSharePath,
-
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [string]$OfficeOdtPath,
-
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [ValidateSet("MonthlyEnterprise", "Current", "SemiAnnual", "SemiAnnualPreview", "LTSC", "LTSCPreview")]
-    [string]$OfficeChannel = "MonthlyEnterprise",
-
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [ValidateSet("M365Apps", "OfficeLTSC2024", "VisioLTSC2024", "ProjectLTSC2024")]
-    [string]$OfficeProductId = "OfficeLTSC2024",
-
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [string]$OfficeLanguage = "en-us",
-
-    [Parameter(ParameterSetName = 'OfficeUpdates')]
-    [ValidateSet("64", "32")]
-    [string]$OfficeClientEdition = "64"
+    [string]$SqlInstance
 )
 
 $ErrorActionPreference = 'Continue'
@@ -247,10 +222,6 @@ if ($ModulesFolder) {
             Import-Module $provisioningModulePath -Force -DisableNameChecking -ErrorAction Stop
         }
 
-        $officeUpdatesModulePath = Join-Path $ModulesFolder "WsusOfficeUpdates.psm1"
-        if (Test-Path $officeUpdatesModulePath) {
-            Import-Module $officeUpdatesModulePath -Force -DisableNameChecking -ErrorAction Stop
-        }
     } catch {
         Write-Warning "Runtime module initialization failed: $($_.Exception.Message)"
     }
@@ -1976,209 +1947,6 @@ function Invoke-WsusReset {
 }
 
 # ============================================================================
-# OFFICE C2R UPDATES OPERATION
-# ============================================================================
-
-function Invoke-WsusOfficeUpdateDownload {
-    <#
-    .SYNOPSIS
-        Download Microsoft 365 Apps / Office LTSC 2024 C2R updates via ODT
-
-    .DESCRIPTION
-        Uses the Office Deployment Tool to download Click-to-Run update files
-        to a network share that clients can use for local update source.
-
-    .PARAMETER SharePath
-        Network share path for downloaded updates
-
-    .PARAMETER OdtPath
-        Path to ODT setup.exe (auto-detected if omitted)
-
-    .PARAMETER Channel
-        Update channel (default: MonthlyEnterprise)
-
-    .PARAMETER ProductId
-        Product to download (default: OfficeLTSC2024)
-
-    .PARAMETER Language
-        Language code (default: en-us)
-
-    .PARAMETER OfficeClientEdition
-        Architecture (default: 64)
-    #>
-    param(
-        [string]$SharePath,
-        [string]$OdtPath,
-        [string]$Channel = "MonthlyEnterprise",
-        [string]$ProductId = "OfficeLTSC2024",
-        [string]$Language = "en-us",
-        [string]$OfficeClientEdition = "64"
-    )
-
-    # Try to load Office C2R config defaults
-    $officeConfig = if (Get-Command Get-WsusOfficeC2RConfig -ErrorAction SilentlyContinue) {
-        Get-WsusOfficeC2RConfig
-    } else { $null }
-
-    if (-not $SharePath -and $officeConfig) {
-        $SharePath = $officeConfig.DefaultUpdateShare
-    }
-
-    Write-Banner "OFFICE C2R UPDATE DOWNLOAD"
-
-    Write-Host "This downloads Microsoft 365 Apps / Office LTSC 2024 Click-to-Run" -ForegroundColor Yellow
-    Write-Host "update files to a network share for local client updates." -ForegroundColor Yellow
-    Write-Host ""
-
-    # Step 1: Configure share path
-    if ([string]::IsNullOrWhiteSpace($SharePath)) {
-        Write-Host "Network share for Office C2R updates:" -ForegroundColor Cyan
-        Write-Host "  Example: \\FILESERVER\Software\OfficeC2R" -ForegroundColor Gray
-        $SharePath = Read-Host "Enter share path (required)"
-        while ([string]::IsNullOrWhiteSpace($SharePath)) {
-            Write-Host "Share path is required." -ForegroundColor Red
-            $SharePath = Read-Host "Enter share path"
-        }
-    }
-
-    # Validate/share check
-    $shareCheck = Test-WsusOfficeShareAccess -Path $SharePath
-    if (-not $shareCheck.Accessible) {
-        Write-Host "  Share not accessible. Will attempt to create/download anyway." -ForegroundColor Yellow
-        Write-Host "  $($shareCheck.Message)" -ForegroundColor Gray
-    } else {
-        Write-Host "  Share: $($shareCheck.Path)" -ForegroundColor Green
-        Write-Host "  Free space: $($shareCheck.FreeSpaceGB)GB" -ForegroundColor Cyan
-        if ($shareCheck.ExistingFiles -gt 0) {
-            Write-Host "  Existing: $($shareCheck.ExistingFiles) files ($($shareCheck.ExistingSizeGB)GB)" -ForegroundColor Cyan
-        }
-    }
-    Write-Host ""
-
-    # Step 2: Configure product and channel
-    if (-not $PSBoundParameters.ContainsKey('Channel') -or -not $PSBoundParameters.ContainsKey('ProductId')) {
-        Write-Host "Select product to download:" -ForegroundColor Yellow
-        Write-Host "  1. Office LTSC 2024 (ProPlus2024Volume) [default]" -ForegroundColor White
-        Write-Host "  2. Microsoft 365 Apps (O365ProPlusRetail)" -ForegroundColor White
-        Write-Host "  3. Visio LTSC 2024" -ForegroundColor White
-        Write-Host "  4. Project LTSC 2024" -ForegroundColor White
-        Write-Host ""
-        $prodChoice = Read-Host "Select (1-4) [1]"
-
-        switch ($prodChoice) {
-            "2" { $ProductId = "M365Apps"; $Channel = "MonthlyEnterprise" }
-            "3" { $ProductId = "VisioLTSC2024"; $Channel = "LTSC" }
-            "4" { $ProductId = "ProjectLTSC2024"; $Channel = "LTSC" }
-            default { $ProductId = "OfficeLTSC2024"; $Channel = "LTSC" }
-        }
-
-        # For M365 Apps, let user choose channel
-        if ($ProductId -eq "M365Apps") {
-            Write-Host ""
-            Write-Host "Select update channel:" -ForegroundColor Yellow
-            Write-Host "  1. Monthly Enterprise Channel [default] - Most stable for managed environments" -ForegroundColor White
-            Write-Host "  2. Current Channel - Latest features, more frequent updates" -ForegroundColor White
-            Write-Host "  3. Semi-Annual Enterprise Channel - Twice per year" -ForegroundColor White
-            Write-Host ""
-            $chanChoice = Read-Host "Select (1-3) [1]"
-            switch ($chanChoice) {
-                "2" { $Channel = "Current" }
-                "3" { $Channel = "SemiAnnual" }
-                default { $Channel = "MonthlyEnterprise" }
-            }
-        }
-    }
-
-    Write-Host ""
-    Write-Host "Download configuration:" -ForegroundColor Yellow
-    Write-Host "  Product:  $ProductId" -ForegroundColor White
-    Write-Host "  Channel:  $Channel" -ForegroundColor White
-    Write-Host "  Language: $Language" -ForegroundColor White
-    Write-Host "  Arch:     $OfficeClientEdition-bit" -ForegroundColor White
-    Write-Host "  Target:   $SharePath" -ForegroundColor White
-    Write-Host ""
-
-    # Step 3: Find ODT
-    $odtExe = Get-WsusOfficeOdtPath -CustomPath $OdtPath
-    if (-not $odtExe) {
-        Write-Log "ERROR: Office Deployment Tool (setup.exe) not found" "Red"
-        Write-Host "" -ForegroundColor Yellow
-        Write-Host "Download ODT from Microsoft:" -ForegroundColor Yellow
-        Write-Host "  https://www.microsoft.com/en-us/download/details.aspx?id=49117" -ForegroundColor Cyan
-        Write-Host "" -ForegroundColor Yellow
-        Write-Host "Extract setup.exe to a folder (e.g. C:\ODT\) and try again." -ForegroundColor Yellow
-        return
-    }
-    Write-Host "ODT: $odtExe" -ForegroundColor Green
-    Write-Host ""
-
-    # Step 4: Confirm
-    $confirm = Read-Host "Proceed with download? (Y/n)"
-    if ($confirm -notin @("Y", "y", "")) {
-        Write-Log "Office C2R download cancelled" "Yellow"
-        return
-    }
-    Write-Host ""
-
-    # Step 5: Run download
-    $logDir = Join-Path $script:LogDirectory "OfficeC2R"
-    if (-not (Test-Path $logDir)) {
-        New-Item -Path $logDir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
-    }
-    $logFile = Join-Path $logDir "OfficeC2R_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-
-    $result = Invoke-WsusOfficeDownload -SourcePath $SharePath -OdtPath $OdtPath `
-        -Channel $Channel -ProductId $ProductId -Language $Language `
-        -OfficeClientEdition $OfficeClientEdition -LogPath $logFile
-
-    Write-Host ""
-
-    if ($result.Success) {
-        Write-Banner "OFFICE C2R DOWNLOAD COMPLETE"
-        Write-Log "Office C2R download completed successfully" "Green"
-
-        if ($result.DownloadedFiles -gt 0) {
-            Write-Host "  Files downloaded: $($result.DownloadedFiles)" -ForegroundColor Cyan
-            Write-Host "  Size: $($result.DownloadedSizeGB) GB" -ForegroundColor Cyan
-        }
-
-        # Show share structure summary
-        $statusResults = Get-WsusOfficeDownloadStatus -Path $SharePath
-        if ($statusResults) {
-            Write-Host ""
-            Write-Host "Share contents:" -ForegroundColor Yellow
-            foreach ($s in $statusResults) {
-                if ($s.HasData) {
-                    Write-Host "  [$($s.ChannelName)] $($s.Message) - Last: $($s.LastModified.ToString('yyyy-MM-dd'))" -ForegroundColor Green
-                } else {
-                    Write-Host "  [$($s.ChannelName)] $($s.Message)" -ForegroundColor Gray
-                }
-            }
-        }
-
-        Write-Host ""
-        Write-Host "To configure clients via GPO:" -ForegroundColor Yellow
-        Write-Host "  1. Set UpdatePath to: $SharePath" -ForegroundColor White
-        Write-Host "  2. Set Update Channel to match the downloaded channel" -ForegroundColor White
-        Write-Host "  3. Ensure Domain Computers have Read access to the share" -ForegroundColor White
-    } else {
-        Write-Log "Office C2R download failed" "Red"
-        Write-Host "  Error: $($result.Message)" -ForegroundColor Red
-
-        if ($result.OdtFound -and $result.ExitCode -ne 0) {
-            Write-Host ""
-            Write-Host "Troubleshooting:" -ForegroundColor Yellow
-            Write-Host "  • Ensure the target path is writable" -ForegroundColor White
-            Write-Host "  • Check the ODT XML config at: $($result.XmlFile)" -ForegroundColor White
-            Write-Host "  • Run setup.exe /download manually to see detailed output" -ForegroundColor White
-            Write-Host "  • Verify internet connectivity (M365 channels require CDN access)" -ForegroundColor White
-        }
-    }
-    Write-Host ""
-    Write-Host "Press any key to continue..." -ForegroundColor Yellow
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-}
-# ============================================================================
 # INTERACTIVE MENU
 # ============================================================================
 
@@ -2208,9 +1976,6 @@ function Show-Menu {
     Write-Host ""
     Write-Host "CLIENT" -ForegroundColor Yellow
     Write-Host "  9. Force Client Check-In (run on client)"
-    Write-Host ""
-    Write-Host "OFFICE C2R UPDATES" -ForegroundColor Yellow
-    Write-Host "  10. Download Office LTSC / M365 Apps Updates to Share" -ForegroundColor White
     Write-Host ""
     Write-Host "  Q. Quit" -ForegroundColor Red
     Write-Host ""
@@ -2247,7 +2012,6 @@ function Start-InteractiveMenu {
             '7'  { $null = Invoke-WsusDiagnosticsOperation -ContentPath $ContentPath -SqlInstance $SqlInstance; pause }
             '8'  { Invoke-WsusReset; pause }
             '9'  { Invoke-MenuScript -Path "$ScriptsFolder\Invoke-WsusClientCheckIn.ps1" -Desc "Force Client Check-In" }
-            '10' { Invoke-WsusOfficeUpdateDownload; pause }
             'D'  { Invoke-ExportToDvd -DefaultSource $MenuExportRoot -ContentPath $ContentPath; pause }  # Hidden: DVD export
             'Q'  { Write-Log "Exiting WSUS Management" "Green"; return }
             default { Write-Host "Invalid option" -ForegroundColor Red; Start-Sleep -Seconds 1 }
@@ -2292,10 +2056,6 @@ if ($Restore) {
     Invoke-WsusCleanup -Force:$Force
 } elseif ($Reset) {
     Invoke-WsusReset
-} elseif ($OfficeUpdates) {
-    Invoke-WsusOfficeUpdateDownload -SharePath $OfficeSharePath -OdtPath $OfficeOdtPath `
-        -Channel $OfficeChannel -ProductId $OfficeProductId `
-        -Language $OfficeLanguage -OfficeClientEdition $OfficeClientEdition
 } else {
     Start-InteractiveMenu -MenuExportRoot $ExportRoot
 }

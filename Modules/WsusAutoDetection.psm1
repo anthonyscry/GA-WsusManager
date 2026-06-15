@@ -21,14 +21,26 @@ Date: 2026-01-10
 #>
 
 # ============================================================================
+# MODULE DEPENDENCIES
+# ============================================================================
+
+# Import WsusServices for canonical service definitions
+$modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$svcModulePath = Join-Path $modulePath 'WsusServices.psm1'
+if (Test-Path $svcModulePath) {
+    try { Import-Module $svcModulePath -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusServices" }
+}
+
+# ============================================================================
 # DETAILED SERVICE STATUS
 # ============================================================================
 
-# Service definitions (cached at module level)
-$script:WsusServiceDefinitions = @(
-    @{ Name = "SQL Server Express"; ServiceName = "MSSQL`$SQLEXPRESS"; Critical = $true },
-    @{ Name = "WSUS Service"; ServiceName = "WSUSService"; Critical = $true },
-    @{ Name = "IIS (W3SVC)"; ServiceName = "W3SVC"; Critical = $true },
+# Build service definitions: canonical WSUS services + additional monitoring services
+$script:WsusServiceDefinitions = if (Get-Command 'Get-WsusServiceDefinitions' -ErrorAction SilentlyContinue) {
+    @(Get-WsusServiceDefinitions | ForEach-Object { $_ + @{ Critical = $_.Group -eq 'Core' } })
+} else { @() }
+# Additional non-critical services not in the canonical WSUS definition
+$script:WsusServiceDefinitions += @(
     @{ Name = "Windows Update"; ServiceName = "wuauserv"; Critical = $false },
     @{ Name = "BITS"; ServiceName = "bits"; Critical = $false }
 )

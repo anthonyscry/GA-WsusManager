@@ -283,9 +283,65 @@ Describe "Get-WsusContentPathFromConfig" {
 }
 
 Describe "Initialize-WsusConfigFromFile" {
+    BeforeAll {
+        $script:InitializeConfigRoot = New-WsusTempHarnessRoot -Prefix 'WsusInitializeConfigTests'
+        $script:InitializeConfigPath = Join-Path $script:InitializeConfigRoot 'wsus-config.json'
+    }
+
+    AfterAll {
+        if (Test-Path $script:InitializeConfigRoot) {
+            Remove-Item $script:InitializeConfigRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It "Should return false when config file doesn't exist" {
         $result = Initialize-WsusConfigFromFile -Path "C:\NonExistent\config.json"
         $result | Should -Be $false
+    }
+
+    It "Should reject malformed JSON without changing defaults" {
+        Set-Content -Path $script:InitializeConfigPath -Value '{ "SqlInstance": "BROKEN",' -Encoding UTF8
+
+        $result = Initialize-WsusConfigFromFile -Path $script:InitializeConfigPath
+
+        $result | Should -Be $false
+        Get-WsusConfig -Key "SqlInstance" | Should -Be ".\SQLEXPRESS"
+    }
+
+    It "Should reject unknown top-level keys without applying known values" {
+        @{
+            SqlInstance = "BROKEN"
+            UnexpectedKey = "not allowed"
+        } | ConvertTo-Json | Set-Content -Path $script:InitializeConfigPath -Encoding UTF8
+
+        $result = Initialize-WsusConfigFromFile -Path $script:InitializeConfigPath
+
+        $result | Should -Be $false
+        Get-WsusConfig -Key "SqlInstance" | Should -Be ".\SQLEXPRESS"
+    }
+
+    It "Should reject unknown nested keys without replacing the default section" {
+        @{
+            Services = @{
+                Wsus = "BrokenService"
+                UnexpectedService = "not allowed"
+            }
+        } | ConvertTo-Json -Depth 3 | Set-Content -Path $script:InitializeConfigPath -Encoding UTF8
+
+        $result = Initialize-WsusConfigFromFile -Path $script:InitializeConfigPath
+
+        $result | Should -Be $false
+        Get-WsusConfig -Key "Services.Wsus" | Should -Be "WSUSService"
+        Get-WsusConfig -Key "Services.SqlExpress" | Should -Be "MSSQL`$SQLEXPRESS"
+    }
+
+    It "Should reject JSON arrays without changing defaults" {
+        Set-Content -Path $script:InitializeConfigPath -Value '[{"SqlInstance":"BROKEN"}]' -Encoding UTF8
+
+        $result = Initialize-WsusConfigFromFile -Path $script:InitializeConfigPath
+
+        $result | Should -Be $false
+        Get-WsusConfig -Key "SqlInstance" | Should -Be ".\SQLEXPRESS"
     }
 }
 
@@ -313,91 +369,5 @@ Describe "Export-WsusConfigToFile" {
     }
 }
 
-Describe "Get-WsusHealthWeights" {
-    Context "Module export validation" {
-        It "Should export Get-WsusHealthWeights function" {
-            Get-Command Get-WsusHealthWeights -Module WsusConfig | Should -Not -BeNullOrEmpty
-        }
-    }
-
-    Context "Return value validation" {
-        BeforeAll {
-            $script:Weights = Get-WsusHealthWeights
-        }
-
-        It "Should return a hashtable" {
-            $script:Weights | Should -BeOfType [hashtable]
-        }
-
-        It "Services weight should be 30" {
-            $script:Weights.Services | Should -Be 30
-        }
-
-        It "DatabaseSize weight should be 20" {
-            $script:Weights.DatabaseSize | Should -Be 20
-        }
-
-        It "SyncRecency weight should be 20" {
-            $script:Weights.SyncRecency | Should -Be 20
-        }
-
-        It "DiskSpace weight should be 20" {
-            $script:Weights.DiskSpace | Should -Be 20
-        }
-
-        It "LastOperation weight should be 10" {
-            $script:Weights.LastOperation | Should -Be 10
-        }
-
-        It "Total of all weights should equal 100" {
-            $total = $script:Weights.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
-            $total | Should -Be 100
-        }
-    }
-}
-
-Describe "Get-WsusOperationTimeout" {
-    Context "Module export validation" {
-        It "Should export Get-WsusOperationTimeout function" {
-            Get-Command Get-WsusOperationTimeout -Module WsusConfig | Should -Not -BeNullOrEmpty
-        }
-    }
-
-    Context "Return value validation" {
-        It "Should return 60 for Cleanup" {
-            Get-WsusOperationTimeout -OperationType 'Cleanup' | Should -Be 60
-        }
-
-        It "Should return 120 for Sync" {
-            Get-WsusOperationTimeout -OperationType 'Sync' | Should -Be 120
-        }
-
-        It "Should return 60 for Install" {
-            Get-WsusOperationTimeout -OperationType 'Install' | Should -Be 60
-        }
-
-        It "Should return 90 for Export" {
-            Get-WsusOperationTimeout -OperationType 'Export' | Should -Be 90
-        }
-
-        It "Should return 90 for Import" {
-            Get-WsusOperationTimeout -OperationType 'Import' | Should -Be 90
-        }
-
-        It "Should return 30 for Diagnostics" {
-            Get-WsusOperationTimeout -OperationType 'Diagnostics' | Should -Be 30
-        }
-
-        It "Should return 30 for Default" {
-            Get-WsusOperationTimeout -OperationType 'Default' | Should -Be 30
-        }
-
-        It "Should default to 30 when no OperationType specified" {
-            Get-WsusOperationTimeout | Should -Be 30
-        }
-
-        It "Should reject invalid OperationType" {
-            { Get-WsusOperationTimeout -OperationType 'Invalid' } | Should -Throw
-        }
-    }
-}
+# Get-WsusHealthWeights tests moved to WsusHealth.Tests.ps1
+# Get-WsusOperationTimeout tests moved to WsusOperationRunner.Tests.ps1

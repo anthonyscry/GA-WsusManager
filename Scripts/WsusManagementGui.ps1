@@ -185,12 +185,18 @@ if ($script:ModulesDir) {
     # Bypass execution policy for this process so UNC-path modules load without signing requirement
     try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue } catch { $null = $_.Exception.Message }
 
-    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusAutoDetection","WsusDiagnosticResult","WsusGuiShell","WsusHostEnvironment","WsusRepairPlan","WsusHealth","WsusDialogs","WsusOperationPlan","WsusProvisioning","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending")) {
+    foreach ($mod in @("WsusUtilities","WsusConfig","WsusDatabase","WsusServices","WsusFirewall","WsusPermissions","WsusAutoDetection","WsusDiagnosticResult","WsusGuiShell","WsusStartupProbe","WsusOperationCompletion","WsusHostEnvironment","WsusRepairPlan","WsusHealth","WsusDialogs","WsusOperationPlan","WsusProvisioning","WsusOperationRunner","WsusHistory","WsusNotification","WsusTrending","WsusDashboardViewModel")) {
         $modPath = Join-Path $script:ModulesDir "$mod.psm1"
         if (Test-Path $modPath) {
             try { Import-Module $modPath -Force -DisableNameChecking -ErrorAction Stop }
             catch { Write-Log "Failed to load module ${mod}: $_" }
         }
+    }
+    # Re-establish utility exports after modules that import WsusUtilities privately with -Force.
+    $utilitiesPath = Join-Path $script:ModulesDir "WsusUtilities.psm1"
+    if (Test-Path $utilitiesPath) {
+        try { Import-Module $utilitiesPath -Force -DisableNameChecking -ErrorAction Stop }
+        catch { Write-Log "Failed to reload WsusUtilities exports: $_" }
     }
 }
 

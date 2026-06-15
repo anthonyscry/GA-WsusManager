@@ -662,8 +662,8 @@ Write-Status "Connecting to WSUS..." -Type Phase
 Write-Log "Connecting to WSUS..."
 
 # Start services using module functions
-Start-SqlServerExpress | Out-Null
-Start-WsusServer | Out-Null
+Start-WsusService -ServiceName "MSSQL`$SQLEXPRESS" | Out-Null
+Start-WsusService -ServiceName "WSUSService" | Out-Null
 
 try {
     Add-Type -Path "$env:ProgramFiles\Update Services\Api\Microsoft.UpdateServices.Administration.dll" -ErrorAction SilentlyContinue
@@ -1283,7 +1283,7 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
     try {
         if (Test-ServiceRunning -ServiceName "WSUSService") {
             Write-Log "Stopping WSUS Service for ultimate cleanup..."
-            if (Stop-WsusServer -Force) {
+            if (Stop-WsusService -ServiceName "WSUSService" -Force) {
                 Write-Log "WSUS Service stopped"
             } else {
                 Write-Warning "Failed to stop WSUS Service"
@@ -1358,7 +1358,7 @@ IF @LocalUpdateID IS NOT NULL
 
         if (-not (Test-ServiceRunning -ServiceName "WSUSService")) {
             Write-Log "Starting WSUS Service..."
-            Start-WsusServer | Out-Null
+            Start-WsusService -ServiceName "WSUSService" | Out-Null
         }
     } finally {
         Stop-Heartbeat

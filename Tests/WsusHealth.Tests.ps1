@@ -15,25 +15,30 @@
 #>
 
 BeforeAll {
+    Import-Module (Join-Path $PSScriptRoot '..\Modules\WsusTestHarness.psm1') -Force -DisableNameChecking -WarningAction SilentlyContinue
+    $script:RepoRoot = Resolve-WsusTestRepoRoot -StartPath $PSScriptRoot
+
     # Import required dependent modules first
-    $ModulesPath = Join-Path $PSScriptRoot "..\Modules"
-    Import-Module (Join-Path $ModulesPath "WsusUtilities.psm1") -Force -DisableNameChecking
-    Import-Module (Join-Path $ModulesPath "WsusServices.psm1") -Force -DisableNameChecking
-    Import-Module (Join-Path $ModulesPath "WsusFirewall.psm1") -Force -DisableNameChecking
-    Import-Module (Join-Path $ModulesPath "WsusPermissions.psm1") -Force -DisableNameChecking
+    Import-WsusTestModule -ModuleName 'WsusUtilities' -RepoRoot $script:RepoRoot
+    Import-WsusTestModule -ModuleName 'WsusServices' -RepoRoot $script:RepoRoot
+    Import-WsusTestModule -ModuleName 'WsusFirewall' -RepoRoot $script:RepoRoot
+    Import-WsusTestModule -ModuleName 'WsusPermissions' -RepoRoot $script:RepoRoot
+    Import-WsusTestModule -ModuleName 'WsusDatabase' -RepoRoot $script:RepoRoot
 
     # Import the module under test
-    $ModulePath = Join-Path $ModulesPath "WsusHealth.psm1"
-    Import-Module $ModulePath -Force -DisableNameChecking
+    Import-WsusTestModule -ModuleName 'WsusHealth' -RepoRoot $script:RepoRoot
 }
 
 AfterAll {
     # Clean up
-    Remove-Module WsusHealth -ErrorAction SilentlyContinue
-    Remove-Module WsusPermissions -ErrorAction SilentlyContinue
-    Remove-Module WsusFirewall -ErrorAction SilentlyContinue
-    Remove-Module WsusServices -ErrorAction SilentlyContinue
-    Remove-Module WsusUtilities -ErrorAction SilentlyContinue
+    Remove-WsusTestModule -ModuleName @(
+        'WsusHealth',
+        'WsusDatabase',
+        'WsusPermissions',
+        'WsusFirewall',
+        'WsusServices',
+        'WsusUtilities'
+    )
 }
 
 Describe "WsusHealth Module" {
@@ -459,6 +464,21 @@ Describe "Get-WsusHealthScore" {
         }
     }
 
+
+    Context "Diagnostic source failures" {
+        BeforeEach {
+            Mock Get-PSDrive { throw "disk probe failed" } -ModuleName WsusHealth
+        }
+
+        It "Should write verbose details when a health score source fails" {
+            $output = Get-WsusHealthScore -ContentPath "C:\WSUS" -HistoryPath (Join-Path $TestDrive 'missing-history.json') -Verbose 4>&1
+            $verboseMessages = @($output |
+                Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } |
+                ForEach-Object { $_.Message })
+
+            $verboseMessages | Should -Contain "Health score disk space source failed: disk probe failed"
+        }
+    }
     Context "Grade logic - pure formula" {
         It "Grade should be Green when score is 80 or above" {
             $grade = if (85 -ge 80) { 'Green' } elseif (85 -ge 50) { 'Yellow' } else { 'Red' }

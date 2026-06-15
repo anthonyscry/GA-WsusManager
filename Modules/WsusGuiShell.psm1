@@ -3,54 +3,11 @@
 .SYNOPSIS
     GUI shell helpers for WSUS Manager.
 .DESCRIPTION
-    Concentrates GUI-facing dashboard view shaping and short-lived secret
-    environment planning so the WPF script consumes a smaller interface and does
-    not leak implementation details across event handlers.
+    Concentrates GUI-facing dashboard view shaping and UI state helpers so the WPF
+    script consumes a smaller interface and does not leak implementation details
+    across event handlers.
 #>
 
-function New-WsusSecretEnvironment {
-    [CmdletBinding()]
-    param(
-        [hashtable]$Values = @{}
-    )
-
-    $environment = @{}
-    $cleanupKeys = New-Object System.Collections.Generic.List[string]
-    foreach ($entry in $Values.GetEnumerator()) {
-        if ([string]::IsNullOrWhiteSpace([string]$entry.Key)) { continue }
-        $environment[[string]$entry.Key] = [string]$entry.Value
-        $null = $cleanupKeys.Add([string]$entry.Key)
-    }
-
-    [pscustomobject]@{
-        PSTypeName = 'Wsus.SecretEnvironment'
-        Environment = $environment
-        CleanupKeys = @($cleanupKeys)
-    }
-}
-
-function Clear-WsusSecretEnvironment {
-    [CmdletBinding()]
-    param(
-        [string[]]$Keys = @()
-    )
-
-    foreach ($key in @($Keys | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
-        Remove-Item "Env:\$key" -ErrorAction SilentlyContinue
-    }
-}
-
-function ConvertTo-WsusSecureString {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Value)
-
-    $secure = New-Object Security.SecureString
-    foreach ($char in $Value.ToCharArray()) {
-        $secure.AppendChar($char)
-    }
-    $secure.MakeReadOnly()
-    $secure
-}
 
 
 function New-WsusGuiStatusText {
@@ -306,57 +263,6 @@ function Add-WsusGuiPopupEvent {
     }
 }
 
-function Get-WsusGuiProbePopupResult {
-    [CmdletBinding()]
-    param([object]$Button = $null)
-
-    $buttonText = if ($null -ne $Button) { $Button.ToString() } else { 'OK' }
-    if ($buttonText -eq 'YesNo' -or $buttonText -eq 'YesNoCancel') { return 'No' }
-    if ($buttonText -eq 'OKCancel') { return 'Cancel' }
-    return 'OK'
-}
-
-function New-WsusGuiStartupProbeResult {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$Status,
-        [string]$Reason = '',
-        [string]$FatalError = '',
-        [int]$StartupProbeSeconds = 0,
-        [string]$ResultPath = '',
-        [object[]]$PopupEvents = @(),
-        [datetime]$Timestamp = (Get-Date)
-    )
-
-    $errorPopups = @($PopupEvents | Where-Object { $_.icon -eq 'Error' -or $_.Icon -eq 'Error' })
-    [pscustomobject]@{
-        PSTypeName = 'Wsus.GuiStartupProbeResult'
-        status = $Status
-        reason = $Reason
-        fatalError = $FatalError
-        startupProbeSeconds = $StartupProbeSeconds
-        resultPath = $ResultPath
-        totalPopupCount = @($PopupEvents).Count
-        errorPopupCount = $errorPopups.Count
-        popupEvents = @($PopupEvents)
-        timestamp = $Timestamp.ToString('o')
-    }
-}
-
-function Write-WsusGuiStartupProbeResult {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][object]$Result,
-        [Parameter(Mandatory)][string]$ResultPath
-    )
-
-    $resultDir = Split-Path -Parent $ResultPath
-    if (-not [string]::IsNullOrWhiteSpace($resultDir) -and -not (Test-Path $resultDir)) {
-        New-Item -Path $resultDir -ItemType Directory -Force | Out-Null
-    }
-
-    $Result | ConvertTo-Json -Depth 6 | Set-Content -Path $ResultPath -Encoding UTF8
-}
 
 
 function New-WsusGuiLifecycleLogEntry {
@@ -387,137 +293,10 @@ function New-WsusGuiLifecycleLogEntry {
     }
 }
 
-function New-WsusGuiOperationCompletion {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$Title,
-        [bool]$Success,
-        [datetime]$StartedAt = (Get-Date),
-        [string]$ReportPath = '',
-        [string[]]$CleanupKeys = @(),
-        [datetime]$CompletedAt = (Get-Date)
-    )
 
-    $duration = $CompletedAt - $StartedAt
-    $resultText = if ($Success) { 'Pass' } else { 'Fail' }
-    $reportAvailable = -not [string]::IsNullOrWhiteSpace($ReportPath) -and (Test-Path -LiteralPath $ReportPath -PathType Leaf)
-
-    [pscustomobject]@{
-        PSTypeName = 'Wsus.GuiOperationCompletion'
-        Title = $Title
-        Success = $Success
-        Duration = $duration
-        ResultText = $resultText
-        ReportPath = $ReportPath
-        ReportAvailable = $reportAvailable
-        ReportMessage = if ($reportAvailable) { "Diagnostic report saved to: $ReportPath" } else { '' }
-        NotificationTitle = "WSUS Manager - $Title Complete"
-        NotificationMessage = "$resultText in $([int]$duration.TotalMinutes)m $($duration.Seconds)s"
-        HistorySummary = 'Completed via GUI operation runner'
-        CleanupKeys = @($CleanupKeys)
-    }
-}
-
-function Invoke-WsusGuiOperationCompletion {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][object]$Completion,
-        [scriptblock]$LogAction = $null,
-        [scriptblock]$NotificationAction = $null,
-        [scriptblock]$HistoryAction = $null,
-        [scriptblock]$CleanupAction = $null,
-        [bool]$NotificationsEnabled = $true,
-        [bool]$HistoryEnabled = $true
-    )
-
-    if ($Completion.ReportAvailable -and $LogAction) {
-        & $LogAction $Completion.ReportMessage 'Info'
-    }
-
-    if ($NotificationsEnabled -and $NotificationAction) {
-        & $NotificationAction $Completion.NotificationTitle $Completion.NotificationMessage $Completion.ResultText
-    }
-
-    if ($HistoryEnabled -and $HistoryAction) {
-        & $HistoryAction $Completion.Title $Completion.Duration $Completion.ResultText $Completion.HistorySummary
-    }
-
-    if (@($Completion.CleanupKeys).Count -gt 0 -and $CleanupAction) {
-        & $CleanupAction @($Completion.CleanupKeys)
-    }
-}
-
-function New-WsusDashboardViewModel {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][bool]$WsusInstalled,
-        [Parameter(Mandatory)][string]$ServerMode,
-        [bool]$ServerModeOverridden = $false,
-        [object]$DashboardData = $null,
-        [object]$Health = $null,
-        [string]$ContentPath = '',
-        [string]$SqlInstance = '',
-        [string]$ExportRoot = '',
-        [string]$LogPath = ''
-    )
-
-    $servicesRunning = if ($DashboardData -and $DashboardData.Services -and $null -ne $DashboardData.Services.Running) { [int]$DashboardData.Services.Running } else { 0 }
-    $serviceNames = if ($DashboardData -and $DashboardData.Services -and $DashboardData.Services.Names) { @($DashboardData.Services.Names) } else { @() }
-    $databaseSize = if ($DashboardData -and $null -ne $DashboardData.DatabaseSizeGB) { [double]$DashboardData.DatabaseSizeGB } else { -1 }
-    $diskFree = if ($DashboardData -and $null -ne $DashboardData.DiskFreeGB) { [double]$DashboardData.DiskFreeGB } else { 0 }
-    $taskStatus = if ($DashboardData -and $DashboardData.TaskStatus) { [string]$DashboardData.TaskStatus } else { 'Not Set' }
-
-    $card1 = if (-not $WsusInstalled) {
-        @{ Value = 'Not Installed'; Sub = 'Use Install WSUS'; Status = 'Fail' }
-    } else {
-        @{ Value = $(if ($servicesRunning -eq 3) { 'All Running' } else { "$servicesRunning/3" }); Sub = $(if ($serviceNames.Count -gt 0) { $serviceNames -join ', ' } else { 'Stopped' }); Status = $(if ($servicesRunning -eq 3) { 'Pass' } elseif ($servicesRunning -gt 0) { 'Warn' } else { 'Fail' }) }
-    }
-
-    $card2 = if (-not $WsusInstalled) {
-        @{ Value = 'N/A'; Sub = 'WSUS not installed'; Status = 'Skip' }
-    } elseif ($databaseSize -ge 0) {
-        @{ Value = "$databaseSize / 10 GB"; Sub = $(if ($databaseSize -ge 9) { 'Critical!' } elseif ($databaseSize -ge 7) { 'Warning' } else { 'Healthy' }); Status = $(if ($databaseSize -ge 9) { 'Fail' } elseif ($databaseSize -ge 7) { 'Warn' } else { 'Pass' }) }
-    } else {
-        @{ Value = 'Offline'; Sub = 'SQL stopped'; Status = 'Warn' }
-    }
-
-    $card3 = @{ Value = "$diskFree GB"; Sub = $(if ($diskFree -lt 10) { 'Critical!' } elseif ($diskFree -lt 50) { 'Low' } else { 'OK' }); Status = $(if ($diskFree -lt 10) { 'Fail' } elseif ($diskFree -lt 50) { 'Warn' } else { 'Pass' }) }
-    $card4 = if (-not $WsusInstalled) { @{ Value = 'N/A'; Status = 'Skip' } } else { @{ Value = $taskStatus; Status = $(if ($taskStatus -eq 'Ready') { 'Pass' } else { 'Warn' }) } }
-
-    [pscustomobject]@{
-        PSTypeName = 'Wsus.DashboardViewModel'
-        ServerMode = [pscustomobject]@{
-            Label = $(if ($ServerModeOverridden) { "$ServerMode (Manual)" } else { $ServerMode })
-            Online = ($ServerMode -eq 'Online')
-        }
-        Cards = [pscustomobject]@{
-            Services = $card1
-            Database = $card2
-            Disk = $card3
-            Task = $card4
-        }
-        Health = if ($Health) {
-            [pscustomobject]@{
-                Score = $Health.Score
-                Grade = $Health.Grade
-                Available = ($Health.Score -ge 0)
-            }
-        } else {
-            [pscustomobject]@{ Score = -1; Grade = 'Unknown'; Available = $false }
-        }
-        Configuration = [pscustomobject]@{
-            ContentPath = $ContentPath
-            SqlInstance = $SqlInstance
-            ExportRoot = $ExportRoot
-            LogPath = $LogPath
-        }
-    }
-}
+# New-WsusDashboardViewModel moved to Modules/WsusDashboardViewModel.psm1
 
 Export-ModuleMember -Function @(
-    'New-WsusSecretEnvironment',
-    'Clear-WsusSecretEnvironment',
-    'ConvertTo-WsusSecureString',
     'New-WsusGuiStatusText',
     'Format-WsusGuiLogLine',
     'Set-WsusGuiStatusText',
@@ -526,11 +305,5 @@ Export-ModuleMember -Function @(
     'Set-WsusGuiOperationUiState',
     'Test-WsusGuiPopupSuppressed',
     'Add-WsusGuiPopupEvent',
-    'Get-WsusGuiProbePopupResult',
-    'New-WsusGuiStartupProbeResult',
-    'Write-WsusGuiStartupProbeResult',
-    'New-WsusGuiLifecycleLogEntry',
-    'New-WsusGuiOperationCompletion',
-    'Invoke-WsusGuiOperationCompletion',
-    'New-WsusDashboardViewModel'
+    'New-WsusGuiLifecycleLogEntry'
 )

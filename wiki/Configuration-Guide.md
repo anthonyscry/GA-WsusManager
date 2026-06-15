@@ -40,8 +40,6 @@ The `WsusConfig` hashtable (`$script:WsusConfig`) holds default paths, ports, se
 | `LogPath` | `C:\WSUS\Logs` | — |
 | `SqlInstallerPath` | `C:\WSUS\SQLDB` | — |
 | `DefaultExportPath` | `C:\WSUS\Exports` | `-ExportRoot`, `-DestinationPath` |
-| `OdtSearchPaths` (Office C2R) | `C:\Program Files\Office\ODT\setup.exe`, `C:\ODT\setup.exe`, `C:\Program Files\Microsoft Office\ODT\setup.exe` | `-OfficeOdtPath` |
-| `DefaultUpdateShare` (Office C2R) | *(empty — always prompts)* | `-OfficeSharePath` |
 
 ## Network Ports
 
@@ -83,7 +81,6 @@ Import-Module .\Modules\WsusConfig.psm1 -Force -DisableNameChecking
 $cfg = Get-WsusRuntimeConfig      # full runtime config
 $cfg.Wsus.ContentPath             # C:\WSUS
 $cfg.Timeouts.SqlQueryLong        # 300
-$cfg.OfficeC2R.DefaultChannel     # MonthlyEnterprise
 ```
 
 ## GUI Persisted Settings

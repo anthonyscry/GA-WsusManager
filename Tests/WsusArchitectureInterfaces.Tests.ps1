@@ -2,24 +2,32 @@
 
 BeforeAll {
     $script:ModulesPath = Join-Path $PSScriptRoot '..\Modules'
-    Import-Module (Join-Path $script:ModulesPath 'WsusDiagnosticResult.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusOperationPlan.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusProvisioning.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusConfig.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusExport.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusHostEnvironment.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusGuiShell.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusProcessHost.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusRepairPlan.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusRepairHarness.psm1') -Force -DisableNameChecking
-    Import-Module (Join-Path $script:ModulesPath 'WsusAutoDetection.psm1') -Force -DisableNameChecking
     Import-Module (Join-Path $script:ModulesPath 'WsusTestHarness.psm1') -Force -DisableNameChecking
+    $moduleNames = @(
+        'WsusUtilities',
+        'WsusDiagnosticResult',
+        'WsusOperationPlan',
+        'WsusProvisioning',
+        'WsusConfig',
+        'WsusExport',
+        'WsusHostEnvironment',
+        'WsusGuiShell',
+        'WsusStartupProbe',
+        'WsusOperationCompletion',
+        'WsusDashboardViewModel',
+        'WsusProcessHost',
+        'WsusRepairPlan',
+        'WsusRepairHarness',
+        'WsusAutoDetection',
+        'WsusUtilities'
+    )
+    foreach ($moduleName in $moduleNames) {
+        Import-WsusTestModule -ModuleName $moduleName
+    }
 }
 
 AfterAll {
-    'WsusDiagnosticResult','WsusOperationPlan','WsusProvisioning','WsusConfig','WsusExport','WsusHostEnvironment','WsusGuiShell','WsusProcessHost','WsusRepairPlan','WsusRepairHarness','WsusAutoDetection','WsusTestHarness' | ForEach-Object {
-        Remove-Module $_ -ErrorAction SilentlyContinue
-    }
+    Remove-WsusTestModule -ModuleName @('WsusUtilities','WsusDiagnosticResult','WsusOperationPlan','WsusProvisioning','WsusConfig','WsusExport','WsusHostEnvironment','WsusGuiShell','WsusStartupProbe','WsusOperationCompletion','WsusDashboardViewModel','WsusProcessHost','WsusRepairPlan','WsusRepairHarness','WsusAutoDetection','WsusTestHarness')
 }
 
 Describe 'Diagnostic result interface' {

@@ -580,7 +580,41 @@ function Reset-WsusOperationGuard {
 
 #endregion
 
+function Get-WsusOperationTimeout {
+    <#
+    .SYNOPSIS
+        Returns the timeout in minutes for a given operation type.
+    .DESCRIPTION
+        Centralised operation timeout table used by GUI and CLI scripts to
+        enforce per-operation time limits.
+    .PARAMETER OperationType
+        One of: Cleanup, Sync, Install, Export, Import, Diagnostics, Health, Repair, Default.
+    .OUTPUTS
+        Integer timeout value in minutes.
+    .EXAMPLE
+        $mins = Get-WsusOperationTimeout -OperationType 'Sync'
+        # Returns 120
+    #>
+    param(
+        [ValidateSet('Cleanup', 'Sync', 'Install', 'Export', 'Import', 'Diagnostics', 'Health', 'Repair', 'Default')]
+        [string]$OperationType = 'Default'
+    )
+    $timeouts = @{
+        Cleanup     = 60
+        Sync        = 120
+        Install     = 60
+        Export      = 90
+        Import      = 90
+        Diagnostics = 30
+        Health      = 30
+        Repair      = 45
+        Default     = 30
+    }
+    return $timeouts[$OperationType]
+}
+
 Export-ModuleMember -Function @(
+    'Get-WsusOperationTimeout',
     'Start-WsusOperation',
     'Stop-WsusOperation',
     'Complete-WsusOperation',

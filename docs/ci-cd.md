@@ -4,7 +4,7 @@ This repository uses a **two-tier CI model** plus a local validation harness:
 
 | Pipeline | Trigger | Runner | Purpose |
 |----------|---------|--------|---------|
-| `.github/workflows/ci.yml` | every push, every PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, Office C2R tests, EXE build |
+| `.github/workflows/ci.yml` | every push, every PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, EXE build |
 | `.github/workflows/gui-tests.yml` | manual dispatch + daily schedule | `self-hosted, windows, triton-ajt` | Pester subset plus FlaUI GUI automation through interactive session |
 | `build/Invoke-ShipReadiness.ps1` | local | dev workstation | aggregate verification gate |
 
@@ -19,8 +19,7 @@ Runs on every push and PR to `main` or `release/*`. Uses GitHub-hosted `windows-
 1. **Syntax Check** — runs `build/Invoke-SyntaxCheck.ps1` against the entire repo. Fails if any `.ps1`, `.psm1`, or `.psd1` has a parse error.
 2. **PSScriptAnalyzer** — installs PSScriptAnalyzer, runs the analyzer across all PS files at Error severity using `.PSScriptAnalyzerSettings.psd1`. Fails on any Error.
 3. **Pester Unit Tests** — installs Pester 5, runs `./Tests` excluding tags `E2E`, `GUI`, `Integration`, `FlaUI` (those need a real WSUS / SQL / IIS stack or interactive desktop). Writes NUnit3 XML to `TestResults/unit-tests.xml`. Fails on any failed test.
-4. **Office C2R Module Tests** — runs `build/Invoke-OfficeC2R-Tests.ps1` for fast feedback on the new feature.
-5. **Build EXE** — depends on all of the above. Runs `build.ps1 -SkipTests -NoPush` to produce `dist/GA-WsusManager.exe` and `dist/WsusManager-v*.zip`. Uploads the artifacts for download.
+4. **Build EXE** — depends on all of the above. Runs `build.ps1 -SkipTests -NoPush` to produce `dist/GA-WsusManager.exe` and `dist/WsusManager-v*.zip`. Uploads the artifacts for download.
 
 ### Concurrency
 
@@ -42,9 +41,6 @@ You can reproduce the standard CI gate locally with the same commands:
 
 # Unit tests (same tag exclusions as ci.yml)
 Invoke-Pester -Path ./Tests -Output Detailed -ExcludeTag 'E2E','GUI','Integration','FlaUI'
-
-# Office C2R focused tests
-./build/Invoke-OfficeC2R-Tests.ps1
 
 # Build artifact generation
 ./build.ps1 -SkipTests -NoPush

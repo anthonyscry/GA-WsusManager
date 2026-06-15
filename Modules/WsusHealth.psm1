@@ -27,7 +27,7 @@ Date: 2026-06-09
 # Import required modules with error handling
 $modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 
-$requiredModules = @('WsusUtilities', 'WsusServices', 'WsusFirewall', 'WsusPermissions', 'WsusDiagnosticResult', 'WsusHostEnvironment', 'WsusRepairPlan')
+$requiredModules = @('WsusUtilities', 'WsusServices', 'WsusFirewall', 'WsusPermissions', 'WsusDiagnosticResult', 'WsusHostEnvironment', 'WsusRepairPlan', 'WsusDatabase')
 foreach ($modName in $requiredModules) {
     $modFile = Join-Path $modulePath "$modName.psm1"
     if (Test-Path $modFile) {
@@ -47,6 +47,30 @@ foreach ($modName in $requiredModules) {
 # (Service names are derived inline from SqlInstance or passed as parameters)
 
 # ===========================
+# OUTPUT CONTROL (quiet mode for programmatic callers)
+# ===========================
+$script:WsusDiagnosticQuiet = $false
+
+function Write-DiagnosticOutput {
+    <#
+    .SYNOPSIS
+        Writes diagnostic output unless quiet mode is enabled.
+    .DESCRIPTION
+        Routes all diagnostic console output through this single helper so that
+        -Quiet callers can suppress noise without changing the diagnostic pipeline.
+    #>
+    param(
+        [string]$Message,
+        [string]$ForegroundColor = 'Gray',
+        [switch]$NoNewline
+    )
+    if (-not $script:WsusDiagnosticQuiet) {
+        if ($NoNewline) { Write-Host $Message -ForegroundColor $ForegroundColor -NoNewline }
+        else { Write-Host $Message -ForegroundColor $ForegroundColor }
+    }
+}
+
+# ===========================
 # CHECK-RESULT HELPER (internal)
 # ===========================
 function Write-CheckResult {
@@ -57,15 +81,15 @@ function Write-CheckResult {
         [string]$Message = "",
         [string]$Prefix = "CHECK"
     )
-    Write-Host "[$Prefix] $CheckName..." -NoNewline
+    Write-DiagnosticOutput "[$Prefix] $CheckName..." -NoNewline
     switch ($Result) {
-        'OK'   { Write-Host " OK" -ForegroundColor Green }
-        'FAIL' { Write-Host " FAIL" -ForegroundColor Red }
-        'WARN' { Write-Host " WARN" -ForegroundColor Yellow }
-        'SKIP' { Write-Host " SKIP" -ForegroundColor Yellow }
+        'OK'   { Write-DiagnosticOutput " OK" -ForegroundColor Green }
+        'FAIL' { Write-DiagnosticOutput " FAIL" -ForegroundColor Red }
+        'WARN' { Write-DiagnosticOutput " WARN" -ForegroundColor Yellow }
+        'SKIP' { Write-DiagnosticOutput " SKIP" -ForegroundColor Yellow }
     }
     if ($Message) {
-        Write-Host "        $Message" -ForegroundColor Gray
+        Write-DiagnosticOutput "        $Message" -ForegroundColor Gray
     }
 }
 
@@ -205,6 +229,7 @@ function Get-WsusHealthScore {
         Sync recent (20pts), Disk OK (20pts), Last operation passed (10pts).
         Returns -1 if all data sources failed (display as N/A).
     #>
+    [CmdletBinding()]
     param(
         [string]$SqlInstance  = '.\SQLEXPRESS',
         [string]$ContentPath  = 'C:\WSUS',
@@ -217,7 +242,8 @@ function Get-WsusHealthScore {
     $servicesScore = 0
     try {
         $sqlSvcName = Get-WsusSqlServiceName -SqlInstance $SqlInstance
-        $serviceNames = @($sqlSvcName, 'WSUSService', 'W3SVC')
+        $definitions = Get-WsusServiceDefinitions
+        $serviceNames = @($definitions | Where-Object { $_.Group -eq 'Core' } | ForEach-Object { $_.ServiceName }) -replace '^MSSQL\$\w+$', $sqlSvcName
         $running = 0
         $svcCmd = Get-Command Get-WsusHostServiceState -ErrorAction SilentlyContinue
         if (-not $svcCmd) { throw 'Get-WsusHostServiceState not available' }
@@ -228,19 +254,17 @@ function Get-WsusHealthScore {
             if ($s -and $s.Running) { $running++ }
         }
         $servicesScore = switch ($running) { 3 { 30 } 2 { 20 } 1 { 10 } default { 0 } }
-    } catch { $failedSources++ }
+    } catch { $failedSources++; Write-Verbose "Health score services source failed: $($_.Exception.Message)" }
 
     $dbScore = 0
     try {
-        $query = "SELECT CAST(SUM(size)*8.0/1024/1024 AS DECIMAL(10,2)) AS SizeGB FROM sys.master_files WHERE database_id=DB_ID('SUSDB')"
-        $sqlResult = if (Get-Command 'Invoke-WsusSqlcmd' -ErrorAction SilentlyContinue) {
-            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+        $sizeGB = Get-WsusDatabaseSize -SqlInstance $SqlInstance
+        if ($sizeGB -gt 0) {
+            $dbScore = if ($sizeGB -lt 7) { 20 } elseif ($sizeGB -lt 9) { 10 } else { 0 }
         } else {
-            Invoke-Sqlcmd -ServerInstance $SqlInstance -Database master -Query $query -QueryTimeout 30
+            $failedSources++
         }
-        $sizeGB = [double]$sqlResult.SizeGB
-        $dbScore = if ($sizeGB -lt 7) { 20 } elseif ($sizeGB -lt 9) { 10 } else { 0 }
-    } catch { $failedSources++ }
+    } catch { $failedSources++; Write-Verbose "Health score database size source failed: $($_.Exception.Message)" }
 
     $syncScore = 0
     try {
@@ -251,7 +275,7 @@ function Get-WsusHealthScore {
         $lastSync = $wsus.GetSubscription().LastSynchronizationTime
         $daysSinceSync = ([datetime]::UtcNow - $lastSync.ToUniversalTime()).TotalDays
         $syncScore = if ($daysSinceSync -le 7) { 20 } elseif ($daysSinceSync -le 30) { 10 } else { 0 }
-    } catch { $failedSources++ }
+    } catch { $failedSources++; Write-Verbose "Health score synchronization source failed: $($_.Exception.Message)" }
 
     $diskScore = 0
     try {
@@ -259,7 +283,7 @@ function Get-WsusHealthScore {
         $disk = Get-PSDrive -Name ($drive.TrimEnd(':')) -ErrorAction Stop
         $freeGB = [math]::Round($disk.Free / 1GB, 2)
         $diskScore = if ($freeGB -gt 50) { 20 } elseif ($freeGB -ge 10) { 10 } else { 0 }
-    } catch { $failedSources++ }
+    } catch { $failedSources++; Write-Verbose "Health score disk space source failed: $($_.Exception.Message)" }
 
     $opScore = 5
     try {
@@ -271,7 +295,7 @@ function Get-WsusHealthScore {
                 $opScore = if ($last.Result -eq 'Pass') { 10 } else { 0 }
             }
         }
-    } catch { $failedSources++ }
+    } catch { $failedSources++; Write-Verbose "Health score operation history source failed: $($_.Exception.Message)" }
 
     $allFailed = ($failedSources -ge $totalSources)
     $total     = $servicesScore + $dbScore + $syncScore + $diskScore + $opScore
@@ -298,8 +322,10 @@ function Get-WsusHealthScore {
 function Get-WsusStandardServiceStates {
     param([string]$SqlInstance = '.\SQLEXPRESS')
     $sqlServiceName = Get-WsusSqlServiceName -SqlInstance $SqlInstance
+    $definitions = Get-WsusServiceDefinitions
+    $serviceNames = @($sqlServiceName) + ($definitions | ForEach-Object { $_.ServiceName })
     $states = @{}
-    Get-WsusHostServiceState -Name @($sqlServiceName, 'SQLBrowser', 'WsusService', 'W3SVC') | ForEach-Object { $states[$_.Name] = $_ }
+    Get-WsusHostServiceState -Name $serviceNames | ForEach-Object { $states[$_.Name] = $_ }
     return @{ SqlServiceName = $sqlServiceName; States = $states }
 }
 
@@ -368,13 +394,17 @@ function Invoke-WsusDiagnostics {
         [string]$ContentPath = "C:\WSUS",
         [string]$SqlInstance = ".\SQLEXPRESS",
         [switch]$AutoFix,
-        [switch]$IncludeSqlProtocols
+        [switch]$IncludeSqlProtocols,
+        [switch]$Quiet
     )
 
-    $autoFixEnabled = if ($PSBoundParameters.ContainsKey('AutoFix')) { [bool]$AutoFix } else { $true }
+    $autoFixEnabled = $AutoFix -or (-not $PSBoundParameters.ContainsKey('AutoFix'))
+    $savedQuiet = $script:WsusDiagnosticQuiet
+    $script:WsusDiagnosticQuiet = [bool]$Quiet
+    try {
 
-    Write-Host "`n=== WSUS + SQL Server Diagnostics ===" -ForegroundColor Cyan
-    Write-Host "Scanning for common issues...`n" -ForegroundColor Gray
+    Write-DiagnosticOutput "`n=== WSUS + SQL Server Diagnostics ===" -ForegroundColor Cyan
+    Write-DiagnosticOutput "Scanning for common issues...`n" -ForegroundColor Gray
 
     $issues = [System.Collections.Generic.List[object]]::new()
     $fixesApplied = @()
@@ -454,7 +484,7 @@ function Invoke-WsusDiagnostics {
             Write-CheckResult "WSUS Application Pool" "OK"
         }
     } catch {
-        Write-CheckResult "WSUS Application Pool" "SKIP" "WebAdministration module not available"
+        Write-CheckResult "WSUS Application Pool" "SKIP" "WebAdministration module not available: $($_.Exception.Message)"
     }
 
     # CHECK: WSUS firewall rules
@@ -478,8 +508,8 @@ function Invoke-WsusDiagnostics {
                 $null = $issues.Add(@{ Severity = 'CRITICAL'; Issue = 'SUSDB database does not exist'; Fix = 'Run WSUS postinstall: wsusutil.exe postinstall'; RepairAction = $null; Repairable = $false })
             }
         } catch {
-            Write-CheckResult "SUSDB Database" "FAIL" "Cannot connect to SQL Server"
-            $null = $issues.Add(@{ Severity = 'CRITICAL'; Issue = 'Cannot connect to SQL Server to verify SUSDB'; Fix = 'Verify SQL Server is running and accessible'; RepairAction = $null; Repairable = $false })
+            Write-CheckResult "SUSDB Database" "FAIL" "Cannot connect to SQL Server: $($_.Exception.Message)"
+            $null = $issues.Add(@{ Severity = 'CRITICAL'; Issue = "Cannot connect to SQL Server to verify SUSDB: $($_.Exception.Message)"; Fix = 'Verify SQL Server is running and accessible'; RepairAction = $null; Repairable = $false })
         }
     } else {
         Write-CheckResult "SUSDB Database" "SKIP" "SQL Server not running"
@@ -496,7 +526,7 @@ function Invoke-WsusDiagnostics {
                 $null = $issues.Add(@{ Severity = 'HIGH'; Issue = 'NT AUTHORITY\NETWORK SERVICE login missing'; Fix = 'Create login and grant dbcreator role'; RepairAction = 'GrantNetworkServiceLogin'; Repairable = $true })
             }
         } catch {
-            Write-CheckResult "NETWORK SERVICE SQL Login" "SKIP" "Could not query SQL Server"
+            Write-CheckResult "NETWORK SERVICE SQL Login" "SKIP" "Could not query SQL Server: $($_.Exception.Message)"
         }
     } else {
         Write-CheckResult "NETWORK SERVICE SQL Login" "SKIP" "SQL Server not running"
@@ -523,51 +553,51 @@ function Invoke-WsusDiagnostics {
 
     # AUTO-FIX
     if ($autoFixEnabled -and $fixableCount -gt 0) {
-        Write-Host "`n=== APPLYING AUTO-FIXES ===" -ForegroundColor Cyan
-        Write-Host "Fixing $fixableCount issue(s)...`n" -ForegroundColor Green
+        Write-DiagnosticOutput "`n=== APPLYING AUTO-FIXES ===" -ForegroundColor Cyan
+        Write-DiagnosticOutput "Fixing $fixableCount issue(s)...`n" -ForegroundColor Green
 
         foreach ($issue in $typedIssues) {
             if ($issue.Repairable) {
-                Write-Host "[FIX] $($issue.Message)..." -NoNewline
+                Write-DiagnosticOutput "[FIX] $($issue.Message)..." -NoNewline
                 try {
                     Invoke-WsusRepairAction -Action $issue.RepairAction -ContentPath $ContentPath -SqlInstance $SqlInstance -WsusContentPath $wsusContent -SqlServiceName $sqlServiceName | Out-Null
-                    Write-Host " SUCCESS" -ForegroundColor Green
+                    Write-DiagnosticOutput " SUCCESS" -ForegroundColor Green
                     $fixesApplied += $issue.Message
                 } catch {
-                    Write-Host " FAILED: $($_.Exception.Message)" -ForegroundColor Red
+                    Write-DiagnosticOutput " FAILED: $($_.Exception.Message)" -ForegroundColor Red
                     $fixesFailed += $issue.Message
                 }
             }
         }
-        Write-Host "`n[COMPLETE] Auto-fix process finished." -ForegroundColor Cyan
+        Write-DiagnosticOutput "`n[COMPLETE] Auto-fix process finished." -ForegroundColor Cyan
     }
 
     # RESULTS SUMMARY
-    Write-Host "`n=== SCAN RESULTS ===" -ForegroundColor Cyan
+    Write-DiagnosticOutput "`n=== SCAN RESULTS ===" -ForegroundColor Cyan
 
     $sslStatus = Get-WsusSSLStatus
 
     if ($typedIssues.Count -eq 0) {
-        Write-Host "`n[SUCCESS] No issues detected! System is healthy." -ForegroundColor Green
+        Write-DiagnosticOutput "`n[SUCCESS] No issues detected! System is healthy." -ForegroundColor Green
     } else {
-        Write-Host "`nFound $($typedIssues.Count) issue(s):`n" -ForegroundColor Yellow
+        Write-DiagnosticOutput "`nFound $($typedIssues.Count) issue(s):`n" -ForegroundColor Yellow
         foreach ($issue in $typedIssues) {
             $color = switch ($issue.Severity) { 'Critical' { 'Red' } 'High' { 'Red' } 'Medium' { 'Yellow' } 'Low' { 'Gray' } default { 'White' } }
-            Write-Host "[$($issue.Severity)] " -ForegroundColor $color -NoNewline
-            Write-Host $issue.Message
-            Write-Host "    Fix: $($issue.Recommendation)" -ForegroundColor Gray
-            if ($issue.Repairable) { Write-Host "    [AUTO-FIX AVAILABLE]" -ForegroundColor Green }
-            Write-Host ""
+            Write-DiagnosticOutput "[$($issue.Severity)] " -ForegroundColor $color -NoNewline
+            Write-DiagnosticOutput $issue.Message
+            Write-DiagnosticOutput "    Fix: $($issue.Recommendation)" -ForegroundColor Gray
+            if ($issue.Repairable) { Write-DiagnosticOutput "    [AUTO-FIX AVAILABLE]" -ForegroundColor Green }
+            Write-DiagnosticOutput ""
         }
-        if ($fixesFailed.Count -gt 0) { Write-Host "Some fixes failed. Please manually resolve these issues." -ForegroundColor Yellow }
+        if ($fixesFailed.Count -gt 0) { Write-DiagnosticOutput "Some fixes failed. Please manually resolve these issues." -ForegroundColor Yellow }
     }
 
-    Write-Host "`n=== SUMMARY ===" -ForegroundColor Cyan
-    Write-Host "Issues Found: $($typedIssues.Count)"
-    Write-Host "Auto-Fixes Applied: $($fixesApplied.Count)"
-    Write-Host "Fixes Failed: $($fixesFailed.Count)"
-    if ($sslStatus.SSLEnabled) { Write-Host "Protocol: HTTPS (port 8531)" -ForegroundColor Green } else { Write-Host "Protocol: HTTP (port 8530)" -ForegroundColor Gray }
-    Write-Host ""
+    Write-DiagnosticOutput "`n=== SUMMARY ===" -ForegroundColor Cyan
+    Write-DiagnosticOutput "Issues Found: $($typedIssues.Count)"
+    Write-DiagnosticOutput "Auto-Fixes Applied: $($fixesApplied.Count)"
+    Write-DiagnosticOutput "Fixes Failed: $($fixesFailed.Count)"
+    if ($sslStatus.SSLEnabled) { Write-DiagnosticOutput "Protocol: HTTPS (port 8531)" -ForegroundColor Green } else { Write-DiagnosticOutput "Protocol: HTTP (port 8530)" -ForegroundColor Gray }
+    Write-DiagnosticOutput ""
 
     $healthy = ($typedIssues.Count -eq 0) -or ($autoFixEnabled -and $fixableCount -gt 0 -and $fixesApplied.Count -eq $fixableCount -and $fixesFailed.Count -eq 0)
     $diagnosticReport = New-WsusDiagnosticReport -Issues $typedIssues -FixesApplied $fixesApplied -FixesFailed $fixesFailed -Evidence @{ SSL = $sslStatus }
@@ -583,10 +613,13 @@ function Invoke-WsusDiagnostics {
         SSL = $sslStatus
         DiagnosticReport = $diagnosticReport
     }
+    } finally {
+        $script:WsusDiagnosticQuiet = $savedQuiet
+    }
 }
 
 # ===========================
-# DEEP CONTENT/DOWNLOAD DIAGNOSTICS
+# DEEP CONTENT/DIAGNOSTICS
 # ===========================
 
 <#
@@ -598,13 +631,17 @@ function Invoke-WsusDeepDiagnostics {
     param(
         [string]$ContentPath = "C:\WSUS",
         [string]$SqlInstance = ".\SQLEXPRESS",
-        [switch]$AutoFix
+        [switch]$AutoFix,
+        [switch]$Quiet
     )
 
-    $autoFixEnabled = if ($PSBoundParameters.ContainsKey('AutoFix')) { [bool]$AutoFix } else { $true }
+    $autoFixEnabled = $AutoFix -or (-not $PSBoundParameters.ContainsKey('AutoFix'))
+    $savedQuiet = $script:WsusDiagnosticQuiet
+    $script:WsusDiagnosticQuiet = [bool]$Quiet
+    try {
 
-    Write-Host "`n=== WSUS Deep Content/Download Diagnostics ===" -ForegroundColor Cyan
-    Write-Host "Checking content parity, IIS paths, WsusPool, download queue, and recent WSUS errors...`n" -ForegroundColor Gray
+    Write-DiagnosticOutput "`n=== WSUS Deep Content/Download Diagnostics ===" -ForegroundColor Cyan
+    Write-DiagnosticOutput "Checking content parity, IIS paths, WsusPool, download queue, and recent WSUS errors...`n" -ForegroundColor Gray
 
     $issues = [System.Collections.Generic.List[object]]::new()
     $fixesApplied = @()
@@ -634,7 +671,7 @@ function Invoke-WsusDeepDiagnostics {
             if ($securityContext.GroupNames -contains 'BUILTIN\WSUS Administrators') { Write-CheckResult -Prefix DEEP "WSUS Administrators membership" "OK" $securityContext.UserName }
             else { Write-CheckResult -Prefix DEEP "WSUS Administrators membership" "WARN" "$($securityContext.UserName) is not in BUILTIN\WSUS Administrators"; Add-DeepIssue -Severity "MEDIUM" -Issue "Current account is not a member of WSUS Administrators" -Fix "Add the repair/admin account to Local Administrators and WSUS Administrators before rerunning postinstall or server repair" }
         }
-    } catch { Write-CheckResult -Prefix DEEP "Current security context" "SKIP" "Could not inspect token groups" }
+    } catch { Write-CheckResult -Prefix DEEP "Current security context" "SKIP" "Could not inspect token groups: $($_.Exception.Message)" }
 
     # ---- CHECK: Content path ----
     $resolvedContentPath = $ContentPath
@@ -681,7 +718,7 @@ function Invoke-WsusDeepDiagnostics {
             if ($registrySqlServer -ieq $normalizedSqlInstance -or ($registrySqlServer -ieq $env:COMPUTERNAME -and $SqlInstance -match '\\SQLEXPRESS$')) { Write-CheckResult -Prefix DEEP "WSUS registry SQL server" "OK" $registrySqlServer }
             else { Write-CheckResult -Prefix DEEP "WSUS registry SQL server" "WARN" "Registry: $registrySqlServer; diagnostics using: $SqlInstance"; Add-DeepIssue -Severity "MEDIUM" -Issue "WSUS registry SQL server does not match the diagnostics SQL instance" -Fix "Verify whether this WSUS server is SQL Express-backed or WID-backed before rerunning postinstall; use the installed database backend, not the wrong instance" }
         }
-    } catch { Write-CheckResult -Prefix DEEP "WSUS registry ContentDir" "WARN" "Could not read ContentDir"; Add-DeepIssue -Severity "MEDIUM" -Issue "Could not read WSUS ContentDir from registry" -Fix "Verify WSUS postinstall completed and registry permissions allow access" }
+    } catch { Write-CheckResult -Prefix DEEP "WSUS registry ContentDir" "WARN" "Could not read ContentDir: $($_.Exception.Message)"; Add-DeepIssue -Severity "MEDIUM" -Issue "Could not read WSUS ContentDir from registry: $($_.Exception.Message)" -Fix "Verify WSUS postinstall completed and registry permissions allow access" }
 
     # ---- CHECK: SQL networking ----
     try {
@@ -693,7 +730,7 @@ function Invoke-WsusDeepDiagnostics {
             if ($sqlNetwork.NamedPipesEnabled -eq 1) { Write-CheckResult -Prefix DEEP "SQL Named Pipes networking" "OK" "Enabled" }
             else { Write-CheckResult -Prefix DEEP "SQL Named Pipes networking" "WARN" "Named Pipes disabled"; Add-DeepIssue -Severity "LOW" -Issue "SQL Server Named Pipes protocol is disabled" -Fix "Enable Named Pipes if local WSUS/SQL connectivity requires it, then restart SQL Server" }
         } else { Write-CheckResult -Prefix DEEP "SQL networking registry" "SKIP" "No SQL Express network registry path found for $($sqlNetwork.Instance)" }
-    } catch { Write-CheckResult -Prefix DEEP "SQL networking registry" "SKIP" "Could not inspect SQL networking configuration" }
+    } catch { Write-CheckResult -Prefix DEEP "SQL networking registry" "SKIP" "Could not inspect SQL networking configuration: $($_.Exception.Message)" }
 
     # ---- CHECK: IIS content path + WsusPool ----
     try {
@@ -730,7 +767,7 @@ function Invoke-WsusDeepDiagnostics {
                 Add-DeepIssue -Severity "MEDIUM" -Issue "WsusPool capacity or recycle settings may throttle downloads or client installs" -Fix "Set WsusPool queueLength 25000, private memory 0, idle timeout 0, and periodic recycle interval 0" -RepairAction "TuneWsusPool"
             } else { Write-CheckResult -Prefix DEEP "WsusPool capacity/recycle settings" "OK" "QueueLength=$($pool.queueLength), PrivateMemoryKB=$($pool.recycling.periodicRestart.privateMemory), Idle=$idleTimeout, Recycle=$periodicRestartTime" }
         } else { Write-CheckResult -Prefix DEEP "WsusPool configuration" "FAIL" "App pool not found"; Add-DeepIssue -Severity "HIGH" -Issue "WsusPool application pool is missing" -Fix "Repair/reinstall WSUS IIS components" }
-    } catch { Write-CheckResult -Prefix DEEP "IIS deep checks" "SKIP" "WebAdministration unavailable or IIS path inaccessible"; $recommendations += "Run this diagnostic on the WSUS server with the WebAdministration module available to validate IIS /Content and WsusPool settings." }
+    } catch { Write-CheckResult -Prefix DEEP "IIS deep checks" "SKIP" "WebAdministration unavailable or IIS path inaccessible: $($_.Exception.Message)"; $recommendations += "Run this diagnostic on the WSUS server with the WebAdministration module available to validate IIS /Content and WsusPool settings. Last error: $($_.Exception.Message)" }
 
     # ---- CHECK: BITS service ----
     $bits = Get-WsusHostServiceState -Name 'BITS' | Select-Object -First 1
@@ -743,7 +780,7 @@ function Invoke-WsusDeepDiagnostics {
             $bitsPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\BITS"
             if (Test-Path $bitsPolicyPath) { $checks.BitsPolicy = Get-ItemProperty -Path $bitsPolicyPath -ErrorAction Stop; Write-CheckResult -Prefix DEEP "BITS throttling policy" "WARN" "BITS policy keys exist on this server"; $recommendations += "Review BITS throttling GPO under Computer Configuration > Administrative Templates > Network > Background Intelligent Transfer Service on WSUS clients and server." }
             else { Write-CheckResult -Prefix DEEP "BITS throttling policy" "OK" "No local BITS policy key found" }
-        } catch { Write-CheckResult -Prefix DEEP "BITS throttling policy" "SKIP" "Could not inspect BITS policy" }
+        } catch { Write-CheckResult -Prefix DEEP "BITS throttling policy" "SKIP" "Could not inspect BITS policy: $($_.Exception.Message)" }
     } else { Write-CheckResult -Prefix DEEP "BITS service" "WARN" "Service not found"; Add-DeepIssue -Severity "LOW" -Issue "BITS service was not found" -Fix "Verify Windows BITS component installation" }
 
     # ---- CHECK: SUSDB content file state ----
@@ -790,7 +827,7 @@ SELECT
             $recommendations += "If progress does not change across repeated runs, run Reset Content and inspect Event Viewer for WSUS Event ID 364 download errors."
         } else { Write-CheckResult -Prefix DEEP "WSUS API download progress" "OK" "$($downloadProgress.FilesDownloaded)/$($downloadProgress.FilesToDownload) files downloaded" }
         Write-CheckResult -Prefix DEEP "WSUS synchronization status" "OK" $syncStatus.ToString()
-    } catch { Write-CheckResult -Prefix DEEP "WSUS API progress" "SKIP" "UpdateServices API unavailable or WSUS console components missing"; $recommendations += "Install/use WSUS Administration Console components on the server to inspect live synchronization and content download progress." }
+    } catch { Write-CheckResult -Prefix DEEP "WSUS API progress" "SKIP" "UpdateServices API unavailable or WSUS console components missing: $($_.Exception.Message)"; $recommendations += "Install/use WSUS Administration Console components on the server to inspect live synchronization and content download progress. Last error: $($_.Exception.Message)" }
 
     # ---- CHECK: Recent WSUS/IIS/SQL events ----
     try {
@@ -799,32 +836,31 @@ SELECT
             Where-Object { $_.ProviderName -match 'Update Services|WSUS|W3SVC|MSSQL|IIS' -or $_.LogName -eq 'Microsoft-Windows-Windows Server Update Services/Operational' }
         if ($events) { Write-CheckResult -Prefix DEEP "Recent WSUS/IIS/SQL events" "WARN" "$(@($events).Count) warnings/errors in the last 48 hours"; $recommendations += "Review Application and Microsoft-Windows-Windows Server Update Services/Operational logs for download, unauthorized, database, and IIS errors; prioritize WSUS Event IDs 364, 386, and 10032." }
         else { Write-CheckResult -Prefix DEEP "Recent WSUS/IIS/SQL events" "OK" "No matching warnings/errors in the last 48 hours" }
-    } catch { Write-CheckResult -Prefix DEEP "Recent WSUS/IIS/SQL events" "SKIP" "Could not read Application or WSUS event logs" }
+    } catch { Write-CheckResult -Prefix DEEP "Recent WSUS/IIS/SQL events" "SKIP" "Could not read Application or WSUS event logs: $($_.Exception.Message)" }
 
     # ---- AUTO-FIX ----
     $tyDeepIssues = $issues | ForEach-Object { ConvertTo-WsusDiagnosticIssue -InputObject $_ -IncludeLegacyAliases }
     $fixableCount = @($tyDeepIssues | Where-Object { $_.Repairable }).Count
     if ($autoFixEnabled -and $fixableCount -gt 0) {
         $fixSqlServiceName = if ($SqlInstance -match '\\([^\\]+)$') { "MSSQL`$$($Matches[1])" } else { 'MSSQLSERVER' }
-        Write-Host "`n=== APPLYING DEEP AUTO-FIXES ===" -ForegroundColor Cyan
+        Write-DiagnosticOutput "`n=== APPLYING DEEP AUTO-FIXES ===" -ForegroundColor Cyan
         foreach ($issue in $tyDeepIssues) {
             if ($issue.Repairable) {
-                Write-Host "[FIX] $($issue.Message)..." -NoNewline
+                Write-DiagnosticOutput "[FIX] $($issue.Message)..." -NoNewline
                 try {
                     Invoke-WsusRepairAction -Action $issue.RepairAction -ContentPath $resolvedContentPath -SqlInstance $SqlInstance -WsusContentPath $wsusContentPath -SqlServiceName $fixSqlServiceName | Out-Null
-                    Write-Host " SUCCESS" -ForegroundColor Green; $fixesApplied += $issue.Message
-                } catch { Write-Host " FAILED: $($_.Exception.Message)" -ForegroundColor Red; $fixesFailed += $issue.Message }
+                    Write-DiagnosticOutput " SUCCESS" -ForegroundColor Green; $fixesApplied += $issue.Message
+                } catch { Write-DiagnosticOutput " FAILED: $($_.Exception.Message)" -ForegroundColor Red; $fixesFailed += $issue.Message }
             }
         }
     }
 
-    if ($tyDeepIssues.Count -eq 0) { Write-Host "`n[DEEP] No deep content/download issues detected." -ForegroundColor Green }
-    else { Write-Host "`n[DEEP] Found $($tyDeepIssues.Count) deep issue(s)." -ForegroundColor Yellow }
+    if ($tyDeepIssues.Count -eq 0) { Write-DiagnosticOutput "`n[DEEP] No deep content/download issues detected." -ForegroundColor Green }
+    else { Write-DiagnosticOutput "`n[DEEP] Found $($tyDeepIssues.Count) deep issue(s)." -ForegroundColor Yellow }
 
-    if ($recommendations.Count -gt 0) { Write-Host "`n=== RECOMMENDATIONS ===" -ForegroundColor Cyan; $recommendations | Select-Object -Unique | ForEach-Object { Write-Host "- $_" -ForegroundColor Gray } }
+    if ($recommendations.Count -gt 0) { Write-DiagnosticOutput "`n=== RECOMMENDATIONS ===" -ForegroundColor Cyan; $recommendations | Select-Object -Unique | ForEach-Object { Write-DiagnosticOutput "- $_" -ForegroundColor Gray } }
 
-    $deepFixableCount = @($tyDeepIssues | Where-Object { $_.Repairable }).Count
-    $healthy = ($tyDeepIssues.Count -eq 0) -or ($autoFixEnabled -and $deepFixableCount -gt 0 -and $fixesFailed.Count -eq 0 -and $fixesApplied.Count -eq $deepFixableCount)
+    $healthy = ($tyDeepIssues.Count -eq 0) -or ($autoFixEnabled -and $fixableCount -gt 0 -and $fixesFailed.Count -eq 0 -and $fixesApplied.Count -eq $fixableCount)
     $diagnosticReport = New-WsusDiagnosticReport -Issues $tyDeepIssues -FixesApplied $fixesApplied -FixesFailed $fixesFailed -Evidence $checks -Recommendations @($recommendations | Select-Object -Unique)
     $diagnosticReport.Healthy = $healthy
 
@@ -837,6 +873,9 @@ SELECT
         Checks = $checks
         Recommendations = @($recommendations | Select-Object -Unique)
         DiagnosticReport = $diagnosticReport
+    }
+    } finally {
+        $script:WsusDiagnosticQuiet = $savedQuiet
     }
 }
 
@@ -854,14 +893,17 @@ function Test-WsusHealth {
     param(
         [string]$ContentPath = "C:\WSUS",
         [string]$SqlInstance = ".\SQLEXPRESS",
-        [switch]$IncludeDatabase
+        [switch]$IncludeDatabase,
+        [switch]$Quiet
     )
 
-    Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "WSUS Health Check (legacy compatibility)" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+    if (-not $Quiet) {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "WSUS Health Check (legacy compatibility)" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+    }
 
-    $diagnosticsParams = @{ ContentPath = $ContentPath; SqlInstance = $SqlInstance; AutoFix = $false }
+    $diagnosticsParams = @{ ContentPath = $ContentPath; SqlInstance = $SqlInstance; AutoFix = $false; Quiet = $Quiet }
     $diagResult = Invoke-WsusDiagnostics @diagnosticsParams
 
     $health = @{
@@ -870,21 +912,23 @@ function Test-WsusHealth {
         SSL = $diagResult.SSL
     }
 
-    Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "Health Check Summary" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    if ($health.SSL.SSLEnabled) {
-        Write-Host "Protocol: HTTPS (port 8531)" -ForegroundColor Green
-        if ($health.SSL.CertificateExpires -and ($health.SSL.CertificateExpires - (Get-Date)).Days -lt 30) { Write-Host "Certificate expires in $(($health.SSL.CertificateExpires - (Get-Date)).Days) days!" -ForegroundColor Yellow }
-    } else { Write-Host "Protocol: HTTP (port 8530)" -ForegroundColor Gray }
-    Write-Host ""
-    switch ($health.Overall) {
-        "Healthy" { Write-Host "Overall Status: HEALTHY" -ForegroundColor Green; Write-Host "All systems operational" -ForegroundColor Green }
-        "Degraded" { Write-Host "Overall Status: DEGRADED" -ForegroundColor Yellow; Write-Host "System is operational but has warnings" -ForegroundColor Yellow }
-        "Unhealthy" { Write-Host "Overall Status: UNHEALTHY" -ForegroundColor Red; Write-Host "Critical issues detected" -ForegroundColor Red }
+    if (-not $Quiet) {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Health Check Summary" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        if ($health.SSL.SSLEnabled) {
+            Write-Host "Protocol: HTTPS (port 8531)" -ForegroundColor Green
+            if ($health.SSL.CertificateExpires -and ($health.SSL.CertificateExpires - (Get-Date)).Days -lt 30) { Write-Host "Certificate expires in $(($health.SSL.CertificateExpires - (Get-Date)).Days) days!" -ForegroundColor Yellow }
+        } else { Write-Host "Protocol: HTTP (port 8530)" -ForegroundColor Gray }
+        Write-Host ""
+        switch ($health.Overall) {
+            "Healthy" { Write-Host "Overall Status: HEALTHY" -ForegroundColor Green; Write-Host "All systems operational" -ForegroundColor Green }
+            "Degraded" { Write-Host "Overall Status: DEGRADED" -ForegroundColor Yellow; Write-Host "System is operational but has warnings" -ForegroundColor Yellow }
+            "Unhealthy" { Write-Host "Overall Status: UNHEALTHY" -ForegroundColor Red; Write-Host "Critical issues detected" -ForegroundColor Red }
+        }
+        if ($health.Issues.Count -gt 0) { Write-Host "`nIssues Found:" -ForegroundColor Yellow; $health.Issues | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red } }
+        Write-Host ""
     }
-    if ($health.Issues.Count -gt 0) { Write-Host "`nIssues Found:" -ForegroundColor Yellow; $health.Issues | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red } }
-    Write-Host ""
     return $health
 }
 
@@ -897,14 +941,17 @@ function Repair-WsusHealth {
     [CmdletBinding()]
     param(
         [string]$ContentPath = "C:\WSUS",
-        [string]$SqlInstance = ".\SQLEXPRESS"
+        [string]$SqlInstance = ".\SQLEXPRESS",
+        [switch]$Quiet
     )
 
-    Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "WSUS Health Repair (legacy compatibility)" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+    if (-not $Quiet) {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "WSUS Health Repair (legacy compatibility)" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+    }
 
-    $result = Invoke-WsusDiagnostics -ContentPath $ContentPath -SqlInstance $SqlInstance -AutoFix
+    $result = Invoke-WsusDiagnostics -ContentPath $ContentPath -SqlInstance $SqlInstance -AutoFix -Quiet:$Quiet
 
     $results = @{
         ServicesStarted = @($result.FixesApplied)
@@ -914,18 +961,40 @@ function Repair-WsusHealth {
         Success = ($result.FixesFailed.Count -eq 0)
     }
 
-    Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host "Repair Summary" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Services Started: $($result.FixesApplied.Count)"
-    Write-Host "Fixes Failed: $($result.FixesFailed.Count)"
-    if ($results.Success) { Write-Host "`nRepair completed successfully" -ForegroundColor Green } else { Write-Host "`nRepair completed with errors" -ForegroundColor Red }
-    Write-Host ""
+    if (-not $Quiet) {
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Repair Summary" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "Services Started: $($result.FixesApplied.Count)"
+        Write-Host "Fixes Failed: $($result.FixesFailed.Count)"
+        if ($results.Success) { Write-Host "`nRepair completed successfully" -ForegroundColor Green } else { Write-Host "`nRepair completed with errors" -ForegroundColor Red }
+        Write-Host ""
+    }
     return $results
+}
+
+function Get-WsusHealthWeights {
+    <#
+    .SYNOPSIS
+        Returns the component weights used by Get-WsusHealthScore.
+    .DESCRIPTION
+        Provides the canonical point allocations for each health component so
+        callers and tests can reference a single source of truth.
+    .OUTPUTS
+        Hashtable with keys: Services, DatabaseSize, SyncRecency, DiskSpace, LastOperation
+    #>
+    return @{
+        Services      = 30
+        DatabaseSize  = 20
+        SyncRecency   = 20
+        DiskSpace     = 20
+        LastOperation = 10
+    }
 }
 
 # Export functions
 Export-ModuleMember -Function @(
+    'Get-WsusHealthWeights',
     'Get-WsusSSLStatus',
     'Test-WsusDatabaseConnection',
     'Test-WsusHealth',

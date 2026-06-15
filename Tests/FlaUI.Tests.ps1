@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     FlaUI UI Automation Tests for WSUS Manager GUI
 
@@ -94,6 +94,7 @@ BeforeAll {
     $script:AppStartTimeout = 45
     $script:ElementTimeout = 10
     $script:ActionDelay = 500
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
 }
 
 AfterAll {
@@ -105,7 +106,7 @@ AfterAll {
 
 #region Pre-Flight Checks
 
-Describe "WSUS Manager Pre-Flight Checks" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Pre-Flight Checks" -Tag "FlaUI" -Skip:(-not $script:CanRunTests) {
     Context 'Test Environment' {
         It 'FlaUI Test Harness is loaded' {
             Get-Module FlaUITestHarness | Should -Not -BeNullOrEmpty
@@ -134,7 +135,7 @@ Describe "WSUS Manager Pre-Flight Checks" -Skip:(-not $script:CanRunTests) {
 
 #region Application Startup Tests
 
-Describe "WSUS Manager Startup" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Startup" -Tag "FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = $null
         try {
@@ -214,7 +215,7 @@ Describe "WSUS Manager Startup" -Skip:(-not $script:CanRunTests) {
 
 #region Navigation Tests
 
-Describe "WSUS Manager Navigation" -Tag "Navigation" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Navigation" -Tag "Navigation","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -319,7 +320,7 @@ Describe "WSUS Manager Navigation" -Tag "Navigation" -Skip:(-not $script:CanRunT
 
 #region Settings Dialog Tests
 
-Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Settings Dialog" -Tag "Settings","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -379,7 +380,7 @@ Describe "WSUS Manager Settings Dialog" -Tag "Settings" -Skip:(-not $script:CanR
 
 #region About Dialog Tests
 
-Describe "WSUS Manager About" -Tag "About" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager About" -Tag "About","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -407,7 +408,7 @@ Describe "WSUS Manager About" -Tag "About" -Skip:(-not $script:CanRunTests) {
 
 #region History Panel Tests
 
-Describe "WSUS Manager History Panel" -Tag "History" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager History Panel" -Tag "History","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -433,7 +434,7 @@ Describe "WSUS Manager History Panel" -Tag "History" -Skip:(-not $script:CanRunT
 
 #region Help Panel Tests
 
-Describe "WSUS Manager Help Panel" -Tag "Help" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Help Panel" -Tag "Help","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -462,7 +463,7 @@ Describe "WSUS Manager Help Panel" -Tag "Help" -Skip:(-not $script:CanRunTests) 
 
 #region Performance Tests
 
-Describe "WSUS Manager Performance" -Tag "Performance" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Performance" -Tag "Performance","FlaUI" -Skip:(-not $script:CanRunTests) {
     Context 'Startup Time' {
         It 'Application starts within 45 seconds' {
             $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -480,7 +481,7 @@ Describe "WSUS Manager Performance" -Tag "Performance" -Skip:(-not $script:CanRu
 
 #region Resilience Tests
 
-Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Resilience" -Tag "Resilience","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -539,7 +540,7 @@ Describe "WSUS Manager Resilience" -Tag "Resilience" -Skip:(-not $script:CanRunT
 
 #region Dialog Smoke Tests
 
-Describe "WSUS Manager WSUS-Dependent Buttons" -Tag "Dialogs" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager WSUS-Dependent Buttons" -Tag "Dialogs","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -571,7 +572,7 @@ Describe "WSUS Manager WSUS-Dependent Buttons" -Tag "Dialogs" -Skip:(-not $scrip
 
 #region Keyboard Shortcut Tests
 
-Describe "WSUS Manager Keyboard Shortcuts" -Tag "Shortcuts" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Keyboard Shortcuts" -Tag "Shortcuts","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -639,7 +640,7 @@ Describe "WSUS Manager Keyboard Shortcuts" -Tag "Shortcuts" -Skip:(-not $script:
 
 #region Non-WSUS Button State Tests
 
-Describe "WSUS Manager Non-WSUS Buttons" -Tag "Operations" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Non-WSUS Buttons" -Tag "Operations","FlaUI" -Skip:(-not $script:CanRunTests) {
     BeforeAll {
         $script:AppContext = Start-GuiApplication -Path $script:ExePath -Timeout $script:AppStartTimeout
     }
@@ -668,7 +669,7 @@ Describe "WSUS Manager Non-WSUS Buttons" -Tag "Operations" -Skip:(-not $script:C
 
 #region Cleanup Verification
 
-Describe "WSUS Manager Cleanup" -Tag "Cleanup" -Skip:(-not $script:CanRunTests) {
+Describe "WSUS Manager Cleanup" -Tag "Cleanup","FlaUI" -Skip:(-not $script:CanRunTests) {
     It 'Application process terminates cleanly' {
         Stop-GuiApplication -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
