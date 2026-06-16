@@ -163,12 +163,14 @@ function New-WsusTransferOperationPlan {
     param(
         [Parameter(Mandatory)][string]$SourcePath,
         [Parameter(Mandatory)][string]$DestinationPath,
+        [Parameter(Mandatory)][string]$ExportModulePath,
         [ValidateSet('Embedded','Terminal')][string]$Mode = 'Embedded'
     )
 
     $source = ConvertTo-WsusCommandLiteral $SourcePath
     $destination = ConvertTo-WsusCommandLiteral $DestinationPath
-    $command = "robocopy $source $destination /E /ZB /COPY:DAT /DCOPY:T /R:1 /W:1 /NDL /NP; if (`$LASTEXITCODE -le 7) { exit 0 } else { exit `$LASTEXITCODE }"
+    $exportModule = ConvertTo-WsusCommandLiteral $ExportModulePath
+    $command = "& { Import-Module $exportModule -Force -DisableNameChecking; `$result = Invoke-WsusTransferPackage -Direction Generic -SourcePath $source -DestinationPath $destination -IncludeContent; if (-not `$result.Success) { Write-Error `$result.Message; exit 1 } }"
     New-WsusOperationPlan -Id 'transfer' -Title "Transfer ($SourcePath -> $DestinationPath)" -Command $command -Mode $Mode -TimeoutMinutes 180
 }
 Export-ModuleMember -Function @(

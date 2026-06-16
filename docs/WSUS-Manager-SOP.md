@@ -451,6 +451,7 @@ This is the operator workflow when the online WSUS source server is already main
 ### GUI Robocopy Dialog
 
 The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped import, use source=share-drive copy or USB folder and destination=`C:\WSUS\`.
+The GUI dialog, CLI import/export, and monthly export share this transfer engine, so copy behavior is consistent across entry points.
 
 ### Import Folder Structure
 

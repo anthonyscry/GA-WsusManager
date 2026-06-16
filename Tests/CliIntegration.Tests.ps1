@@ -32,6 +32,7 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             [ref]$null
         )
         $script:Parameters = $ast.ParamBlock.Parameters
+        $script:MaintenanceContent = Get-Content $script:MaintenanceScript -Raw
     }
 
     Context "Required Parameters" {
@@ -66,6 +67,10 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'ExportPath' }
             $param | Should -Not -BeNullOrEmpty
         }
+
+        It "Imports the shared WsusExport module" {
+            $script:MaintenanceContent | Should -Match 'Import-Module\s+\(Join-Path \$modulePath "WsusExport\.psm1"\)'
+        }
     }
 
     Context "Switch Parameters" {
@@ -80,6 +85,7 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             $param | Should -Not -BeNullOrEmpty
             $param.StaticType.Name | Should -Be 'SwitchParameter'
         }
+
 
         It "Has Unattended switch" {
             $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'Unattended' }
@@ -96,6 +102,23 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             $param | Should -Not -BeNullOrEmpty
         }
     }
+
+    Context "Shared transfer engine" {
+        BeforeAll {
+            $script:MonthlyExportSection = [regex]::Match(
+                $script:MaintenanceContent,
+                '(?s)# === EXPORT TO WSUS-EXPORTS \(OPTIONAL\) ===.*?\} elseif \(\$SkipExport\)'
+            ).Value
+        }
+
+        It "Calls Invoke-WsusTransferPackage for monthly export" {
+            $script:MonthlyExportSection | Should -Match 'Invoke-WsusTransferPackage\s+-Direction\s+Export'
+        }
+
+        It "Does not start robocopy directly in the monthly export phase" {
+            $script:MonthlyExportSection | Should -Not -Match 'Start-Process\s+-FilePath\s+"robocopy\.exe"'
+        }
+    }
 }
 
 Describe "Invoke-WsusManagement.ps1 Parameter Validation" {
@@ -109,6 +132,7 @@ Describe "Invoke-WsusManagement.ps1 Parameter Validation" {
             [ref]$null
         )
         $script:Parameters = $ast.ParamBlock.Parameters
+        $script:ManagementContent = Get-Content $script:ManagementScript -Raw
     }
 
     Context "Operation Switches" {
@@ -178,6 +202,40 @@ Describe "Invoke-WsusManagement.ps1 Parameter Validation" {
         It "Has DestinationPath parameter for Import/Export" {
             $param = $script:Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'DestinationPath' }
             $param | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context "Shared transfer engine" {
+        BeforeAll {
+            $script:CopyToDestinationSection = [regex]::Match(
+                $script:ManagementContent,
+                '(?s)function Copy-ToDestination \{.*?\r?\n\}[\r\n]+function Select-Destination'
+            ).Value
+            $script:ExportToMediaSection = [regex]::Match(
+                $script:ManagementContent,
+                '(?s)function Invoke-ExportToMedia \{.*?# ============================================================================\r?\n# HEALTH CHECK OPERATION'
+            ).Value
+        }
+
+        It "Calls Invoke-WsusTransferPackage for CLI import copies" {
+            $script:CopyToDestinationSection | Should -Match 'Invoke-WsusTransferPackage\s+-Direction\s+Import'
+        }
+
+        It "Calls Invoke-WsusTransferPackage for CLI export copies" {
+            $script:ExportToMediaSection | Should -Match 'Invoke-WsusTransferPackage\s+-Direction\s+Export'
+            $script:ExportToMediaSection | Should -Match '-DatabaseBackupPath \$sourceBak\.FullName'
+        }
+
+        It "Does not start robocopy directly in CLI import or export transfer paths" {
+            $script:CopyToDestinationSection | Should -Not -Match 'Start-Process\s+-FilePath\s+"robocopy\.exe"'
+            $script:ExportToMediaSection | Should -Not -Match 'Start-Process\s+-FilePath\s+"robocopy\.exe"'
+        }
+
+        It "Preserves ExportRoot as destination for legacy export callers" {
+            $script:ManagementContent | Should -Match '\$ExportRoot -ne \$defaultExportRoot'
+            $script:ManagementContent | Should -Match '\$actualDestination = \$ExportRoot'
+            $script:ManagementContent | Should -Match '\$actualSource = \$ContentPath'
+            $script:ManagementContent | Should -Match '-DestinationPath \$actualDestination'
         }
     }
 

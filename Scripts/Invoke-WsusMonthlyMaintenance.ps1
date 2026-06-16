@@ -157,6 +157,7 @@ try {
     Import-Module (Join-Path $modulePath "WsusConfig.psm1") -Force -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $modulePath "WsusDatabase.psm1") -Force -DisableNameChecking -ErrorAction Stop
     Import-Module (Join-Path $modulePath "WsusServices.psm1") -Force -DisableNameChecking -ErrorAction Stop
+    Import-Module (Join-Path $modulePath "WsusExport.psm1") -Force -DisableNameChecking -ErrorAction Stop
 } catch {
     Write-Error "Failed to import modules from '$modulePath': $($_.Exception.Message)"
     exit 1
@@ -170,7 +171,7 @@ $script:WsusPort = $script:RuntimeConfig.Ports.Wsus
 $script:LogPath = $script:RuntimeConfig.LogPath
 
 # Verify required functions are available after import
-$requiredFunctions = @('Start-WsusLogging', 'Stop-WsusLogging', 'Write-Log', 'Invoke-WsusSqlcmd', 'Get-WsusDatabaseSize')
+$requiredFunctions = @('Start-WsusLogging', 'Stop-WsusLogging', 'Write-Log', 'Invoke-WsusSqlcmd', 'Get-WsusDatabaseSize', 'Invoke-WsusTransferPackage')
 $missingFunctions = @()
 foreach ($func in $requiredFunctions) {
     if (-not (Get-Command $func -ErrorAction SilentlyContinue)) {
@@ -1542,21 +1543,24 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
                     New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
                 }
                 $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-                $robocopyArgs = @(
-                    $wsusContentSource,
-                    $rootContentPath,
-                    "/E", "/XO", "/MT:16", "/R:2", "/W:5",
-                    "/XF", "*.bak", "*.log",
-                    "/XD", "Logs", "SQLDB", "Backup",
-                    "/LOG:$robocopyLog", "/TEE", "/NP", "/NDL"
-                )
 
-                $robocopyResult = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-                if ($robocopyResult.ExitCode -lt 8) {
+                $transferResult = Invoke-WsusTransferPackage -Direction Export -SourcePath $script:ContentPath `
+                    -DestinationPath $ExportPath -IncludeContent -LogPath $robocopyLog
+
+                foreach ($warning in $transferResult.Warnings) {
+                    Write-Warning $warning
+                    $MaintenanceResults.Warnings += $warning
+                }
+
+                if ($transferResult.Success) {
                     Write-Log "Content sync completed successfully"
                 } else {
-                    Write-Warning "Robocopy exit code: $($robocopyResult.ExitCode)"
-                    $MaintenanceResults.Warnings += "Content sync robocopy exit code: $($robocopyResult.ExitCode)"
+                    Write-Warning $transferResult.Message
+                    $MaintenanceResults.Warnings += $transferResult.Message
+                    foreach ($transferError in $transferResult.Errors) {
+                        Write-Warning $transferError
+                        $MaintenanceResults.Warnings += $transferError
+                    }
                 }
 
                 if (Test-Path $rootContentPath) {

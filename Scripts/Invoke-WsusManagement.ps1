@@ -669,64 +669,70 @@ function Copy-ToDestination {
         [switch]$IncludeContent
     )
 
-    # Create destination if needed
-    if (-not (Test-Path $Destination)) {
-        New-Item -Path $Destination -ItemType Directory -Force | Out-Null
-    }
-
     $step = 1
     $totalSteps = ([int]$IncludeDatabase.IsPresent + [int]$IncludeContent.IsPresent)
+    $wsusContentSource = Join-Path $SourceFolder "WsusContent"
+    $hasContentSource = $IncludeContent -and (Test-Path $wsusContentSource)
 
-    # Copy database file(s)
     if ($IncludeDatabase) {
         Write-Log "[$step/$totalSteps] Copying database backup..." "Yellow"
-        $bakFiles = Get-ChildItem -Path $SourceFolder -Filter "*.bak" -File -ErrorAction SilentlyContinue
-        foreach ($bak in $bakFiles) {
-            $destBakPath = Join-Path $Destination $bak.Name
-            Copy-Item -Path $bak.FullName -Destination $destBakPath -Force
-            $copiedMsg = "  Copied: {0} ({1})" -f $bak.Name, (Format-SizeDisplay ([math]::Round($bak.Length / 1GB, 2)))
-            Write-Host $copiedMsg -ForegroundColor Cyan
-        }
-        Write-Log "[OK] Database copied" "Green"
         $step++
     }
 
-    # Copy content using shared transfer plan
     if ($IncludeContent) {
-        $wsusContentSource = Join-Path $SourceFolder "WsusContent"
-        if (Test-Path $wsusContentSource) {
+        if ($hasContentSource) {
             Write-Log "[$step/$totalSteps] Copying content (this may take a while)..." "Yellow"
-            $plan = if (Get-Command New-WsusTransferPlan -ErrorAction SilentlyContinue) {
-                New-WsusTransferPlan -Direction Import -SourcePath $SourceFolder -DestinationPath $Destination
-            } else {
-                $null
-            }
-
-            if ($plan -and (Get-Command Invoke-WsusTransferPlan -ErrorAction SilentlyContinue)) {
-                Invoke-WsusTransferPlan -Plan $plan | Out-Null
-                $destContent = $plan.ContentDestination
-                Write-Log "[OK] Content copied" "Green"
-            } else {
-                $destContent = Join-Path $Destination "WsusContent"
-                $robocopyArgs = @(
-                    "`"$wsusContentSource`"", "`"$destContent`"",
-                    "/E", "/XO", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
-                )
-                $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-                if ($proc.ExitCode -lt 8) {
-                    Write-Log "[OK] Content copied" "Green"
-                } else {
-                    Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
-                }
-            }
-
-            $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
-            $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-            Write-Host "  Destination content: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
         } else {
             Write-Log "[$step/$totalSteps] No WsusContent folder in source" "Yellow"
         }
     }
+
+    if (-not $IncludeDatabase -and -not $hasContentSource) {
+        return $true
+    }
+
+    $transferResult = Invoke-WsusTransferPackage -Direction Import -SourcePath $SourceFolder -DestinationPath $Destination `
+        -IncludeDatabase:$IncludeDatabase -IncludeContent:$hasContentSource
+
+    foreach ($warning in $transferResult.Warnings) {
+        Write-Log "[WARN] $warning" "Yellow"
+    }
+
+    if ($IncludeDatabase) {
+        foreach ($databaseFile in $transferResult.DatabaseFiles) {
+            $databaseItem = Get-Item -Path $databaseFile -ErrorAction SilentlyContinue
+            if ($databaseItem) {
+                $copiedMsg = "  Copied: {0} ({1})" -f $databaseItem.Name, (Format-SizeDisplay ([math]::Round($databaseItem.Length / 1GB, 2)))
+                Write-Host $copiedMsg -ForegroundColor Cyan
+            }
+        }
+        if ($transferResult.DatabaseFiles.Count -gt 0) {
+            Write-Log "[OK] Database copied" "Green"
+        }
+    }
+
+    if ($hasContentSource) {
+        if ($transferResult.ContentResult -and $transferResult.ContentResult.Success) {
+            Write-Log "[OK] Content copied" "Green"
+        }
+
+        $destContent = $transferResult.ContentDestination
+        if ($destContent -and (Test-Path $destContent)) {
+            $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+            $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+            Write-Host "  Destination content: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
+        }
+    }
+
+    if (-not $transferResult.Success) {
+        Write-Log "ERROR: $($transferResult.Message)" "Red"
+        foreach ($transferError in $transferResult.Errors) {
+            Write-Log "ERROR: $transferError" "Red"
+        }
+        return $false
+    }
+
+    return $true
 }
 
 function Select-Destination {
@@ -834,8 +840,9 @@ function Invoke-FullCopy {
         if ($confirm -notin @("Y", "y", "")) { return }
     }
 
-    Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
+    $copySucceeded = Copy-ToDestination -SourceFolder $ExportSource -Destination $destination `
         -IncludeDatabase:($null -ne $rootBak) -IncludeContent:$hasRootContent
+    if (-not $copySucceeded) { return }
 
     Write-Banner "COPY COMPLETE"
     Write-Host "Files copied to: $destination" -ForegroundColor Green
@@ -1486,47 +1493,57 @@ function Invoke-ExportToMedia {
         if ($confirm -notin @("Y", "y", "")) { return }
     }
 
-    # Copy database
-    if ($sourceBak) {
+    $includeDatabase = $null -ne $sourceBak
+
+    if ($includeDatabase) {
         Write-Log "[1/2] Copying database backup..." "Yellow"
-        Copy-Item -Path $sourceBak.FullName -Destination $destination -Force
-        Write-Log "[OK] Database copied: $($sourceBak.Name)" "Green"
     } else {
         Write-Log "[1/2] No database backup to copy" "Yellow"
     }
 
-    # Copy content using shared transfer plan
     if ($hasContent) {
         Write-Log "[2/2] Copying content (this may take a while)..." "Yellow"
-        $plan = if (Get-Command New-WsusTransferPlan -ErrorAction SilentlyContinue) {
-            New-WsusTransferPlan -Direction Export -SourcePath $source -DestinationPath $destination
+    } else {
+        Write-Log "[2/2] No content folder to copy" "Yellow"
+    }
+
+    if ($includeDatabase -or $hasContent) {
+        if ($includeDatabase) {
+            $transferResult = Invoke-WsusTransferPackage -Direction Export -SourcePath $source -DestinationPath $destination `
+                -IncludeDatabase -IncludeContent:$hasContent -DatabaseBackupPath $sourceBak.FullName
         } else {
-            $null
+            $transferResult = Invoke-WsusTransferPackage -Direction Export -SourcePath $source -DestinationPath $destination `
+                -IncludeContent:$hasContent
         }
 
-        if ($plan -and (Get-Command Invoke-WsusTransferPlan -ErrorAction SilentlyContinue)) {
-            Invoke-WsusTransferPlan -Plan $plan | Out-Null
-            $destContent = $plan.ContentDestination
-            Write-Log "[OK] Content copied" "Green"
-        } else {
-            $destContent = Join-Path $destination "WsusContent"
-            $robocopyArgs = @(
-                "`"$sourceContent`"", "`"$destContent`"",
-                "/E", "/MT:16", "/R:2", "/W:5", "/NP", "/NDL"
-            )
-            $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
-            if ($proc.ExitCode -lt 8) {
+        foreach ($warning in $transferResult.Warnings) {
+            Write-Log "[WARN] $warning" "Yellow"
+        }
+
+        if ($includeDatabase -and $transferResult.DatabaseFiles.Count -gt 0) {
+            Write-Log "[OK] Database copied: $($sourceBak.Name)" "Green"
+        }
+
+        if ($hasContent) {
+            if ($transferResult.ContentResult -and $transferResult.ContentResult.Success) {
                 Write-Log "[OK] Content copied" "Green"
-            } else {
-                Write-Log "[WARN] Robocopy exit code: $($proc.ExitCode)" "Yellow"
+            }
+
+            $destContent = $transferResult.ContentDestination
+            if ($destContent -and (Test-Path $destContent)) {
+                $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
+                $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+                Write-Host "  Exported: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
             }
         }
 
-        $destFiles = Get-ChildItem -Path $destContent -Recurse -File -ErrorAction SilentlyContinue
-        $destSize = [math]::Round(($destFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-        Write-Host "  Exported: $($destFiles.Count) files ($(Format-SizeDisplay $destSize))" -ForegroundColor Cyan
-    } else {
-        Write-Log "[2/2] No content folder to copy" "Yellow"
+        if (-not $transferResult.Success) {
+            Write-Log "ERROR: $($transferResult.Message)" "Red"
+            foreach ($transferError in $transferResult.Errors) {
+                Write-Log "ERROR: $transferError" "Red"
+            }
+            return
+        }
     }
 
     Write-Banner "COPY COMPLETE"

@@ -54,6 +54,10 @@ Describe "WsusExport Module" {
         It "Should export Invoke-WsusTransferPlan function" {
             Get-Command Invoke-WsusTransferPlan -Module WsusExport | Should -Not -BeNullOrEmpty
         }
+
+        It "Should export Invoke-WsusTransferPackage function" {
+            Get-Command Invoke-WsusTransferPackage -Module WsusExport | Should -Not -BeNullOrEmpty
+        }
     }
 }
 
@@ -184,5 +188,74 @@ Describe "Export-WsusContent" {
             $result = Export-WsusContent -SourcePath "C:\WSUS" -DestinationPath "C:\Export"
             $result.Keys | Should -Contain "Success"
         }
+    }
+}
+
+Describe "Invoke-WsusTransferPackage" {
+    BeforeEach {
+        Mock Test-Path { $true } -ModuleName WsusExport
+        Mock New-Item { } -ModuleName WsusExport
+        Mock Copy-Item { } -ModuleName WsusExport
+        Mock Get-ChildItem { @() } -ModuleName WsusExport
+        Mock Invoke-WsusRobocopy {
+            @{
+                Success = $true
+                ExitCode = 0
+                Message = "Content copied."
+            }
+        } -ModuleName WsusExport
+    }
+
+    It "Should map import content from package root to local WsusContent" {
+        $result = Invoke-WsusTransferPackage -Direction Import -SourcePath "E:\Drop" -DestinationPath "C:\WSUS" -IncludeContent
+
+        $result.PSTypeNames | Should -Contain "Wsus.TransferResult"
+        $result.Success | Should -BeTrue
+        $result.ContentSource | Should -Be "E:\Drop\WsusContent"
+        $result.ContentDestination | Should -Be "C:\WSUS\WsusContent"
+        Should -Invoke Invoke-WsusRobocopy -ModuleName WsusExport -Times 1 -ParameterFilter {
+            $Source -eq "E:\Drop\WsusContent" -and
+            $Destination -eq "C:\WSUS\WsusContent"
+        }
+    }
+
+    It "Should map export content from local WsusContent to package WsusContent" {
+        $result = Invoke-WsusTransferPackage -Direction Export -SourcePath "C:\WSUS" -DestinationPath "E:\Export" -IncludeContent
+
+        $result.Success | Should -BeTrue
+        $result.ContentSource | Should -Be "C:\WSUS\WsusContent"
+        $result.ContentDestination | Should -Be "E:\Export\WsusContent"
+        Should -Invoke Invoke-WsusRobocopy -ModuleName WsusExport -Times 1 -ParameterFilter {
+            $Source -eq "C:\WSUS\WsusContent" -and
+            $Destination -eq "E:\Export\WsusContent"
+        }
+    }
+
+    It "Should keep generic content paths exact" {
+        $result = Invoke-WsusTransferPackage -Direction Generic -SourcePath "D:\Selected\Source" -DestinationPath "F:\Selected\Destination" -IncludeContent
+
+        $result.Success | Should -BeTrue
+        $result.ContentSource | Should -Be "D:\Selected\Source"
+        $result.ContentDestination | Should -Be "F:\Selected\Destination"
+        Should -Invoke Invoke-WsusRobocopy -ModuleName WsusExport -Times 1 -ParameterFilter {
+            $Source -eq "D:\Selected\Source" -and
+            $Destination -eq "F:\Selected\Destination"
+        }
+    }
+
+    It "Should mark transfer unsuccessful when content robocopy fails" {
+        Mock Invoke-WsusRobocopy {
+            @{
+                Success = $false
+                ExitCode = 8
+                Message = "Some files or directories could not be copied."
+            }
+        } -ModuleName WsusExport
+
+        $result = Invoke-WsusTransferPackage -Direction Export -SourcePath "C:\WSUS" -DestinationPath "E:\Export" -IncludeContent
+
+        $result.Success | Should -BeFalse
+        $result.Errors | Should -Contain "Some files or directories could not be copied."
+        $result.ContentResult.ExitCode | Should -Be 8
     }
 }

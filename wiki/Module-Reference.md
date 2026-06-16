@@ -844,21 +844,52 @@ $structure = Get-ArchiveStructure -BasePath "E:\WSUS_Export"
 ```
 
 #### Invoke-WsusRobocopy
-Performs robocopy with standard options.
+Runs the standardized robocopy copy operation used by WSUS transfers. Exit codes 0-7 are treated as success; 8+ are failures.
 
 ```powershell
-$result = Invoke-WsusRobocopy -Source "C:\WSUS\WsusContent" -Destination "E:\Export"
+$result = Invoke-WsusRobocopy -Source "C:\WSUS\WsusContent" -Destination "E:\Export\WsusContent"
 $result.Success
-$result.FilesCopied
 $result.ExitCode
+$result.Message
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| Source | string | - | Source path |
-| Destination | string | - | Destination path |
-| ThreadCount | int | 8 | Parallel threads |
-| RetryCount | int | 3 | Retry attempts |
+| Source | string | - | Source directory path |
+| Destination | string | - | Destination directory path |
+| MaxAgeDays | int | 0 | Copy all files, or only files modified within this many days |
+| LogPath | string | - | Optional robocopy log path |
+| ThreadCount | int | 16 | Parallel robocopy threads |
+| ExcludeExtensions | string[] | `*.bak`, `*.log` | File patterns excluded from content copy |
+| ExcludeDirs | string[] | `Logs`, `SQLDB`, `Backup` | Directory names excluded from content copy |
+
+#### Invoke-WsusTransferPackage
+Copies a WSUS transfer package through the shared transfer engine. It normalizes import/export `WsusContent` paths, copies optional database backups, and delegates content copy to `Invoke-WsusRobocopy`; transfers are non-destructive and do not delete destination files.
+
+```powershell
+$result = Invoke-WsusTransferPackage -Direction Import -SourcePath "E:\WSUS_Export" -DestinationPath "C:\WSUS" -IncludeDatabase -IncludeContent
+$result.Success
+$result.ContentDestination  # C:\WSUS\WsusContent
+$result.DatabaseFiles
+$result.ContentResult.Message
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| Direction | string | - | `Import`, `Export`, or `Generic` |
+| SourcePath | string | - | Package root or exact source path |
+| DestinationPath | string | - | Destination root or exact destination path |
+| IncludeDatabase | switch | false | Copy root `.bak` files, or `DatabaseBackupPath` when supplied |
+| IncludeContent | switch | false | Copy WSUS content through robocopy |
+| Mode | string | `Full` | `Full` or `Differential`; differential honors `MaxAgeDays` |
+| MaxAgeDays | int | 0 | Differential copy age filter |
+| LogPath | string | - | Optional robocopy log path |
+| ThreadCount | int | 16 | Parallel robocopy threads |
+| ExcludeExtensions | string[] | `*.bak`, `*.log` | File patterns excluded from content copy |
+| ExcludeDirs | string[] | `Logs`, `SQLDB`, `Backup` | Directory names excluded from content copy |
+| DatabaseBackupPath | string | - | Specific `.bak` file or backup source folder |
+
+Returns `Wsus.TransferResult` with `Success`, `Direction`, `SourcePath`, `DestinationPath`, `ContentSource`, `ContentDestination`, `DatabaseFiles`, `ContentResult`, `Errors`, `Warnings`, and `Message`.
 
 #### Export-WsusContent
 Exports WSUS content to destination.
@@ -866,8 +897,8 @@ Exports WSUS content to destination.
 ```powershell
 $result = Export-WsusContent -SourcePath "C:\WSUS" -DestinationPath "E:\Export"
 $result.Success
-$result.FilesCopied
-$result.SizeGB
+$result.FilesExported
+$result.ExportSizeGB
 ```
 
 ---

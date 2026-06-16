@@ -97,12 +97,21 @@ Describe 'Operation planning interface' {
         $plan.Command | Should -Match '-SqlInstance'
     }
 
-    It 'Builds a transfer command that normalizes robocopy success exit codes' {
-        $plan = New-WsusTransferOperationPlan -SourcePath 'E:\Export' -DestinationPath 'C:\WSUS\Import'
+    It 'Builds a transfer command through the shared transfer package API' {
+        $plan = New-WsusTransferOperationPlan -SourcePath 'E:\Export' -DestinationPath 'C:\WSUS\Import' -ExportModulePath 'C:\App\Modules\WsusExport.psm1'
 
-        $plan.Command | Should -Match 'robocopy'
-        $plan.Command | Should -Match '\$LASTEXITCODE -le 7'
+        $plan.Command | Should -Match 'Import-Module'
+        $plan.Command | Should -Match 'WsusExport\.psm1'
+        $plan.Command | Should -Match 'Invoke-WsusTransferPackage'
+        $plan.Command | Should -Match '-Direction Generic'
+        $plan.Command | Should -Not -Match 'robocopy'
+        $plan.Command | Should -Not -Match '\$LASTEXITCODE -le 7'
+        $quotedPlan = New-WsusTransferOperationPlan -SourcePath "E:\O'Brien\Export" -DestinationPath "C:\WSUS\O'Brien\Import" -ExportModulePath "C:\App\O'Brien\WsusExport.psm1"
+        $quotedPlan.Command | Should -BeLike "*E:\O''Brien\Export*"
+        $quotedPlan.Command | Should -BeLike "*C:\WSUS\O''Brien\Import*"
+        $quotedPlan.Command | Should -BeLike "*C:\App\O''Brien\WsusExport.psm1*"
         $plan.Mode | Should -Be 'Embedded'
+        $plan.TimeoutMinutes | Should -Be 180
     }
 
     It 'Builds an install plan with secret environment instead of inline password' {

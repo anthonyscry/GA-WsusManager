@@ -427,6 +427,120 @@ function Invoke-WsusTransferPlan {
     Invoke-WsusRobocopy -Source $Plan.ContentSource -Destination $Plan.ContentDestination -MaxAgeDays $Plan.MaxAgeDays -LogPath $LogPath
 }
 
+function Invoke-WsusTransferPackage {
+    <#
+    .SYNOPSIS
+        Copies a WSUS transfer package through the shared transfer engine.
+    .DESCRIPTION
+        Normalizes WSUS import/export content paths, optionally copies package-level
+        database backup files, and delegates content copy execution to robocopy.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][ValidateSet('Import','Export','Generic')][string]$Direction,
+        [Parameter(Mandatory)][string]$SourcePath,
+        [Parameter(Mandatory)][string]$DestinationPath,
+        [switch]$IncludeDatabase,
+        [switch]$IncludeContent,
+        [ValidateSet('Full','Differential')][string]$Mode = 'Full',
+        [int]$MaxAgeDays = 0,
+        [string]$LogPath,
+        [int]$ThreadCount = 16,
+        [string[]]$ExcludeExtensions = @('*.bak', '*.log'),
+        [string[]]$ExcludeDirs = @('Logs', 'SQLDB', 'Backup'),
+        [string]$DatabaseBackupPath
+    )
+
+    $effectiveMaxAge = if ($Mode -eq 'Differential') { $MaxAgeDays } else { 0 }
+    $contentSource = $null
+    $contentDestination = $null
+    $contentResult = $null
+    $databaseFiles = @()
+    $errors = @()
+    $warnings = @()
+
+    if ($IncludeContent) {
+        if ($Direction -eq 'Generic') {
+            $contentSource = $SourcePath
+            $contentDestination = $DestinationPath
+        } else {
+            $plan = New-WsusTransferPlan -Direction $Direction -SourcePath $SourcePath -DestinationPath $DestinationPath -Mode $Mode -MaxAgeDays $MaxAgeDays -IncludeDatabase:$IncludeDatabase
+            $contentSource = $plan.ContentSource
+            $contentDestination = $plan.ContentDestination
+            $effectiveMaxAge = $plan.MaxAgeDays
+        }
+    }
+
+    if (-not (Test-Path $DestinationPath)) {
+        try {
+            New-Item -Path $DestinationPath -ItemType Directory -Force | Out-Null
+        } catch {
+            $errors += "Failed to create destination: $($_.Exception.Message)"
+        }
+    }
+
+    if ($errors.Count -eq 0 -and $IncludeDatabase) {
+        $backupFiles = @()
+        $backupSource = if ($DatabaseBackupPath) { $DatabaseBackupPath } else { $SourcePath }
+
+        if ($DatabaseBackupPath -and (Test-Path -Path $DatabaseBackupPath -PathType Leaf)) {
+            $backupFiles = @([pscustomobject]@{ FullName = $DatabaseBackupPath })
+        } else {
+            $backupFiles = @(Get-ChildItem -Path $backupSource -Filter '*.bak' -File -ErrorAction SilentlyContinue)
+        }
+
+        if ($backupFiles.Count -eq 0) {
+            $warnings += "No database backup files found in $backupSource."
+        } else {
+            foreach ($backupFile in $backupFiles) {
+                try {
+                    Copy-Item -Path $backupFile.FullName -Destination $DestinationPath -Force
+                    $databaseFiles += $backupFile.FullName
+                } catch {
+                    $errors += "Failed to copy database backup '$($backupFile.FullName)': $($_.Exception.Message)"
+                }
+            }
+        }
+    }
+
+    $effectiveExcludeExtensions = @($ExcludeExtensions | Where-Object { $_ })
+    if (-not ($effectiveExcludeExtensions | Where-Object { $_ -ieq '*.bak' })) {
+        $effectiveExcludeExtensions += '*.bak'
+    }
+
+    if ($errors.Count -eq 0 -and $IncludeContent) {
+        $contentResult = Invoke-WsusRobocopy -Source $contentSource -Destination $contentDestination `
+            -MaxAgeDays $effectiveMaxAge -LogPath $LogPath -ThreadCount $ThreadCount `
+            -ExcludeExtensions $effectiveExcludeExtensions -ExcludeDirs $ExcludeDirs
+
+        if (-not $contentResult.Success) {
+            $errors += $contentResult.Message
+        }
+    }
+
+    $success = ($errors.Count -eq 0)
+    $message = if ($success) {
+        "Transfer package completed successfully."
+    } else {
+        "Transfer package completed with $($errors.Count) error(s)."
+    }
+
+    [pscustomobject]@{
+        PSTypeName = 'Wsus.TransferResult'
+        Success = $success
+        Direction = $Direction
+        SourcePath = $SourcePath
+        DestinationPath = $DestinationPath
+        ContentSource = $contentSource
+        ContentDestination = $contentDestination
+        DatabaseFiles = $databaseFiles
+        ContentResult = $contentResult
+        Errors = $errors
+        Warnings = $warnings
+        Message = $message
+    }
+}
+
 # ===========================
 # EXPORTS
 # ===========================
@@ -437,5 +551,6 @@ Export-ModuleMember -Function @(
     'Get-ExportFolderStats',
     'Get-ArchiveStructure',
     'New-WsusTransferPlan',
-    'Invoke-WsusTransferPlan'
+    'Invoke-WsusTransferPlan',
+    'Invoke-WsusTransferPackage'
 )

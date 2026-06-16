@@ -3143,7 +3143,8 @@ function Invoke-LogOperation {
                 Show-WsusPopup -Message "Invalid transfer path." -Title "Error" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Error) | Out-Null
                 return
             }
-            $operationPlan = New-WsusTransferOperationPlan -SourcePath $opts.SourcePath -DestinationPath $opts.DestinationPath -Mode Embedded
+            $exportModule = Join-Path $script:ModulesDir 'WsusExport.psm1'
+            $operationPlan = New-WsusTransferOperationPlan -SourcePath $opts.SourcePath -DestinationPath $opts.DestinationPath -ExportModulePath $exportModule -Mode Embedded
             $Title = $operationPlan.Title
             $script:ForceEmbeddedMode = $true
             $operationPlan.Command

@@ -117,6 +117,7 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 ### Air-Gapped Server Build + Import Workflow
 
 If your online WSUS server is already syncing updates and publishing a database backup plus `WsusContent` to a share drive, this is the workflow most operators should follow.
+GUI transfer, CLI import/export, and monthly export use the same non-destructive transfer engine.
 
 **On the air-gapped server:**
 

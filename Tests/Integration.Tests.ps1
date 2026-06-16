@@ -193,7 +193,7 @@ Describe "Security Validation" {
 
         It "GUI transfer import uses selected destination root directly" {
             $content = Get-Content $script:GuiScript -Raw
-            $content | Should -Match 'New-WsusTransferOperationPlan -SourcePath \$opts\.SourcePath -DestinationPath \$opts\.DestinationPath'
+            $content | Should -Match 'New-WsusTransferOperationPlan -SourcePath \$opts\.SourcePath -DestinationPath \$opts\.DestinationPath -ExportModulePath \$exportModule -Mode Embedded'
         }
     }
 
