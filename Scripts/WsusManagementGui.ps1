@@ -101,7 +101,49 @@ $script:NotificationBeep = $false     # Beep on completion
 # Theme: Dark mode only (light theme not implemented -- remove this comment when adding theme support)
 $script:TrayMinimize = $false         # Minimize to system tray
 $script:HistoryEnabled = $true        # Track operation history
-$script:SyncProducts = @("Windows 11", "Windows Server 2019", "Microsoft Edge", "Microsoft Defender Antivirus", "Microsoft Defender for Endpoint", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps", "Exchange Server 2019")
+$script:LegacyDefaultSyncProducts = @("Windows 11", "Windows Server 2019", "Microsoft Edge", "Microsoft Defender Antivirus", "Microsoft Defender for Endpoint", "Office 2016", "SQL Server 2022", "Security Essentials", "Microsoft 365 Apps", "Exchange Server 2019")
+$script:DefaultSyncProducts = @("Windows 11", "Windows Server 2019", ".NET Framework", "Microsoft Edge", "Microsoft Defender Antivirus", "Microsoft Defender for Endpoint", "Office 2016", "SQL Server 2022", "Security Essentials", "Exchange Server 2019", "Visual Studio 2022")
+$script:SyncProducts = @($script:DefaultSyncProducts)
+
+function ConvertTo-WsusSyncProducts {
+    param([string[]]$Products)
+
+    $normalized = @(
+        @($Products) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            ForEach-Object { $_.Trim() } |
+            Select-Object -Unique
+    )
+
+    if ($normalized.Count -eq 0) {
+        return @($script:DefaultSyncProducts)
+    }
+
+    $isLegacyDefault = (
+        $normalized.Count -eq $script:LegacyDefaultSyncProducts.Count -and
+        @($script:LegacyDefaultSyncProducts | Where-Object { $_ -notin $normalized }).Count -eq 0 -and
+        @($normalized | Where-Object { $_ -notin $script:LegacyDefaultSyncProducts }).Count -eq 0
+    )
+
+    if ($isLegacyDefault) {
+        return @($script:DefaultSyncProducts)
+    }
+
+    return $normalized
+}
+
+function Test-WsusSelectedProductTitle {
+    param(
+        [string]$SelectedProduct,
+        [string]$AvailableTitle
+    )
+
+    switch -Regex ($SelectedProduct) {
+        '^\s*\.NET Framework\s*$' { return $AvailableTitle -match '(?i)\.NET Framework' }
+        '^Visual Studio 2022$'    { return $AvailableTitle -match '(?i)\bVisual Studio 2022\b' }
+        default                   { return $AvailableTitle -eq $SelectedProduct }
+    }
+}
 
 function Write-Log { param([string]$Msg)
     try {
@@ -155,19 +197,21 @@ function Import-WsusSettings {
             if ($null -ne $s.NotificationBeep) { $script:NotificationBeep = $s.NotificationBeep }
             if ($null -ne $s.TrayMinimize) { $script:TrayMinimize = $s.TrayMinimize }
             if ($null -ne $s.HistoryEnabled) { $script:HistoryEnabled = $s.HistoryEnabled }
-            if ($null -ne $s.SyncProducts) { $script:SyncProducts = @($s.SyncProducts) }
+            if ($null -ne $s.SyncProducts) { $script:SyncProducts = ConvertTo-WsusSyncProducts -Products @($s.SyncProducts) }
         }
     } catch {
         Write-Log "Failed to load settings: $_"
         $script:SettingsCorrupt = $true
     }
 }
+$script:SyncProducts = ConvertTo-WsusSyncProducts -Products $script:SyncProducts
+
 
 function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-            @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled; SyncProducts=@($script:SyncProducts) } |
+            @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled; SyncProducts=@(ConvertTo-WsusSyncProducts -Products $script:SyncProducts) } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
@@ -687,7 +731,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, Edge, Defender, Office, SQL Server, Exchange 2019&#x0a;• Air-gapped network export/import&#x0a;• Health Score (0-100) with diagnostics and deep cleanup&#x0a;• DNS preflight, 3-hour sync timeout, operation history"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Smart update policy: auto-decline superseded, &gt;6mo old, Preview/Beta, ARM64, 23H2 and lower, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL&#x0a;• Auto-approve x64 Critical, Security, Definition, Updates, Rollups (.NET included; 25H2 kept for manual review)&#x0a;• Default products: Win 11, Server 2019, .NET Framework, Edge, Defender, Office 2016, SQL Server 2022, Security Essentials, Visual Studio 2022, Exchange 2019"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -1617,8 +1661,8 @@ FEATURES
 • Modern dark-themed GUI with auto-refresh
 • Air-gapped network support (export/import)
 • Automated sync, cleanup, and deep cleanup
-• Smart decline: superseded, >6mo old, Preview/Beta, ARM64, 23H2 and older, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
-• Default products: Windows 11, Server 2019, Edge, Defender, Office, SQL Server, Exchange 2019
+• Smart decline: superseded, >6mo old, Preview/Beta, ARM64, 23H2 and lower, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
+• Default products: Windows 11, Server 2019, .NET Framework, Edge, Defender, Office 2016, SQL Server 2022, Security Essentials, Visual Studio 2022, Exchange 2019
 • DNS preflight check before sync
 • Keyboard shortcuts (Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R)
 
@@ -2257,7 +2301,7 @@ function Show-MaintenanceDialog {
         $cb.Content = $prod
         $cb.Foreground = $script:BrushText1
         $cb.Margin = "0,0,0,4"
-        $cb.IsChecked = ($prod -in $script:SyncProducts)
+        $cb.IsChecked = @($script:SyncProducts | Where-Object { Test-WsusSelectedProductTitle -SelectedProduct $_ -AvailableTitle $prod }).Count -gt 0
         $productCheckBoxes[$prod] = $cb
         $productInnerStack.Children.Add($cb)
     }
@@ -2275,7 +2319,7 @@ function Show-MaintenanceDialog {
     }
 
     $prodSubNote = New-Object System.Windows.Controls.TextBlock
-    $prodSubNote.Text = "Note: Microsoft 365 Apps includes Office 2024 LTSC updates."
+    $prodSubNote.Text = "Note: keep .NET Framework enabled for Windows 11 / Server 2019 servicing. 25H2 stays available for manual review only."
     $prodSubNote.Foreground = $script:BrushText2
     $prodSubNote.FontSize = 11
     $prodSubNote.Margin = "0,4,0,0"

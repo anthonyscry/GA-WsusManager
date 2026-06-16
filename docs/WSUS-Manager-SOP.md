@@ -281,7 +281,7 @@ The Online Sync workflow applies an automated decline and approval policy:
 | Expired / Superseded | Updates replaced by newer versions |
 | Older than 6 months | By Microsoft release date (preserves already-approved updates) |
 | ARM64 | Not applicable to x64 lab environments |
-| Legacy builds | 21H2, 22H2, 23H2 |
+| Legacy builds | 23H2 and lower |
 | Preview / Beta | Pre-release updates |
 | Edge non-stable | Dev Channel, Beta Channel, Extended Stable (keeps Stable + WebView2) |
 | Office legacy | Microsoft 365 Apps, Office 2019, Office LTSC 2021 (keeps Office 2024/LTSC 2024) |
@@ -296,9 +296,9 @@ The Online Sync workflow applies an automated decline and approval policy:
 | Upgrades | Require manual review |
 
 **Default Products:**
-- Windows 11, Windows Server 2019, Microsoft Edge
-- Microsoft Defender Antivirus, Microsoft Defender for Endpoint
-- Office 2016, Microsoft 365 Apps, SQL Server 2022, Security Essentials
+- Windows 11, Windows Server 2019, .NET Framework
+- Microsoft Edge, Microsoft Defender Antivirus, Microsoft Defender for Endpoint
+- Office 2016, SQL Server 2022, Security Essentials, Exchange Server 2019, Visual Studio 2022
 
 **Default Classifications:**
 - Critical Updates, Security Updates, Definition Updates, Updates, Update Rollups

@@ -5,7 +5,7 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and older), Preview/Beta, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
+    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and lower), Preview/Beta, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
@@ -214,6 +214,34 @@ $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Obj
 
 # === SCRIPT VERSION ===
 $ScriptVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+
+function Test-WsusSelectedCategoryTitle {
+    param(
+        [string]$SelectedProduct,
+        [string]$CategoryTitle
+    )
+
+    switch -Regex ($SelectedProduct) {
+        '^\s*\.NET Framework\s*$' { return $CategoryTitle -match '(?i)\.NET Framework' }
+        '^Visual Studio 2022$'    { return $CategoryTitle -match '(?i)\bVisual Studio 2022\b' }
+        default                   { return $CategoryTitle -eq $SelectedProduct }
+    }
+}
+
+function Test-WsusLegacyBuildTitle {
+    param([string]$Title)
+
+    $versionMatches = [regex]::Matches($Title, '(?i)\b(?<major>\d{2})H(?<half>[12])\b')
+    foreach ($versionMatch in $versionMatches) {
+        $major = [int]$versionMatch.Groups['major'].Value
+        $half = [int]$versionMatch.Groups['half'].Value
+        if ($major -lt 23 -or ($major -eq 23 -and $half -le 2)) {
+            return $true
+        }
+    }
+
+    return $false
+}
 
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
@@ -740,7 +768,7 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 $toEnable = @()
                 foreach ($prod in $allProducts) {
                     foreach ($sel in $SelectedProducts) {
-                        if ($prod.Title -eq $sel) { $toEnable += $prod; break }
+                        if (Test-WsusSelectedCategoryTitle -SelectedProduct $sel -CategoryTitle $prod.Title) { $toEnable += $prod; break }
                     }
                 }
                 if ($toEnable.Count -gt 0) {
@@ -955,7 +983,7 @@ if ($allUpdates.Count -gt 0) {
     })
     $arm64Updates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\bARM64\b' })
     # 25H2: kept but not auto-approved (no decline, no approval - available for manual review)
-    $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(21H2|22H2|23H2)\b' })
+    $legacyBuildUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and (Test-WsusLegacyBuildTitle -Title $_.Title) })
     $previewUpdates = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)\b(Preview|Beta)\b' })
     # Edge: keep only Stable Channel and WebView2, decline everything else
     $edgeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)Microsoft Edge' -and ($_.Title -notmatch '(?i)(Stable Channel|WebView2)' -or $_.Title -match '(?i)Extended Stable') })
@@ -1079,7 +1107,7 @@ if ($allUpdates.Count -gt 0) {
             $_.Title -notlike "*Beta*" -and
             $_.Title -notmatch '(?i)\bARM64\b' -and
             $_.Title -notmatch '(?i)\b25H2\b' -and
-            $_.Title -notmatch '(?i)\b(21H2|22H2|23H2)\b' -and
+            -not (Test-WsusLegacyBuildTitle -Title $_.Title) -and
             $_.Title -notmatch '(?i)(x86|32-bit|32.bit)' -and
             (
                 $_.UpdateClassificationTitle -eq "Critical Updates" -or
@@ -1111,7 +1139,7 @@ if ($allUpdates.Count -gt 0) {
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
         Write-Log "  Criteria: Critical/Security/Rollups/SPs/Updates/Definitions, released within 6 months, not superseded/expired"
-        Write-Log "  Excluded: Upgrades, ARM64, x86/32-bit, 25H2, 21H2/22H2/23H2, Preview/Beta updates"
+        Write-Log "  Excluded: Upgrades, ARM64, x86/32-bit, 25H2, 23H2 and lower, Preview/Beta updates"
         
         if ($pendingUpdates.Count -gt 0) {
             # Safety check - don't auto-approve more than 200 updates

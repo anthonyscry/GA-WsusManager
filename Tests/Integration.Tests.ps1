@@ -37,6 +37,14 @@ Describe "Script Syntax Validation" {
             $content = Get-Content $script:GuiScript -Raw
             $content | Should -Match '\$script:AppVersion\s*=\s*'
         }
+        It "WsusManagementGui.ps1 default sync products include .NET Framework and Visual Studio 2022, not Microsoft 365 Apps" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match '\$script:DefaultSyncProducts\s*=\s*@\('
+            $content | Should -Match '"\.NET Framework"'
+            $content | Should -Match '"Visual Studio 2022"'
+            $content | Should -Not -Match '\$script:DefaultSyncProducts\s*=\s*@\([^)]*"Microsoft 365 Apps"'
+        }
+
     }
 
     Context "CLI Scripts" {

@@ -38,7 +38,7 @@ Describe "Product Decline Pattern (Word-Boundary Matching)" {
             $script:EnabledTitles = @(
                 [regex]::Escape("Windows 11"),
                 [regex]::Escape("Windows Server 2019"),
-                [regex]::Escape("Microsoft 365 Apps")
+                [regex]::Escape("Visual Studio 2022")
             )
             $script:DeclinePattern = '(?i)\b(' + ($script:EnabledTitles -join "|") + ')\b'
         }
@@ -55,7 +55,7 @@ Describe "Product Decline Pattern (Word-Boundary Matching)" {
 
         It "Matches product within comma-separated string" {
             "Windows 11,Security Updates" | Should -Match $script:DeclinePattern
-            "Microsoft 365 Apps,Office" | Should -Match $script:DeclinePattern
+            "Visual Studio 2022,Office" | Should -Match $script:DeclinePattern
         }
 
         It "Case-insensitive matching works" {
@@ -196,21 +196,46 @@ Describe "Legacy Build and Architecture Exclusion" {
         }
     }
 
-    Context "Legacy build exclusion (21H2/22H2/23H2)" {
-        It "Script uses word-boundary match for legacy builds" {
-            $script:MaintContent | Should -Match '\\b\(21H2\|22H2\|23H2\)\\b'
+    Context "Legacy build exclusion (23H2 and lower)" {
+        It "Script uses the legacy build helper in both decline and approval filters" {
+            $script:MaintContent | Should -Match 'function Test-WsusLegacyBuildTitle'
+            $script:MaintContent | Should -Match 'Test-WsusLegacyBuildTitle -Title \$_\.Title'
         }
 
         It "Matches 23H2 in update titles" {
-            "Windows 11 Version 23H2 Security Update" -match '(?i)\b(21H2|22H2|23H2)\b' | Should -BeTrue
+            $title = "Windows 11 Version 23H2 Security Update"
+            $versionMatches = [regex]::Matches($title, '(?i)\b(?<major>\d{2})H(?<half>[12])\b')
+            $isLegacy = $false
+            foreach ($versionMatch in $versionMatches) {
+                $major = [int]$versionMatch.Groups['major'].Value
+                $half = [int]$versionMatch.Groups['half'].Value
+                if ($major -lt 23 -or ($major -eq 23 -and $half -le 2)) { $isLegacy = $true; break }
+            }
+            $isLegacy | Should -BeTrue
         }
 
-        It "Matches 21H2 in update titles" {
-            "Windows 10 Version 21H2 Servicing Stack" -match '(?i)\b(21H2|22H2|23H2)\b' | Should -BeTrue
+        It "Matches 20H2 in update titles" {
+            $title = "Windows 10 Version 20H2 Servicing Stack"
+            $versionMatches = [regex]::Matches($title, '(?i)\b(?<major>\d{2})H(?<half>[12])\b')
+            $isLegacy = $false
+            foreach ($versionMatch in $versionMatches) {
+                $major = [int]$versionMatch.Groups['major'].Value
+                $half = [int]$versionMatch.Groups['half'].Value
+                if ($major -lt 23 -or ($major -eq 23 -and $half -le 2)) { $isLegacy = $true; break }
+            }
+            $isLegacy | Should -BeTrue
         }
 
-        It "Does NOT match Windows 11 without build version" {
-            "Security Update for Windows 11" -match '(?i)\b(21H2|22H2|23H2)\b' | Should -BeFalse
+        It "Does NOT match 24H2 titles" {
+            $title = "Windows 11 Version 24H2 Security Update"
+            $versionMatches = [regex]::Matches($title, '(?i)\b(?<major>\d{2})H(?<half>[12])\b')
+            $isLegacy = $false
+            foreach ($versionMatch in $versionMatches) {
+                $major = [int]$versionMatch.Groups['major'].Value
+                $half = [int]$versionMatch.Groups['half'].Value
+                if ($major -lt 23 -or ($major -eq 23 -and $half -le 2)) { $isLegacy = $true; break }
+            }
+            $isLegacy | Should -BeFalse
         }
     }
 }
@@ -218,8 +243,8 @@ Describe "Legacy Build and Architecture Exclusion" {
 Describe "Product Approval Filter" {
     Context "Product pattern for approval filtering" {
         BeforeAll {
-            # Simulate the approval filter pattern from line 1104
-            $script:SelectedProducts = @("Windows 11", "Windows Server 2019")
+            # Simulate the approval filter pattern from the maintenance script
+            $script:SelectedProducts = @("Windows 11", ".NET Framework", "Visual Studio 2022")
             $script:ApprovalPattern = '(?i)(' + (($script:SelectedProducts | ForEach-Object { [regex]::Escape($_) }) -join "|") + ')'
         }
 
@@ -229,12 +254,17 @@ Describe "Product Approval Filter" {
         }
 
         It "Does NOT match update from non-selected product" {
-            $updateProducts = "Windows 10,Security Updates"
+            $updateProducts = "Windows Server 2022,Security Updates"
             $updateProducts | Should -Not -Match $script:ApprovalPattern
         }
 
-        It "Matches update with multiple products including a selected one" {
+        It "Matches update with multiple products including .NET Framework" {
             $updateProducts = "Windows Server 2019,.NET Framework,SQL Server"
+            $updateProducts | Should -Match $script:ApprovalPattern
+        }
+
+        It "Matches Visual Studio 2022 updates when explicitly selected" {
+            $updateProducts = "Visual Studio 2022,Security Updates"
             $updateProducts | Should -Match $script:ApprovalPattern
         }
 
