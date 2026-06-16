@@ -16,6 +16,7 @@ BeforeAll {
     $script:ModulesPath = Join-Path $script:RepoRoot "Modules"
     $script:ScriptsPath = Join-Path $script:RepoRoot "Scripts"
     $script:GuiScript = Join-Path $script:ScriptsPath "WsusManagementGui.ps1"
+    $script:BuildScript = Join-Path $script:RepoRoot "build.ps1"
 }
 
 Describe "Script Syntax Validation" {
@@ -44,6 +45,21 @@ Describe "Script Syntax Validation" {
             $content | Should -Match '"Visual Studio 2022"'
             $content | Should -Not -Match '\$script:DefaultSyncProducts\s*=\s*@\([^)]*"Microsoft 365 Apps"'
         }
+        It "WsusManagementGui.ps1 resolves branding assets from Assets\\Branding and packaged roots" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match 'function Resolve-WsusBrandingAssetPath'
+            ([regex]::Matches($content, 'Assets\\Branding').Count) | Should -BeGreaterThan 1
+            $content | Should -Match "Resolve-WsusBrandingAssetPath -FileName 'wsus-icon\.ico'"
+        }
+
+        It "build.ps1 sources icons from Assets\\Branding" {
+            $content = Get-Content $script:BuildScript -Raw
+            $content | Should -Match 'Assets\\Branding'
+            $content | Should -Match 'wsus-icon\.ico'
+            $content | Should -Match 'general_atomics_logo_small\.ico'
+            $content | Should -Match 'general_atomics_logo_big\.ico'
+        }
+
 
     }
 

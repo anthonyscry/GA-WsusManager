@@ -144,6 +144,26 @@ function Test-WsusSelectedProductTitle {
         default                   { return $AvailableTitle -eq $SelectedProduct }
     }
 }
+function Resolve-WsusBrandingAssetPath {
+    param([Parameter(Mandatory)][string]$FileName)
+
+    $searchRoots = @(
+        $script:ScriptRoot,
+        (Split-Path -Parent $script:ScriptRoot),
+        (Join-Path $script:ScriptRoot 'Assets\Branding'),
+        (Join-Path (Split-Path -Parent $script:ScriptRoot) 'Assets\Branding')
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+    foreach ($root in $searchRoots) {
+        $candidate = Join-Path $root $FileName
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 
 function Write-Log { param([string]$Msg)
     try {
@@ -3625,18 +3645,16 @@ if ($script:LiveTerminalMode) {
 }
 
 try {
-    $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
-    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
-    if (Test-Path $iconPath) {
+    $iconPath = Resolve-WsusBrandingAssetPath -FileName 'wsus-icon.ico'
+    if ($iconPath) {
         $window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object System.Uri $iconPath))
     }
 } catch { Write-Verbose $_.Exception.Message }
 
 # Load General Atomics logo for sidebar and About page
 try {
-    $logoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico"
-    if (-not (Test-Path $logoPath)) { $logoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
-    if (Test-Path $logoPath) {
+    $logoPath = Resolve-WsusBrandingAssetPath -FileName 'general_atomics_logo_small.ico'
+    if ($logoPath) {
         $logoUri = New-Object System.Uri $logoPath
         $logoBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
         $logoBitmap.BeginInit()
@@ -3648,11 +3666,11 @@ try {
 } catch { Write-Verbose $_.Exception.Message }
 
 try {
-    $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_big.ico"
-    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_big.ico" }
-    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path $script:ScriptRoot "general_atomics_logo_small.ico" }
-    if (-not (Test-Path $aboutLogoPath)) { $aboutLogoPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "general_atomics_logo_small.ico" }
-    if (Test-Path $aboutLogoPath) {
+    $aboutLogoPath = Resolve-WsusBrandingAssetPath -FileName 'general_atomics_logo_big.ico'
+    if (-not $aboutLogoPath) {
+        $aboutLogoPath = Resolve-WsusBrandingAssetPath -FileName 'general_atomics_logo_small.ico'
+    }
+    if ($aboutLogoPath) {
         $aboutUri = New-Object System.Uri $aboutLogoPath
         $aboutBitmap = New-Object System.Windows.Media.Imaging.BitmapImage
         $aboutBitmap.BeginInit()
@@ -3696,10 +3714,8 @@ try {
     $ni = New-Object System.Windows.Forms.NotifyIcon
     $ni.Text = "WSUS Manager v$script:AppVersion"
     $ni.Visible = $false
-    # Load app icon for tray; fall back to built-in application icon
-    $iconPath = Join-Path $script:ScriptRoot "wsus-icon.ico"
-    if (-not (Test-Path $iconPath)) { $iconPath = Join-Path (Split-Path -Parent $script:ScriptRoot) "wsus-icon.ico" }
-    if (Test-Path $iconPath) {
+    $iconPath = Resolve-WsusBrandingAssetPath -FileName 'wsus-icon.ico'
+    if ($iconPath) {
         $ni.Icon = New-Object System.Drawing.Icon($iconPath)
     } else {
         $ni.Icon = [System.Drawing.SystemIcons]::Application

@@ -407,10 +407,15 @@ $buildParams = @{
     x64 = $true
 }
 
+$brandingDir = Join-Path $PSScriptRoot "Assets\Branding"
+$appIconPath = Join-Path $brandingDir "wsus-icon.ico"
+$sidebarLogoPath = Join-Path $brandingDir "general_atomics_logo_small.ico"
+$aboutLogoPath = Join-Path $brandingDir "general_atomics_logo_big.ico"
+
 # Add icon if exists
-if (Test-Path ".\wsus-icon.ico") {
-    $buildParams.IconFile = ".\wsus-icon.ico"
-    Write-Host "[+] Using custom icon: wsus-icon.ico" -ForegroundColor Green
+if (Test-Path $appIconPath) {
+    $buildParams.IconFile = $appIconPath
+    Write-Host "[+] Using custom icon: $appIconPath" -ForegroundColor Green
 }
 
 Write-Host "[*] Converting to executable..." -ForegroundColor Yellow
@@ -455,16 +460,18 @@ try {
 
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
-        if (Test-Path ".\wsus-icon.ico") { Copy-Item ".\wsus-icon.ico" -Destination $packageDir }
+        if (Test-Path $appIconPath) {
+            Copy-Item $appIconPath -Destination (Join-Path $packageDir "wsus-icon.ico")
+        }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
 
         # Copy logo files for sidebar and About page
-        if (Test-Path ".\general_atomics_logo_small.ico") {
-            Copy-Item ".\general_atomics_logo_small.ico" -Destination $packageDir
+        if (Test-Path $sidebarLogoPath) {
+            Copy-Item $sidebarLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_small.ico")
             Write-Host "    Included sidebar logo" -ForegroundColor Gray
         }
-        if (Test-Path ".\general_atomics_logo_big.ico") {
-            Copy-Item ".\general_atomics_logo_big.ico" -Destination $packageDir
+        if (Test-Path $aboutLogoPath) {
+            Copy-Item $aboutLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_big.ico")
             Write-Host "    Included About page logo" -ForegroundColor Gray
         }
 
@@ -558,8 +565,9 @@ Author: Tony Tran, ISSO, GA-ASI
         # Copy exe, zip, and logo files to dist
         Copy-Item ".\$OutputName" -Destination $distDir -Force
         Copy-Item ".\$zipFileName" -Destination $distDir -Force
-        if (Test-Path ".\general_atomics_logo_small.ico") { Copy-Item ".\general_atomics_logo_small.ico" -Destination $distDir -Force }
-        if (Test-Path ".\general_atomics_logo_big.ico") { Copy-Item ".\general_atomics_logo_big.ico" -Destination $distDir -Force }
+        if (Test-Path $appIconPath) { Copy-Item $appIconPath -Destination (Join-Path $distDir "wsus-icon.ico") -Force }
+        if (Test-Path $sidebarLogoPath) { Copy-Item $sidebarLogoPath -Destination (Join-Path $distDir "general_atomics_logo_small.ico") -Force }
+        if (Test-Path $aboutLogoPath) { Copy-Item $aboutLogoPath -Destination (Join-Path $distDir "general_atomics_logo_big.ico") -Force }
         Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 
