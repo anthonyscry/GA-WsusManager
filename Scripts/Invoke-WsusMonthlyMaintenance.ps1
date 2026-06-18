@@ -1516,7 +1516,9 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             Write-Log "Export path not accessible (may be offline or not configured) - skipping"
             $exportPhase.Status = "Skipped"
         } else {
-            Write-Log "[1/2] Copying database backup to export folder..."
+            $includeDatabase = $false
+            $includeContent  = $false
+
             if (-not $backupFile -or -not (Test-Path $backupFile)) {
                 $recentBackup = Get-ChildItem -Path $backupFolder -Filter "SUSDB*.bak" -ErrorAction SilentlyContinue |
                     Sort-Object LastWriteTime -Descending |
@@ -1528,50 +1530,58 @@ if ((Test-ShouldRunOperation "Export" $Operations) -and -not $SkipExport -and $E
             }
 
             if ($backupFile -and (Test-Path $backupFile)) {
-                Copy-Item -Path $backupFile -Destination $ExportPath -Force
-                Write-Log "Database copied: $(Split-Path $backupFile -Leaf)"
+                $includeDatabase = $true
             } else {
                 Write-Warning "No database backup found in $script:ContentPath"
             }
 
-            Write-Log "[2/2] Syncing content to export folder..."
             $wsusContentSource = $script:WsusContentPath
-            $rootContentPath = Join-Path $ExportPath "WsusContent"
             if (Test-Path $wsusContentSource) {
+                $includeContent = $true
                 $robocopyLogDir = $script:LogPath
                 if (-not (Test-Path $robocopyLogDir)) {
                     New-Item -Path $robocopyLogDir -ItemType Directory -Force | Out-Null
                 }
                 $robocopyLog = "$robocopyLogDir\Export_Root_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+            } else {
+                Write-Warning "WsusContent folder not found: $wsusContentSource"
+            }
 
-                $transferResult = Invoke-WsusTransferPackage -Direction Export -SourcePath $script:ContentPath `
-                    -DestinationPath $ExportPath -IncludeContent -LogPath $robocopyLog
+            $transferResult = Invoke-WsusTransferPackage -Direction Export -SourcePath $script:ContentPath `
+                -DestinationPath $ExportPath `
+                -IncludeDatabase:$includeDatabase `
+                -IncludeContent:$includeContent `
+                -LogPath $robocopyLog `
+                -DatabaseBackupPath $backupFile
 
-                foreach ($warning in $transferResult.Warnings) {
-                    Write-Warning $warning
-                    $MaintenanceResults.Warnings += $warning
+            foreach ($warning in $transferResult.Warnings) {
+                Write-Warning $warning
+                $MaintenanceResults.Warnings += $warning
+            }
+
+            if ($transferResult.Success) {
+                Write-Log "Export completed successfully"
+            } else {
+                Write-Warning $transferResult.Message
+                $MaintenanceResults.Warnings += $transferResult.Message
+                foreach ($transferError in $transferResult.Errors) {
+                    Write-Warning $transferError
+                    $MaintenanceResults.Warnings += $transferError
                 }
+                $exportPhase.Status = "Failed"
+            }
 
-                if ($transferResult.Success) {
-                    Write-Log "Content sync completed successfully"
-                } else {
-                    Write-Warning $transferResult.Message
-                    $MaintenanceResults.Warnings += $transferResult.Message
-                    foreach ($transferError in $transferResult.Errors) {
-                        Write-Warning $transferError
-                        $MaintenanceResults.Warnings += $transferError
-                    }
-                }
-
+            if ($includeContent -and $transferResult.ContentResult) {
+                $rootContentPath = $transferResult.ContentDestination
                 if (Test-Path $rootContentPath) {
                     $rootFiles = Get-ChildItem -Path $rootContentPath -Recurse -File -ErrorAction SilentlyContinue
                     $rootSize = [math]::Round(($rootFiles | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
                     Write-Log "Exported content: $($rootFiles.Count) files ($rootSize GB)"
                 }
-            } else {
-                Write-Warning "WsusContent folder not found: $wsusContentSource"
             }
+        }
 
+        if ($exportPhase.Status -ne "Failed" -and $exportPhase.Status -ne "Skipped") {
             $exportDuration = [math]::Round(((Get-Date) - $exportStart).TotalMinutes, 1)
             $MaintenanceResults.ExportPath = $ExportPath
             $exportPhase.Status = "Completed"

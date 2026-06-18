@@ -916,6 +916,7 @@ function Get-WsusAppDataPath {
     return Join-Path $root $FileName
 }
 
+
 # ===========================
 # SECRET HELPER FUNCTIONS
 # ===========================
@@ -985,8 +986,6 @@ Export-ModuleMember -Function @(
     'Get-WsusSqlCredentialPath',
     'Set-WsusSqlCredential',
     'Get-WsusSqlCredential',
-    'Test-WsusSqlCredential',
-    'Remove-WsusSqlCredential',
     'Get-WsusAppDataPath',
     'New-WsusSecretEnvironment',
     'Clear-WsusSecretEnvironment',

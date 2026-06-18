@@ -780,7 +780,6 @@ if ($EnableHttps) {
 # 11. CONFIGURE WSUS FIREWALL RULES
 # =====================================================================
 Write-Host "[+] Configuring Windows Firewall rules for WSUS..."
-
 # Remove existing WSUS rules if they exist
 $existingRules = @(
     "WSUS HTTP Traffic (Port 8530)",
@@ -792,47 +791,27 @@ $existingRules = @(
 foreach ($ruleName in $existingRules) {
     Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
 }
-
-# Create new WSUS firewall rules
 New-NetFirewallRule -DisplayName "WSUS HTTP Traffic (Port 8530)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 8530 `
-    -Action Allow `
+    -Direction Inbound -Protocol TCP -LocalPort 8530 -Action Allow `
     -Profile Domain,Private,Public `
     -Description "Allows inbound HTTP traffic for WSUS client connections" | Out-Null
-
 New-NetFirewallRule -DisplayName "WSUS HTTPS Traffic (Port 8531)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 8531 `
-    -Action Allow `
+    -Direction Inbound -Protocol TCP -LocalPort 8531 -Action Allow `
     -Profile Domain,Private,Public `
     -Description "Allows inbound HTTPS traffic for WSUS client connections" | Out-Null
-
 New-NetFirewallRule -DisplayName "WSUS API Remoting (Port 8530)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 8530 `
-    -Action Allow `
+    -Direction Inbound -Protocol TCP -LocalPort 8530 -Action Allow `
     -Profile Domain,Private `
     -Program "C:\Program Files\Update Services\WebServices\ApiRemoting30\WebService\ApiRemoting30.asmx" `
     -Description "Allows WSUS API remoting traffic" -ErrorAction SilentlyContinue | Out-Null
-
 New-NetFirewallRule -DisplayName "WSUS API Remoting (Port 8531)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 8531 `
-    -Action Allow `
+    -Direction Inbound -Protocol TCP -LocalPort 8531 -Action Allow `
     -Profile Domain,Private `
     -Program "C:\Program Files\Update Services\WebServices\ApiRemoting30\WebService\ApiRemoting30.asmx" `
     -Description "Allows WSUS API remoting traffic over HTTPS" -ErrorAction SilentlyContinue | Out-Null
 
-Write-Host "    Firewall rules configured."
-
 # =====================================================================
 # 12. CONFIGURE WSUS REGISTRY SETTINGS & SUPPRESS CONFIGURATION WIZARD
-# =====================================================================
 Write-Host "[+] Configuring WSUS registry settings..."
 
 $wsusRegSetup = "HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup"
@@ -946,27 +925,17 @@ if ($UpstreamServerHostname) {
 # =====================================================================
 # 13. CONFIGURE SQL SERVER FIREWALL RULES
 # =====================================================================
-Write-Host "[+] Configuring SQL Server firewall rules..."
-
 # Remove existing SQL firewall rules if they exist
 Get-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
 Get-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
 
-# Create SQL Server firewall rule for port 1433
+# Create SQL Server firewall rules
 New-NetFirewallRule -DisplayName "SQL Server (TCP 1433)" `
-    -Direction Inbound `
-    -Protocol TCP `
-    -LocalPort 1433 `
-    -Action Allow `
+    -Direction Inbound -Protocol TCP -LocalPort 1433 -Action Allow `
     -Profile Domain,Private,Public `
     -Description "Allows inbound TCP traffic for SQL Server connections" | Out-Null
-
-# Create SQL Browser firewall rule for UDP 1434 (required for named instances)
 New-NetFirewallRule -DisplayName "SQL Browser (UDP 1434)" `
-    -Direction Inbound `
-    -Protocol UDP `
-    -LocalPort 1434 `
-    -Action Allow `
+    -Direction Inbound -Protocol UDP -LocalPort 1434 -Action Allow `
     -Profile Domain,Private,Public `
     -Description "Allows SQL Browser service to respond to instance queries" | Out-Null
 
@@ -977,7 +946,7 @@ Write-Host "    SQL firewall rules configured."
 # =====================================================================
 Write-Host "[+] Verifying and starting services..."
 
-# Verify SQL Server is running
+# Verify and start WSUS-related services
 $sqlService = Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
 if ($sqlService -and $sqlService.Status -ne "Running") {
     Write-Host "    Starting SQL Server service..."
@@ -985,24 +954,18 @@ if ($sqlService -and $sqlService.Status -ne "Running") {
     Start-Sleep -Seconds 3
 }
 Write-Host "    SQL Server: $((Get-Service 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue).Status)"
-
-# Verify SQL Browser is running
 $browserService = Get-Service 'SQLBrowser' -ErrorAction SilentlyContinue
 if ($browserService -and $browserService.Status -ne "Running") {
     Write-Host "    Starting SQL Browser service..."
     Start-Service 'SQLBrowser' -ErrorAction SilentlyContinue
 }
 Write-Host "    SQL Browser: $((Get-Service 'SQLBrowser' -ErrorAction SilentlyContinue).Status)"
-
-# Verify IIS is running
 $iisService = Get-Service 'W3SVC' -ErrorAction SilentlyContinue
 if ($iisService -and $iisService.Status -ne "Running") {
     Write-Host "    Starting IIS service..."
     Start-Service 'W3SVC' -ErrorAction SilentlyContinue
 }
 Write-Host "    IIS (W3SVC): $((Get-Service 'W3SVC' -ErrorAction SilentlyContinue).Status)"
-
-# Verify WSUS service is running
 $wsusService = Get-Service 'WsusService' -ErrorAction SilentlyContinue
 if ($wsusService -and $wsusService.Status -ne "Running") {
     Write-Host "    Starting WSUS service..."
@@ -1011,7 +974,7 @@ if ($wsusService -and $wsusService.Status -ne "Running") {
 }
 Write-Host "    WSUS Service: $((Get-Service 'WsusService' -ErrorAction SilentlyContinue).Status)"
 
-# Verify WsusPool application pool is running
+# Verify WsusPool application pool is running (WSUS-specific, not part of canonical baseline)
 try {
     Import-Module WebAdministration -ErrorAction SilentlyContinue
     $appPool = Get-WebAppPoolState -Name "WsusPool" -ErrorAction SilentlyContinue
@@ -1023,7 +986,6 @@ try {
 } catch {
     Write-Host "    WsusPool: Could not verify (WebAdministration module not available)"
 }
-
 # =====================================================================
 # 15. CONFIGURE IIS VIRTUAL DIRECTORY (from Repair-WsusContentPath.ps1)
 # =====================================================================

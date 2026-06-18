@@ -267,7 +267,6 @@ Describe 'Module Exports' {
     It 'Exports Test-WsusProvisioningPath' {
         Get-Command Test-WsusProvisioningPath -Module WsusProvisioning | Should -Not -BeNullOrEmpty
     }
-
     It 'Exports exactly 5 functions' {
         (Get-Command -Module WsusProvisioning).Count | Should -Be 5
     }

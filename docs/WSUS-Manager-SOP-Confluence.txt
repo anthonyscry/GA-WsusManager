@@ -150,7 +150,7 @@ h3. Distribution Package
 {code}
 GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
-Modules/                  # Required - PowerShell modules (26 modules)
+|Modules/|Required - PowerShell modules (27 modules)|
 DomainController/         # Optional - GPO deployment scripts
 QUICK-START.txt           # Quick reference and setup guide
 README.md                 # Full documentation
@@ -653,9 +653,8 @@ h3. Scripts and Key Files
 |Scripts/Set-WsusHttps.ps1|Optional HTTPS configuration|
 |DomainController/Set-WsusGroupPolicy.ps1|GPO import script|
 |DomainController/WSUS GPOs/|Pre-configured GPO backups (3 GPOs)|
-|Modules/*.psm1|26 shared PowerShell modules|
-
-h3. PowerShell Modules (26 Total)
+|Modules/*.psm1|27 shared PowerShell modules|
+h3. PowerShell Modules (27 Total)
 
 ||Module||Purpose||
 |WsusUtilities.psm1|Logging, color output, admin checks, SQL helpers, path utilities|
@@ -682,7 +681,9 @@ h3. PowerShell Modules (26 Total)
 |WsusHistory.psm1|Operation history (JSON at %APPDATA%\WsusManager\history.json)|
 |WsusNotification.psm1|Toast/balloon/log-only notifications on operation completion|
 |WsusTrending.psm1|DB size trending - linear regression, days-until-full estimate|
-|AsyncHelpers.psm1|Runspace pool, async execution, UI thread dispatch for WPF|
+|WsusStartupProbe.psm1|E2E startup probe for the GUI (used by Tests\StartupE2E.Tests.ps1)|
+|WsusOperationCompletion.psm1|GUI operation completion shaping (clean env, finalize results)|
+|WsusDashboardViewModel.psm1|Builds the dashboard card/view-model from a detection snapshot|
 
 ----
 
@@ -708,7 +709,7 @@ h2. Features Summary
 |Auto-Refresh Dashboard|30-second status updates, skipped during active operations|
 |Keyboard Shortcuts|Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R/F5 (Refresh)|
 |DPI Awareness|Crisp rendering on high-DPI displays|
-|Modular Architecture|16 reusable PowerShell modules with 490+ Pester unit tests|
+|Modular Architecture|27 reusable PowerShell modules with 900+ Pester unit tests across 30 *.Tests.ps1 files|
 
 ----
 

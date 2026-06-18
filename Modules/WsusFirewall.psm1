@@ -361,7 +361,6 @@ function Repair-SqlFirewallRules {
     $check.Missing | ForEach-Object {
         Write-Host "  - $_" -ForegroundColor Red
     }
-
     return Initialize-SqlFirewallRules
 }
 

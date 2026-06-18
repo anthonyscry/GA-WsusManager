@@ -28,7 +28,6 @@ $script:WsusModules = @(
     "WsusScheduledTask"
     "WsusAutoDetection"
     "WsusDashboardViewModel"
-    "AsyncHelpers"
 )
 
 # Pre-load all modules if not already loaded

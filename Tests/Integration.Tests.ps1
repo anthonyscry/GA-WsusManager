@@ -123,7 +123,6 @@ Describe "Module Loading" {
                 @{ ModuleName = "WsusRepairPlan"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusRepairHarness"; ModulesPath = $script:TestModulesPath }
                 @{ ModuleName = "WsusTestHarness"; ModulesPath = $script:TestModulesPath }
-                @{ ModuleName = "AsyncHelpers"; ModulesPath = $script:TestModulesPath }
             )
         }
 

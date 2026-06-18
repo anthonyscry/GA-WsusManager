@@ -803,7 +803,6 @@ SESSION START: 2026-01-19 10:30:00
 | WsusRepairHarness.psm1 | Repair execution harness |
 | WsusDiagnosticResult.psm1 | Diagnostic result types |
 | WsusTestHarness.psm1 | Test harness for modules |
-| AsyncHelpers.psm1 | Async/background operation helpers for WPF |
 
 ---
 

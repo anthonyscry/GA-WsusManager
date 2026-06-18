@@ -30,7 +30,6 @@ Complete reference for all PowerShell modules in WSUS Manager v4.1.0.
 22. [WsusTrending](#wsustrending)
 23. [WsusDialogs](#wsusdialogs)
 24. [WsusOperationRunner](#wsusoperationrunner)
-25. [AsyncHelpers](#asynchelpers)
 
 ---
 
@@ -973,9 +972,8 @@ Returns array of:
 | Installed | bool | Is installed |
 | Status | string | Current status |
 | Running | bool | Is running |
-
 #### Get-WsusScheduledTaskStatus
-Gets scheduled task status.
+Gets scheduled task status. Thin wrapper around `Get-WsusMaintenanceTask` from `WsusScheduledTask`.
 
 ```powershell
 $task = Get-WsusScheduledTaskStatus -TaskName "WSUS Monthly Maintenance"
@@ -985,7 +983,6 @@ $task.LastRunTime
 $task.NextRunTime
 $task.MissedRuns
 ```
-
 #### Get-DatabaseSizeStatus
 Gets database size with threshold warnings.
 
@@ -1104,7 +1101,7 @@ $sizeGB = Get-WsusDashboardDatabaseSizeGB -SqlInstance ".\SQLEXPRESS"
 
 #### Get-WsusDashboardTaskStatus
 
-*Added in v4.0.* Gets the Windows Scheduled Task state for WSUS Maintenance.
+*Added in v4.0.* Gets the Windows Scheduled Task state for WSUS Maintenance. Backed by `Get-WsusMaintenanceTask` from `WsusScheduledTask`.
 
 ```powershell
 $state = Get-WsusDashboardTaskStatus
@@ -1170,155 +1167,6 @@ if (Test-WsusDashboardDataUnavailable) {
     # Show "Data unavailable" in dashboard cards
 }
 ```
-
----
-
-## AsyncHelpers
-
-Async helpers module for PowerShell WPF GUI applications. Provides non-blocking background operations using runspace pools.
-
-**File:** `Modules\AsyncHelpers.psm1`
-
-### Functions
-
-#### Initialize-AsyncRunspacePool
-
-Creates a shared runspace pool for background operations. Call this once during application startup. The pool uses STA apartment state and reuses threads.
-
-```powershell
-Initialize-AsyncRunspacePool -MaxRunspaces 2
-```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| MaxRunspaces | int | 4 | Maximum number of concurrent runspaces |
-
-Returns the `[System.Management.Automation.Runspaces.RunspacePool]` object.
-
-#### Close-AsyncRunspacePool
-
-Closes and disposes the shared runspace pool. Should be called during application shutdown to clean up resources.
-
-```powershell
-Close-AsyncRunspacePool
-```
-
-#### Invoke-Async
-
-Invokes a script block asynchronously using the runspace pool. Auto-initializes the pool if not already open. Returns an async handle object for tracking the operation.
-
-```powershell
-$handle = Invoke-Async -ScriptBlock { Get-Process } -OnComplete {
-    param($result)
-    Write-Host "Got $($result.Count) processes"
-}
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| ScriptBlock | scriptblock | The script block to execute asynchronously |
-| ArgumentList | object[] | Arguments to pass to the script block |
-| OnComplete | scriptblock | Optional callback executed when the operation completes; receives the result |
-
-Returns a `PSCustomObject` with properties:
-| Property | Type | Description |
-|----------|------|-------------|
-| PowerShell | PowerShell | The PowerShell instance |
-| Handle | IAsyncResult | The async operation handle |
-| OnComplete | scriptblock | The completion callback |
-| StartTime | DateTime | When the operation was started |
-
-#### Wait-Async
-
-Blocks until an async operation completes and returns the result. Executes the OnComplete callback if one was provided. Disposes the PowerShell instance after completion.
-
-```powershell
-$handle = Invoke-Async -ScriptBlock { Get-Service }
-$services = Wait-Async -AsyncHandle $handle -Timeout 5000
-```
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| AsyncHandle | PSCustomObject | - | The handle returned by Invoke-Async |
-| Timeout | int | -1 | Maximum wait time in milliseconds (-1 = infinite) |
-
-#### Test-AsyncComplete
-
-Non-blocking check for async operation completion status.
-
-```powershell
-if (Test-AsyncComplete -AsyncHandle $handle) {
-    $result = Wait-Async -AsyncHandle $handle
-}
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| AsyncHandle | PSCustomObject | The handle returned by Invoke-Async |
-
-Returns `[bool]` -- `$true` if the operation has completed.
-
-#### Stop-Async
-
-Cancels a running async operation and cleans up resources. Safe to call on already-completed operations.
-
-```powershell
-Stop-Async -AsyncHandle $handle
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| AsyncHandle | PSCustomObject | The handle returned by Invoke-Async |
-
-#### Invoke-UIThread
-
-Safely executes code on the WPF dispatcher thread, which is required for all UI updates from background threads. If already on the UI thread, executes directly. Supports synchronous and asynchronous dispatch.
-
-```powershell
-Invoke-UIThread -Window $mainWindow -Action {
-    $txtStatus.Text = "Operation complete"
-}
-
-# Fire-and-forget (async)
-Invoke-UIThread -Window $mainWindow -Action { $progressBar.Value = 50 } -Async
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| Window | System.Windows.Window | The WPF Window whose dispatcher to use |
-| Action | scriptblock | The script block to execute on the UI thread |
-| Async | switch | If set, invokes asynchronously (fire-and-forget) |
-
-#### Start-BackgroundOperation
-
-Runs a script block in the background with safe UI completion callbacks. Uses a DispatcherTimer to poll for completion without blocking the UI thread.
-
-```powershell
-$op = Start-BackgroundOperation -Window $window -ScriptBlock {
-    for ($i = 1; $i -le 100; $i++) {
-        Start-Sleep -Milliseconds 50
-        $i
-    }
-} -OnComplete {
-    param($result)
-    $txtStatus.Text = "Done!"
-} -OnError {
-    param($err)
-    $txtStatus.Text = "Error: $err"
-}
-
-# Returns @{ Handle = $asyncHandle; Timer = $dispatcherTimer }
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| Window | System.Windows.Window | The WPF Window for dispatcher access |
-| ScriptBlock | scriptblock | The script block to execute in the background |
-| OnProgress | scriptblock | (Reserved for future use) Called to update UI with progress |
-| OnComplete | scriptblock | Called when operation completes; receives result |
-| OnError | scriptblock | Called if an error occurs; receives error |
-
-Returns a hashtable with `Handle` (the async handle) and `Timer` (the DispatcherTimer polling for completion).
 
 ---
 

@@ -31,7 +31,12 @@ if (Test-Path $svcModulePath) {
     try { Import-Module $svcModulePath -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusServices" }
 }
 
-# ============================================================================
+# Import WsusScheduledTask for canonical local maintenance task status
+$taskModulePath = Join-Path $modulePath 'WsusScheduledTask.psm1'
+if (Test-Path $taskModulePath) {
+    try { Import-Module $taskModulePath -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusScheduledTask" }
+}
+
 # DETAILED SERVICE STATUS
 # ============================================================================
 
@@ -83,9 +88,6 @@ function Get-DetailedServiceStatus {
     return $results
 }
 
-# ============================================================================
-# SCHEDULED TASK STATUS
-# ============================================================================
 function Get-WsusScheduledTaskStatus {
     <#
     .SYNOPSIS
@@ -97,26 +99,25 @@ function Get-WsusScheduledTaskStatus {
         [string]$TaskName = "WSUS Monthly Maintenance"
     )
 
-    try {
-        $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-        if ($task) {
-            $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
-            return @{
-                Exists = $true
-                TaskName = $TaskName
-                State = $task.State.ToString()
-                LastRunTime = if ($taskInfo) { $taskInfo.LastRunTime } else { $null }
-                LastResult = if ($taskInfo) { $taskInfo.LastTaskResult } else { $null }
-                NextRunTime = if ($taskInfo) { $taskInfo.NextRunTime } else { $null }
-                MissedRuns = if ($taskInfo) { $taskInfo.NumberOfMissedRuns } else { 0 }
-            }
-        }
-    } catch {
-        Write-Warning "Failed to get scheduled task status: $($_.Exception.Message)"
+    if (-not (Get-Command Get-WsusMaintenanceTask -ErrorAction SilentlyContinue)) {
+        return @{ Exists = $false; TaskName = $TaskName; Message = 'WsusScheduledTask module not loaded' }
     }
-    return @{ Exists = $false; TaskName = $TaskName }
-}
 
+    $info = Get-WsusMaintenanceTask -TaskName $TaskName
+    if (-not $info.Exists) {
+        return @{ Exists = $false; TaskName = $TaskName }
+    }
+
+    return @{
+        Exists = $true
+        TaskName = $info.TaskName
+        State = $info.State
+        LastRunTime = $info.LastRunTime
+        LastResult = $info.LastResult
+        NextRunTime = $info.NextRunTime
+        MissedRuns = if ($info.NumberOfMissedRuns) { $info.NumberOfMissedRuns } else { 0 }
+    }
+}
 # ============================================================================
 # DATABASE SIZE STATUS
 # ============================================================================
@@ -739,9 +740,10 @@ function Get-WsusDashboardTaskStatus {
 .SYNOPSIS Gets the Windows Scheduled Task state for WSUS Maintenance.
 .OUTPUTS [string] Task state (e.g., "Ready", "Running", "Not Set")
 #>
+    if (-not (Get-Command Get-WsusMaintenanceTask -ErrorAction SilentlyContinue)) { return "Not Set" }
     try {
-        $t = Get-ScheduledTask -TaskName "WSUS Monthly Maintenance" -ErrorAction SilentlyContinue
-        if ($t) { return $t.State.ToString() }
+        $info = Get-WsusMaintenanceTask -TaskName "WSUS Monthly Maintenance"
+        if ($info -and $info.Exists -and $info.State) { return [string]$info.State }
     } catch { Write-Verbose $_.Exception.Message }
     return "Not Set"
 }

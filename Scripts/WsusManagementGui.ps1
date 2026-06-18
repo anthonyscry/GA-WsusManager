@@ -231,11 +231,10 @@ function Save-Settings {
     try {
         $dir = Split-Path $script:SettingsFile -Parent
         if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-            @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled; SyncProducts=@(ConvertTo-WsusSyncProducts -Products $script:SyncProducts) } |
+        @{ ContentPath=$script:ContentPath; SqlInstance=$script:SqlInstance; ExportRoot=$script:ExportRoot; ServerMode=$script:ServerMode; LiveTerminalMode=$script:LiveTerminalMode; NotificationsEnabled=$script:NotificationsEnabled; NotificationBeep=$script:NotificationBeep; TrayMinimize=$script:TrayMinimize; HistoryEnabled=$script:HistoryEnabled; SyncProducts=@(ConvertTo-WsusSyncProducts -Products $script:SyncProducts) } |
             ConvertTo-Json | Set-Content $script:SettingsFile -Encoding UTF8
     } catch { Write-Log "Failed to save settings: $_" }
 }
-
 Import-WsusSettings
 
 #region Import Additional Modules
@@ -3222,10 +3221,9 @@ function Invoke-LogOperation {
     }
 
     $reportPath = if ($operationPlan -and $operationPlan.Environment.ContainsKey('WSUS_REPORT_PATH')) { $operationPlan.Environment['WSUS_REPORT_PATH'] } else { $null }
-    $cleanupKeys = if ($operationPlan -and $operationPlan.Environment) { @($operationPlan.Environment.Keys) } else { @() }
+    $cleanupKeys = if ($operationPlan -and $operationPlan.CleanupKeys) { @($operationPlan.CleanupKeys) } else { @() }
     $onComplete = {
         param([bool]$Success)
-
         $completion = New-WsusGuiOperationCompletion -Title $Title -Success $Success -StartedAt $startedAt -ReportPath $reportPath -CleanupKeys $cleanupKeys
         $logAction = { param([string]$Message, [string]$Level) Write-LogOutput $Message -Level $Level }
         $notificationAction = if ($script:HasNotificationModule) {

@@ -45,8 +45,7 @@ GA-WsusManager/
 │   ├── WsusAutoDetection.psm1   # Dashboard detection and cache
 │   ├── WsusOfficeUpdates.psm1   # Office C2R download via ODT
 │   ├── WsusOperationRunner.psm1 # Unified operation lifecycle
-│   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
-├── Tests/                       # Pester tests (25 test files)
+├── Tests/                       # Pester tests (30 *.Tests.ps1 files)
 ├── docs/                        # SOP, quick start, CI/CD, reports, AI audit instructions
 ├── wiki/                        # User/developer/configuration guides
 └── DomainController/            # Air-gap GPO deployment scripts
@@ -1023,15 +1022,7 @@ try {
 } catch { }
 #endregion
 ```
-
-### 2. AsyncHelpers Module (`Modules\AsyncHelpers.psm1`)
-Provides non-blocking background operations for WPF applications:
-- `Initialize-AsyncRunspacePool` / `Close-AsyncRunspacePool` - Runspace pool management
-- `Invoke-Async` / `Wait-Async` / `Test-AsyncComplete` / `Stop-Async` - Async execution
-- `Invoke-UIThread` - Safe UI thread dispatch
-- `Start-BackgroundOperation` - Complete async workflow with callbacks
-
-### 3. Error Handling Wrapper (Main Entry Point)
+### 2. Error Handling Wrapper (Main Entry Point)
 ```powershell
 try {
     $window.ShowDialog() | Out-Null
@@ -1048,27 +1039,9 @@ finally {
 }
 ```
 
-### 4. Startup Benchmarking
-```powershell
-$script:StartupTime = Get-Date
-# ... initialization ...
-$script:StartupDuration = ((Get-Date) - $script:StartupTime).TotalMilliseconds
-Write-Log "Startup completed in $([math]::Round($script:StartupDuration, 0))ms"
-```
-
-### 5. CI Pipeline Features (`.github\workflows\build.yml`)
-- **Code Review:** PSScriptAnalyzer with custom settings
-- **Security Scan:** Specific security-focused rules
-- **Pester Tests:** Unit tests with NUnit XML output (excludes ExeValidation.Tests.ps1)
-- **Build:** PS2EXE compilation with version embedding
-- **EXE Validation:** Runs AFTER build - PE header, 64-bit architecture, version info checks
-- **Startup Benchmark:** Parse time, module import time, EXE size validation
-- **Distribution Package:** Creates `dist/` folder with exe, Scripts/, Modules/, zip
-- **Release Automation:** GitHub release with artifacts from `dist/` folder
-
-**Important:** EXE validation tests are excluded from the main test job and run separately in the build job after the exe is created. This prevents test failures when no exe exists.
-
-### 6. EXE Validation Tests (`Tests\ExeValidation.Tests.ps1`)
+### 3. Startup Benchmarking
+### 4. CI Pipeline Features (`.github\workflows\build.yml`)
+### 5. EXE Validation Tests (`Tests\ExeValidation.Tests.ps1`)
 - PE header validation (MZ signature, PE signature)
 - 64-bit architecture verification
 - Version info embedding (product name, company, version)

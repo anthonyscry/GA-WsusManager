@@ -186,7 +186,7 @@ gpresult /r | findstr WSUS
 GA-WsusManager/
 ├── Scripts/             # PowerShell entry points (GUI, CLI, install, monthly maintenance, HTTPS, client check-in)
 ├── Modules/             # 26 shared PowerShell modules
-├── Tests/               # 752 Pester tests across 25 test files
+├── Tests/               # 900+ Pester tests across 30 *.Tests.ps1 files
 ├── DomainController/    # GPO deployment script + backed-up GPOs
 ├── build/               # Local validation + ship-readiness scripts
 ├── docs/                # SOP, quick-start, CI/CD docs, Confluence export
@@ -228,7 +228,6 @@ GA-WsusManager/
 | `WsusRepairHarness.psm1` | Repair execution harness |
 | `WsusDiagnosticResult.psm1` | Diagnostic result types |
 | `WsusTestHarness.psm1` | Test harness for modules |
-| `AsyncHelpers.psm1` | Async/background operation helpers for WPF |
 
 See [wiki/Module-Reference.md](wiki/Module-Reference.md) for the full reference.
 

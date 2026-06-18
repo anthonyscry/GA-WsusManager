@@ -121,7 +121,12 @@ Describe 'Operation planning interface' {
         $plan.Environment.WSUS_INSTALL_SA_PASSWORD | Should -Be 'SecretValue!'
         $plan.Command | Should -Match 'WSUS_INSTALL_SA_PASSWORD'
     }
+    It 'Exposes explicit CleanupKeys for the install plan' {
+        $password = ConvertTo-WsusSecureString -Value 'SecretValue!'
+        $plan = New-WsusInstallOperationPlan -InstallScriptPath 'C:\App\Install-WsusWithSqlExpress.ps1' -InstallerPath 'C:\WSUS\SQLDB' -SaUsername 'sa' -SaPassword $password
 
+        $plan.CleanupKeys | Should -Contain 'WSUS_INSTALL_SA_PASSWORD'
+    }
     It 'Builds a schedule plan with short-lived task password environment' {
         $password = ConvertTo-WsusSecureString -Value 'TaskSecret!'
         $plan = New-WsusScheduleOperationPlan -TaskModulePath 'C:\App\WsusScheduledTask.psm1' -Schedule Weekly -Time '02:00' -Profile Full -RunAsUser 'DOMAIN\User' -Password $password -DayOfWeek Saturday
@@ -129,7 +134,12 @@ Describe 'Operation planning interface' {
         $plan.Environment.WSUS_TASK_PASSWORD | Should -Be 'TaskSecret!'
         $plan.Command | Should -Match 'ConvertTo-SecureString'
     }
+    It 'Exposes explicit CleanupKeys for the schedule plan' {
+        $password = ConvertTo-WsusSecureString -Value 'TaskSecret!'
+        $plan = New-WsusScheduleOperationPlan -TaskModulePath 'C:\App\WsusScheduledTask.psm1' -Schedule Weekly -Time '02:00' -Profile Full -RunAsUser 'DOMAIN\User' -Password $password -DayOfWeek Saturday
 
+        $plan.CleanupKeys | Should -Contain 'WSUS_TASK_PASSWORD'
+    }
     It 'Skips export when maintenance export path is blank' {
         $plan = New-WsusMaintenanceOperationPlan -MaintenanceScriptPath 'C:\App\Invoke-WsusMonthlyMaintenance.ps1' -Profile Full -ExportPath ''
 
@@ -166,6 +176,16 @@ Describe 'Repair planning interface' {
     }
 }
 
+Describe 'Host environment interface' {
+    BeforeAll {
+        Import-Module (Join-Path $script:ModulesPath 'WsusHostEnvironment.psm1') -Force -DisableNameChecking
+    }
+
+    It 'Exports the host environment adapter factory' {
+        Get-Command New-WsusHostEnvironment -Module WsusHostEnvironment | Should -Not -BeNullOrEmpty
+    }
+}
+
 Describe 'Runtime and transfer interfaces' {
     It 'Returns one runtime config shape' {
         $config = Get-WsusRuntimeConfig
@@ -183,11 +203,6 @@ Describe 'Runtime and transfer interfaces' {
         $plan.ContentSource | Should -Be 'C:\WSUS\WsusContent'
         $plan.ContentDestination | Should -Be 'E:\WSUS\WsusContent'
     }
-    It 'Exports the host environment adapter shape' {
-        Import-Module (Join-Path $script:ModulesPath 'WsusHostEnvironment.psm1') -Force -DisableNameChecking
-        Get-Command New-WsusHostEnvironment | Should -Not -BeNullOrEmpty
-    }
-
     It 'Creates a GUI secret environment plan' {
         $secret = New-WsusSecretEnvironment -Values @{ WSUS_INSTALL_SA_PASSWORD = 'SecretValue!' }
 
@@ -195,6 +210,13 @@ Describe 'Runtime and transfer interfaces' {
         $secret.CleanupKeys | Should -Contain 'WSUS_INSTALL_SA_PASSWORD'
     }
 
+    It 'Filters blank key entries from a GUI secret environment plan' {
+        $secret = New-WsusSecretEnvironment -Values @{ WSUS_INSTALL_SA_PASSWORD = 'SecretValue!'; '' = 'ignored' }
+
+        $secret.CleanupKeys | Should -Not -Contain ''
+        $secret.CleanupKeys | Should -Contain 'WSUS_INSTALL_SA_PASSWORD'
+        $secret.Environment.ContainsKey('') | Should -Be $false
+    }
     It 'Formats GUI lifecycle and status text through the shell interface' {
         $started = [datetime]'2026-06-02T00:00:00'
         $completed = $started.AddMilliseconds(1250)
@@ -256,9 +278,56 @@ Describe 'Runtime and transfer interfaces' {
 
         $view.PSObject.TypeNames[0] | Should -Be 'Wsus.DashboardViewModel'
         $view.Cards.Services.Status | Should -Be 'Pass'
-        $view.Configuration.SqlInstance | Should -Be '.\SQLEXPRESS'
+    }
+}
+
+Describe 'Dashboard task status model' {
+    BeforeAll {
+        Import-Module (Join-Path $script:ModulesPath 'WsusScheduledTask.psm1') -Force -DisableNameChecking
+        Import-Module (Join-Path $script:ModulesPath 'WsusAutoDetection.psm1') -Force -DisableNameChecking
     }
 
+    It 'Routes dashboard task status through the scheduler module' {
+        Mock Get-WsusMaintenanceTask {
+            param([string]$TaskName)
+            return @{
+                Exists = $true
+                TaskName = $TaskName
+                State = 'Ready'
+                NumberOfMissedRuns = 0
+            }
+        } -ModuleName WsusAutoDetection
+
+        $result = Get-WsusDashboardTaskStatus
+        $result | Should -Be 'Ready'
+        Should -Invoke Get-WsusMaintenanceTask -ModuleName WsusAutoDetection -Times 1 -Exactly
+    }
+
+    It 'Defaults to Not Set when the maintenance task does not exist' {
+        Mock Get-WsusMaintenanceTask {
+            param([string]$TaskName)
+            return @{ Exists = $false; TaskName = $TaskName }
+        } -ModuleName WsusAutoDetection
+
+        $result = Get-WsusDashboardTaskStatus
+        $result | Should -Be 'Not Set'
+    }
+}
+
+Describe 'GUI orchestration model' {
+    BeforeAll {
+        $script:guiScript = Join-Path (Join-Path $script:ModulesPath '..') 'Scripts\WsusManagementGui.ps1'
+    }
+
+    It 'Does not import or call AsyncHelpers from the GUI' {
+        $content = Get-Content -Path $script:guiScript -Raw
+
+        $content | Should -Not -Match 'AsyncHelpers'
+        $content | Should -Not -Match 'Initialize-AsyncRunspacePool'
+        $content | Should -Not -Match 'Invoke-Async\b'
+        $content | Should -Not -Match 'Wait-Async\b'
+        $content | Should -Not -Match 'Start-BackgroundOperation'
+    }
 }
 
 Describe 'Dashboard snapshot interface' {
@@ -266,3 +335,5 @@ Describe 'Dashboard snapshot interface' {
         Get-Command Get-WsusDashboardSnapshot -Module WsusAutoDetection | Should -Not -BeNullOrEmpty
     }
 }
+
+

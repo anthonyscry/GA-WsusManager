@@ -36,6 +36,7 @@ function New-WsusOperationPlan {
         [AllowNull()][ValidateSet('Embedded','Terminal')][string]$Mode = $null,
         [int]$TimeoutMinutes = 30,
         [hashtable]$Environment = @{},
+        [string[]]$CleanupKeys = @(),
         [hashtable]$Metadata = @{}
     )
 
@@ -47,6 +48,7 @@ function New-WsusOperationPlan {
         Mode = $Mode
         TimeoutMinutes = $TimeoutMinutes
         Environment = $Environment
+        CleanupKeys = @($CleanupKeys)
         Metadata = $Metadata
     }
 }
@@ -82,7 +84,6 @@ function New-WsusManagementOperationPlan {
         }
     }
 }
-
 function New-WsusInstallOperationPlan {
     [CmdletBinding()]
     param(
@@ -91,16 +92,16 @@ function New-WsusInstallOperationPlan {
         [string]$SaUsername = 'sa',
         [Parameter(Mandatory)][Security.SecureString]$SaPassword
     )
-
     $script = ConvertTo-WsusCommandLiteral $InstallScriptPath
     $installer = ConvertTo-WsusCommandLiteral $InstallerPath
     $user = ConvertTo-WsusCommandLiteral $SaUsername
     $passwordValue = ConvertFrom-WsusSecureString -Value $SaPassword
-    $secret = New-WsusOperationPlan -Id 'install' -Title 'Install WSUS' `
+    $secretEnv = New-WsusSecretEnvironment -Values @{ WSUS_INSTALL_SA_PASSWORD = $passwordValue }
+    New-WsusOperationPlan -Id 'install' -Title 'Install WSUS' `
         -Command "& $script -InstallerPath $installer -SaUsername $user -SaPasswordEnvVar WSUS_INSTALL_SA_PASSWORD -NonInteractive" `
         -TimeoutMinutes 180 `
-        -Environment @{ WSUS_INSTALL_SA_PASSWORD = $passwordValue }
-    $secret
+        -Environment $secretEnv.Environment `
+        -CleanupKeys $secretEnv.CleanupKeys
 }
 
 function New-WsusMaintenanceOperationPlan {
@@ -148,13 +149,13 @@ function New-WsusScheduleOperationPlan {
     } elseif ($Schedule -eq 'Monthly') {
         $args += " -DayOfMonth $DayOfMonth"
     }
-
-
     $passwordValue = ConvertFrom-WsusSecureString -Value $Password
+    $secretEnv = New-WsusSecretEnvironment -Values @{ WSUS_TASK_PASSWORD = $passwordValue }
     New-WsusOperationPlan -Id 'schedule' -Title "Schedule Task ($Schedule)" `
         -Command "& { Import-Module $taskModule -Force -DisableNameChecking; `$secPwd = ConvertTo-SecureString `$env:WSUS_TASK_PASSWORD -AsPlainText -Force; New-WsusMaintenanceTask $args -UserPassword `$secPwd | Out-Null }" `
         -TimeoutMinutes 30 `
-        -Environment @{ WSUS_TASK_PASSWORD = $passwordValue }
+        -Environment $secretEnv.Environment `
+        -CleanupKeys $secretEnv.CleanupKeys
 }
 
 

@@ -163,8 +163,6 @@
 ## 📋 Deferred / Accepted Risks
 
 | Item | Reason for Deferral | Revisit Trigger |
-|---|---|---|
-| AsyncHelpers.Tests.ps1 | Low usage; simple utility | If new async patterns added |
 | WsusNotification.Tests.ps1 | Simple email/notification module | If notification logic grows |
 | WsusTrending.Tests.ps1 | Data trending — requires historical data | If trending logic changes |
 | WsusProcessHost.Tests.ps1 | Stub module (1 line) — slated for removal | Cleanup pass |

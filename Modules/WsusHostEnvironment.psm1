@@ -197,7 +197,6 @@ function Restart-WsusHostService {
     Restart-Service -Name $Name -Force -ErrorAction Stop
     Get-WsusHostServiceState -Name @($Name) | Select-Object -First 1
 }
-
 function Get-WsusHostEventSummary {
     [CmdletBinding()]
     param(

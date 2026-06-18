@@ -17,7 +17,10 @@ $script:RetryDelaySeconds = 1
 #region Private Helpers
 
 function Get-HistoryFilePath {
-    return Join-Path $env:APPDATA "WsusManager\history.json"
+    if (Get-Command Get-WsusAppDataPath -ErrorAction SilentlyContinue) {
+        return Get-WsusAppDataPath -FileName 'history.json'
+    }
+    return Join-Path $env:APPDATA 'WsusManager\history.json'
 }
 
 function Read-HistoryFile {
@@ -26,50 +29,34 @@ function Read-HistoryFile {
 
     $path = Get-HistoryFilePath
 
-    if (-not (Test-Path $path)) {
-        return @()
-    }
+    if (-not (Test-Path $path)) { return @() }
 
     try {
         $raw = Get-Content -Path $path -Raw -Encoding UTF8 -ErrorAction Stop
         $entries = $raw | ConvertFrom-Json -ErrorAction Stop
-
-        if ($null -eq $entries) {
-            return @()
-        }
-
-        # Normalize to array
-        if ($entries -isnot [System.Collections.IEnumerable] -or $entries -is [string]) {
-            $entries = @($entries)
-        }
-
-        # Filter out entries missing required keys
-        $valid = @()
-        foreach ($e in $entries) {
-            if ($null -ne $e.Timestamp -and $null -ne $e.OperationType -and $null -ne $e.Result) {
-                $valid += $e
-            }
-        }
-        return $valid
-    }
-    catch [System.IO.IOException] {
-        # File locked  - bubble up to caller to retry
-        throw
-    }
-    catch {
-        # Corrupt JSON  - backup and reset
-        $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+    } catch {
+        $timestamp = Get-Date -Format 'yyyyMMddHHmmss'
         $backupPath = "$path.corrupt.$timestamp"
         try {
             Copy-Item -Path $path -Destination $backupPath -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
-        }
-        catch {
-            Write-Warning "WsusHistory: Could not back up corrupt history file - history will be reset without backup"
-        }
-        Write-Warning "WsusHistory: history.json was corrupt and has been reset. Backup: $backupPath"
+        } catch { }
         return @()
     }
+
+    if ($null -eq $entries) { return @() }
+
+    if ($entries -isnot [System.Collections.IEnumerable] -or $entries -is [string]) {
+        $entries = @($entries)
+    }
+
+    $valid = @()
+    foreach ($e in $entries) {
+        if ($null -ne $e.Timestamp -and $null -ne $e.OperationType -and $null -ne $e.Result) {
+            $valid += $e
+        }
+    }
+    return $valid
 }
 
 function Write-HistoryFile {
@@ -79,22 +66,16 @@ function Write-HistoryFile {
         [array]$Entries
     )
 
-    $path = Get-HistoryFilePath
-    $dir  = Split-Path $path -Parent
-
-    if (-not (Test-Path $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    }
-
     $json = $Entries | ConvertTo-Json -Depth 5
-    # ConvertTo-Json returns a string for single-element arrays  - ensure array brackets
     if ($Entries.Count -eq 1 -and $json -notmatch '^\s*\[') {
         $json = "[$json]"
-    }
-    elseif ($Entries.Count -eq 0) {
-        $json = "[]"
+    } elseif ($Entries.Count -eq 0) {
+        $json = '[]'
     }
 
+    $path = Get-HistoryFilePath
+    $dir  = Split-Path $path -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     Set-Content -Path $path -Value $json -Encoding UTF8 -Force -ErrorAction Stop
 }
 

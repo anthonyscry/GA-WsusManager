@@ -258,4 +258,24 @@ Describe "Invoke-WsusTransferPackage" {
         $result.Errors | Should -Contain "Some files or directories could not be copied."
         $result.ContentResult.ExitCode | Should -Be 8
     }
+
+    It "Should copy the explicit -DatabaseBackupPath into the export destination" {
+        Mock Test-Path { $true } -ModuleName WsusExport -ParameterFilter { $PathType -eq 'Leaf' }
+        $bakSource = "C:\WSUS\Backups\SUSDB_20260109.bak"
+        $bakDest   = "E:\Export"
+
+        $result = Invoke-WsusTransferPackage -Direction Export -SourcePath "C:\WSUS" -DestinationPath $bakDest -IncludeDatabase -DatabaseBackupPath $bakSource
+
+        $result.Success | Should -BeTrue
+        Should -Invoke Copy-Item -ModuleName WsusExport -Times 1 -ParameterFilter {
+            $Path -eq $bakSource -and $Destination -eq $bakDest
+        }
+    }
+
+    It "Should warn when -IncludeDatabase is set but no .bak file is found" {
+        $result = Invoke-WsusTransferPackage -Direction Export -SourcePath "C:\WSUS" -DestinationPath "E:\Export" -IncludeDatabase
+
+        $result.Success | Should -BeTrue
+        $result.Warnings | Should -Contain "No database backup files found in C:\WSUS."
+    }
 }

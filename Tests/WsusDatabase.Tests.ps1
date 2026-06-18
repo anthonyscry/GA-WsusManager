@@ -368,6 +368,20 @@ Describe "Test-WsusBackupIntegrity" {
         }
     }
 
+    Context "With invalid backup path format" {
+        It "Should return IsValid = false for a UNC path" {
+            $result = Test-WsusBackupIntegrity -BackupPath "\\server\share\backup.bak"
+            $result.IsValid | Should -Be $false
+            $result.Message | Should -Match "Invalid backup path format"
+        }
+
+        It "Should return IsValid = false for a non-.bak path" {
+            $result = Test-WsusBackupIntegrity -BackupPath "C:\Backups\notes.txt"
+            $result.IsValid | Should -Be $false
+            $result.Message | Should -Match "Invalid backup path format"
+        }
+    }
+
     Context "With mocked backup verification" {
         BeforeAll {
             # Create a temp file to simulate backup with some content
@@ -375,7 +389,8 @@ Describe "Test-WsusBackupIntegrity" {
             # Write at least 1KB of data so size is measurable
             $fakeData = "X" * 1024
             Set-Content -Path $script:TempBackup -Value $fakeData -NoNewline
-
+        }
+        BeforeEach {
             Mock Invoke-WsusSqlcmd {
                 if ($Query -match "HEADERONLY") {
                     [PSCustomObject]@{
@@ -396,6 +411,27 @@ Describe "Test-WsusBackupIntegrity" {
             $result = Test-WsusBackupIntegrity -BackupPath $script:TempBackup
             $result.BackupFile | Should -Be $script:TempBackup
             $result.BackupSizeMB | Should -BeGreaterOrEqual 0
+        }
+
+        It "Should issue RESTORE HEADERONLY to read backup metadata" {
+            Test-WsusBackupIntegrity -BackupPath $script:TempBackup | Out-Null
+            Should -Invoke Invoke-WsusSqlcmd -ModuleName WsusDatabase -Times 1 -ParameterFilter {
+                $Query -match "RESTORE HEADERONLY FROM DISK"
+            }
+        }
+
+        It "Should issue RESTORE VERIFYONLY WITH CHECKSUM to validate integrity" {
+            Test-WsusBackupIntegrity -BackupPath $script:TempBackup | Out-Null
+            Should -Invoke Invoke-WsusSqlcmd -ModuleName WsusDatabase -Times 1 -ParameterFilter {
+                $Query -match "RESTORE VERIFYONLY FROM DISK" -and
+                $Query -match "WITH CHECKSUM"
+            }
+        }
+
+        It "Should populate DatabaseName and BackupDate from the HEADERONLY result" {
+            $result = Test-WsusBackupIntegrity -BackupPath $script:TempBackup
+            $result.DatabaseName | Should -Be "SUSDB"
+            $result.BackupDate | Should -Not -BeNullOrEmpty
         }
     }
 }

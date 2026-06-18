@@ -11,10 +11,10 @@ This directory contains shared PowerShell modules used by the WSUS Manager appli
 The WSUS Manager uses a modular architecture where common functionality has been extracted into reusable modules. This provides:
 - **Code Reusability**: Functions can be imported into any script or used interactively
 - **Maintainability**: Fix bugs once in the module rather than in multiple scripts
-- **Testability**: 490+ Pester unit tests across 18 test files
+- **Testability**: 900+ Pester unit tests across 30 *.Tests.ps1 files
 - **Documentation**: Centralized, standardized documentation
 
-## Available Modules (16 Total)
+## Available Modules (15 Total)
 
 ### WsusUtilities.psm1
 **Common utility functions**
@@ -276,34 +276,6 @@ Show-WsusHealthSummary
 $result = Start-WsusAutoRecovery -MaxRetries 3
 ```
 
-### AsyncHelpers.psm1
-**Async helpers for WPF GUI applications**
-
-Provides:
-- Runspace pool management (`Initialize-AsyncRunspacePool`, `Close-AsyncRunspacePool`)
-- Async execution (`Invoke-Async`, `Wait-Async`, `Test-AsyncComplete`, `Stop-Async`)
-- UI thread dispatch (`Invoke-UIThread`)
-- Background operations (`Start-BackgroundOperation`)
-
-Example usage:
-```powershell
-Import-Module .\Modules\AsyncHelpers.psm1
-
-# Initialize runspace pool
-Initialize-AsyncRunspacePool -MaxRunspaces 4
-
-# Run async operation
-$handle = Invoke-Async -ScriptBlock { Get-Service }
-
-# Check completion
-if (Test-AsyncComplete -AsyncHandle $handle) {
-    $result = Wait-Async -AsyncHandle $handle
-}
-
-# Cleanup
-Close-AsyncRunspacePool
-```
-
 ### WsusDialogs.psm1 *(v4.0)*
 **Dialog factory for WPF GUI**
 
@@ -386,16 +358,14 @@ WsusDatabase.psm1
 WsusAutoDetection.psm1
 └── (No module dependencies, uses native PowerShell)
 
-AsyncHelpers.psm1
-└── (No module dependencies, uses .NET runspaces)
-```
+
 
 ## Benefits of Modular Architecture
 
 1. **Reduced Code Duplication**: Common functionality shared across all scripts
 2. **Easier Maintenance**: Fix bugs once in the module rather than in multiple scripts
 3. **Consistency**: Standardized behavior across all scripts
-4. **Testability**: 490+ Pester unit tests across 18 test files
+4. **Testability**: 900+ Pester unit tests across 30 *.Tests.ps1 files
 5. **Reusability**: Functions can be imported into any script or used interactively
 6. **Documentation**: Centralized documentation with comment-based help
 
@@ -415,7 +385,7 @@ When extending these modules:
 
 - **v2.0.0** (2026-03-18): v4.0 module expansion
   - Added 5 new modules: WsusDialogs, WsusOperationRunner, WsusHistory, WsusNotification, WsusTrending
-  - 490+ Pester unit tests across 18 test files
+  - 900+ Pester unit tests across 30 *.Tests.ps1 files
   - Documented all 16 modules
 
 - **v1.1.0** (2026-01-14): Documentation update and module expansion

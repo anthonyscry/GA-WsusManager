@@ -106,9 +106,8 @@ GA-WsusManager/
 │   ├── WsusNotification.psm1    # Toast/balloon notifications
 │   ├── WsusTrending.psm1        # DB size trending with linear regression
 │   ├── WsusTestHarness.psm1     # Shared test helpers and evidence paths
-│   └── AsyncHelpers.psm1        # Async/background operation helpers for WPF
 │
-├── Tests/                       # Pester test files (25 *.Tests.ps1 suites)
+├── Tests/                       # Pester test files (30 *.Tests.ps1 suites)
 │   ├── WsusUtilities.Tests.ps1
 │   ├── WsusConfig.Tests.ps1
 │   ├── WsusDatabase.Tests.ps1
@@ -165,7 +164,6 @@ GA-WsusManager/
 | `Modules/WsusHistory.psm1` | [v4.0] Operation history -- JSON storage, 100-entry trim |
 | `Modules/WsusNotification.psm1` | [v4.0] Toast/balloon/log completion notifications |
 | `Modules/WsusTrending.psm1` | [v4.0] DB size trending, linear regression, days-until-full |
-| `Modules/AsyncHelpers.psm1` | WPF runspace pool management and async execution |
 | `Tests/*.Tests.ps1` | Pester unit and integration tests |
 
 ---
@@ -445,7 +443,6 @@ WsusUtilities (base)
     +-- WsusNotification (toast/balloon/log)
     +-- WsusTrending (linear regression)
     +-- WsusTestHarness (shared test/evidence helpers)
-    +-- AsyncHelpers (WPF runspace management)
 ```
 
 ### GUI Architecture

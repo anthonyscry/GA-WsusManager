@@ -217,9 +217,9 @@ if ($ModulesFolder) {
             Import-Module $exportModulePath -Force -DisableNameChecking -ErrorAction Stop
         }
 
-        $provisioningModulePath = Join-Path $ModulesFolder "WsusProvisioning.psm1"
-        if (Test-Path $provisioningModulePath) {
-            Import-Module $provisioningModulePath -Force -DisableNameChecking -ErrorAction Stop
+        $databaseModulePath = Join-Path $ModulesFolder "WsusDatabase.psm1"
+        if (Test-Path $databaseModulePath) {
+            Import-Module $databaseModulePath -Force -DisableNameChecking -ErrorAction Stop
         }
 
     } catch {
@@ -564,17 +564,20 @@ function Invoke-WsusRestore {
     # Verify backup before taking WSUS offline. Restore must not proceed on a
     # corrupt or unreadable .bak file.
     Write-Log "Verifying backup integrity..." "Yellow"
-    # Escape single quotes in path for SQL safety (double them)
-    $safePath = $selectedBackup.FullName -replace "'", "''"
-    try {
-        Invoke-CheckedSqlcmd -SqlCmdExe $SqlCmdExe -SqlInstance $SqlInstance -Query "RESTORE VERIFYONLY FROM DISK=N'$safePath' WITH CHECKSUM" -Description "Backup verification" | Out-Null
-        Write-Log "[OK] Backup verification completed" "Green"
-    } catch {
-        Write-Log "ERROR: Backup verification failed: $($_.Exception.Message)" "Red"
+    $verifyResult = if (Get-Command Test-WsusBackupIntegrity -ErrorAction SilentlyContinue) {
+        Test-WsusBackupIntegrity -BackupPath $selectedBackup.FullName -SqlInstance $SqlInstance
+    } else {
+        Write-Log "ERROR: Test-WsusBackupIntegrity helper is not available; cannot verify backup" "Red"
         return
     }
+    if (-not $verifyResult.IsValid) {
+        Write-Log "ERROR: Backup verification failed: $($verifyResult.Message)" "Red"
+        return
+    }
+    Write-Log "[OK] $($verifyResult.Message)" "Green"
 
-    # Stop services
+    # Escape single quotes in path for SQL safety (double them)
+    $safePath = $selectedBackup.FullName -replace "'", "''"
     Write-Log "Stopping services..." "Yellow"
     @("WSUSService", "W3SVC") | ForEach-Object {
         Stop-Service -Name $_ -Force -ErrorAction SilentlyContinue

@@ -5,6 +5,9 @@ $script:MaxHistoryDays  = 90
 $script:SqlExpressLimitGB = 10.0
 
 function Get-TrendsFilePath {
+    if (Get-Command Get-WsusAppDataPath -ErrorAction SilentlyContinue) {
+        return Get-WsusAppDataPath -FileName 'trends.json'
+    }
     return $script:TrendsFilePath
 }
 
@@ -13,24 +16,21 @@ function Read-TrendData {
     param()
 
     $path = Get-TrendsFilePath
-
     if (-not (Test-Path $path)) {
-        return [System.Collections.Generic.List[hashtable]]::new()
+        return ,([System.Collections.Generic.List[hashtable]]::new())
     }
 
-    # M2: Guard against oversized files (corrupt or runaway growth)
     $fileInfo = Get-Item -Path $path -ErrorAction SilentlyContinue
     if ($fileInfo -and $fileInfo.Length -gt 1MB) {
         Write-Warning "WsusTrending: Trends file is $(([math]::Round($fileInfo.Length/1KB)))KB - resetting"
         $timestamp = Get-Date -Format "yyyyMMddHHmmss"
         Move-Item -Path $path -Destination "$path.oversized.$timestamp" -Force -ErrorAction SilentlyContinue
-        return [System.Collections.Generic.List[hashtable]]::new()
+        return ,([System.Collections.Generic.List[hashtable]]::new())
     }
 
     try {
         $raw = Get-Content -Path $path -Raw -ErrorAction Stop
         $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
-
         $list = [System.Collections.Generic.List[hashtable]]::new()
         foreach ($entry in $parsed) {
             $list.Add(@{
@@ -38,19 +38,18 @@ function Read-TrendData {
                 DatabaseSizeGB = [double]$entry.DatabaseSizeGB
             })
         }
-        return $list
+        return ,$list
     } catch {
-        # Corrupt JSON  - back up and reset
-        Write-Verbose "WsusTrending: Corrupt trends file, backing up and resetting  - $($_.Exception.Message)"
+        Write-Verbose "WsusTrending: Corrupt trends file, backing up and resetting - $($_.Exception.Message)"
         try {
             $timestamp = Get-Date -Format "yyyyMMddHHmmss"
             $backupPath = "$path.corrupt.$timestamp"
             Copy-Item -Path $path -Destination $backupPath -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $path -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-Verbose "WsusTrending: Could not back up corrupt file  - $($_.Exception.Message)"
+            Write-Verbose "WsusTrending: Could not back up corrupt file - $($_.Exception.Message)"
         }
-        return [System.Collections.Generic.List[hashtable]]::new()
+        return ,([System.Collections.Generic.List[hashtable]]::new())
     }
 }
 
@@ -61,7 +60,6 @@ function Save-TrendData {
 
     $path = Get-TrendsFilePath
     $dir  = Split-Path $path -Parent
-
     try {
         if (-not (Test-Path $dir)) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null

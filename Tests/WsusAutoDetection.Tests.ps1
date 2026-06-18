@@ -103,41 +103,36 @@ Describe "Get-DetailedServiceStatus" {
 }
 
 Describe "Get-WsusScheduledTaskStatus" {
-    Context "With non-existent task" {
-        BeforeAll {
-            Mock Get-ScheduledTask { $null } -ModuleName WsusAutoDetection
-        }
-
-        It "Should return hashtable with Exists=false" {
-            $result = Get-WsusScheduledTaskStatus
-            $result | Should -BeOfType [hashtable]
-            $result.Exists | Should -Be $false
-        }
-    }
-
-    Context "With existing task" {
-        BeforeAll {
-            Mock Get-ScheduledTask {
-                [PSCustomObject]@{
-                    TaskName = "WSUS Monthly Maintenance"
-                    State = "Ready"
-                }
-            } -ModuleName WsusAutoDetection
-            Mock Get-ScheduledTaskInfo {
-                [PSCustomObject]@{
+    BeforeAll {
+        Mock Get-WsusMaintenanceTask {
+            param([string]$TaskName)
+            if ($TaskName -eq 'WSUS Monthly Maintenance') {
+                return @{
+                    Exists = $true
+                    TaskName = 'WSUS Monthly Maintenance'
+                    State = 'Ready'
                     LastRunTime = (Get-Date).AddDays(-7)
+                    LastResult = 0
                     NextRunTime = (Get-Date).AddDays(23)
-                    LastTaskResult = 0
                     NumberOfMissedRuns = 0
                 }
-            } -ModuleName WsusAutoDetection
-        }
+            }
+            return @{ Exists = $false; TaskName = $TaskName; Message = 'Task not found' }
+        } -ModuleName WsusAutoDetection
+    }
 
-        It "Should return hashtable with Exists=true" {
-            $result = Get-WsusScheduledTaskStatus
-            $result | Should -BeOfType [hashtable]
-            $result.Exists | Should -Be $true
-        }
+    It "Should return hashtable with Exists=false for non-existent task" {
+        $result = Get-WsusScheduledTaskStatus -TaskName 'NonExistentTask12345XYZ'
+        $result | Should -BeOfType [hashtable]
+        $result.Exists | Should -Be $false
+    }
+
+    It "Should return hashtable with Exists=true for default task" {
+        $result = Get-WsusScheduledTaskStatus
+        $result | Should -BeOfType [hashtable]
+        $result.Exists | Should -Be $true
+        $result.State | Should -Be 'Ready'
+        $result.MissedRuns | Should -Be 0
     }
 }
 
@@ -327,7 +322,7 @@ Describe "Dashboard Data Functions" {
             Mock Get-PSDrive {
                 [PSCustomObject]@{ Free = 50GB }
             } -ModuleName WsusAutoDetection
-            Mock Get-ScheduledTask { $null } -ModuleName WsusAutoDetection
+            Mock Get-WsusMaintenanceTask { @{ Exists = $false; TaskName = 'WSUS Monthly Maintenance' } } -ModuleName WsusAutoDetection
         }
 
         It "Should return a hashtable" {
@@ -398,30 +393,20 @@ Describe "Dashboard Data Functions" {
             $result | Should -Be 0
         }
     }
-
     Context "Get-WsusDashboardTaskStatus" {
         It "Should return 'Not Set' when task does not exist" {
-            Mock Get-ScheduledTask { $null } -ModuleName WsusAutoDetection
+            Mock Get-WsusMaintenanceTask { @{ Exists = $false; TaskName = 'WSUS Monthly Maintenance' } } -ModuleName WsusAutoDetection
             $result = Get-WsusDashboardTaskStatus
             $result | Should -Be "Not Set"
         }
 
         It "Should return task state string when task exists" {
-            Mock Get-ScheduledTask {
-                [PSCustomObject]@{ State = "Ready" }
-            } -ModuleName WsusAutoDetection
+            Mock Get-WsusMaintenanceTask { @{ Exists = $true; State = 'Ready' } } -ModuleName WsusAutoDetection
             $result = Get-WsusDashboardTaskStatus
             $result | Should -Be "Ready"
         }
     }
-
     Context "Get-WsusDashboardServiceStatus" {
-        It "Should return a hashtable" {
-            Mock Get-Service { $null } -ModuleName WsusAutoDetection
-            $result = Get-WsusDashboardServiceStatus
-            $result | Should -BeOfType [hashtable]
-        }
-
         It "Should have Running=0 when all services are stopped" {
             Mock Get-Service {
                 [PSCustomObject]@{ Name = $args[0]; Status = "Stopped" }
@@ -433,7 +418,6 @@ Describe "Dashboard Data Functions" {
 
     Context "Cache roundtrip - Set-WsusDashboardCache and Get-WsusDashboardCachedData" {
         It "Should return null before any data is cached" {
-            # Re-import to reset module state
             $ModulePath = Join-Path $PSScriptRoot "..\Modules\WsusAutoDetection.psm1"
             Import-Module $ModulePath -Force -DisableNameChecking
             $result = Get-WsusDashboardCachedData

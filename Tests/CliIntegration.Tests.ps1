@@ -115,6 +115,15 @@ Describe "Invoke-WsusMonthlyMaintenance.ps1 Parameter Validation" {
             $script:MonthlyExportSection | Should -Match 'Invoke-WsusTransferPackage\s+-Direction\s+Export'
         }
 
+        It "Passes -IncludeDatabase and -DatabaseBackupPath to the monthly export package" {
+            $script:MonthlyExportSection | Should -Match '-IncludeDatabase:\$includeDatabase'
+            $script:MonthlyExportSection | Should -Match '-DatabaseBackupPath \$backupFile'
+        }
+
+        It "Does not manually Copy-Item the backup file in the monthly export block" {
+            $script:MonthlyExportSection | Should -Not -Match 'Copy-Item -Path \$backupFile -Destination \$ExportPath'
+        }
+
         It "Does not start robocopy directly in the monthly export phase" {
             $script:MonthlyExportSection | Should -Not -Match 'Start-Process\s+-FilePath\s+"robocopy\.exe"'
         }
@@ -328,8 +337,16 @@ Describe "Invoke-WsusManagement.ps1 Restore Safety" {
     }
 
     It "Verifies backup integrity before RESTORE DATABASE" {
-        $script:ManagementContent | Should -Match 'RESTORE VERIFYONLY'
-        $script:ManagementContent.IndexOf('RESTORE VERIFYONLY') | Should -BeLessThan $script:ManagementContent.IndexOf('RESTORE DATABASE SUSDB')
+        $script:ManagementContent | Should -Match 'Test-WsusBackupIntegrity'
+        $verifyIdx = $script:ManagementContent.IndexOf('Test-WsusBackupIntegrity')
+        $restoreIdx = $script:ManagementContent.IndexOf('RESTORE DATABASE SUSDB')
+        $verifyIdx | Should -BeGreaterOrEqual 0
+        $restoreIdx | Should -BeGreaterOrEqual 0
+        $verifyIdx | Should -BeLessThan $restoreIdx
+    }
+
+    It "Does not call RESTORE VERIFYONLY directly outside the shared helper" {
+        $script:ManagementContent | Should -Not -Match 'RESTORE VERIFYONLY'
     }
 
     It "Runs restore SQL through checked sqlcmd execution" {

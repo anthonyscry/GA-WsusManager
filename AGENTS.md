@@ -14,7 +14,7 @@ GA-WsusManager is a Windows PowerShell 5.1 / WPF administration suite for WSUS s
   - `Modules/WsusUtilities.psm1` is foundational: logging, admin checks, SQL invocation, paths, credentials.
   - `Modules/WsusConfig.psm1` centralizes defaults/timeouts/health weights, though scripts still contain some deployment defaults.
   - Health/repair flows compose `WsusHealth`, `WsusServices`, `WsusFirewall`, `WsusPermissions`, and `WsusDatabase`.
-  - GUI operation lifecycle is process-based; see `Modules/WsusOperationRunner.psm1`, `AsyncHelpers.psm1`, and GUI `Invoke-LogOperation` patterns.
+  - GUI operation lifecycle is process-based; see `Modules/WsusOperationRunner.psm1` and GUI `Invoke-LogOperation` patterns.
 - Operational flow:
   1. GUI/CLI validates admin/runtime paths and imports modules.
   2. Long operations launch child `powershell.exe -NoProfile -ExecutionPolicy Bypass ...` commands.
