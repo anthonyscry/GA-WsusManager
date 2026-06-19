@@ -5,7 +5,7 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and lower), Preview/Beta, Edge non-stable, Office 365/2019/LTSC 2021 (keeps 2024), WSL
+    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and lower), Preview/Beta, Edge non-stable, WSL. Office updates (including Office 2016, 365, 2019, LTSC 2021/2024) are NOT auto-declined -- review manually.
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
@@ -1024,14 +1024,8 @@ if ($allUpdates.Count -gt 0) {
     $edgeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)Microsoft Edge' -and ($_.Title -notmatch '(?i)(Stable Channel|WebView2)' -or $_.Title -match '(?i)Extended Stable') })
     # WSL: decline Windows Subsystem for Linux updates
     $wslDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)(Windows Subsystem for Linux|WSL)' })
-    # Office: decline 365 Apps, Office 2019, Office LTSC 2021 (keep only Office 2024/LTSC 2024)
-    $officeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and (
-        $_.Title -match '(?i)Microsoft 365 Apps' -or
-        $_.Title -match '(?i)Office 2019' -or
-        $_.Title -match '(?i)Office LTSC 2021'
-    ) -and $_.Title -notmatch '(?i)(2024|LTSC 2024)' })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | Office=$($officeDeclines.Count) | WSL=$($wslDeclines.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | WSL=$($wslDeclines.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1107,18 +1101,6 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    $officeDeclineCount = 0
-    if ($officeDeclines.Count -gt 0) {
-        $officeDeclines | ForEach-Object {
-            try {
-                $_.Decline() | Out-Null
-                $officeDeclineCount++
-            } catch {
-                Write-Warning "Failed to decline Office update: $($_.Title)"
-            }
-        }
-    }
-
     $wslDeclineCount = 0
     if ($wslDeclines.Count -gt 0) {
         $wslDeclines | ForEach-Object {
@@ -1126,7 +1108,7 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | Office=$officeDeclineCount | WSL=$wslDeclineCount"
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | WSL=$wslDeclineCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -1161,15 +1143,7 @@ if ($allUpdates.Count -gt 0) {
             $pendingUpdates = @($pendingUpdates | Where-Object {
                 ($_.ProductTitles -join ",") -match $productPattern
             })
-            # Extra filter: skip Office 365 updates that are NOT Office 2024 LTSC
-            $pendingUpdates = @($pendingUpdates | Where-Object {
-                $prodStr = $_.ProductTitles -join ","
-                if ($prodStr -like "*Microsoft 365*" -and $_.Title -notlike "*LTSC*" -and $_.Title -notlike "*2024*") {
-                    return $false
-                }
-                return $true
-            })
-            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products (Office 365 filtered to LTSC 2024 only)"
+            Write-Log "Filtered to $($pendingUpdates.Count) updates matching selected products"
         }
         
         Write-Log "Pending updates meeting criteria: $($pendingUpdates.Count)"
@@ -1245,10 +1219,6 @@ if (Test-ShouldRunOperation "Cleanup" $Operations) {
         Write-Log "Cleanup completed in $cleanupDuration minutes"
         Write-Log "Results: Obsolete Updates=$($cleanup.ObsoleteUpdatesDeleted) | Computers=$($cleanup.ObsoleteComputersDeleted) | Space=$([math]::Round($cleanup.DiskSpaceFreed/1MB,2))MB"
 
-        # Additional deep cleanup for declined updates
-        Write-Log "Running deep cleanup of old declined update metadata..."
-        $deepCleanupQuery = @'
--- Remove update status for old declined updates (keeps DB lean)
         # Additional deep cleanup for declined updates
         Write-Log "Running deep cleanup of old declined update metadata..."
         $deepCleanupQuery = @'
@@ -1373,14 +1343,15 @@ if ((Test-ShouldRunOperation "UltimateCleanup" $Operations) -and -not $SkipUltim
                 Write-Log "Deleting $($declinedIDs.Count) declined updates from SUSDB..."
                 $batchSize = 100
                 $totalDeleted = 0
+                $skipCount = 0
                 $totalBatches = [math]::Ceiling($declinedIDs.Count / $batchSize)
                 $currentBatch = 0
 
                 for ($i = 0; $i -lt $declinedIDs.Count; $i += $batchSize) {
                     $currentBatch++
-                    $batch = $declinedIDs | Select-Object -Skip $i -First $batchSize
+                    $batchIds = @($declinedIDs | Select-Object -Skip $i -First $batchSize)
 
-                    foreach ($updateId in $batch) {
+                    foreach ($updateId in $batchIds) {
                         $deleteQuery = @'
 DECLARE @LocalUpdateID int
 DECLARE @UpdateGuid uniqueidentifier = '$(UpdateIdParam)'
@@ -1398,15 +1369,19 @@ IF @LocalUpdateID IS NOT NULL
                             }
                             $totalDeleted++
                         } catch {
+                            # spDeleteUpdate throws for revisions with dependent rows;
+                            # these are non-fatal skips, not script-stoppers. Surface
+                            # them so the operator can see why the count plateaued.
+                            $skipCount++
                             Write-Verbose "Skipping declined purge delete for ${updateId}: $($_.Exception.Message)"
                         }
                     }
 
                     $percentComplete = [math]::Round(($currentBatch / $totalBatches) * 100, 1)
-                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted"
+                    Write-Log "Declined purge progress: $currentBatch/$totalBatches batches ($percentComplete%) - Deleted: $totalDeleted (skipped: $skipCount)"
                 }
 
-                Write-Log "Declined update purge complete: $totalDeleted deleted"
+                Write-Log "Declined update purge complete: $totalDeleted deleted, $skipCount skipped (had dependent rows)"
             } else {
                 Write-Log "No declined updates found to delete"
             }
