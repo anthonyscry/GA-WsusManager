@@ -309,14 +309,14 @@ Describe "Start-WsusOperation" {
 Describe "New-WsusEnvironmentBootstrapFile" {
     Context "Empty environment" {
         It "Returns null when given no entries" {
-            $result = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{}
+            $result = New-WsusEnvironmentBootstrapFile -Environment @{}
             $result | Should -BeNullOrEmpty
         }
     }
 
     Context "Writing env vars to a temp file" {
         It "Writes a Set-Item line per non-blank key" {
-            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ FOO = 'bar'; BAZ = 'qux' }
+            $path = New-WsusEnvironmentBootstrapFile -Environment @{ FOO = 'bar'; BAZ = 'qux' }
             try {
                 $path | Should -Not -BeNullOrEmpty
                 Test-Path -LiteralPath $path -PathType Leaf | Should -BeTrue
@@ -329,7 +329,7 @@ Describe "New-WsusEnvironmentBootstrapFile" {
         }
 
         It "Escapes embedded single quotes in values" {
-            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ SECRET = "O'Brien" }
+            $path = New-WsusEnvironmentBootstrapFile -Environment @{ SECRET = "O'Brien" }
             try {
                 $content = Get-Content -LiteralPath $path -Raw
                 # doubled-up single quotes survive PowerShell single-quoted-string parsing
@@ -340,7 +340,7 @@ Describe "New-WsusEnvironmentBootstrapFile" {
         }
 
         It "Skips blank keys without throwing" {
-            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ '' = 'ignored'; REAL = 'kept' }
+            $path = New-WsusEnvironmentBootstrapFile -Environment @{ '' = 'ignored'; REAL = 'kept' }
             try {
                 $content = Get-Content -LiteralPath $path -Raw
                 $content | Should -Not -Match "Env:'"
@@ -353,30 +353,23 @@ Describe "New-WsusEnvironmentBootstrapFile" {
 }
 
 Describe "Remove-WsusEnvironmentBootstrapFile" {
-    BeforeAll {
-        $script:RemoveBootstrap = {
-            param($p)
-            InModuleScope WsusOperationRunner { param($x) Remove-WsusEnvironmentBootstrapFile -Path $x } -ArgumentList $p
-        }
-    }
-
     It "Deletes an existing file" {
         $path = Join-Path ([System.IO.Path]::GetTempPath()) ("wsus-env-test-{0}.ps1" -f ([guid]::NewGuid().ToString('N')))
         Set-Content -LiteralPath $path -Value '# stub' -Force
         Test-Path -LiteralPath $path | Should -BeTrue
 
-        & $script:RemoveBootstrap $path
+        Remove-WsusEnvironmentBootstrapFile -Path $path
         Test-Path -LiteralPath $path | Should -BeFalse
     }
 
     It "Is a no-op when the file is missing" {
         $missing = Join-Path ([System.IO.Path]::GetTempPath()) ("wsus-env-missing-{0}.ps1" -f ([guid]::NewGuid().ToString('N')))
-        { & $script:RemoveBootstrap $missing } | Should -Not -Throw
+        { Remove-WsusEnvironmentBootstrapFile -Path $missing } | Should -Not -Throw
     }
 
     It "Is a no-op when the path is blank" {
-        { & $script:RemoveBootstrap '' } | Should -Not -Throw
-        { & $script:RemoveBootstrap $null } | Should -Not -Throw
+        { Remove-WsusEnvironmentBootstrapFile -Path '' } | Should -Not -Throw
+        { Remove-WsusEnvironmentBootstrapFile -Path $null } | Should -Not -Throw
     }
 }
 
@@ -475,13 +468,13 @@ Describe "Start-RunnerTimer" -Skip:(-not $script:WpfAvailable) {
     It "Starts a DispatcherTimer without throwing" {
         $timer = New-Object System.Windows.Threading.DispatcherTimer
         $timer.Interval = [TimeSpan]::FromMilliseconds(500)
-        { InModuleScope WsusOperationRunner { param($t) Start-RunnerTimer -Timer $t } -ArgumentList $timer } | Should -Not -Throw
+        { Start-RunnerTimer -Timer $timer } | Should -Not -Throw
         # Cleanup
         try { $timer.Stop() } catch { }
     }
 
     It "Is a no-op when Timer is null" {
-        { InModuleScope WsusOperationRunner { param($t) Start-RunnerTimer -Timer $t } -ArgumentList $null } | Should -Not -Throw
+        { Start-RunnerTimer -Timer $null } | Should -Not -Throw
     }
 }
 

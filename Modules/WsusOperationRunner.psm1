@@ -783,5 +783,7 @@ Export-ModuleMember -Function @(
     'Stop-WsusOperation',
     'Complete-WsusOperation',
     'Find-WsusScript',
-    'Reset-WsusOperationGuard'
+    'Reset-WsusOperationGuard',
+    'New-WsusEnvironmentBootstrapFile',
+    'Remove-WsusEnvironmentBootstrapFile'
 )
