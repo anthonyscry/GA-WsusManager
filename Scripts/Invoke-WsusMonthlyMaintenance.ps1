@@ -5,7 +5,7 @@
 .DESCRIPTION
     Comprehensive WSUS maintenance automation that performs:
     - Synchronizes WSUS with Microsoft Update and monitors download progress
-    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and lower), Preview/Beta, Edge non-stable, WSL. Office updates (including Office 2016, 365, 2019, LTSC 2021/2024) are NOT auto-declined -- review manually.
+    - Declines expired, superseded, >6 months old, ARM64, legacy builds (23H2 and lower), Preview/Beta, Edge non-stable, 32-bit Edge, 32-bit Office, WSL. Office updates (including Office 2016, 365, 2019, LTSC 2021/2024) are NOT auto-declined -- review manually.
     - Auto-approves Critical, Security, Update Rollups, Service Packs, Updates, and Definition Updates
     - Runs WSUS cleanup tasks and SUSDB index/stat maintenance
     - Optionally runs an aggressive "ultimate cleanup" stage before backup
@@ -999,6 +999,8 @@ $supersededCount = 0
 $oldCount = 0
 $arm64Count = 0
 $legacyBuildCount = 0
+$x86EdgeDeclineCount = 0
+$x86OfficeDeclineCount = 0
 $approvedCount = 0
 
 if ($allUpdates.Count -gt 0) {
@@ -1024,8 +1026,20 @@ if ($allUpdates.Count -gt 0) {
     $edgeDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)Microsoft Edge' -and ($_.Title -notmatch '(?i)(Stable Channel|WebView2)' -or $_.Title -match '(?i)Extended Stable') })
     # WSL: decline Windows Subsystem for Linux updates
     $wslDeclines = @($allUpdates | Where-Object { -not $_.IsDeclined -and $_.Title -match '(?i)(Windows Subsystem for Linux|WSL)' })
+    # 32-bit Edge: lab is x64 only -- decline any x86/32-bit Edge updates
+    $x86EdgeDeclines = @($allUpdates | Where-Object {
+        -not $_.IsDeclined -and
+        $_.Title -match '(?i)Edge' -and
+        $_.Title -match '(?i)\b(x86|32.bit|32-bit)\b'
+    })
+    # 32-bit Office: lab is x64 only -- decline any x86/32-bit Office updates
+    $x86OfficeDeclines = @($allUpdates | Where-Object {
+        -not $_.IsDeclined -and
+        $_.Title -match '(?i)\b(Microsoft Office|Microsoft 365 Apps|Office)\b' -and
+        $_.Title -match '(?i)\b(x86|32.bit|32-bit)\b'
+    })
 
-    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | WSL=$($wslDeclines.Count)"
+    Write-Log "Found: Expired=$($expired.Count) | Superseded=$($superseded.Count) | Old(>6mo)=$($oldUpdates.Count) | ARM64=$($arm64Updates.Count) | Legacy=$($legacyBuildUpdates.Count) | Preview/Beta=$($previewUpdates.Count) | Edge=$($edgeDeclines.Count) | x86Edge=$($x86EdgeDeclines.Count) | x86Office=$($x86OfficeDeclines.Count) | WSL=$($wslDeclines.Count)"
 
     if ($expired.Count -gt 0) {
         $expired | ForEach-Object { 
@@ -1108,7 +1122,19 @@ if ($allUpdates.Count -gt 0) {
         }
     }
 
-    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | WSL=$wslDeclineCount"
+    if ($x86EdgeDeclines.Count -gt 0) {
+        $x86EdgeDeclines | ForEach-Object {
+            try { $_.Decline() | Out-Null; $x86EdgeDeclineCount++ } catch { Write-Warning "Failed to decline 32-bit Edge update: $($_.Title)" }
+        }
+    }
+
+    if ($x86OfficeDeclines.Count -gt 0) {
+        $x86OfficeDeclines | ForEach-Object {
+            try { $_.Decline() | Out-Null; $x86OfficeDeclineCount++ } catch { Write-Warning "Failed to decline 32-bit Office update: $($_.Title)" }
+        }
+    }
+
+    Write-Log "Successfully declined: Expired=$expiredCount | Superseded=$supersededCount | Old(>6mo)=$oldCount | ARM64=$arm64Count | Legacy(23H2-)=$legacyBuildCount | Preview/Beta=$previewCount | Edge=$edgeDeclineCount | x86Edge=$x86EdgeDeclineCount | x86Office=$x86OfficeDeclineCount | WSL=$wslDeclineCount"
 
     # === APPROVE UPDATES (CONSERVATIVE) ===
     Write-Log "Checking for updates to approve..."
@@ -1436,11 +1462,11 @@ if (Test-ShouldRunOperation "Backup" $Operations) {
 
         if ($script:UseSqlCredential -and $SqlCredential) {
             Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
-                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, CHECKSUM, STATS=10" `
                 -QueryTimeout 0 -Credential $SqlCredential | Out-Null
         } else {
             Invoke-WsusSqlcmd -ServerInstance $script:SqlInstance -Database SUSDB `
-                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, STATS=10" `
+                -Query "BACKUP DATABASE SUSDB TO DISK=N'$backupFile' WITH INIT, CHECKSUM, STATS=10" `
                 -QueryTimeout 0 | Out-Null
         }
 

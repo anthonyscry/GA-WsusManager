@@ -586,13 +586,35 @@ function Test-WsusBackupIntegrity {
             $result.BackupDate = $header.BackupFinishDate
         }
 
-        # Verify backup integrity using RESTORE VERIFYONLY
-        $verifyQuery = "RESTORE VERIFYONLY FROM DISK = N'$safePath' WITH CHECKSUM"
-        Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
-            -Query $verifyQuery -QueryTimeout 300
+        # Verify backup integrity using RESTORE VERIFYONLY. Try WITH CHECKSUM
+        # first (faster, more thorough) and fall back to plain VERIFYONLY if the
+        # backup set doesn't carry checksum info (older backups taken without
+        # `WITH CHECKSUM`). SQL Server rejects WITH CHECKSUM with
+        # "Backup set does not contain checksum information" in that case.
+        $verifyWithChecksum = "RESTORE VERIFYONLY FROM DISK = N'$safePath' WITH CHECKSUM"
+        $verifyPlain        = "RESTORE VERIFYONLY FROM DISK = N'$safePath'"
 
-        $result.IsValid = $true
-        $result.Message = "Backup verified successfully"
+        try {
+            Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+                -Query $verifyWithChecksum -QueryTimeout 300
+            $result.IsValid = $true
+            $result.Message = "Backup verified successfully (with checksum)"
+        } catch {
+            $errMsg = $_.Exception.Message
+            if ($errMsg -match 'does not contain checksum') {
+                try {
+                    Invoke-WsusSqlcmd -ServerInstance $SqlInstance -Database master `
+                        -Query $verifyPlain -QueryTimeout 300
+                    $result.IsValid = $true
+                    $result.Message = "Backup verified successfully (no checksum in backup set -- re-take with CHECKSUM for stronger verification)"
+                    Write-Verbose "Backup lacks checksum info; falling back to plain RESTORE VERIFYONLY. Re-create with WITH CHECKSUM for stronger verification."
+                } catch {
+                    $result.Message = "Backup verification failed (no-checksum fallback): $($_.Exception.Message)"
+                }
+            } else {
+                $result.Message = "Backup verification failed: $errMsg"
+            }
+        }
 
     } catch {
         $result.Message = "Backup verification failed: $($_.Exception.Message)"
