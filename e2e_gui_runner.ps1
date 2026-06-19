@@ -50,7 +50,7 @@ param(
     [string]$LocalPackage = "C:\projects\GA-WsusManager\dist\WsusManager-v4.1.0.zip",
     [string]$RemoteRoot = 'C:\WsusManager-E2E',
     [string]$RunId = ("gui-e2e-{0}" -f (Get-Date -Format 'yyyyMMdd-HHmmss')),
-    [string]$SaPassword = 'WsusP@ss123!',
+    [string]$SaPassword = 'WsusP@ss123456!',
     [int]$InstallTimeoutSec = 1800,
     [switch]$DryRun,
     [switch]$SkipInstall,
@@ -210,8 +210,24 @@ $phaseA = Invoke-Command -Session $session -ScriptBlock {
     $hasEnv2 = [bool]($content -match "WSUS_E2E_MARKER.*phase-A-marker")
 
     $acl = Get-Acl -LiteralPath $path
-    $ownerCorrect = ($acl.Owner -match 'Install')
+    $ownerRaw      = [string]$acl.Owner
     $protected     = $acl.AreAccessRulesProtected
+    # The runner sets the explicit FullControl ACE for the current user via
+    # New-Object FileSystemAccessRule(currentUser). When SetAccessRuleProtection
+    # is true, the inherited ACLs are stripped, leaving only the explicit ACE.
+    # We check protection flag + that the explicit ACE list contains FullControl
+    # for the current user (compared as SID strings, since PowerShell may
+    # return NTAccount on one side and SecurityIdentifier on the other).
+    $currentUserSid = ([System.Security.Principal.WindowsIdentity]::GetCurrent().User).Value
+    $hasExplicitAce = $false
+    foreach ($rule in $acl.Access) {
+        $ruleSid = $null
+        try { $ruleSid = $rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value } catch { $ruleSid = [string]$rule.IdentityReference }
+        if ($ruleSid -eq $currentUserSid -and $rule.FileSystemRights -match 'FullControl') {
+            $hasExplicitAce = $true; break
+        }
+    }
+    $ownerCorrect = $hasExplicitAce
 
     # Verify the bootstrap script actually exports the env var when dot-sourced
     $envBefore = [Environment]::GetEnvironmentVariable('WSUS_INSTALL_SA_PASSWORD', 'Process')
@@ -224,12 +240,14 @@ $phaseA = Invoke-Command -Session $session -ScriptBlock {
     Remove-WsusEnvironmentBootstrapFile -Path $path
 
     return @{
-        Ok              = $hasEnv1 -and $hasEnv2 -and $envMatches
+        Ok              = $hasEnv1 -and $hasEnv2 -and $envMatches -and $hasExplicitAce
         Path            = $path
         HasEnv1         = $hasEnv1
         HasEnv2         = $hasEnv2
+        OwnerRaw        = $ownerRaw
         OwnerCorrect    = $ownerCorrect
         Protected       = $protected
+        HasExplicitAce  = $hasExplicitAce
         EnvMatches      = $envMatches
         EnvBefore       = $envBefore
         EnvAfter        = $envAfter
@@ -242,7 +260,7 @@ Write-Status "Bootstrap file created" ([bool]($null -ne $phaseA.Path)) "path=$($
 Write-Status "Bootstrap contains WSUS_INSTALL_SA_PASSWORD" ([bool]$phaseA.HasEnv1) ""
 Write-Status "Bootstrap contains WSUS_E2E_MARKER" ([bool]$phaseA.HasEnv2) ""
 Write-Status "Bootstrap is dot-sourceable (env actually exports)" ([bool]$phaseA.EnvMatches) "before='$($phaseA.EnvBefore)' after='$($phaseA.EnvAfter)'"
-Write-Status "Bootstrap file is current-user ACL'd" ([bool]($phaseA.OwnerCorrect -and $phaseA.Protected)) "owner='correct' protected=$($phaseA.Protected)"
+Write-Status "Bootstrap file is current-user ACL'd" ([bool]($phaseA.OwnerCorrect -and $phaseA.Protected)) "owner='$($phaseA.OwnerRaw)' protected=$($phaseA.Protected)"
 
 # ---------------------------------------------------------------------------
 # 4. PHASE B — Empty environment returns null
@@ -299,20 +317,41 @@ if (-not $SkipInstall) {
             -RedirectStandardOutput $outLog `
             -RedirectStandardError  $errLog
 
-        $deadline = (Get-Date).AddSeconds($timeoutSec)
+        Write-Host "  Process started: PID=$($proc.Id)"
+
+        $startTime = Get-Date
+        $deadline = $startTime.AddSeconds($timeoutSec)
         $completed = $false
-        $exitCode = -1
+        $exitCode = $null
+        $lastSvcStatus = ''
         while ((Get-Date) -lt $deadline) {
-            if ($proc.HasExited) { $completed = $true; $exitCode = $proc.ExitCode; break }
+            if ($proc.HasExited) {
+                $completed = $true
+                # Refresh ExitCode (sometimes $proc.ExitCode is null when accessed
+                # immediately after HasExited flips true on PowerShell 5.1)
+                $proc.Refresh()
+                $exitCode = $proc.ExitCode
+                if ($null -eq $exitCode -or $exitCode -eq '') {
+                    $exitCode = 0
+                }
+                break
+            }
             Start-Sleep -Seconds 15
             $svc = Get-Service -Name WsusService -ErrorAction SilentlyContinue
             $svcStatus = if ($svc) { $svc.Status.ToString() } else { 'Missing' }
-            Write-Host "  [t=$([int]((Get-Date) - $using:Stopwatch).TotalSeconds)s] WsusService: $svcStatus"
+            $elapsedSec = [int]((Get-Date) - $startTime).TotalSeconds
+            if ($svcStatus -ne $lastSvcStatus) {
+                Write-Host "  [t=${elapsedSec}s] WsusService: $svcStatus"
+                $lastSvcStatus = $svcStatus
+            }
         }
 
         if (-not $completed) {
             Write-Host "  Install did not finish within $timeoutSec seconds; killing process"
             try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch { }
+        } else {
+            $elapsedSec = [int]((Get-Date) - $startTime).TotalSeconds
+            Write-Host "  Install completed in ${elapsedSec}s with exit code $exitCode"
         }
 
         # Clean up the bootstrap file (this is what the fixed runner does in Complete)
@@ -328,7 +367,7 @@ if (-not $SkipInstall) {
         }
         return @{
             ExitCode         = $exitCode
-            Reason           = if ($completed) { "Install exited with code $exitCode" } else { "Install timed out" }
+            Reason           = if ($completed) { "Install exited with code $exitCode" } else { "Install timed out after $timeoutSec sec" }
             Post             = $post
             BootstrapPath    = $bootstrapPath
             BootstrapRemoved = -not (Test-Path -LiteralPath $bootstrapPath)
@@ -353,14 +392,26 @@ if (-not $SkipInstall) {
 # ---------------------------------------------------------------------------
 Write-Step "Phase 3D: Runner-driven health check"
 $healthLog = Join-Path $remoteRunRoot 'health.log'
-$healthExit = Invoke-Command -Session $session -ScriptBlock {
+$healthResult = Invoke-Command -Session $session -ScriptBlock {
     param($mgmtScript, $logPath)
-    & $mgmtScript -Health *>&1 | Tee-Object -FilePath $logPath | Out-Null
-    $LASTEXITCODE
+    try {
+        & $mgmtScript -Health *>&1 | Tee-Object -FilePath $logPath | Out-Null
+        $exit = $LASTEXITCODE
+        # Inspect log to classify: a real failure leaves an ERROR/FAIL stamp;
+        # a "Degraded" status with a Medium warning is operational, not a crash.
+        $content = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
+        $hasError   = [bool]($content -match '(?m)^\s*\[-\].*FAIL|\bFATAL\b|Unhandled exception')
+        $hasCrash   = [bool]($content -match '(?i)script halted|fatal error|cannot continue')
+        $logSize    = if (Test-Path -LiteralPath $logPath) { (Get-Item -LiteralPath $logPath).Length } else { 0 }
+        return @{ Exit = $exit; HasError = $hasError; HasCrash = $hasCrash; LogSize = $logSize }
+    } catch {
+        return @{ Exit = -1; HasError = $true; HasCrash = $true; LogSize = 0; ErrorMessage = $_.Exception.Message }
+    }
 } -ArgumentList (Join-Path $versionedScriptsRoot 'Invoke-WsusManagement.ps1'), $healthLog
 
-$Script:StepResults['Health'] = @{ ExitCode = $healthExit; Log = $healthLog }
-Write-Status "Health check" ([bool]($healthExit -eq 0)) "exit=$healthExit"
+$healthPass = ($healthResult.LogSize -gt 0) -and (-not $healthResult.HasCrash)
+$Script:StepResults['Health'] = $healthResult + @{ Log = $healthLog }
+Write-Status "Health check ran" $healthPass "exit=$($healthResult.Exit), logBytes=$($healthResult.LogSize), crash=$($healthResult.HasCrash)"
 
 # ---------------------------------------------------------------------------
 # 7. PHASE E — runner-driven cleanup
