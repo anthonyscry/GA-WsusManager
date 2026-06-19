@@ -35,7 +35,10 @@ try {
     if (-not (Get-Command New-WsusGuiStatusText -ErrorAction SilentlyContinue)) {
         $guiShellPath = Join-Path $PSScriptRoot 'WsusGuiShell.psm1'
         if (Test-Path -LiteralPath $guiShellPath -PathType Leaf) {
-            Import-Module $guiShellPath -Force -DisableNameChecking -ErrorAction SilentlyContinue
+            # -Global: keep the dependency visible to the GUI session after this
+            # module loads (otherwise Import-Module -Force re-installs the module
+            # in this module's private scope and hides its exports).
+            Import-Module $guiShellPath -Global -Force -DisableNameChecking -ErrorAction SilentlyContinue
         }
     }
 } catch {
@@ -785,5 +788,6 @@ Export-ModuleMember -Function @(
     'Find-WsusScript',
     'Reset-WsusOperationGuard',
     'New-WsusEnvironmentBootstrapFile',
-    'Remove-WsusEnvironmentBootstrapFile'
+    'Remove-WsusEnvironmentBootstrapFile',
+    'Start-RunnerTimer'
 )

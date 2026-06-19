@@ -4,7 +4,7 @@
 ===============================================================================
 Script: Invoke-WsusManagement.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 4.0.5
+Version: derived from metadata.json (see Get-WsusAppVersion in WsusConfig)
 Date: 2026-01-10
 ===============================================================================
 
@@ -1973,7 +1973,7 @@ function Invoke-WsusReset {
 function Show-Menu {
     Clear-Host
     Write-Host ("=" * 88) -ForegroundColor Cyan
-    $cliVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+    $cliVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '' }
     Write-Host "              WSUS Management v$cliVersion" -ForegroundColor Cyan
     Write-Host "              Author: Tony Tran, ISSO, GA-ASI" -ForegroundColor Gray
     Write-Host ("=" * 88) -ForegroundColor Cyan

@@ -214,7 +214,7 @@ $VerbosePreference = 'SilentlyContinue'
 $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
 # === SCRIPT VERSION ===
-$ScriptVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+$ScriptVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '' }
 
 function Test-WsusSelectedCategoryTitle {
     param(

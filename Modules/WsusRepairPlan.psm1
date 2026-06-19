@@ -11,7 +11,8 @@ $modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Spl
 foreach ($moduleName in @('WsusHostEnvironment.psm1','WsusPermissions.psm1','WsusFirewall.psm1','WsusServices.psm1','WsusUtilities.psm1')) {
     $candidate = Join-Path $modulePath $moduleName
     if (Test-Path $candidate) {
-        Import-Module $candidate -Force -DisableNameChecking -ErrorAction SilentlyContinue
+        # -Global: keep the dependency visible to the GUI session after this module loads
+        Import-Module $candidate -Global -Force -DisableNameChecking -ErrorAction SilentlyContinue
     }
 }
 

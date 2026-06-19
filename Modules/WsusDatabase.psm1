@@ -37,7 +37,10 @@ $needsImport = -not (Get-Command 'Invoke-WsusSqlcmd' -ErrorAction SilentlyContin
 if ($needsImport) {
     $utilPath = Join-Path $modulePath "WsusUtilities.psm1"
     if (Test-Path $utilPath) {
-        Import-Module $utilPath -Force -DisableNameChecking -ErrorAction Stop
+        # -Global: import into the global session scope, not the parent module's
+        # private scope (without it, the imported module hides its exports from
+        # the global session).
+        Import-Module $utilPath -Global -Force -DisableNameChecking -ErrorAction Stop
     } else {
         throw "WsusUtilities.psm1 not found in $modulePath. This module is required for database operations."
     }

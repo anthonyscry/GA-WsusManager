@@ -28,13 +28,15 @@ Date: 2026-01-10
 $modulePath = if ($PSScriptRoot) { $PSScriptRoot } elseif ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $svcModulePath = Join-Path $modulePath 'WsusServices.psm1'
 if (Test-Path $svcModulePath) {
-    try { Import-Module $svcModulePath -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusServices" }
+    # -Global: keep the dependency visible to the GUI session after this module loads
+    try { Import-Module $svcModulePath -Global -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusServices" }
 }
 
 # Import WsusScheduledTask for canonical local maintenance task status
 $taskModulePath = Join-Path $modulePath 'WsusScheduledTask.psm1'
 if (Test-Path $taskModulePath) {
-    try { Import-Module $taskModulePath -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusScheduledTask" }
+    # -Global: keep the dependency visible to the GUI session after this module loads
+    try { Import-Module $taskModulePath -Global -Force -DisableNameChecking -ErrorAction Stop } catch { Write-Verbose "WsusAutoDetection: Could not import WsusScheduledTask" }
 }
 
 # DETAILED SERVICE STATUS

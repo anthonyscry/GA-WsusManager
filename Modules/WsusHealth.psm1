@@ -32,7 +32,11 @@ foreach ($modName in $requiredModules) {
     $modFile = Join-Path $modulePath "$modName.psm1"
     if (Test-Path $modFile) {
         try {
-            Import-Module $modFile -Force -DisableNameChecking -ErrorAction Stop
+            # -Global: imports the dependency into the global session scope, not
+            # the parent module's private scope. Without it, Import-Module -Force
+            # removes any pre-existing copy from the global scope and re-installs
+            # the module privately, hiding its exports (e.g. Add-WsusSqlLogin).
+            Import-Module $modFile -Global -Force -DisableNameChecking -ErrorAction Stop
         } catch {
             Write-Warning "WsusHealth: Failed to import $modName - $($_.Exception.Message)"
         }

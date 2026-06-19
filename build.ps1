@@ -491,6 +491,14 @@ try {
             Copy-Item ".\DomainController\*" -Destination (Join-Path $packageDir "DomainController") -Recurse
         }
 
+        # Copy metadata.json (single source of truth for the app version; read by
+        # Get-WsusAppVersion in WsusConfig at runtime). Without this on the VM,
+        # Get-WsusAppVersion always falls back to the hardcoded default in
+        # WsusConfig.psm1, even after the version is bumped.
+        if (Test-Path ".\metadata.json") {
+            Copy-Item ".\metadata.json" -Destination $packageDir
+        }
+
         # Create quick start guide
         $quickStart = @"
 WSUS Manager v$Version - Quick Start Guide
@@ -507,10 +515,10 @@ INSTALLATION
 1. Extract the entire folder to your WSUS server (e.g., C:\WSUS\WsusManager)
 2. Keep the folder structure intact:
    WsusManager-v$Version\
-   ├── GA-WsusManager.exe   (main application)
-   ├── Scripts\             (required - operation scripts)
-   ├── Modules\             (required - PowerShell modules)
-   └── DomainController\    (optional - GPO scripts)
+   +-- GA-WsusManager.exe   (main application)
+   +-- Scripts\             (required - operation scripts)
+   +-- Modules\             (required - PowerShell modules)
+   '-- DomainController\    (optional - GPO scripts)
 3. Right-click GA-WsusManager.exe and select "Run as administrator"
 
 IMPORTANT: Do not move GA-WsusManager.exe without its Scripts and Modules folders!

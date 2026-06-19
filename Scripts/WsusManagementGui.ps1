@@ -3,7 +3,7 @@
 ===============================================================================
 Script: WsusManagementGui.ps1
 Author: Tony Tran, ISSO, Classified Computing, GA-ASI
-Version: 4.0.5
+Version: derived from metadata.json (see Get-WsusAppVersion in WsusConfig)
 ===============================================================================
 .SYNOPSIS
     WSUS Manager GUI - Modern WPF interface for WSUS management
@@ -51,7 +51,10 @@ try {
 }
 #endregion
 
-$script:AppVersion = if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) { Get-WsusAppVersion } else { '4.0.5' }
+# AppVersion is set AFTER modules load below (line ~310). The early assignment
+# here used to fall back to '4.0.5' when Get-WsusAppVersion was not yet imported,
+# which produced stale "=== Starting v4.0.5 ===" banners on real builds.
+$script:AppVersion = $null
 $script:StartupTime = Get-Date
 
 #region Script Path & Settings
@@ -261,6 +264,12 @@ if ($script:ModulesDir) {
         try { Import-Module $utilitiesPath -Force -DisableNameChecking -ErrorAction Stop }
         catch { Write-Log "Failed to reload WsusUtilities exports: $_" }
     }
+}
+
+# Resolve the canonical app version AFTER modules load (was set to $null at the top
+# of the script because Get-WsusAppVersion isn't imported until now).
+if (Get-Command Get-WsusAppVersion -ErrorAction SilentlyContinue) {
+    try { $script:AppVersion = Get-WsusAppVersion } catch { Write-Log "Get-WsusAppVersion failed: $_" }
 }
 
 if (Get-Command Get-WsusRuntimeConfig -ErrorAction SilentlyContinue) {
@@ -506,7 +515,7 @@ $script:StdinFlushTimer = $null
                         <Image x:Name="SidebarLogo" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="WSUS Manager" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                            <TextBlock x:Name="VersionLabel" Text="v4.0.5" FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="VersionLabel" Text="v..." FontSize="10" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -734,7 +743,7 @@ $script:StdinFlushTimer = $null
                             <Image x:Name="AboutLogo" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"/>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="WSUS Manager" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Text1}"/>
-                                 <TextBlock x:Name="AboutVersion" Text="Version 4.0.5" FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
+                                 <TextBlock x:Name="AboutVersion" Text="Version ..." FontSize="12" Foreground="{StaticResource Text2}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Windows Server Update Services Management Tool" FontSize="12" Foreground="{StaticResource Text3}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -3235,6 +3244,21 @@ function Invoke-LogOperation {
         $cleanupAction = { param([string[]]$Keys) Clear-WsusSecretEnvironment -Keys $Keys }.GetNewClosure()
 
         Invoke-WsusGuiOperationCompletion -Completion $completion -LogAction $logAction -NotificationAction $notificationAction -HistoryAction $historyAction -CleanupAction $cleanupAction -NotificationsEnabled:($script:NotificationsEnabled -and $script:HasNotificationModule) -HistoryEnabled:($script:HistoryEnabled -and $null -ne $historyAction)
+
+        # Install op: WSUS services and content were just provisioned. Refresh the
+        # dashboard so the cards flip from "Not Installed" to "Running" without
+        # requiring the user to navigate away and back, or wait for the 30 s
+        # auto-refresh tick.
+        if ($Success -and $Id -eq 'install') {
+            try {
+                # Update-Dashboard reads WsusService.Test-WsusInstalled etc.;
+                # re-evaluation is required because service state was false before.
+                Update-WsusButtonState
+                Update-Dashboard
+            } catch {
+                Write-LogOutput "Dashboard refresh after install failed: $($_.Exception.Message)" -Level Warning
+            }
+        }
         return
 
         $duration = (Get-Date) - $startedAt
@@ -3633,8 +3657,9 @@ $controls.BtnBack.Add_Click({ Show-Panel "Dashboard" "Dashboard" "BtnDashboard" 
 #region Initialize
 $script:Splash = Show-SplashScreen
 Update-SplashProgress -Splash $script:Splash -Progress 20 -Status "Loading interface..."
-$controls.VersionLabel.Text = "v$script:AppVersion"
-$controls.AboutVersion.Text = "Version $script:AppVersion"
+$versionDisplay = if ([string]::IsNullOrWhiteSpace($script:AppVersion)) { 'unknown' } else { $script:AppVersion }
+$controls.VersionLabel.Text = "v$versionDisplay"
+$controls.AboutVersion.Text = "Version $versionDisplay"
 
 # Initialize Live Terminal button state from saved settings
 if ($script:LiveTerminalMode) {
