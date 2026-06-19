@@ -14,6 +14,19 @@
 BeforeAll {
     $ModulePath = Join-Path $PSScriptRoot '..\Modules\WsusOperationRunner.psm1'
     Import-Module $ModulePath -Force -DisableNameChecking
+
+    # Load WPF assemblies once so DispatcherTimer (used by Start-WsusOperation)
+    # is resolvable when tests exercise the runner end-to-end. Skip silently if
+    # they are not present (Linux/CI hosts without PresentationCore).
+    $script:WpfAvailable = $false
+    try {
+        Add-Type -AssemblyName PresentationCore -ErrorAction Stop
+        Add-Type -AssemblyName PresentationFramework -ErrorAction Stop
+        Add-Type -AssemblyName WindowsBase -ErrorAction Stop
+        $script:WpfAvailable = $true
+    } catch {
+        $script:WpfAvailable = $false
+    }
 }
 
 AfterAll {
@@ -288,6 +301,208 @@ Describe "Start-WsusOperation" {
             # This test requires a real WPF dispatcher and is intentionally skipped
             # in automated runs.  Run manually to verify end-to-end operation lifecycle.
             $true | Should -Be $true
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+Describe "New-WsusEnvironmentBootstrapFile" {
+    Context "Empty environment" {
+        It "Returns null when given no entries" {
+            $result = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{}
+            $result | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "Writing env vars to a temp file" {
+        It "Writes a Set-Item line per non-blank key" {
+            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ FOO = 'bar'; BAZ = 'qux' }
+            try {
+                $path | Should -Not -BeNullOrEmpty
+                Test-Path -LiteralPath $path -PathType Leaf | Should -BeTrue
+                $content = Get-Content -LiteralPath $path -Raw
+                $content | Should -Match "Set-Item -LiteralPath 'Env:FOO' -Value 'bar' -Force"
+                $content | Should -Match "Set-Item -LiteralPath 'Env:BAZ' -Value 'qux' -Force"
+            } finally {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It "Escapes embedded single quotes in values" {
+            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ SECRET = "O'Brien" }
+            try {
+                $content = Get-Content -LiteralPath $path -Raw
+                # doubled-up single quotes survive PowerShell single-quoted-string parsing
+                $content | Should -Match "Set-Item -LiteralPath 'Env:SECRET' -Value 'O''Brien' -Force"
+            } finally {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It "Skips blank keys without throwing" {
+            $path = InModuleScope WsusOperationRunner { param($e) New-WsusEnvironmentBootstrapFile -Environment $e } -ArgumentList @{ '' = 'ignored'; REAL = 'kept' }
+            try {
+                $content = Get-Content -LiteralPath $path -Raw
+                $content | Should -Not -Match "Env:'"
+                $content | Should -Match "Set-Item -LiteralPath 'Env:REAL' -Value 'kept' -Force"
+            } finally {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
+Describe "Remove-WsusEnvironmentBootstrapFile" {
+    BeforeAll {
+        $script:RemoveBootstrap = {
+            param($p)
+            InModuleScope WsusOperationRunner { param($x) Remove-WsusEnvironmentBootstrapFile -Path $x } -ArgumentList $p
+        }
+    }
+
+    It "Deletes an existing file" {
+        $path = Join-Path ([System.IO.Path]::GetTempPath()) ("wsus-env-test-{0}.ps1" -f ([guid]::NewGuid().ToString('N')))
+        Set-Content -LiteralPath $path -Value '# stub' -Force
+        Test-Path -LiteralPath $path | Should -BeTrue
+
+        & $script:RemoveBootstrap $path
+        Test-Path -LiteralPath $path | Should -BeFalse
+    }
+
+    It "Is a no-op when the file is missing" {
+        $missing = Join-Path ([System.IO.Path]::GetTempPath()) ("wsus-env-missing-{0}.ps1" -f ([guid]::NewGuid().ToString('N')))
+        { & $script:RemoveBootstrap $missing } | Should -Not -Throw
+    }
+
+    It "Is a no-op when the path is blank" {
+        { & $script:RemoveBootstrap '' } | Should -Not -Throw
+        { & $script:RemoveBootstrap $null } | Should -Not -Throw
+    }
+}
+
+Describe "Start-WsusOperation Terminal-mode environment bootstrap" -Skip:(-not $script:WpfAvailable) {
+    Context "Terminal mode without environment" {
+        It "Does NOT create an env bootstrap file" {
+            $ctx = @{
+                Window             = $null
+                Controls           = @{}
+                OperationButtons   = @()
+                OperationInputs    = @()
+                ScriptRoot         = $env:TEMP
+                SetOperationRunning = { param($v) }
+            }
+
+            $bootstrap = $null
+            $proc = $null
+            try {
+                $proc = Start-WsusOperation -Command 'Write-Output hello' -Title 'NoEnv' -Context $ctx -Mode 'Terminal' -Environment @{} -TimeoutMinutes 0
+                $proc | Should -Not -BeNullOrEmpty
+                Start-Sleep -Milliseconds 250
+                if ($ctx.ContainsKey('EnvBootstrapPath')) { $bootstrap = $ctx['EnvBootstrapPath'] }
+                $bootstrap | Should -BeNullOrEmpty
+            } finally {
+                if ($proc -and -not $proc.HasExited) { $proc.Kill() }
+                if ($bootstrap -and (Test-Path -LiteralPath $bootstrap)) {
+                    Remove-Item -LiteralPath $bootstrap -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    }
+
+    Context "Terminal mode WITH environment" {
+        It "Writes a bootstrap file and injects it into the command line" {
+            $ctx = @{
+                Window             = $null
+                Controls           = @{}
+                OperationButtons   = @()
+                OperationInputs    = @()
+                ScriptRoot         = $env:TEMP
+                SetOperationRunning = { param($v) }
+            }
+
+            $bootstrap = $null
+            $proc = $null
+            try {
+                $env = @{ WSUS_INSTALL_SA_PASSWORD = 'ProbePwd!1' }
+                $proc = Start-WsusOperation -Command 'Write-Output hello' -Title 'EnvTest' -Context $ctx -Mode 'Terminal' -Environment $env -TimeoutMinutes 0
+                $proc | Should -Not -BeNullOrEmpty
+                Start-Sleep -Milliseconds 250
+                $bootstrap = $ctx['EnvBootstrapPath']
+                $bootstrap | Should -Not -BeNullOrEmpty
+                Test-Path -LiteralPath $bootstrap | Should -BeTrue
+                $content = Get-Content -LiteralPath $bootstrap -Raw
+                $content | Should -Match "Set-Item -LiteralPath 'Env:WSUS_INSTALL_SA_PASSWORD' -Value 'ProbePwd!1' -Force"
+            } finally {
+                if ($proc -and -not $proc.HasExited) { $proc.Kill() }
+                if ($bootstrap -and (Test-Path -LiteralPath $bootstrap)) {
+                    Remove-Item -LiteralPath $bootstrap -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    }
+
+    Context "Embedded mode retains direct env propagation" {
+        It "Does NOT create a bootstrap file when UseShellExecute=False" {
+            $ctx = @{
+                Window             = $null
+                Controls           = @{}
+                OperationButtons   = @()
+                OperationInputs    = @()
+                ScriptRoot         = $env:TEMP
+                SetOperationRunning = { param($v) }
+            }
+
+            $bootstrap = $null
+            $proc = $null
+            try {
+                $env = @{ WSUS_INSTALL_SA_PASSWORD = 'EmbeddedProbe' }
+                $proc = Start-WsusOperation -Command 'Write-Output hello' -Title 'EmbeddedEnvTest' -Context $ctx -Mode 'Embedded' -Environment $env -TimeoutMinutes 0
+                $proc | Should -Not -BeNullOrEmpty
+                Start-Sleep -Milliseconds 250
+                $bootstrap = $ctx['EnvBootstrapPath']
+                $bootstrap | Should -BeNullOrEmpty
+            } finally {
+                if ($proc -and -not $proc.HasExited) { $proc.Kill() }
+                if ($bootstrap -and (Test-Path -LiteralPath $bootstrap)) {
+                    Remove-Item -LiteralPath $bootstrap -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    }
+}
+
+Describe "Complete-WsusOperation env bootstrap cleanup" -Skip:(-not $script:WpfAvailable) {
+    BeforeEach {
+        Reset-WsusOperationGuard
+    }
+
+    It "Removes the env bootstrap file when complete is called" {
+        # Create a real temp file to simulate a bootstrap and register it on a
+        # mock context. Complete should unlink it as part of teardown.
+        $fake = Join-Path ([System.IO.Path]::GetTempPath()) ("wsus-env-cleanup-{0}.ps1" -f ([guid]::NewGuid().ToString('N')))
+        Set-Content -LiteralPath $fake -Value '# stub' -Force
+        Test-Path -LiteralPath $fake | Should -BeTrue
+
+        $mockDisp = [PSCustomObject]@{ InvokeCount = 0 }
+        $mockDisp | Add-Member -MemberType ScriptMethod -Name Invoke -Value { param($a) $this.InvokeCount++; if ($a -is [scriptblock]) { $a.Invoke() } }
+        $mockWin = [PSCustomObject]@{}
+        $mockWin | Add-Member -MemberType ScriptProperty -Name Dispatcher -Value { $mockDisp }
+
+        $ctx = @{
+            Window             = $mockWin
+            Controls           = @{ StatusLabel = [PSCustomObject]@{ Text = '' } }
+            OperationButtons   = @()
+            OperationInputs    = @()
+            EnvBootstrapPath   = $fake
+            SetOperationRunning = { param($v) }
+        }
+
+        try {
+            Complete-WsusOperation -Context $ctx -Title 'Cleanup' -Success $true
+            Test-Path -LiteralPath $fake | Should -BeFalse
+            $ctx['EnvBootstrapPath'] | Should -BeNullOrEmpty
+        } finally {
+            if (Test-Path -LiteralPath $fake) { Remove-Item -LiteralPath $fake -Force -ErrorAction SilentlyContinue }
         }
     }
 }

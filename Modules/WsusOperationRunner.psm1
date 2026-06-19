@@ -82,6 +82,101 @@ function Format-LogLine {
     return "$ts $prefix $Line"
 }
 
+function New-WsusEnvironmentBootstrapFile {
+<#
+.SYNOPSIS
+    Writes a temporary PowerShell script that exports the supplied environment
+    variables, returning the file path so the caller can dot-source it before
+    the real command runs.
+.DESCRIPTION
+    .NET ProcessStartInfo rejects the combination of UseShellExecute=$true and
+    a populated EnvironmentVariables hashtable. To still pass secrets (e.g.
+    WSUS_INSTALL_SA_PASSWORD) to a child PowerShell process started with a
+    visible console window (Terminal mode), this function writes the values to
+    a one-line-per-variable bootstrap file under $env:TEMP. The caller injects
+    `. "$path"` ahead of the user command so the env vars are in scope before
+    the real script runs. The file is created with restrictive ACLs (current
+    user only) and must be deleted by the caller.
+.PARAMETER Environment
+    Hashtable of env var name -> value (values are coerced to [string]).
+.OUTPUTS
+    [string] Full path to the bootstrap file, or $null if Environment is empty.
+.EXAMPLE
+    $bootstrap = New-WsusEnvironmentBootstrapFile -Environment @{ WSUS_INSTALL_SA_PASSWORD = 'Secret' }
+    $cmd = ". '$bootstrap'; & '$script' -Foo bar"
+#>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][hashtable]$Environment
+    )
+
+    if (@($Environment.Keys).Count -eq 0) { return $null }
+
+    $fileName = "wsus-env-{0}.ps1" -f ([guid]::NewGuid().ToString('N'))
+    $fullPath = Join-Path ([System.IO.Path]::GetTempPath()) $fileName
+
+    $sb = New-Object System.Text.StringBuilder
+    $null = $sb.AppendLine("# wsus environment bootstrap - auto-generated, do not edit")
+    foreach ($entry in $Environment.GetEnumerator()) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry.Key)) { continue }
+        $name  = [string]$entry.Key
+        $value = [string]$entry.Value
+        # Single-quoted literal to avoid $env re-evaluation; escape any embedded single quotes
+        $escaped = $value -replace "'", "''"
+        $null = $sb.AppendLine("Set-Item -LiteralPath 'Env:$name' -Value '$escaped' -Force")
+    }
+
+    try {
+        Set-Content -LiteralPath $fullPath -Value $sb.ToString() -Encoding UTF8 -Force
+    } catch {
+        Write-Verbose "Failed to write env bootstrap file '$fullPath': $($_.Exception.Message)"
+        return $null
+    }
+
+    # Best-effort restrictive ACL: current user only. Ignore on unsupported hosts.
+    try {
+        $acl = Get-Acl -LiteralPath $fullPath
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            [System.Security.Principal.WindowsIdentity]::GetCurrent().User,
+            'FullControl',
+            'Allow')
+        $acl.SetAccessRule($rule)
+        # Strip inherited rules so non-owner users on the host cannot read the secret
+        $acl.SetAccessRuleProtection($true, $false) | Out-Null
+        Set-Acl -LiteralPath $fullPath -AclObject $acl
+    } catch {
+        Write-Verbose "Could not harden ACLs on env bootstrap file: $($_.Exception.Message)"
+    }
+
+    return $fullPath
+}
+
+function Remove-WsusEnvironmentBootstrapFile {
+<#
+.SYNOPSIS
+    Deletes the env bootstrap file written by New-WsusEnvironmentBootstrapFile.
+.DESCRIPTION
+    Idempotent. Swallows missing-file errors. The file is unlinked on a best-
+    effort basis so secret material does not linger on disk after the operation
+    completes.
+.PARAMETER Path
+    Path returned by New-WsusEnvironmentBootstrapFile.
+.EXAMPLE
+    Remove-WsusEnvironmentBootstrapFile -Path $bootstrap
+#>
+    [CmdletBinding()]
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    try {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+    } catch {
+        Write-Verbose "Failed to remove env bootstrap file '$Path': $($_.Exception.Message)"
+    }
+}
+
 #endregion
 
 #region Public API
@@ -171,6 +266,13 @@ function Complete-WsusOperation {
 
     Stop-RunnerTimers
     Unregister-RunnerEvents
+
+    # Clean up the env bootstrap file (Terminal-mode secret propagation) on
+    # every completion path so the SA password does not linger on disk.
+    if ($Context.ContainsKey('EnvBootstrapPath') -and -not [string]::IsNullOrWhiteSpace($Context['EnvBootstrapPath'])) {
+        Remove-WsusEnvironmentBootstrapFile -Path ([string]$Context['EnvBootstrapPath'])
+        $Context['EnvBootstrapPath'] = $null
+    }
 
     $completionState = if ($Success) { 'Completed' } else { 'Failed' }
     if (Get-Command Set-WsusGuiOperationUiState -ErrorAction SilentlyContinue) {
@@ -359,9 +461,28 @@ function Start-WsusOperation {
         $psi.WorkingDirectory = $Context.ScriptRoot
     }
 
-    foreach ($entry in $Environment.GetEnumerator()) {
-        if ($null -ne $entry.Key) {
-            $psi.EnvironmentVariables[[string]$entry.Key] = [string]$entry.Value
+    # Terminal mode (UseShellExecute=$true) cannot carry EnvironmentVariables.
+    # To still pass secrets like WSUS_INSTALL_SA_PASSWORD, write them to a
+    # temporary bootstrap script and dot-source it ahead of the real command.
+    # The bootstrap file is recorded on the context so Complete-WsusOperation
+    # can clean it up.
+    $envBootstrapPath = $null
+    $useEnvBootstrap = ($Mode -eq 'Terminal') -and (@($Environment.Keys).Count -gt 0)
+
+    if ($useEnvBootstrap) {
+        $envBootstrapPath = New-WsusEnvironmentBootstrapFile -Environment $Environment
+        if ([string]::IsNullOrWhiteSpace($envBootstrapPath)) {
+            throw "Failed to materialise environment bootstrap file for Terminal-mode operation '$Title'."
+        }
+        $Context['EnvBootstrapPath'] = $envBootstrapPath
+        # Do not populate ProcessStartInfo.EnvironmentVariables; UseShellExecute=$true
+        # would reject them. The bootstrap script injects them into the child PowerShell
+        # process scope instead.
+    } else {
+        foreach ($entry in $Environment.GetEnumerator()) {
+            if ($null -ne $entry.Key) {
+                $psi.EnvironmentVariables[[string]$entry.Key] = [string]$entry.Value
+            }
         }
     }
 
@@ -369,7 +490,13 @@ function Start-WsusOperation {
         'Terminal' {
             $psi.UseShellExecute  = $true
             $psi.CreateNoWindow   = $false
-            $psi.Arguments        = "-NoProfile -ExecutionPolicy Bypass -Command `"$Command`""
+            $terminalCmd = $Command
+            if ($useEnvBootstrap) {
+                # Dot-source the bootstrap ahead of the user command so env vars
+                # are in scope before Install-WsusWithSqlExpress.ps1 reads them.
+                $terminalCmd = ". '$envBootstrapPath'; $Command"
+            }
+            $psi.Arguments        = "-NoProfile -ExecutionPolicy Bypass -Command `"$terminalCmd`""
         }
         'Embedded' {
             $psi.UseShellExecute         = $false
@@ -395,6 +522,12 @@ function Start-WsusOperation {
     try {
         $proc.Start() | Out-Null
     } catch {
+        # Clean up the bootstrap file before bubbling the failure through
+        # Complete-WsusOperation (the watchdog/exit paths also clean up, but
+        # Process never started so neither will fire here).
+        if ($useEnvBootstrap) {
+            Remove-WsusEnvironmentBootstrapFile -Path $envBootstrapPath
+        }
         Complete-WsusOperation -Context $Context -Title $Title -Success $false -OnComplete $OnComplete
         throw
     }
