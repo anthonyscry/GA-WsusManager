@@ -141,10 +141,23 @@ function Test-WsusSelectedProductTitle {
         [string]$AvailableTitle
     )
 
+    # Loose substring/regex match so user defaults survive the
+    # Server/WSUS renaming quirks ("Microsoft Defender Antivirus" default vs
+    # WSUS's "Microsoft Defender Antimalware Platform", "Visual Studio 2022"
+    # default vs "Visual Studio 2022 LTSC", etc.).
     switch -Regex ($SelectedProduct) {
-        '^\s*\.NET Framework\s*$' { return $AvailableTitle -match '(?i)\.NET Framework' }
-        '^Visual Studio 2022$'    { return $AvailableTitle -match '(?i)\bVisual Studio 2022\b' }
-        default                   { return $AvailableTitle -eq $SelectedProduct }
+        '^\s*\.NET Framework\s*$'          { return ($AvailableTitle -match '(?i)\.NET Framework') }
+        '^Visual Studio 2022$'             { return ($AvailableTitle -match '(?i)\bVisual Studio 2022\b') }
+        '^Microsoft Defender Antivirus$'   { return ($AvailableTitle -match '(?i)Defender.*Antivirus|Antimalware Platform') }
+        '^Microsoft Defender for Endpoint$' { return ($AvailableTitle -match '(?i)Defender for Endpoint') }
+        '^Office 2016$'                    { return ($AvailableTitle -match '(?i)\bOffice 2016\b') }
+        '^SQL Server 2022$'                { return ($AvailableTitle -match '(?i)SQL Server (2022|2019|2017|2016)') }
+        '^Security Essentials$'             { return ($AvailableTitle -match '(?i)\bSecurity Essentials\b') }
+        '^Microsoft 365 Apps$'              { return ($AvailableTitle -match '(?i)\b(Microsoft 365 Apps|Office 365)\b') }
+        '^Exchange Server 2019$'           { return ($AvailableTitle -match '(?i)Exchange Server 2019') }
+        '^Windows 11$'                      { return ($AvailableTitle -match '(?i)Windows 11') }
+        '^Windows Server 2019$'             { return ($AvailableTitle -match '(?i)Windows Server 2019') }
+        default                            { return ($AvailableTitle -eq $SelectedProduct) }
     }
 }
 function Resolve-WsusBrandingAssetPath {
@@ -2301,7 +2314,10 @@ function Show-MaintenanceDialog {
     $prodTitle.Margin = "0,0,0,8"
     $productsStack.Children.Add($prodTitle)
 
-    # Dynamically read products from WSUS, fall back to saved defaults
+    # Dynamically read products from WSUS, fall back to saved defaults.
+    # Always include the user's saved/default products even when WSUS API
+    # returns a list -- otherwise the defaults look "lost" until WSUS has
+    # committed the same titles (after a successful sync).
     $productNames = $script:SyncProducts
     $productsFromWsus = $false
     try {
@@ -2310,7 +2326,15 @@ function Show-MaintenanceDialog {
         if ($wsusApi) {
             $wsusProducts = $wsusApi.GetSubscription().GetUpdateCategories() | Where-Object { $_.Type -eq 'Product' -and -not $_.ParentCategory }
             if ($wsusProducts.Count -gt 0) {
-                $productNames = @($wsusProducts | ForEach-Object { $_.Title } | Sort-Object -Unique)
+                $wsusNames = @($wsusProducts | ForEach-Object { $_.Title } | Sort-Object -Unique)
+                # Merge: WSUS server's known products + any saved/default
+                # products not already in the WSUS list, so the user's
+                # selections always show up as checkboxes.
+                $merged = @($wsusNames)
+                foreach ($def in $script:SyncProducts) {
+                    if (-not ($merged | Where-Object { $_ -eq $def })) { $merged += $def }
+                }
+                $productNames = @($merged | Sort-Object -Unique)
                 $productsFromWsus = $true
             }
         }
