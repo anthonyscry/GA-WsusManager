@@ -842,21 +842,25 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 # import phase (which is most of a first-sync's wall-clock time). Fall
                 # back to counting "Successfully deployed" lines in Change.log since
                 # that file is appended to in real-time as metadata commits land.
-                if ($total -le 0) {
-                    # WSUS does not publish a LogDir in HKLM:\SOFTWARE\Microsoft\
-                    # Update Services\Server\Setup on every build. Fall back to
-                    # the canonical path under the WSUS install dir.
+                if ($total -le 0 -or ($currentPhase -in @('Categories','Products','Classifications') -and $processed -eq 0)) {
+                    # WSUS API's GetSynchronizationProgress() returns Processed=0
+                    # throughout the catalog-import phase even though metadata is
+                    # actively landing in SUSDB. Fall back to counting
+                    # 'Successfully deployed' lines in Change.log so the GUI
+                    # shows non-zero progress during this phase. Triggered when:
+                    #   - API total is zero (catalog not yet sized), OR
+                    #   - API phase is one of the catalog-import phases and
+                    #     processed count is zero (API hasn't started counting
+                    #     even though Change.log has commits).
                     $setupKey = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup' -ErrorAction SilentlyContinue
                     $wsusRoot = if ($setupKey -and $setupKey.TargetDir) { Split-Path -Parent $setupKey.TargetDir } else { 'C:\Program Files\Update Services' }
                     $changeLogPath = Join-Path $wsusRoot 'LogFiles\Change.log'
                     if (Test-Path $changeLogPath) {
                         $deployedLines = (Select-String -Path $changeLogPath -Pattern 'Successfully deployed' -ErrorAction SilentlyContinue | Measure-Object).Count
                         $processed = $deployedLines
-                        # Estimate total from UpdateServices catalog: not exposed,
-                        # so we report running count without a denominator. The
-                        # percent column gets a "~" prefix to signal it's an
-                        # estimate, not the API number.
-                        $total = -1
+                        # Use API total if known; otherwise leave total at -1
+                        # (denominator rendered as "?" in the log line).
+                        if ($total -le 0) { $total = -1 }
                     }
                 }
 
