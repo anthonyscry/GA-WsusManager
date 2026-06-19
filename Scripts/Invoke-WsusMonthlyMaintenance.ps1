@@ -837,15 +837,41 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 } else { "Unknown" }
                 $processed = if ($null -ne $syncProgress) { $syncProgress.ProcessedItems } else { 0 }
                 $total = if ($null -ne $syncProgress) { $syncProgress.TotalItems } else { 0 }
-                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } else { 0 }
 
-                # Log if: phase changed, 10% progress jump, first iteration, or near completion (95%+)
+                # WSUS API reports ProcessedItems/TotalItems = 0/0 during the catalog
+                # import phase (which is most of a first-sync's wall-clock time). Fall
+                # back to counting "Successfully deployed" lines in Change.log since
+                # that file is appended to in real-time as metadata commits land.
+                if ($total -le 0) {
+                    # WSUS does not publish a LogDir in HKLM:\SOFTWARE\Microsoft\
+                    # Update Services\Server\Setup on every build. Fall back to
+                    # the canonical path under the WSUS install dir.
+                    $setupKey = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup' -ErrorAction SilentlyContinue
+                    $wsusRoot = if ($setupKey -and $setupKey.TargetDir) { Split-Path -Parent $setupKey.TargetDir } else { 'C:\Program Files\Update Services' }
+                    $changeLogPath = Join-Path $wsusRoot 'LogFiles\Change.log'
+                    if (Test-Path $changeLogPath) {
+                        $deployedLines = (Select-String -Path $changeLogPath -Pattern 'Successfully deployed' -ErrorAction SilentlyContinue | Measure-Object).Count
+                        $processed = $deployedLines
+                        # Estimate total from UpdateServices catalog: not exposed,
+                        # so we report running count without a denominator. The
+                        # percent column gets a "~" prefix to signal it's an
+                        # estimate, not the API number.
+                        $total = -1
+                    }
+                }
+
+                $pct = if ($total -gt 0) { [math]::Round(($processed / $total) * 100, 1) } elseif ($total -eq -1 -and $processed -gt 0) { "~" } else { 0 }
+                $totalDisplay = if ($total -eq -1) { "?" } else { "$total" }
+
+                # Log if: phase changed, 10% progress jump, first iteration, near completion (95%+),
+                # or Change.log-derived count grew (covers the catalog phase where API returns 0/0).
                 $phaseChanged = ($currentPhase -ne $lastPhase)
-                $progressJump = ($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1))
-                $nearCompletion = ($pct -ge 95) -and ($processed -ne $lastProcessed)
+                $progressJump = ($total -gt 0) -and (($processed - $lastProcessed) -ge [math]::Max(1, [int]($total * 0.1)))
+                $countGrew = ($total -le 0) -and ($processed -gt $lastProcessed)
+                $nearCompletion = ($total -gt 0) -and ($pct -ge 95) -and ($processed -ne $lastProcessed)
 
-                if ($phaseChanged -or $progressJump -or $nearCompletion -or $syncIterations -eq 0) {
-                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$total"
+                if ($phaseChanged -or $progressJump -or $countGrew -or $nearCompletion -or $syncIterations -eq 0) {
+                    Write-Log "Syncing: $currentPhase ($pct%) | Items: $processed/$totalDisplay"
                     $lastPhase = $currentPhase
                     $lastProcessed = $processed
                 }
