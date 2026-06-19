@@ -845,22 +845,26 @@ if (Test-ShouldRunOperation "Sync" $Operations) {
                 if ($total -le 0 -or ($currentPhase -in @('Categories','Products','Classifications') -and $processed -eq 0)) {
                     # WSUS API's GetSynchronizationProgress() returns Processed=0
                     # throughout the catalog-import phase even though metadata is
-                    # actively landing in SUSDB. Fall back to counting
-                    # 'Successfully deployed' lines in Change.log so the GUI
-                    # shows non-zero progress during this phase. Triggered when:
+                    # actively landing in SUSDB. Fall back to counting rows in
+                    # tbUpdate so the GUI shows non-zero progress during this
+                    # phase. Triggered when:
                     #   - API total is zero (catalog not yet sized), OR
                     #   - API phase is one of the catalog-import phases and
-                    #     processed count is zero (API hasn't started counting
-                    #     even though Change.log has commits).
+                    #     processed count is zero.
                     $setupKey = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Update Services\Server\Setup' -ErrorAction SilentlyContinue
-                    $wsusRoot = if ($setupKey -and $setupKey.TargetDir) { Split-Path -Parent $setupKey.TargetDir } else { 'C:\Program Files\Update Services' }
-                    $changeLogPath = Join-Path $wsusRoot 'LogFiles\Change.log'
-                    if (Test-Path $changeLogPath) {
-                        $deployedLines = (Select-String -Path $changeLogPath -Pattern 'Successfully deployed' -ErrorAction SilentlyContinue | Measure-Object).Count
-                        $processed = $deployedLines
-                        # Use API total if known; otherwise leave total at -1
-                        # (denominator rendered as "?" in the log line).
-                        if ($total -le 0) { $total = -1 }
+                    $sqlInstance = if ($setupKey -and $setupKey.SqlServerName) { $setupKey.SqlServerName } else { '.\SQLEXPRESS' }
+                    $dbName = if ($setupKey -and $setupKey.SqlDatabaseName) { $setupKey.SqlDatabaseName } else { 'SUSDB' }
+                    try {
+                        $countResult = & sqlcmd -S $sqlInstance -d $dbName -Q 'SELECT COUNT(*) FROM tbUpdate' -h -1 2>&1
+                        $tbUpdateCount = ($countResult | Select-Object -Skip 1 -First 1).Trim()
+                        if ($tbUpdateCount -match '^\d+$') {
+                            $processed = [int]$tbUpdateCount
+                            # Use API total if known; otherwise leave total at -1
+                            # (denominator rendered as "?" in the log line).
+                            if ($total -le 0) { $total = -1 }
+                        }
+                    } catch {
+                        # sqlcmd missing or DB unreachable; keep API values
                     }
                 }
 
