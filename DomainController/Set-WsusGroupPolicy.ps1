@@ -14,8 +14,9 @@ Date: 2026-03-20
 .DESCRIPTION
     For AIR-GAPPED networks only. Do NOT deploy on internet-connected systems.
 
-    Automates the deployment of three WSUS GPOs on a Domain Controller:
-    - WSUS Update Policy: Configures Windows Update client settings (linked to domain root)
+    Automates the deployment of four WSUS GPOs on a Domain Controller:
+    - WSUS Update Policy - Servers: Configures Windows Update client settings (linked to Domain Controllers + Member Servers)
+    - WSUS Update Policy - Workstations: Configures Windows Update client settings (linked to Workstations OU only)
     - WSUS Inbound Allow: Firewall rules for WSUS server (linked to Member Servers\WSUS Server)
     - WSUS Outbound Allow: Firewall rules for clients (linked to Domain Controllers, Member Servers, Workstations)
 
@@ -221,7 +222,8 @@ function Get-GpoDefinitions {
         Returns array of GPO definitions with their target OUs.
     .DESCRIPTION
         Each GPO has specific OUs it should be linked to:
-        - WSUS Update Policy: Domain root (all computers get update settings)
+        - WSUS Update Policy - Servers: Domain Controllers + Member Servers
+        - WSUS Update Policy - Workstations: Workstations OU only
         - WSUS Inbound Allow: WSUS Server OU only (server needs inbound connections)
         - WSUS Outbound Allow: All client OUs (clients need outbound to WSUS)
     #>
@@ -229,10 +231,17 @@ function Get-GpoDefinitions {
 
     return @(
         @{
-            DisplayName = "WSUS Update Policy"
-            Description = "Client update configuration - applies to all computers"
+            DisplayName = "WSUS Update Policy - Servers"
+            Description = "Client update configuration - applies to Domain Controllers and Member Servers"
             UpdateWsusSettings = $true
-            TargetOUs = @($DomainDN)  # Domain root
+            TargetOUPaths = @("Member Servers")
+            IncludeDomainControllers = $true
+        },
+        @{
+            DisplayName = "WSUS Update Policy - Workstations"
+            Description = "Client update configuration - applies to Workstations only"
+            UpdateWsusSettings = $true
+            TargetOUPaths = @("Workstations")
         },
         @{
             DisplayName = "WSUS Inbound Allow"
@@ -621,7 +630,6 @@ function Invoke-WsusGroupPolicyImport {
                            -DomainDN $domainInfo.DomainDN
         }
 
-        Push-GPUpdateToAll -DomainDN $domainInfo.DomainDN
         Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count
     } catch {
         Write-Host ""
