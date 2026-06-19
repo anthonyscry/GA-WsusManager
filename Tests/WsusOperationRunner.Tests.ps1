@@ -471,6 +471,20 @@ Describe "Start-WsusOperation Terminal-mode environment bootstrap" -Skip:(-not $
     }
 }
 
+Describe "Start-RunnerTimer" -Skip:(-not $script:WpfAvailable) {
+    It "Starts a DispatcherTimer without throwing" {
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromMilliseconds(500)
+        { InModuleScope WsusOperationRunner { param($t) Start-RunnerTimer -Timer $t } -ArgumentList $timer } | Should -Not -Throw
+        # Cleanup
+        try { $timer.Stop() } catch { }
+    }
+
+    It "Is a no-op when Timer is null" {
+        { InModuleScope WsusOperationRunner { param($t) Start-RunnerTimer -Timer $t } -ArgumentList $null } | Should -Not -Throw
+    }
+}
+
 Describe "Complete-WsusOperation env bootstrap cleanup" -Skip:(-not $script:WpfAvailable) {
     BeforeEach {
         Reset-WsusOperationGuard

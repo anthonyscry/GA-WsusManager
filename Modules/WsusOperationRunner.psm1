@@ -55,6 +55,36 @@ function Stop-RunnerTimers {
     }
 }
 
+function Start-RunnerTimer {
+<#
+.SYNOPSIS
+    Starts a DispatcherTimer, swallowing the InvalidOperationException that
+    fires when the timer was constructed outside a running WPF Dispatcher
+    (e.g. in Pester tests, headless runspaces, or programmatic runners).
+.DESCRIPTION
+    DispatcherTimer.Start() requires an active Dispatcher on the calling
+    thread. In a non-WPF context (programmatic E2E, mock dispatcher) it
+    throws "You cannot call a method on a null-valued expression." That
+    failure was treated as a hard error in the runner, breaking tests that
+    exercised the runner without a real WPF UI. Treat the absence of a
+    Dispatcher as a soft warning instead.
+.PARAMETER Timer
+    DispatcherTimer instance to start.
+.EXAMPLE
+    Start-RunnerTimer -Timer $kTimer
+#>
+    [CmdletBinding()]
+    param([System.Windows.Threading.DispatcherTimer]$Timer)
+    if ($null -eq $Timer) { return }
+    try {
+        $Timer.Start()
+    } catch [System.InvalidOperationException] {
+        Write-Verbose "Timer start skipped (no Dispatcher): $($_.Exception.Message)"
+    } catch {
+        Write-Verbose "Timer start failed: $($_.Exception.Message)"
+    }
+}
+
 function Unregister-RunnerEvents {
     foreach ($jobVar in @('OutputEventJob','ErrorEventJob','ExitEventJob')) {
         $job = Get-Variable -Name $jobVar -Scope Script -ValueOnly -ErrorAction SilentlyContinue
@@ -569,7 +599,7 @@ function Start-WsusOperation {
                     try { $p.StandardInput.WriteLine('') } catch { Write-Verbose $_.Exception.Message }
                 }
             }.GetNewClosure())
-            $kTimer.Start()
+            Start-RunnerTimer -Timer $kTimer
             $script:KeystrokeTimer = $kTimer
         }
 
@@ -641,7 +671,7 @@ function Start-WsusOperation {
                     }
                 } catch { Write-Verbose $_.Exception.Message }
             }.GetNewClosure())
-            $flushTimer.Start()
+            Start-RunnerTimer -Timer $flushTimer
             $script:StdinFlushTimer = $flushTimer
         }
     }
