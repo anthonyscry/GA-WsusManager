@@ -164,7 +164,8 @@ function Complete-WsusOperation {
     # Uses the (ProcessId, OnComplete-target) pair so concurrent operations on
     # different processes are not affected, and tests that share a mock context
     # can complete the same operation multiple times by clearing the entry.
-    $guardKey = if ($Context.ContainsKey('Process') -and $null -ne $Context.Process) { $Context.Process.Id } else { [string]$Context.GetHashCode() }
+    # Process.Id is null until Start() succeeds, so fall back to the context hash in that case.
+    $guardKey = if ($Context.ContainsKey('Process') -and $null -ne $Context.Process -and $null -ne $Context.Process.Id) { $Context.Process.Id } else { [string]$Context.GetHashCode() }
     if ($script:CompletedOperations.ContainsKey($guardKey)) { return }
     $script:CompletedOperations[$guardKey] = $true
 
