@@ -1,101 +1,77 @@
 # Validation and Release Automation
 
-This repository uses a **two-tier CI model** plus a local validation harness:
+This repository currently uses local validation scripts instead of committed GitHub Actions workflows.
 
-| Pipeline | Trigger | Runner | Purpose |
-|----------|---------|--------|---------|
-| `.github/workflows/ci.yml` | every push, every PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, EXE build |
-| `.github/workflows/gui-tests.yml` | manual dispatch + daily schedule | `self-hosted, windows, triton-ajt` | Pester subset plus FlaUI GUI automation through interactive session |
-| `build/Invoke-ShipReadiness.ps1` | local | dev workstation | aggregate verification gate |
+| Gate | Runner | Purpose |
+|------|--------|---------|
+| `build/Invoke-LocalValidation.ps1` | dev workstation | syntax, PSScriptAnalyzer, embedded XAML, Pester |
+| `build/Invoke-ShipReadiness.ps1` | dev workstation | aggregate release-readiness checks |
+| `build.ps1 -SkipTests -SkipCodeReview -NoPush` | dev workstation | package `GA-WsusManager.exe` and `GA-WsusManager-v*.zip` |
 
-The GitHub workflow files are the source of truth for CI. The local scripts under `build/` provide overlapping gates for developer workstations and release readiness.
+GitHub workflow scaffolding was intentionally removed during v4.1.0 cleanup. Treat the local scripts under `build/` as the source of truth for validation.
 
-## Tier 1: `ci.yml` (Standard CI)
-
-Runs on every push and PR to `main` or `release/*`. Uses GitHub-hosted `windows-latest`. **No self-hosted runner required.** Designed to be fast and produce actionable feedback within ~10 minutes.
-
-### Jobs
-
-1. **Syntax Check** — runs `build/Invoke-SyntaxCheck.ps1` against the entire repo. Fails if any `.ps1`, `.psm1`, or `.psd1` has a parse error.
-2. **PSScriptAnalyzer** — installs PSScriptAnalyzer, runs the analyzer across all PS files at Error severity using `.PSScriptAnalyzerSettings.psd1`. Fails on any Error.
-3. **Pester Unit Tests** — installs Pester 5, runs `./Tests` excluding tags `E2E`, `GUI`, `Integration`, `FlaUI` (those need a real WSUS / SQL / IIS stack or interactive desktop). Writes NUnit3 XML to `TestResults/unit-tests.xml`. Fails on any failed test.
-4. **Build EXE** — depends on all of the above. Runs `build.ps1 -SkipTests -NoPush` to produce `dist/GA-WsusManager.exe` and `dist/GA-WsusManager-v*.zip`. Uploads the artifacts for download.
-
-### Concurrency
-
-```yaml
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-Cancels in-progress runs on the same branch when a new push lands. This means PR re-pushes don't pile up runs.
-
-### Triggering Locally
-
-You can reproduce the standard CI gate locally with the same commands:
+## Local validation
 
 ```powershell
-# Syntax
-./build/Invoke-SyntaxCheck.ps1
-
-# Unit tests (same tag exclusions as ci.yml)
-Invoke-Pester -Path ./Tests -Output Detailed -ExcludeTag 'E2E','GUI','Integration','FlaUI'
-
-# Build artifact generation
-./build.ps1 -SkipTests -NoPush
+.\build\Invoke-LocalValidation.ps1
+.\build\Invoke-LocalValidation.ps1 -SkipTests
 ```
 
-## Tier 2: `gui-tests.yml` (Self-Hosted GUI Tests)
+Run targeted tests for changed areas:
 
-Runs a Pester subset plus FlaUI GUI automation. Requires the `triton-ajt` self-hosted runner, which is a Windows desktop with an interactive session — the only environment where FlaUI can drive WPF windows.
+```powershell
+Invoke-Pester -Path .\Tests\Integration.Tests.ps1 -Output Detailed
+Invoke-Pester -Path .\Tests\WsusHealth.Tests.ps1 -Output Detailed
+```
 
-### Triggers
+Run analyzer checks directly:
 
-- **Manual dispatch** with two checkboxes: include unit tests, include GUI tests
-- **Daily schedule**: 14:00 UTC on weekdays (6 AM Pacific)
+```powershell
+Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
+Invoke-ScriptAnalyzer -Path .\Scripts\Invoke-WsusManagement.ps1 -Severity Error,Warning
+```
 
-### Why it can't run on `windows-latest`
+## GUI automation
 
-GitHub-hosted runners run in a non-interactive Session 0 with no desktop. WPF window creation works but UI Automation (UIA) cannot reach controls because there is no logon session, no cursor, no active window. FlaUI needs UIA to find buttons by AutomationId.
+GUI automation still requires a Windows desktop session with Administrator rights and FlaUI dependencies. Use:
 
-### Adding a new self-hosted runner
+```powershell
+.\Tests\Run-GuiTests.ps1 -ResultsPath ".\Tests\flaui-test-results.txt" -TimeoutSeconds 300
+```
 
-The runner must:
+GitHub-hosted runners run in a non-interactive Session 0 and cannot reliably drive WPF windows through UI Automation.
 
-1. Be Windows 10/11 or Server 2019+ with admin rights
-2. Have a logged-on interactive session (Session 1+)
-3. Have Pester 5+, PSScriptAnalyzer, and FlaUI assemblies installed
-4. Be registered with the label `self-hosted, windows, triton-ajt`
+## Build package
 
-GitHub docs: <https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners>
+```powershell
+.\build.ps1 -SkipTests -SkipCodeReview -NoPush
+```
 
-### When to extend this
+Expected outputs:
 
-Add a new self-hosted runner label (e.g. `windows, sql-express`) if you need tests that require:
+```text
+dist\GA-WsusManager.exe
+dist\GA-WsusManager-v4.1.0.zip
+```
 
-- A real SQL Server Express instance (most `WsusDatabase.Tests.ps1` paths)
-- IIS with the WsusPool app pool (most `WsusFirewall.Tests.ps1` paths)
-- A real WSUS install with the WsusContent folder (most `WsusHealth.Tests.ps1` paths)
-- A real Active Directory / GPMC (most `WsusGroupPolicy.Tests.ps1` paths)
-- An interactive desktop session (all of `FlaUI.Tests.ps1`)
+GitHub releases attach only the zip. The standalone EXE remains inside the zip.
 
-## Tier 3: Local Validation
+## When to run deeper tests
 
-The local scripts overlap with CI but are not a byte-for-byte workflow mirror. Use them as developer and release-readiness gates:
+Use the deeper gates before a release or after changes touching GUI startup, packaging, diagnostics, database, or GPO behavior:
+
 ```powershell
 # Aggregate release-readiness gate
 .\build\Invoke-ShipReadiness.ps1
 
-
-# What local validation covers (additional XAML validation)
+# Local validation, including embedded XAML loading
 .\build\Invoke-LocalValidation.ps1
 
-# Full build pipeline (git publish is opt-in via -Push)
+# Full build pipeline; git publishing is opt-in via -Push
 .\build.ps1
 ```
 
-`build/Invoke-LocalValidation.ps1` does one extra check that CI skips: it validates the embedded XAML in `Scripts/WsusManagementGui.ps1` is well-formed (it tries to load it as a WPF Window). On a headless CI runner this would fail, so it stays local.
+`build/Invoke-LocalValidation.ps1` also validates the embedded XAML in `Scripts/WsusManagementGui.ps1` by loading it as a WPF Window. Run it on a Windows desktop/dev workstation.
 
 ## Build Artifacts
 
@@ -114,27 +90,26 @@ The distribution zip is expected to include companion folders required by the EX
 - `README.md` copied by `build.ps1`
 - generated `QUICK-START.txt`
 
-CI uploads the artifacts from the build job and retains them for 14 days.
+Release artifacts are generated locally by `build.ps1` and attached manually to GitHub Releases.
 
 ## Release Process
 
 Recommended path:
 
-1. PR from feature branch → `main`. CI must be green. Self-hosted GUI test job runs daily and posts status.
-2. Reviewer approves.
-3. Merge to `main`.
-4. Cut a release branch: `release/v4.x.x`.
-5. Trigger the self-hosted workflow manually with `run_gui_tests=true` to confirm GUI on a real Windows desktop.
-6. Download the artifact from the build job, sign it (out of band), attach to a GitHub release.
-7. Bump version: edit `metadata.json` (single source of truth via `Get-WsusAppVersion`).
-8. Add a section to `CHANGELOG.md`.
-9. Delete the release branch.
+1. Run targeted tests for changed areas.
+2. Run `.\build\Invoke-LocalValidation.ps1`.
+3. Run `.\build.ps1 -SkipTests -SkipCodeReview -NoPush` after tests pass.
+4. Confirm `dist\GA-WsusManager-vX.X.X.zip` contains EXE, Scripts, Modules, DomainController, icons, metadata, README, and QUICK-START.txt.
+5. Attach only the zip to the GitHub release.
+6. Bump version: edit `metadata.json` (single source of truth via `Get-WsusAppVersion`).
+7. Add a section to `CHANGELOG.md`.
+8. Delete the release branch when no longer needed.
 
 ## Troubleshooting
 
-- **CI lint failure but local passes:** check that the file was saved with UTF-8 BOM (PowerShell 5.1 needs the BOM for files with non-ASCII chars). Run `./build/Invoke-SyntaxCheck.ps1` to confirm syntax.
-- **Self-hosted runner not picking up jobs:** the runner must be online, have the correct labels, and have an active interactive session. Check the runner's `_diag` log under `%RUNNER_HOME%\_diag`.
-- **PS2EXE missing in CI:** the `build.ps1 -SkipTests` path requires `ps2exe` installed. The CI build job installs Pester and PSScriptAnalyzer; add ps2exe to the install step if you need EXE build in CI.
+- **Local lint failure:** check that PowerShell files are saved with UTF-8 BOM when they contain non-ASCII chars. Run `.\build\Invoke-SyntaxCheck.ps1` to confirm syntax.
+- **GUI automation cannot see controls:** FlaUI requires an interactive Windows desktop session. GitHub-hosted runners are not enough.
+- **PS2EXE missing:** install the `ps2exe` module before running the packaging path.
 - **EXE works in repo but not after deployment:** confirm `Scripts/` and `Modules/` are alongside `GA-WsusManager.exe`.
 - **Version mismatch between GUI and CLI:** both call `Get-WsusAppVersion` which reads `metadata.json`. Update `metadata.json` and rebuild.
 - **Emoji/special chars render as `?` in GUI:** v4.1.0+ has UTF-8 BOM applied to `Scripts/WsusManagementGui.ps1` and all menu symbols replaced with Segoe-UI-safe BMP alternatives.

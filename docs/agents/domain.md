@@ -19,7 +19,7 @@ This repo uses a single-context layout:
 
 - `CONTEXT.md` at the repo root, if present.
 - `docs/adr/`, if present; read ADRs that touch the area you are about to work in.
-- Existing project guidance in `CLAUDE.md` and operational docs such as `README.md`, `docs/WSUS-Manager-SOP.md`, and `wiki/Developer-Guide.md` when relevant to the task.
+- Existing project guidance in `README.md`, `docs/WSUS-Manager-SOP.md`, and `wiki/Developer-Guide.md` when relevant to the task.
 
 ## Use the glossary's vocabulary
 

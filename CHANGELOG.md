@@ -157,10 +157,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Dashboard:** Skip refresh while operations are running (prevents log output stutter)
 - Log message said 'any key' but only ESC/Q work
 - Backtick-escape `$(CurrentUser)` in installer sqlcmd calls
-- Fix `Integration.Tests.ps1` version check (4.0.1 → 4.0.2) and replace broken build.yml workflow test
+- Fix `Integration.Tests.ps1` version check (4.0.1 → 4.0.2) and stale workflow assumptions
 
 ### Documentation
-- Added **AIR-GAP ONLY** warnings across all documentation (SOP, User Guide, Installation Guide, Confluence, Troubleshooting, CLAUDE.md)
+- Added **AIR-GAP ONLY** warnings across operator documentation
 - Updated Create GPO instructions: removed `Invoke-GPUpdate` reference, added schtasks explanation
 - Removed `ConfigureDeadlineNoAutoReboot` from SOP settings table
 - Removed differential export references from all docs and wiki
@@ -178,8 +178,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 - Install script synced with Pro version: flexible installer detection, `UPDATEENABLED="0"`
-- GUI-tests CI workflow replaces old build.yml (self-hosted runner on triton-ajt)
-- `.planning/` C#-era plans archived to `.planning-archive-reverted-c#-era/`
+- Removed stale GitHub workflow scaffolding from the cleaned v4.1.0 branch
+- Removed archived planning folders from the cleaned v4.1.0 branch
 
 ### Fixed
 - **Security:** `Install-WsusWithSqlExpress.ps1` — pass `$currentUser` via `sqlcmd -v`
@@ -232,7 +232,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - `WsusHealth.psm1`: new `Get-WsusHealthScore` function with weighted composite scoring
 - GUI operations now record to history and fire completion notifications
 - Settings dialog height increased to 430px to accommodate new options
-- `CLAUDE.md` updated for v4.0 module architecture and new GUI features
+- Developer guidance moved into the wiki and operator docs
 
 ### Fixed
 - `WsusDialogs.psm1`: `FolderBrowserDialog` now disposed in `try/finally` (resource leak)

@@ -1,24 +1,26 @@
 #Requires -Modules Pester
 <#!
 .SYNOPSIS
-    Static ship-readiness checks for build, CI, and secret handling.
+    Static ship-readiness checks for build, local validation, and secret handling.
 #>
 
 BeforeAll {
     $script:RepoRoot = Split-Path -Parent $PSScriptRoot
     $script:BuildContent = Get-Content (Join-Path $script:RepoRoot 'build.ps1') -Raw
-    $script:WorkflowContent = Get-Content (Join-Path $script:RepoRoot '.github\workflows\gui-tests.yml') -Raw
+    $script:CicdContent = Get-Content (Join-Path $script:RepoRoot 'docs\ci-cd.md') -Raw
     $script:PlanContent = Get-Content (Join-Path $script:RepoRoot 'Modules\WsusOperationPlan.psm1') -Raw
     $script:InstallContent = Get-Content (Join-Path $script:RepoRoot 'Scripts\Install-WsusWithSqlExpress.ps1') -Raw
 }
 
-Describe 'CI release gates' {
-    It 'does not allow test steps to continue on error' {
-        $script:WorkflowContent | Should -Not -Match 'continue-on-error:\s*true'
+Describe 'Local release gates' {
+    It 'documents local validation as the source of truth' {
+        $script:CicdContent | Should -Match 'local validation scripts'
+        $script:CicdContent | Should -Match 'build/Invoke-LocalValidation\.ps1'
+        $script:CicdContent | Should -Match 'build/Invoke-ShipReadiness\.ps1'
     }
 
-    It 'builds in CI without git publishing side effects' {
-        $script:WorkflowContent | Should -Match '\.\\build\.ps1\s+-SkipTests\s+-SkipCodeReview\s+-NoPush'
+    It 'documents packaging without git publishing side effects' {
+        $script:CicdContent | Should -Match '\.\\build\.ps1 -SkipTests -SkipCodeReview -NoPush'
     }
 }
 

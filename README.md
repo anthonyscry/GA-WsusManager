@@ -325,8 +325,6 @@ GA-WsusManager/
 |   |-- Set-WsusGroupPolicy.ps1      # GPO import + link script
 |   +-- WSUS GPOs/                   # GPO backup files (4 GPOs)
 |-- icons/                           # Window, tray, sidebar, and About page icon assets
-|-- .github/workflows/               # CI/CD pipeline
-|-- CLAUDE.md                        # Developer documentation
 +-- README.md                        # This file
 ```
 
@@ -391,7 +389,7 @@ Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warn
 
 Build output goes to `dist/` as `GA-WsusManager.exe` and `GA-WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
 
-**CI pipeline** (`.github/workflows/ci.yml` and `.github/workflows/gui-tests.yml`) runs local validation, PSScriptAnalyzer/Pester checks, packaging checks, and GUI smoke tests on the self-hosted Windows runner.
+Validation is local-first: run `build\Invoke-LocalValidation.ps1` or targeted Pester/PSScriptAnalyzer commands before packaging.
 
 ---
 
@@ -433,7 +431,7 @@ Run a Deep Cleanup from the Database menu. This declines superseded updates, rem
 **Script not found errors**
 Make sure the `Scripts/` and `Modules/` folders are in the same directory as `GA-WsusManager.exe`. If you moved only the EXE, the application cannot find its scripts.
 
-See [CLAUDE.md](CLAUDE.md) for detailed developer documentation, architecture notes, and a full catalog of known GUI issues with solutions.
+See `wiki/Developer-Guide.md`, `wiki/Module-Reference.md`, and `docs/WSUS-Manager-SOP.md` for developer and operator details.
 
 ---
 

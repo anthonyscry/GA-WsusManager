@@ -26,9 +26,6 @@
 - **Why:** Dashboard refresh was synchronous — froze UI every 30 seconds.
 - **Delivered:** 9 new functions in `WsusAutoDetection.psm1`, 25 new tests in `WsusAutoDetection.Tests.ps1`
 
-### TODO: Update CLAUDE.md for v4.0 Module Architecture
-- **Priority:** P1 | **Effort:** S | **Status:** ✅ Done
-- **Delivered:** Updated `CLAUDE.md` with v4.0 module section, GUI feature list, new anti-pattern examples (#15, #16)
 
 ---
 
@@ -87,7 +84,7 @@
 ## Housekeeping — ✅ Complete
 
 - **Priority:** P3 | **Effort:** S | **Status:** ✅ Done
-- **Delivered:** `.planning-archive-reverted-c#-era/` removed from working tree (C#-era plans were preserved but subsequently cleaned up per ship-readiness recommendation)
+- **Delivered:** stale planning, AI-assistant, hook, and workflow scaffolding removed from the cleaned v4.1.0 branch
 
 ---
 
