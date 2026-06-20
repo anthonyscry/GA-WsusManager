@@ -23,11 +23,11 @@ Last sync and scheduled task state are visible but do not reduce the score.
 
 **Maintenance**
 - **Restore DB** — restores SUSDB from an approved `.bak`.
-- **Robocopy** — copies approved export/content folders.
+- **Robocopy** — copies approved content folders into place.
 - **Deep Cleanup** — WSUS cleanup, SQL cleanup, index maintenance, and database shrink.
 
 **Online Operations** *(collapsed by default)*
-- **Online Sync** — syncs with Microsoft Update, applies approval/decline policy, optionally backs up/exports.
+- **Online Sync** — syncs with Microsoft Update, applies approval/decline policy, and creates backups when selected.
 - **Schedule Task** — creates or updates recurring Online Sync.
 
 **Diagnostics** *(collapsed by default)*
@@ -45,14 +45,14 @@ Last sync and scheduled task state are visible but do not reduce the score.
 
 ## Air-gap restore
 
-Use this when an approved export folder arrives by USB/removable media.
+Use this when an approved WSUS transfer folder arrives by USB/removable media.
 
 1. Click **Restore DB** and select the SUSDB `.bak`.
 2. Click **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\`.
 3. Click **Reset Content** only if WSUS still reports files as downloading.
 4. Run **Diagnostics**.
 
-No `manifest.json` is required. Keep the `.bak` and `WsusContent\` from the same export snapshot.
+Keep the `.bak` and `WsusContent\` from the same transfer snapshot.
 
 ## GPO deployment
 
@@ -81,7 +81,7 @@ Run Online Sync only on a server intentionally allowed to reach Microsoft Update
 
 | Profile | Operations |
 |---|---|
-| Full | Sync, Cleanup, Ultimate Cleanup, Backup, Export |
+| Full | Sync, Cleanup, Ultimate Cleanup, Backup |
 | Quick | Sync, Cleanup, Backup |
 | Sync Only | Sync and approval policy only |
 
@@ -93,8 +93,7 @@ Robocopy is non-destructive.
 
 | Scenario | Source | Destination |
 |---|---|---|
-| Air-gap restore | approved export folder or `WsusContent\` | `C:\WSUS\` |
-| Export staging | WSUS content/export source | approved staging path |
+| Air-gap restore | approved transfer folder or `WsusContent\` | `C:\WSUS\` |
 
 ## Diagnostics
 

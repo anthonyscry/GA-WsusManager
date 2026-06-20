@@ -72,7 +72,7 @@ Describe "Script Syntax Validation" {
         It "GUI help and about copy reflects current air-gap guidance and disk sizing" {
             $content = Get-Content $script:GuiScript -Raw
             $content | Should -Match '200 GB\+ disk space recommended'
-            $content | Should -Match 'approved export folder'
+            $content | Should -Match 'approved transfer folder'
             $content | Should -Match 'creates Member Servers, WSUS Server, and Workstations OUs if needed'
             $content | Should -Not -Match 'Online WSUS: Internet-connected'
             $content | Should -Not -Match '150 GB\+ disk space'

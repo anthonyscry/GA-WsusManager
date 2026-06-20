@@ -1,23 +1,23 @@
 # Air-Gap Workflow
 
-Use this page when an approved WSUS export folder has already been transferred into the disconnected network by approved removable media.
+Use this page when an approved WSUS transfer folder has already been moved into the disconnected network by approved removable media.
 
-No `manifest.json` is required by the current restore workflow. The required inputs are:
+The approved transfer folder must contain:
 
 ```text
-Approved export folder
+Approved transfer folder
 +-- SUSDB_YYYYMMDD.bak      # SUSDB backup
 +-- WsusContent\            # update content files
 ```
 
-Keep the `.bak` and `WsusContent\` from the same export snapshot.
+Keep the `.bak` and `WsusContent\` from the same transfer snapshot.
 
 ## Restore workflow
 
 1. Install WSUS Manager on the air-gapped WSUS server.
 2. If WSUS is missing, launch `GA-WsusManager.exe` as Administrator and click **Install WSUS** first.
-3. Copy the complete approved export folder from USB/removable media to the server, or attach the media directly.
-4. Click **Restore DB** and select the SUSDB `.bak` from the approved export folder.
+3. Copy the complete approved transfer folder from USB/removable media to the server, or attach the media directly.
+4. Click **Restore DB** and select the SUSDB `.bak` from the approved transfer folder.
 5. Click **Robocopy** only if `WsusContent\` still needs to be copied into `C:\WSUS\`.
 6. Click **Reset Content** only if WSUS still reports content as downloading after restore/Robocopy.
 7. Run **Diagnostics** and review any auto-fix output.
@@ -28,7 +28,7 @@ For the normal air-gap restore path:
 
 | Field | Value |
 |---|---|
-| Source | approved export folder or its `WsusContent\` folder |
+| Source | approved transfer folder or its `WsusContent\` folder |
 | Destination | `C:\WSUS\` |
 
 Robocopy is non-destructive. It copies content and does not delete files from the source.
@@ -73,18 +73,18 @@ The script imports four GPOs, creates missing OUs when needed, links policy, and
 - Use approved USB/removable media only.
 - Use NTFS for large content folders.
 - Scan media per security policy before connecting it.
-- Keep the export folder intact; do not cherry-pick files.
+- Keep the approved transfer folder intact; do not cherry-pick files.
 - Record the SUSDB backup hash if your transfer process requires it:
 
 ```powershell
-Get-FileHash -Path "E:\WSUS-Export\*.bak" -Algorithm SHA256
+Get-FileHash -Path "E:\WSUS-Transfer\*.bak" -Algorithm SHA256
 ```
 
 ## Common issues
 
 | Issue | Fix |
 |---|---|
-| Restore cannot find a backup | Select the `.bak` file inside the approved export folder. |
+| Restore cannot find a backup | Select the `.bak` file inside the approved transfer folder. |
 | Updates show as downloading | Confirm content exists, then run **Reset Content** and wait 5-10 minutes. |
 | Clients scan but cannot download | Run **Diagnostics** and verify IIS path + `Authenticated Users` read access. |
 | Robocopy fails | Check destination space and source accessibility. |

@@ -258,7 +258,7 @@ The dashboard includes a **Quick Actions** bar with shortcut buttons for the mos
 |---------|--------|----------|
 | Setup | **Install WSUS** | Install WSUS + SQL Server Express 2022 |
 | Maintenance | **Restore DB** | Restore SUSDB from backup file |
-| Maintenance | **Robocopy** | Copy approved export/content folders between locations. Non-destructive. |
+| Maintenance | **Robocopy** | Copy approved transfer/content folders between locations. Non-destructive. |
 | Maintenance | **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
 | Online Operations | **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
 | Online Operations | **Schedule Task** | Create scheduled online sync task |
@@ -368,9 +368,9 @@ Toggle in log panel header to open operations in an external PowerShell window:
 |--------|-------------|
 | 1 | Install WSUS with SQL Express 2022 |
 | 2 | Restore Database from C:\WSUS |
-| 3 | Copy Data from External Media (import to air-gap server) |
-| 4 | Copy Data to External Media (export for air-gap transfer) |
-| 5 | Online Sync (Sync, Cleanup, Backup, Export) |
+| 3 | Robocopy approved folder/content into `C:\WSUS` |
+| 4 | Robocopy WSUS content/package to an approved destination |
+| 5 | Online Sync (Sync, Cleanup, Backup) |
 | 6 | Deep Cleanup (Aggressive DB cleanup) |
 | 7 | Diagnostics (Health Check + Auto-Repair) |
 | 8 | Reset Content Download |
@@ -386,14 +386,13 @@ Toggle in log panel header to open operations in an external PowerShell window:
 | `.\Invoke-WsusManagement.ps1 -Repair` | Health check + auto-repair |
 | `.\Invoke-WsusManagement.ps1 -Reset` | Reset content download |
 
-### Export/Import CLI Parameters
+### Robocopy CLI Parameters
+
+Use the GUI **Robocopy** action for routine transfers. The legacy CLI switches remain for automation compatibility:
 
 ```powershell
-# Export with full parameters
-.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\WsusExport"
-
-# Import
-.\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\WsusExport" -DestinationPath "C:\WSUS"
+.\Invoke-WsusManagement.ps1 -Import -SourcePath "E:\ApprovedWsus" -DestinationPath "C:\WSUS"
+.\Invoke-WsusManagement.ps1 -Export -SourcePath "C:\WSUS" -DestinationPath "E:\ApprovedWsus"
 ```
 
 ### Online Sync Options
@@ -402,7 +401,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 |---------|-------------|
 | `.\Invoke-WsusMonthlyMaintenance.ps1` | Interactive mode |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -Unattended` | Unattended mode (scheduled tasks) |
-| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full` | Sync + auto-decline + auto-approve + deep cleanup + optional export (30-120 min) |
+| `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Full` | Sync + auto-decline + auto-approve + deep cleanup + backup (30-120 min) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile Quick` | Sync + auto-approve only (15-30 min) |
 | `.\Invoke-WsusMonthlyMaintenance.ps1 -MaintenanceProfile SyncOnly` | Sync with Microsoft only, no approvals or cleanup (10-20 min) |
 
@@ -410,7 +409,7 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 | Profile | CLI Value | Duration | Description |
 |---------|-----------|----------|-------------|
-| Full Sync | `Full` | 30-120 min | Sync + auto-decline + auto-approve + deep cleanup + optional export. Recommended monthly. |
+| Full Sync | `Full` | 30-120 min | Sync + auto-decline + auto-approve + deep cleanup + backup. Recommended monthly. |
 | Quick Sync | `Quick` | 15-30 min | Sync + auto-approve only. Good for weekly runs. |
 | Sync Only | `SyncOnly` | 10-20 min | Sync with Microsoft only. No approvals or cleanup. |
 
@@ -427,13 +426,13 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 ### Workflow Overview
 
-This is the operator workflow when an approved WSUS export folder has been transferred into the air-gapped network by approved USB/removable media.
+This is the operator workflow when an approved WSUS transfer folder has been moved into the air-gapped network by approved USB/removable media.
 
 | Step | Location | Action |
 |------|----------|--------|
 | 1 | Air-Gapped WSUS Server | Install WSUS Manager and build the server using `C:\WSUS` as the WSUS root |
-| 2 | Approved USB / Transfer Media | Copy the complete approved export folder to the server or attach the media |
-| 3 | Air-Gapped WSUS Server | Run **Restore DB** and select the SUSDB `.bak` file from the export folder |
+| 2 | Approved USB / Transfer Media | Copy the complete approved transfer folder to the server or attach the media |
+| 3 | Air-Gapped WSUS Server | Run **Restore DB** and select the SUSDB `.bak` file from the transfer folder |
 | 4 | Air-Gapped WSUS Server | Run **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\` |
 | 5 | Air-Gapped WSUS Server | Run **Reset Content** if WSUS still shows files as downloading |
 | 6 | Air-Gapped WSUS Server | Run **Diagnostics** and confirm ACL + IIS content-path health |
@@ -448,8 +447,7 @@ This is the operator workflow when an approved WSUS export folder has been trans
 
 ### GUI Robocopy Dialog
 
-The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped restore, use source=approved USB/export folder and destination=`C:\WSUS\`.
-The GUI Robocopy dialog, CLI transfer paths, and monthly export use the same robocopy engine, so copy behavior is consistent across entry points.
+The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped restore, use source=approved USB/transfer folder and destination=`C:\WSUS\`.
 
 ### Restored Folder Structure
 
@@ -465,8 +463,8 @@ C:\WSUS\
 
 | Purpose | Command |
 |---------|---------|
-| Copy approved export folder from USB to air-gap server | `robocopy "E:\WSUS-Export" "C:\WSUS" /E /MT:16 /R:2 /W:5` |
-| Copy content folder into WSUS root | `robocopy "E:\WSUS-Export\WsusContent" "C:\WSUS\WsusContent" /E /MT:16 /R:2 /W:5 /XO` |
+| Copy approved transfer folder from USB to air-gap server | `robocopy "E:\WSUS-Transfer" "C:\WSUS" /E /MT:16 /R:2 /W:5` |
+| Copy content folder into WSUS root | `robocopy "E:\WSUS-Transfer\WsusContent" "C:\WSUS\WsusContent" /E /MT:16 /R:2 /W:5 /XO` |
 
 **Robocopy Flags:**
 
@@ -814,7 +812,7 @@ SESSION START: 2026-01-19 10:30:00
 | sqlcmd.exe Fallback | All database operations work without SqlServer PowerShell module |
 | DNS Preflight | Sync checks DNS resolution before starting to prevent stuck syncs |
 | Automated Installation | One-click deployment of SQL Server Express 2022 + WSUS (auto-removes WID); SSMS installed only if present |
-| Air-Gap Support | Restore approved export folders from removable media, then import/verify content with Robocopy and Diagnostics |
+| Air-Gap Support | Restore approved transfer folders from removable media, then verify content with Robocopy and Diagnostics |
 | Database Management | Backup, restore, cleanup, and optimization |
 | Unified Diagnostics | Combined health check and auto-repair in a single operation |
 | Scheduled Sync | GUI and CLI support for Windows Task Scheduler (daily, weekly, monthly) |

@@ -60,14 +60,12 @@ The installer handles WID detection/removal, SQL Express setup, WSUS role instal
 
 ## Air-gapped server setup
 
-After WSUS is installed, follow [[Air-Gap Workflow]] to restore the approved export folder:
+After WSUS is installed, follow [[Air-Gap Workflow]] to restore the approved transfer folder:
 
-1. Transfer the approved export folder by approved USB/removable media.
+1. Transfer the approved folder by approved USB/removable media.
 2. Click **Restore DB** and select the SUSDB `.bak`.
 3. Use **Robocopy** if content still needs to be copied into `C:\WSUS\`.
 4. Run **Diagnostics**.
-
-No `manifest.json` is required for the current restore workflow.
 
 ## GPO setup
 

@@ -881,7 +881,7 @@ $script:StdinFlushTimer = $null
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Features" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text1}" Margin="0,0,0,8"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Additive product sync: selected products are added without removing existing subscriptions&#x0a;• Smart decline policy: expired, superseded, &gt;6mo old unapproved, ARM64, legacy Windows builds, Preview/Beta, Edge non-stable, x86 Edge/Office, WSL&#x0a;• Auto-approve recent x64 Critical, Security, Definition, Updates, Rollups, and Service Packs; keep Upgrades/25H2 for manual review&#x0a;• Default products: Win 11, Server 2019, .NET Framework, Edge, Defender, Office 2016, SQL Server, Exchange 2019, Visual Studio 2022&#x0a;• Air-gap restore from approved export folders; use Robocopy for content copies when needed&#x0a;• Health Score (0-100), deep diagnostics, auto-repair, and deep cleanup"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Text2}" LineHeight="20" Text="• Automated WSUS + SQL Express installation (auto-migrates WID to SQL)&#x0a;• Additive product sync: selected products are added without removing existing subscriptions&#x0a;• Smart decline policy: expired, superseded, &gt;6mo old unapproved, ARM64, legacy Windows builds, Preview/Beta, Edge non-stable, x86 Edge/Office, WSL&#x0a;• Auto-approve recent x64 Critical, Security, Definition, Updates, Rollups, and Service Packs; keep Upgrades/25H2 for manual review&#x0a;• Default products: Win 11, Server 2019, .NET Framework, Edge, Defender, Office 2016, SQL Server, Exchange 2019, Visual Studio 2022&#x0a;• Air-gap restore from approved transfer folders; use Robocopy for content copies when needed&#x0a;• Health Score (0-100), deep diagnostics, auto-repair, and deep cleanup"/>
                         </StackPanel>
                     </Border>
                     <Border Background="{StaticResource BgCard}" CornerRadius="4" Padding="16">
@@ -1969,7 +1969,7 @@ A toolkit for deploying and managing Windows Server Update Services with SQL Ser
 
 FEATURES
 • Modern dark-themed GUI with auto-refresh
-• Air-gap restore from approved export folders; use Robocopy for content copies when needed
+• Air-gap restore from approved transfer folders; use Robocopy for content copies when needed
 • Additive product sync: selected products are added without removing existing subscriptions
 • Smart decline: expired, superseded, >6mo old unapproved, ARM64, legacy Windows builds, Preview/Beta, Edge non-stable, x86 Edge/Office, WSL
 • Auto-approve recent x64 Critical, Security, Definition, Updates, Rollups, and Service Packs
@@ -2017,9 +2017,9 @@ QUICK START GUIDE
    - Creates required directories (C:\WSUS\, C:\WSUS\Logs\, etc.)
 
 4. AIR-GAPPED RESTORE
-   Transfer the approved export folder by approved USB/removable media.
+   Transfer the approved transfer folder by approved USB/removable media.
    On the air-gapped server:
-   - Click Restore DB and select the SUSDB backup from the export folder
+   - Click Restore DB and select the SUSDB backup from the transfer folder
    - Use Robocopy if WsusContent still needs to be copied to C:\WSUS\
    - Use Reset Content if WSUS still reports files as downloading
    - Run Diagnostics to verify services, database access, IIS, and permissions
@@ -2028,7 +2028,7 @@ QUICK START GUIDE
    Click Online Sync in the Online Operations section or Quick Actions.
    Selected products are ADDED to existing subscriptions, not replaced.
    Choose a profile:
-   - Full: Sync + Cleanup + Ultimate Cleanup + Backup + Export
+   - Full: Sync + Cleanup + Ultimate Cleanup + Backup
    - Quick: Sync + Cleanup + Backup
    - Sync Only: Sync and apply the approval policy
 
@@ -2093,12 +2093,12 @@ SETUP
 • Install WSUS - Fresh installation with SQL Express
 
 MAINTENANCE
-• Restore DB - Restore SUSDB from a backup/export folder
-• Robocopy - Copy approved export/content folders between locations
+• Restore DB - Restore SUSDB from a backup/transfer folder
+• Robocopy - Copy approved transfer/content folders between locations
 • Deep Cleanup - Remove obsolete records, rebuild indexes, shrink database
 
 ONLINE OPERATIONS
-• Online Sync - Sync, smart decline, approve recent x64 updates, cleanup, backup/export by profile
+• Online Sync - Sync, smart decline, approve recent x64 updates, cleanup, and backup by profile
 • Schedule Task - Create/update the recurring sync scheduled task
 
 DIAGNOSTICS
@@ -2110,10 +2110,10 @@ DIAGNOSTICS
     AirGap = @"
 AIR-GAP WORKFLOW
 
-Use this when an approved WSUS export folder has been transferred into the disconnected network.
+Use this when an approved WSUS transfer folder has been moved into the disconnected network.
 
 WORKFLOW
-1. Transfer the complete export folder by approved USB/removable media.
+1. Transfer the complete approved folder by approved USB/removable media.
 2. On the air-gapped WSUS server, click Restore DB and select the SUSDB backup.
 3. Use Robocopy if WsusContent still needs to be copied into C:\WSUS\.
 4. Run Reset Content if WSUS still shows content as downloading.
@@ -2128,7 +2128,7 @@ GPO
 TIPS
 • Use NTFS-formatted media for large exports.
 • Scan USB/removable media per security policy.
-• Keep the full export folder intact; do not cherry-pick files.
+• Keep the full transfer folder intact; do not cherry-pick files.
 "@
 
     Troubleshooting = @"
@@ -2183,7 +2183,7 @@ function Show-ExportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportDialog")
-    $dlg.Title = "Export to Media"
+    $dlg.Title = "Robocopy to Destination"
     $dlg.Width = 480
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
@@ -2195,7 +2195,7 @@ function Show-ExportDialog {
     $stack.Margin = "20"
 
     $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Export WSUS Data"
+    $title.Text = "Copy WSUS Data"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
     $title.Foreground = $script:BrushText1
@@ -2207,7 +2207,7 @@ function Show-ExportDialog {
     $radioPanel.Margin = "0,0,0,12"
 
     $radioFull = New-Object System.Windows.Controls.RadioButton
-    $radioFull.Content = "Full Export"
+    $radioFull.Content = "Full Copy"
     $radioFull.Foreground = $script:BrushText1
     $radioFull.IsChecked = $true
     $radioFull.Margin = "0,0,20,0"
@@ -2253,7 +2253,7 @@ function Show-ExportDialog {
 
     $exportBtn = New-Object System.Windows.Controls.Button
     $exportBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ExportButton")
-    $exportBtn.Content = "Export"
+    $exportBtn.Content = "Copy"
     $exportBtn.Padding = "12,8"
     $exportBtn.Background = $script:BrushBlue
     $exportBtn.Foreground = $script:BrushText1
@@ -2261,7 +2261,7 @@ function Show-ExportDialog {
     $exportBtn.Margin = "0,0,8,0"
     $exportBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($destTxt.Text)) {
-            Show-WsusPopup -Message "Select destination folder." -Title "Export" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Show-WsusPopup -Message "Select destination folder." -Title "Robocopy" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
         $result.Cancelled = $false
@@ -2290,7 +2290,7 @@ function Show-ImportDialog {
 
     $dlg = New-Object System.Windows.Window
     $dlg.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportDialog")
-    $dlg.Title = "Import from Media"
+    $dlg.Title = "Robocopy from Media"
     $dlg.Width = 480
     $dlg.WindowStartupLocation = "CenterOwner"
     $dlg.Owner = $script:window
@@ -2302,7 +2302,7 @@ function Show-ImportDialog {
     $stack.Margin = "20"
 
     $title = New-Object System.Windows.Controls.TextBlock
-    $title.Text = "Import WSUS Data"
+    $title.Text = "Copy WSUS Data"
     $title.FontSize = 14
     $title.FontWeight = "Bold"
     $title.Foreground = $script:BrushText1
@@ -2311,7 +2311,7 @@ function Show-ImportDialog {
 
     # Source folder section
     $srcLbl = New-Object System.Windows.Controls.TextBlock
-    $srcLbl.Text = "Source folder (external media):"
+    $srcLbl.Text = "Source folder:"
     $srcLbl.Foreground = $script:BrushText2
     $srcLbl.Margin = "0,0,0,6"
     $stack.Children.Add($srcLbl)
@@ -2387,7 +2387,7 @@ function Show-ImportDialog {
 
     $importBtn = New-Object System.Windows.Controls.Button
     $importBtn.SetValue([System.Windows.Automation.AutomationProperties]::AutomationIdProperty, "ImportButton")
-    $importBtn.Content = "Import"
+    $importBtn.Content = "Copy"
     $importBtn.Padding = "12,8"
     $importBtn.Background = $script:BrushBlue
     $importBtn.Foreground = $script:BrushText1
@@ -2395,11 +2395,11 @@ function Show-ImportDialog {
     $importBtn.Margin = "0,0,8,0"
     $importBtn.Add_Click({
         if ([string]::IsNullOrWhiteSpace($srcTxt.Text)) {
-            Show-WsusPopup -Message "Select source folder." -Title "Import" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Show-WsusPopup -Message "Select source folder." -Title "Robocopy" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
         if ([string]::IsNullOrWhiteSpace($dstTxt.Text)) {
-            Show-WsusPopup -Message "Select destination folder." -Title "Import" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
+            Show-WsusPopup -Message "Select destination folder." -Title "Robocopy" -Button ([System.Windows.MessageBoxButton]::OK) -Icon ([System.Windows.MessageBoxImage]::Warning) | Out-Null
             return
         }
         $result.Cancelled = $false
@@ -2660,7 +2660,7 @@ function Show-MaintenanceDialog {
     $profileStack.Children.Add($radioFull)
 
     $fullDesc = New-Object System.Windows.Controls.TextBlock
-    $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup > Export"
+    $fullDesc.Text = "Sync > Cleanup > Ultimate Cleanup > Backup"
     $fullDesc.Foreground = $script:BrushText2
     $fullDesc.FontSize = 12
     $fullDesc.Margin = "20,0,0,12"
@@ -2776,22 +2776,22 @@ function Show-MaintenanceDialog {
 
     # --- Tab 3: Export ---
     $tabExport = New-Object System.Windows.Controls.TabItem
-    $tabExport.Header = "Export"
+    $tabExport.Header = "Output"
 
     $exportStack = New-Object System.Windows.Controls.StackPanel
     $exportStack.Margin = "12"
 
     $exportTitle = New-Object System.Windows.Controls.TextBlock
-    $exportTitle.Text = "Export Settings (optional)"
+    $exportTitle.Text = "Output Settings (optional)"
     $exportTitle.FontSize = 14
     $exportTitle.FontWeight = "Bold"
     $exportTitle.Foreground = $script:BrushText1
     $exportTitle.Margin = "0,0,0,12"
     $exportStack.Children.Add($exportTitle)
 
-    # Full Export Path
+    # Full output path
     $exportLabel = New-Object System.Windows.Controls.TextBlock
-    $exportLabel.Text = "Full Export Path (backup + all content):"
+    $exportLabel.Text = "Full profile output path (backup + all content):"
     $exportLabel.Foreground = $script:BrushText2
     $exportLabel.FontSize = 12
     $exportLabel.Margin = "0,0,0,4"
@@ -2836,7 +2836,7 @@ function Show-MaintenanceDialog {
     # Browse button handlers
     $exportBrowse.Add_Click({
         $fbd = New-Object System.Windows.Forms.FolderBrowserDialog
-        $fbd.Description = "Select full export destination (network share or local path)"
+        $fbd.Description = "Select full profile output destination (network share or local path)"
         try {
             if ($fbd.ShowDialog() -eq "OK") {
                 $exportBox.Text = $fbd.SelectedPath

@@ -72,10 +72,9 @@ Fix:
 
 | Problem | Fix |
 |---|---|
-| No `manifest.json` | Current workflow does not require one. Use the SUSDB `.bak` and matching `WsusContent\`. |
-| Restore cannot find backup | Select the `.bak` file from the approved export folder. |
+| Restore cannot find backup | Select the `.bak` file from the approved transfer folder. |
 | Updates still downloading | Copy content into `C:\WSUS\`, run **Reset Content**, wait 5-10 minutes, then run **Diagnostics**. |
-| Database/content mismatch | Use a `.bak` and `WsusContent\` from the same export snapshot. |
+| Database/content mismatch | Use a `.bak` and `WsusContent\` from the same transfer snapshot. |
 
 ## GPO deployment problems
 

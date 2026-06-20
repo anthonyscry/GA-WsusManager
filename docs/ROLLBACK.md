@@ -82,7 +82,7 @@ New-Item -ItemType Directory -Path (Split-Path $BackupPath) -Force | Out-Null
 sqlcmd -S localhost\SQLEXPRESS -E -Q "BACKUP DATABASE SUSDB TO DISK=N'$BackupPath' WITH INIT, CHECKSUM, COPY_ONLY, STATS=10"
 ```
 
-Keep the SUSDB backup paired with the matching `C:\WSUS\WsusContent\` snapshot or export set. Restoring a database that does not match the content tree can leave updates in a downloading or missing-content state.
+Keep the SUSDB backup paired with the matching `C:\WSUS\WsusContent\` snapshot or approved transfer set. Restoring a database that does not match the content tree can leave updates in a downloading or missing-content state.
 
 ### Service state snapshot
 
@@ -207,7 +207,7 @@ Start-Service W3SVC
 Start-Service WsusService
 ```
 
-If the restored database points at content not present on disk, restore the matching `WsusContent\` tree from the same export set before declaring rollback complete.
+If the restored database points at content not present on disk, restore the matching `WsusContent\` tree from the same approved transfer set before declaring rollback complete.
 
 ---
 

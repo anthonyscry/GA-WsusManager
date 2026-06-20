@@ -3,7 +3,7 @@
 **Version:** 4.1.0
 **Author:** Tony Tran, ISSO, GA-ASI
 
-WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It installs WSUS and SQL Server Express, restores approved WSUS export folders on disconnected servers, manages update synchronization/cleanup, deploys air-gap Group Policy Objects, and provides diagnostics/repair workflows.
+WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It installs WSUS and SQL Server Express, restores approved WSUS transfer folders on disconnected servers, manages update synchronization/cleanup, deploys air-gap Group Policy Objects, and provides diagnostics/repair workflows.
 
 ---
 
@@ -84,7 +84,7 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 - HTTPS configuration via `Set-WsusHttps.ps1`.
 
 ### Air-Gap Support
-- Restore approved WSUS export folders from USB/removable media on disconnected servers.
+- Restore approved WSUS transfer folders from USB/removable media on disconnected servers.
 - Copy approved content folders with **Robocopy** when needed.
 - "Reset Content" button to fix content download status after restore or copy.
 
@@ -132,15 +132,15 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 ### Air-Gap Transfer Workflow
 
-Use this workflow when an approved WSUS export folder has been released for a disconnected network.
+Use this workflow when an approved WSUS transfer folder has been released for a disconnected network.
 
-1. Transfer the complete export folder to the air-gapped server using approved USB/removable media.
+1. Transfer the complete approved folder to the air-gapped server using approved USB/removable media.
 
 2. Launch WSUS Manager as Administrator.
 
-3. Click **Restore DB** and select the SUSDB backup from the transferred export folder.
+3. Click **Restore DB** and select the SUSDB backup from the transferred folder.
 
-4. Click **Robocopy** if the exported `WsusContent\` folder still needs to be copied into `C:\WSUS\`.
+4. Click **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\`.
 
 5. After restore or Robocopy completes, click **Reset Content** (under Diagnostics) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
 
@@ -148,18 +148,18 @@ Use this workflow when an approved WSUS export folder has been released for a di
 
 ### Monthly Sync Workflow (Online Operations)
 
-Run this monthly on a connected export server that is intentionally allowed to sync with Microsoft.
+Run this monthly on a connected server that is intentionally allowed to sync with Microsoft.
 
 1. **Launch WSUS Manager** as Administrator.
 
 2. **Click Online Sync** in the navigation panel (or use the Quick Action button).
 
 3. **Choose a sync profile:**
-   - **Full Sync** -- Sync, cleanup, ultimate cleanup, backup, and export.
-   - **Quick Sync** -- Sync, cleanup, and backup (skips heavy cleanup and export).
+   - **Full Sync** -- Sync, cleanup, ultimate cleanup, and backup.
+   - **Quick Sync** -- Sync, cleanup, and backup.
    - **Sync Only** -- Just sync with Microsoft and apply the approval policy.
 
-4. **Set the export path** (Full Sync only). Enter the approved destination for the export folder, such as `E:\WSUS-Export` or `C:\WSUS\Exports`.
+4. **Choose the approved staging path** if the Full profile asks where to place the completed package.
 
 5. **Click OK.** The operation runs in the log panel. A Full Sync typically takes 30-120 minutes depending on how many updates are available.
 

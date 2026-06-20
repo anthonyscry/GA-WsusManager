@@ -20,7 +20,7 @@ High-level map of the PowerShell modules in WSUS Manager v4.1.0.
 | Module | Purpose |
 |---|---|
 | `WsusDatabase.psm1` | SUSDB size, backup, SQL access, cleanup helpers. |
-| `WsusExport.psm1` | Robocopy/export/transfer helpers. |
+| `WsusExport.psm1` | Robocopy content transfer helpers. |
 | `WsusScheduledTask.psm1` | Scheduled Online Sync task registration. |
 | `WsusProvisioning.psm1` | Install/restore path and backup discovery helpers. |
 | `WsusServices.psm1` | SQL/WSUS/IIS service start/stop/status helpers. |
@@ -60,8 +60,8 @@ High-level map of the PowerShell modules in WSUS Manager v4.1.0.
 | Script | Purpose |
 |---|---|
 | `Scripts\WsusManagementGui.ps1` | Main WPF GUI source compiled into `GA-WsusManager.exe`. |
-| `Scripts\Invoke-WsusManagement.ps1` | CLI/router for restore, cleanup, diagnostics, repair, reset, transfer. |
-| `Scripts\Invoke-WsusMonthlyMaintenance.ps1` | Online sync, cleanup, backup, export automation. |
+| `Scripts\Invoke-WsusManagement.ps1` | CLI/router for restore, Robocopy, cleanup, diagnostics, repair, and reset. |
+| `Scripts\Invoke-WsusMonthlyMaintenance.ps1` | Online sync, cleanup, backup, and approved package staging. |
 | `Scripts\Install-WsusWithSqlExpress.ps1` | SQL Express + WSUS installer. |
 | `Scripts\Set-WsusHttps.ps1` | Optional HTTPS setup. |
 | `Scripts\Invoke-WsusClientCheckIn.ps1` | Client check-in helper. |

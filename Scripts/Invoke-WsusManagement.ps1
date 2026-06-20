@@ -109,7 +109,7 @@ param(
     [Parameter(ParameterSetName = 'Restore')]
     [string]$BackupPath,
 
-    # Export/Import parameters (for non-interactive mode)
+    # Transfer parameters (for non-interactive Robocopy mode)
     [Parameter(ParameterSetName = 'Export')]
     [Parameter(ParameterSetName = 'Import')]
     [string]$SourcePath,
@@ -1071,11 +1071,11 @@ function Invoke-BrowseArchive {
 function Invoke-CopyForAirGap {
     <#
     .SYNOPSIS
-        Import WSUS data from external media (Apricorn, optical, USB) to air-gap server
+        Copy approved WSUS data from removable media to the air-gap server
     .DESCRIPTION
-        Prompts for source path (where external media is mounted) and copies to local WSUS
+        Prompts for source path and copies to local WSUS content path.
     .PARAMETER SourcePath
-        Path to external media containing WSUS export data
+        Path containing approved WSUS transfer data
     .PARAMETER DestinationPath
         Destination path on WSUS server (default: C:\WSUS)
     .PARAMETER NonInteractive
@@ -1089,10 +1089,10 @@ function Invoke-CopyForAirGap {
         [switch]$NonInteractive
     )
 
-    Write-Banner "IMPORT FROM EXTERNAL MEDIA"
+    Write-Banner "ROBOCOPY FROM APPROVED MEDIA"
 
-    Write-Host "This will import WSUS data from external media to this server." -ForegroundColor Yellow
-    Write-Host "Use this on the AIR-GAP server to import transported data." -ForegroundColor Yellow
+    Write-Host "This will copy approved WSUS data to this server." -ForegroundColor Yellow
+    Write-Host "Use this on the AIR-GAP server after approved media arrives." -ForegroundColor Yellow
     Write-Host ""
 
     # Validate DefaultSource - use C:\ if empty
@@ -1104,7 +1104,7 @@ function Invoke-CopyForAirGap {
 
     if (-not $NonInteractive) {
         # Prompt for source path
-        Write-Host "Where is the external media mounted?" -ForegroundColor Cyan
+        Write-Host "Where is the approved source folder?" -ForegroundColor Cyan
         Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
         Write-Host "  Or press Enter for: $DefaultSource" -ForegroundColor Gray
         Write-Host ""
@@ -1132,7 +1132,7 @@ function Invoke-CopyForAirGap {
     :mainLoop while ($true) {
         Clear-Host
         Write-Host ("=" * 88) -ForegroundColor Cyan
-        Write-Host "              IMPORT FROM EXTERNAL MEDIA" -ForegroundColor Cyan
+        Write-Host "              ROBOCOPY FROM APPROVED MEDIA" -ForegroundColor Cyan
         Write-Host ("=" * 88) -ForegroundColor Cyan
         Write-Host ""
         Write-Host "Source: $ExportSource" -ForegroundColor Gray
@@ -1188,7 +1188,7 @@ function Invoke-CopyForAirGap {
 }
 
 # ============================================================================
-# EXPORT TO EXTERNAL MEDIA (FOR AIR-GAP TRANSFER)
+# ROBOCOPY TO APPROVED DESTINATION (FOR AIR-GAP TRANSFER)
 # ============================================================================
 
 function Invoke-ExportToDvd {
@@ -1357,7 +1357,7 @@ function Invoke-ExportToDvd {
 function Invoke-ExportToMedia {
     <#
     .SYNOPSIS
-        Copy WSUS data to external media (Apricorn, USB) for air-gap transfer
+        Copy WSUS data to an approved destination for air-gap transfer
     .DESCRIPTION
         Prompts for source and destination, copies all content.
         When DestinationPath is provided, runs in non-interactive mode (for GUI).
@@ -1376,10 +1376,10 @@ function Invoke-ExportToMedia {
     # Determine if running in non-interactive mode (GUI mode)
     $nonInteractive = -not [string]::IsNullOrWhiteSpace($DestinationPath)
 
-    Write-Banner "COPY DATA TO EXTERNAL MEDIA"
+    Write-Banner "ROBOCOPY TO APPROVED DESTINATION"
 
-    Write-Host "This will copy WSUS data to external media for air-gap transfer." -ForegroundColor Yellow
-    Write-Host "Use this on the ONLINE server to prepare data for transport." -ForegroundColor Yellow
+    Write-Host "This will copy WSUS data to an approved destination for transfer." -ForegroundColor Yellow
+    Write-Host "Use this on the connected server after backup/content staging is complete." -ForegroundColor Yellow
     Write-Host ""
 
     # Validate paths - use defaults if empty
@@ -1457,7 +1457,7 @@ function Invoke-ExportToMedia {
         $destination = $DestinationPath
     } else {
         # Interactive mode: Prompt for destination
-        Write-Host "Destination (external media path):" -ForegroundColor Cyan
+        Write-Host "Destination path:" -ForegroundColor Cyan
         Write-Host "  Examples: E:\  D:\WSUS-Transfer  F:\AirGap" -ForegroundColor Gray
         Write-Host ""
         $destination = Read-Host "Enter destination path"
@@ -1553,9 +1553,9 @@ function Invoke-ExportToMedia {
     Write-Host "Data copied to: $destination" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Yellow
-    Write-Host "  1. Safely eject the external media"
+    Write-Host "  1. Safely eject removable media if used"
     Write-Host "  2. Transport to air-gap server"
-    Write-Host "  3. Import to air-gap server using WSUS Manager"
+    Write-Host "  3. Use Robocopy and Restore DB in WSUS Manager on the air-gap server"
     Write-Host ""
 }
 
@@ -1983,11 +1983,11 @@ function Show-Menu {
     Write-Host ""
     Write-Host "DATABASE" -ForegroundColor Yellow
     Write-Host "  2. Restore Database from $script:ContentPath"
-    Write-Host "  3. Copy Data from External Media (Apricorn)"
-    Write-Host "  4. Copy Data to External Media (Apricorn)"
+    Write-Host "  3. Robocopy from approved media"
+    Write-Host "  4. Robocopy to approved destination"
     Write-Host ""
     Write-Host "MAINTENANCE" -ForegroundColor Yellow
-    Write-Host "  5. Monthly Maintenance (Sync, Cleanup, Backup, Export)"
+    Write-Host "  5. Monthly Maintenance (Sync, Cleanup, Backup)"
     Write-Host "  6. Deep Cleanup (Aggressive DB cleanup)"
     Write-Host ""
     Write-Host "TROUBLESHOOTING" -ForegroundColor Yellow

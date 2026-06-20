@@ -33,12 +33,12 @@ The installer auto-detects WID and migrates to SQL Express if needed. Database o
 
 ## 2. Restore an Air-Gapped WSUS Server from Approved Media
 
-Use this when an approved export folder has been transferred into the air-gapped network by USB/removable media.
+Use this when an approved WSUS transfer folder has been moved into the air-gapped network by USB/removable media.
 
 1. Build the server using the install steps above.
-2. Copy the complete export folder from the approved USB drive to the server or attach the drive directly.
-3. Click **Restore DB** and select the SUSDB `.bak` file from the export folder.
-4. Click **Robocopy** if the exported `WsusContent\` folder still needs to be copied into `C:\WSUS\`.
+2. Copy the complete approved transfer folder from the approved USB drive to the server or attach the drive directly.
+3. Click **Restore DB** and select the SUSDB `.bak` file from the transfer folder.
+4. Click **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\`.
 5. Run **Diagnostics** to confirm:
    - `BUILTIN\IIS_IUSRS` has list/read/execute access on `C:\WSUS`
    - `NT AUTHORITY\Authenticated Users` has list/read/execute access on `C:\WSUS`
@@ -77,8 +77,8 @@ gpresult /r | findstr WSUS
 
 1. Click **Schedule Task** in the GUI.
 2. Select a maintenance profile:
-   - **Full** (recommended monthly) — sync, cleanup, ultimate cleanup, backup, and export
-   - **Quick** (weekly) — sync, cleanup, and backup; skips heavy cleanup and export
+   - **Full** (recommended monthly) — sync, cleanup, ultimate cleanup, and backup
+   - **Quick** (weekly) — sync, cleanup, and backup
    - **Sync Only** — sync with Microsoft and apply the approval policy
 3. Set the schedule (daily / weekly / monthly) and time (default: Tuesday 23:00).
 4. Enter credentials and click **Create**.
