@@ -9,11 +9,10 @@ This guide provides detailed instructions for managing Windows updates on air-ga
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Initial Setup](#initial-setup)
-4. [Build the Air-Gap WSUS Server from the Existing Share](#build-the-air-gap-wsus-server-from-the-existing-share)
+4. [Restore from Approved Media](#restore-from-approved-media)
 5. [Physical Transfer](#physical-transfer)
-6. [Reference: Source Server Export](#reference-source-server-export)
-7. [Scheduling](#scheduling)
-8. [Best Practices](#best-practices)
+6. [Scheduling](#scheduling)
+7. [Best Practices](#best-practices)
 
 ---
 
@@ -29,17 +28,17 @@ An air-gapped network is physically isolated from the internet and other network
 
 ### The Challenge
 
-WSUS normally downloads updates directly from Microsoft. On an air-gapped network, updates must be:
-1. Downloaded on an internet-connected server
-2. Physically transferred via removable media
-3. Imported to the disconnected WSUS server
+WSUS cannot download updates directly on an air-gapped network. Updates arrive as an approved export folder that must be:
+1. Physically transferred by approved removable media.
+2. Restored into SUSDB.
+3. Copied into the WSUS content directory when needed.
 
 ### WSUS Manager Solution
 
 For most operators, WSUS Manager is used to:
 - **Install WSUS** on the disconnected server
-- **Robocopy / Transfer Import** update files into `C:\WSUS`
 - **Restore DB** from a `SUSDB_YYYYMMDD.bak` file
+- **Robocopy** update files into `C:\WSUS` when needed
 - **Diagnostics** to verify:
   - `Authenticated Users` read access on `C:\WSUS`
   - IIS `/Content` = `C:\WSUS\WsusContent`
@@ -49,38 +48,37 @@ For most operators, WSUS Manager is used to:
 
 ## Architecture
 
-### Two-Server Model
+### Approved Export Folder Model
 
-```
-┌─────────────────────┐                    ┌─────────────────────┐
-│   ONLINE WSUS       │                    │   AIR-GAP WSUS      │
-│   (Internet)        │                    │   (Disconnected)    │
-├─────────────────────┤                    ├─────────────────────┤
-│ - Syncs with MSFT   │    USB Drive       │ - Receives Robocopy │
-│ - Approves updates  │ =================> │ - Serves clients    │
-│ - Robocopy to USB   │   (Sneakernet)     │ - Restores DB       │
-└─────────────────────┘                    └─────────────────────┘
+```text
+Approved USB/removable media
+└── WSUS export folder
+    ├── SUSDB_YYYYMMDD.bak
+    └── WsusContent\
+            │
+            ▼
+Air-gap WSUS server
+├── Restore DB from .bak
+├── Robocopy WsusContent into C:\WSUS\ if needed
+└── Run Diagnostics / Reset Content if needed
 ```
 
 ### Components
 
 | Server | Network | Mode | Primary Functions |
 |--------|---------|------|-------------------|
-| Online WSUS | Internet-connected | Online | Sync, approve, Robocopy to USB |
-| Air-Gap WSUS | Disconnected | Air-Gap | Robocopy from USB, restore DB, serve clients |
+| Air-Gap WSUS | Disconnected | Air-Gap | Restore DB from approved export folder, copy content with Robocopy when needed, serve clients |
 
 ---
 
 ## Initial Setup
 
-### Source Server Setup (Reference Only)
+### Approved Export Folder
 
-If you maintain the source/online WSUS server yourself:
-1. Install WSUS Manager
-2. Run **Install WSUS**
-3. Configure products and classifications
-4. Run initial sync with Microsoft
-5. Publish the latest `SUSDB_YYYYMMDD.bak` plus `WsusContent\` to the approved share drive
+The air-gapped restore starts with the approved export folder delivered by your transfer process:
+1. Transfer the full export folder by approved USB/removable media.
+2. Keep the folder intact; do not cherry-pick files.
+3. Confirm the folder contains a SUSDB `.bak` and `WsusContent\`.
 
 ### Air-Gap Server Setup
 
@@ -94,44 +92,32 @@ This is the primary operator workflow:
 
 ### Matching Configuration
 
-The air-gapped server should match the source server for:
-- Product selections
-- Classification selections
-- Computer groups
-- Approval rules
+The approved export folder should match the product/classification scope expected by the air-gapped WSUS server. Keep the SUSDB backup and `WsusContent\` from the same export snapshot.
 ---
 
-## Build the Air-Gap WSUS Server from the Existing Share
-
-Assumption: the online/source WSUS server is already maintained and the latest database backup plus `WsusContent` are available on an approved share drive or transfer media.
+## Restore from Approved Media
 
 ### Air-Gap Import Steps
 
-1. Build the air-gapped WSUS server first
-2. Copy these items from the share drive or media:
-   - latest `SUSDB_YYYYMMDD.bak`
-   - latest `WsusContent\`
-3. Launch WSUS Manager on the air-gapped server
-4. Click **Robocopy** in the Maintenance section
-5. Set:
-   - **Source** = share-drive copy or USB folder
-   - **Destination** = `C:\WSUS`
-6. Click **Start Transfer**
-7. Confirm update files are present in `C:\WSUS\WsusContent`
-8. Copy or confirm the `.bak` file is present in `C:\WSUS\`
-9. Click **Restore DB**
-10. Run **Diagnostics**
+1. Build the air-gapped WSUS server first.
+2. Copy the complete approved export folder from USB/removable media to the server, or attach the media directly.
+3. Launch WSUS Manager on the air-gapped server.
+4. Click **Restore DB** in the Maintenance section and select the SUSDB `.bak` file from the export folder.
+5. Click **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\`.
+6. Run **Reset Content** if WSUS still shows files as downloading.
+7. Run **Diagnostics** and review any auto-fix output.
 
 ### Use Reset Content only when needed
 
 - The install workflow already performs the normal post-install content step.
-- Use **Reset Content** only if WSUS still shows files as downloading after import/restore.
+- Use **Reset Content** only if WSUS still shows files as downloading after restore or Robocopy.
 - After running **Reset Content**, wait about 5-10 minutes for WSUS to register files.
 - If the dashboard exposes file status, click **Refresh** and watch items move from **Downloading** to **Downloaded / Ready to Install**.
 
 ### Diagnostics must confirm
 
-- `Authenticated Users` has read access on `C:\WSUS`
+- `BUILTIN\IIS_IUSRS` has list/read/execute access on `C:\WSUS`
+- `NT AUTHORITY\Authenticated Users` has list/read/execute access on `C:\WSUS`
 - IIS `/Content` points to `C:\WSUS\WsusContent`
 - no content/download errors remain
 ---
@@ -159,60 +145,41 @@ Assumption: the online/source WSUS server is already maintained and the latest d
 
 ### Transfer Verification
 
-Before disconnecting from online server:
+Before handing media to the air-gapped operator:
 ```powershell
-# Verify Robocopy transfer integrity
-Get-FileHash -Path "E:\WSUS_Transfer\*.bak" -Algorithm SHA256
+# Verify backup file integrity
+Get-FileHash -Path "E:\WSUS-Export\*.bak" -Algorithm SHA256
 ```
 
 Record the hash for verification on the air-gap side.
 
-## Reference: Source Server Export
+## Scheduling
 
-Only the source-server maintainer needs this section.
+Do not schedule Online Sync on the air-gapped WSUS server. Schedule Online Sync only on a connected server that is intentionally used to create approved export folders.
 
-### Export Checklist
-
-1. On the **Online** server, run **Online Sync** (Full Sync profile recommended)
-2. Publish or copy these items to the approved share drive or transfer media:
-   - latest `SUSDB_YYYYMMDD.bak`
-   - full `WsusContent\` tree
-
-### Recommended export layout
+### Approved export layout
 
 ```text
-<share or media root>\
+<media root>\
 ├── SUSDB_YYYYMMDD.bak
 └── WsusContent\
 ```
 
-### Verification
+### Handoff verification
 
 Before handing off to the air-gapped operator:
-1. Confirm the `.bak` file exists
-2. Confirm the `WsusContent\` tree exists
-3. Confirm the air-gapped operator should import into `C:\WSUS`, not into `C:\WSUS\WsusContent` directly
+1. Confirm the `.bak` file exists.
+2. Confirm the `WsusContent\` tree exists.
+3. Confirm the air-gapped operator should restore the database first, then copy content into `C:\WSUS` with **Robocopy** if needed.
 ---
 
-## Scheduling
-
-### Recommended Schedule
-
-| Task | Frequency | Server | Day |
-|------|-----------|--------|-----|
-| Online Sync (Quick) | Weekly | Online | Sunday |
-| Online Sync (Full) | Monthly | Online | 1st of month |
-| Robocopy to USB | Monthly | Online | After Full Sync |
-| Robocopy from USB + Restore DB | Monthly | Air-Gap | 3rd–5th of month |
-| Client update window | Monthly | Both | 2nd week |
 
 ### Automation
 
-On the **Online** server, schedule Online Sync:
+Schedule **Online Sync** only on the connected server that intentionally creates approved export folders:
 
-1. Click **Schedule Task** in the Maintenance section
-2. Choose Weekly/Monthly/Daily and set the start time (recommended: Saturday at 02:00)
-
+1. Click **Schedule Task** in the Online Operations section.
+2. Choose Weekly/Monthly/Daily and set the start time.
 Or manually:
 ```powershell
 # Create scheduled task
@@ -233,15 +200,15 @@ Register-ScheduledTask -TaskName "WSUS Monthly Maintenance" -Action $action -Tri
 3. **Monitor capacity** - Track database and disk growth
 4. **Maintain parity** - Keep servers in sync
 
-### Copy to USB Best Practices
+### Transfer Best Practices
 
-- Run **Online Sync** (Full Sync) before every Robocopy transfer
-- Verify the transfer completed before disconnecting the drive
+- Keep the approved export folder intact.
+- Verify the transfer completed before disconnecting the drive.
 
 - Always scan USB per security policy
 - Check disk space before starting the transfer
-- Run **Diagnostics** after import to verify server health
-- Use **Reset Content** only when WSUS still shows files as downloading after import/restore
+- Run **Diagnostics** after restore to verify server health
+- Use **Reset Content** only when WSUS still shows files as downloading after restore or Robocopy
 - Confirm `Authenticated Users` has read access on `C:\WSUS`
 - Confirm IIS `/Content` points to `C:\WSUS\WsusContent`
 
@@ -257,7 +224,7 @@ Maintain backups on both servers:
 | Issue | Solution |
 |-------|----------|
 | Robocopy fails | Check disk space, verify source folder is accessible |
-| Updates missing after import | Verify `WsusContent` was copied into `C:\WSUS\WsusContent` |
+| Updates missing after restore | Verify `WsusContent` was copied into `C:\WSUS\WsusContent` |
 | "Content still downloading" | Run **Reset Content**, wait 5-10 minutes, then run **Diagnostics** |
 | Clients can scan but never download | Confirm `Authenticated Users` read access on `C:\WSUS` and IIS `/Content` = `C:\WSUS\WsusContent` |
 | Database mismatch | Restore the matching `.bak`; use **Reset Content** only if content state is still stuck afterward |
@@ -266,44 +233,19 @@ Maintain backups on both servers:
 
 ## Workflow Diagram
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                         ONLINE SERVER                             │
-├──────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  Online Sync (Full Sync)                                    │ │
-│  │  Sync → Approve → Cleanup → Backup DB                      │ │
-│  └──────────────────────────────┬──────────────────────────────┘ │
-│                                 │                                 │
-│                    ┌────────────▼───────────┐                    │
-│                    │  Robocopy              │                    │
-│                    │  C:\WSUS\WsusContent   │                    │
-│                    │  → USB Drive           │                    │
-│                    └────────────┬───────────┘                    │
-└─────────────────────────────────┼────────────────────────────────┘
-                                  │
-                       ┌──────────▼──────────┐
-                       │     USB Drive       │
-                       │   (Sneakernet)      │
-                       └──────────┬──────────┘
-                                  │
-┌─────────────────────────────────┼────────────────────────────────┐
-│                         AIR-GAP SERVER                            │
-├─────────────────────────────────┼────────────────────────────────┤
-│                    ┌────────────▼───────────┐                    │
-│                    │  Robocopy              │                    │
-│                    │  USB Drive → C:\WSUS   │                    │
-│                    └────────────┬───────────┘                    │
-│                                 │                                 │
-│                    ┌────────────▼───────────┐                    │
-│                    │  Restore DB            │                    │
-│                    │  + Reset Content       │                    │
-│                    └────────────┬───────────┘                    │
-│                                 │                                 │
-│  ┌──────────────────────────────▼──────────────────────────────┐ │
-│  │  Clients Check In (Updates Ready)                           │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
+```text
+Approved USB/removable media
+└── WSUS export folder
+    ├── SUSDB_YYYYMMDD.bak
+    └── WsusContent\
+            │
+            ▼
+Air-gap WSUS server
+├── Restore DB from SUSDB backup
+├── Robocopy WsusContent into C:\WSUS\ if needed
+├── Reset Content only if WSUS still shows files as downloading
+├── Run Diagnostics and fix reported issues
+└── Clients check in and download from internal WSUS
 ```
 
 ---

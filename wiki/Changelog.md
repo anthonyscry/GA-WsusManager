@@ -3,36 +3,54 @@
 All notable changes to WSUS Manager are documented here.
 
 
-## [4.1.0] - 2026-06-07
+## [4.1.0] - 2026-06-20
 
 ### Added
-- **Configuration Guide** — `wiki/Configuration-Guide.md` documents env vars, paths,
-  ports, and timeouts
-- **CI pipeline** — `.github/workflows/ci.yml` runs on every push/PR via
-  `windows-latest`: syntax check, PSScriptAnalyzer, unit tests, and EXE build
-- **Automation scripts** — `build/Invoke-SyntaxCheck.ps1`
-  and `build/Invoke-ShipReadiness.ps1`
-- `Get-WsusAppVersion` — single-source version reader from `metadata.json`
+- Add **Fix SQL Login** and install-time SQL sysadmin grants for current operators.
+- Add deeper diagnostics and auto-fixes for SQL, IIS, services, firewall, ACLs, and stuck downloads.
+- Add split WSUS server/workstation GPOs plus inbound/outbound firewall GPOs.
+- Add OU creation for Member Servers, WSUS Server, Workstations, and Domain Controller links.
+- Add Live Terminal output for Robocopy and long-running operations.
+- Add themed, readable WPF popups with scrollable details and native fallback.
+- Add product picker defaults for .NET Framework, Visual Studio 2022, Exchange 2019, and Defender.
 
 ### Changed
-- **Monthly scheduled task** — Replaced invalid `-Monthly` switch on
-  `New-ScheduledTaskTrigger` (PS 5.1) with `Register-ScheduledTask -Xml` and
-  `ScheduleByMonth/DaysOfMonth` Win32 schema
-- **Documentation** — README, QUICK-START, SOP, and Confluence export consolidated
-  and synced to v4.1.0. Module count 16 to 25. Version mismatches fixed throughout
-
-- **Repository cleanup** — AI audit instructions now live under `docs/ai-audit/`;
-  ship-readiness reports now live under `docs/reports/`; stale root artifacts removed
+- Restore the app to the stable v4.0.5 PowerShell/WPF baseline with v4.1 operational fixes.
+- Reorganize navigation into Setup, Maintenance, collapsed Online Operations, and collapsed Diagnostics.
+- Move Restore DB, Robocopy, Deep Cleanup, Online Sync, Schedule Task, and Fix SQL Login into operator order.
+- Recalculate Health Score from services, SUSDB size, and content-drive free space only.
+- Preserve existing WSUS subscriptions while adding selected sync products.
+- Refresh help, README, Quick Start, SOP, wiki, and Confluence wording for air-gap restore and 200 GB sizing.
+- Use `metadata.json` as the release version source for build output and runtime helpers.
 
 ### Fixed
-- **Emoji corruption in GUI menus** — Replaced non-BMP emoji (U+1F511) with BMP-safe
-  text. Added UTF-8 BOM to all PS files with non-ASCII content. PowerShell 5.1
-  corrupts surrogate pairs without a BOM
-- **Hardcoded dev paths removed** — `\\lab-hyperv\d\WSUS-Exports` replaced with
-  `C:\WSUS\Exports` in all defaults
+- Fix GPO import when target OUs are missing, including WSUS server computer moves.
+- Fix SQL preflight failures and Fix SQL Login behavior when SQL tooling is limited.
+- Fix WSUS content ACL repair for IIS_IUSRS and Authenticated Users list/read/execute rights.
+- Fix tray minimize recovery, Robocopy live output, popup readability, and stale v4.0.5 version labels.
+- Fix product sync, smart decline/approval filtering, and health scores capped below 100.
 
-### Lint
-- PSScriptAnalyzer errors: 11 to 0 across 70 files
+### Removed
+- Remove the GUI **Create GPO** option; use the packaged `DomainController/` script instead.
+- Remove scheduled task, last sync, and last operation history from Health Score calculation.
+
+### Tests
+- Add/update Pester and GUI coverage for GPOs, products, SQL login, ACL repair, health score, Help, and tray/live-output behavior.
+
+---
+
+## [4.0.5] - 2026-05-11
+
+### Added
+- Add Exchange Server 2019 to the default sync products.
+
+### Changed
+- Add selected products to existing WSUS subscriptions instead of replacing them.
+- Stop declining non-selected product updates, preserving related Office LTSC 2024 and SSMS v20 updates.
+
+### Fixed
+- Fix missing Office LTSC 2024 updates after sync.
+- Fix missing SQL Server Management Studio v20 updates after sync.
 ---
 
 ## [4.0.4] - March 2026
@@ -135,7 +153,7 @@ All notable changes to WSUS Manager are documented here.
 - **WsusTrending.psm1** -- DB size trending with linear regression and days-until-full estimate
 
 ### New Features
-- **Health Score (0-100)** -- Weighted composite: Services 30, DB 20, Sync 20, Disk 20, LastOp 10; Green >=80 / Yellow 50-79 / Red <50
+- **Health Score (0-100)** -- Weighted composite: Services 40, DB 30, Disk 30; Green >=80 / Yellow 50-79 / Red <50
 - **Startup Splash Screen** -- 4-stage progress bar (Loading -> Services -> Starting -> Ready)
 - **History View** -- History nav button showing last 50 operations
 - **Keyboard Shortcuts** -- Ctrl+D=Diagnostics, Ctrl+S=Sync, Ctrl+H=History, Ctrl+R/F5=Refresh

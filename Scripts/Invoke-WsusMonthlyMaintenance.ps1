@@ -244,6 +244,33 @@ function Test-WsusLegacyBuildTitle {
     return $false
 }
 
+function Invoke-WsusMaintenanceSqlScalar {
+    param(
+        [Parameter(Mandatory)][string]$ServerInstance,
+        [Parameter(Mandatory)][string]$Database,
+        [Parameter(Mandatory)][string]$Query
+    )
+
+    $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
+    $builder['Data Source'] = $ServerInstance
+    $builder['Initial Catalog'] = $Database
+    $builder['Integrated Security'] = $true
+    $builder['Connect Timeout'] = 15
+    $builder['Encrypt'] = $false
+
+    $connection = New-Object System.Data.SqlClient.SqlConnection $builder.ConnectionString
+    try {
+        $connection.Open()
+        $command = $connection.CreateCommand()
+        $command.CommandText = $Query
+        $command.CommandTimeout = 30
+        return $command.ExecuteScalar()
+    } finally {
+        if ($command) { $command.Dispose() }
+        $connection.Dispose()
+    }
+}
+
 # === SQL CREDENTIAL HANDLING ===
 # UseWindowsAuth: Always use Windows Integrated Authentication (logged-in user)
 # Interactive mode: Use Windows Integrated Authentication (currently logged-in user)
@@ -426,7 +453,7 @@ function Test-Prerequisites {
                 $out = & $sqlcmdExe -S $script:SqlInstance -E -Q "SELECT IS_SRVROLEMEMBER('sysadmin')" -h -1 -W
                 $isSysAdmin = ($out -match '^\s*1\s*$')
             } else {
-                Write-Host "SKIP (no SQL tools)" -ForegroundColor Yellow
+                $isSysAdmin = ([int](Invoke-WsusMaintenanceSqlScalar -ServerInstance $script:SqlInstance -Database 'master' -Query "SELECT IS_SRVROLEMEMBER('sysadmin')") -eq 1)
             }
 
             if ($isSysAdmin) {

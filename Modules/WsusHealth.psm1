@@ -229,9 +229,9 @@ function Get-WsusHealthScore {
     .SYNOPSIS
         Calculates a 0-100 composite health score for the WSUS server.
     .DESCRIPTION
-        Weighted composite: Services up (30pts), DB size healthy (20pts),
-        Sync recent (20pts), Disk OK (20pts), Last operation passed (10pts).
-        Returns -1 if all data sources failed (display as N/A).
+        Weighted composite: Services up (40pts), DB size healthy (30pts),
+        Disk OK (30pts). Sync recency, scheduled task state, and last operation
+        history are displayed elsewhere and do not affect the score.
     #>
     [CmdletBinding()]
     param(
@@ -240,9 +240,10 @@ function Get-WsusHealthScore {
         [string]$HistoryPath  = "$env:APPDATA\WsusManager\history.json"
     )
 
+    $null = $HistoryPath # Retained for callers from older builds; no longer part of scoring.
+    $weights = Get-WsusHealthWeights
     $failedSources = 0
-    $totalSources  = 5
-
+    $totalSources  = 3
     $servicesScore = 0
     try {
         $sqlSvcName = Get-WsusSqlServiceName -SqlInstance $SqlInstance
@@ -257,52 +258,31 @@ function Get-WsusHealthScore {
             $s = $svcTable[$svc]
             if ($s -and $s.Running) { $running++ }
         }
-        $servicesScore = switch ($running) { 3 { 30 } 2 { 20 } 1 { 10 } default { 0 } }
+        if ($serviceNames.Count -eq 0) { throw 'No core service definitions found' }
+        $servicesScore = [int][math]::Round(($running / $serviceNames.Count) * $weights.Services)
     } catch { $failedSources++; Write-Verbose "Health score services source failed: $($_.Exception.Message)" }
 
     $dbScore = 0
     try {
         $sizeGB = Get-WsusDatabaseSize -SqlInstance $SqlInstance
         if ($sizeGB -gt 0) {
-            $dbScore = if ($sizeGB -lt 7) { 20 } elseif ($sizeGB -lt 9) { 10 } else { 0 }
+            $dbScore = if ($sizeGB -lt 7) { $weights.DatabaseSize } elseif ($sizeGB -lt 9) { [int]($weights.DatabaseSize / 2) } else { 0 }
         } else {
             $failedSources++
         }
     } catch { $failedSources++; Write-Verbose "Health score database size source failed: $($_.Exception.Message)" }
 
-    $syncScore = 0
-    try {
-        $wsusPort = 8530; $useSsl = $false
-        $sslStatus = Get-WsusSSLStatus
-        if ($sslStatus.SSLEnabled) { $wsusPort = 8531; $useSsl = $true }
-        $wsus = [Microsoft.UpdateServices.Administration.AdminProxy]::GetUpdateServer('localhost', $useSsl, $wsusPort)
-        $lastSync = $wsus.GetSubscription().LastSynchronizationTime
-        $daysSinceSync = ([datetime]::UtcNow - $lastSync.ToUniversalTime()).TotalDays
-        $syncScore = if ($daysSinceSync -le 7) { 20 } elseif ($daysSinceSync -le 30) { 10 } else { 0 }
-    } catch { $failedSources++; Write-Verbose "Health score synchronization source failed: $($_.Exception.Message)" }
-
     $diskScore = 0
+
     try {
         $drive = Split-Path -Qualifier $ContentPath
         $disk = Get-PSDrive -Name ($drive.TrimEnd(':')) -ErrorAction Stop
         $freeGB = [math]::Round($disk.Free / 1GB, 2)
-        $diskScore = if ($freeGB -gt 50) { 20 } elseif ($freeGB -ge 10) { 10 } else { 0 }
+        $diskScore = if ($freeGB -gt 50) { $weights.DiskSpace } elseif ($freeGB -ge 10) { [int]($weights.DiskSpace / 2) } else { 0 }
     } catch { $failedSources++; Write-Verbose "Health score disk space source failed: $($_.Exception.Message)" }
 
-    $opScore = 5
-    try {
-        if (Test-Path $HistoryPath) {
-            $history = Get-Content $HistoryPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($history -and $history.Count -gt 0) {
-                $lastTimestamp = [datetime]::MinValue; $last = $null
-                foreach ($entry in $history) { $ts = [datetime]$entry.Timestamp; if ($ts -gt $lastTimestamp) { $lastTimestamp = $ts; $last = $entry } }
-                $opScore = if ($last.Result -eq 'Pass') { 10 } else { 0 }
-            }
-        }
-    } catch { $failedSources++; Write-Verbose "Health score operation history source failed: $($_.Exception.Message)" }
-
     $allFailed = ($failedSources -ge $totalSources)
-    $total     = $servicesScore + $dbScore + $syncScore + $diskScore + $opScore
+    $total     = $servicesScore + $dbScore + $diskScore
     $grade = if ($allFailed) { 'Unknown' } elseif ($total -ge 80) { 'Green' } elseif ($total -ge 50) { 'Yellow' } else { 'Red' }
 
     return @{
@@ -310,9 +290,7 @@ function Get-WsusHealthScore {
         Components = @{
             Services      = $servicesScore
             DatabaseSize  = $dbScore
-            SyncRecency   = $syncScore
             DiskSpace     = $diskScore
-            LastOperation = $opScore
         }
         Grade     = $grade
         AllFailed = $allFailed
@@ -985,14 +963,12 @@ function Get-WsusHealthWeights {
         Provides the canonical point allocations for each health component so
         callers and tests can reference a single source of truth.
     .OUTPUTS
-        Hashtable with keys: Services, DatabaseSize, SyncRecency, DiskSpace, LastOperation
+        Hashtable with keys: Services, DatabaseSize, DiskSpace
     #>
     return @{
-        Services      = 30
-        DatabaseSize  = 20
-        SyncRecency   = 20
-        DiskSpace     = 20
-        LastOperation = 10
+        Services      = 40
+        DatabaseSize  = 30
+        DiskSpace     = 30
     }
 }
 

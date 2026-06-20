@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     WSUS Manager post-install GUI test v9.
     Tests all navigation, panels, dialogs, and read-only features.
@@ -200,8 +200,8 @@ try {
     # ════════════════════════════════════════════════════════════
     Out-Log ""; Out-Log "=== CAT 3: DIALOG BUTTONS ==="
 
-    @("BtnRestore","BtnCreateGpo","BtnTransfer","BtnMaintenance",
-      "BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset") | ForEach-Object {
+    @("BtnRestore","BtnTransfer","BtnMaintenance","BtnSchedule",
+      "BtnCleanup","BtnDiagnostics","BtnReset","BtnFixSqlLogin") | ForEach-Object {
         $mw = Get-MainWindow -timeout 10
         $btn = Find-El $mw $_ -timeout 5
         if ($null -eq $btn) { TF "Button: $_" "Not found"; continue }
@@ -311,8 +311,8 @@ try {
 
     $mw = Get-MainWindow -timeout 10
     $all = @(
-        "BtnDashboard","BtnInstall","BtnRestore","BtnCreateGpo","BtnTransfer",
-        "BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset",
+        "BtnDashboard","BtnInstall","BtnRestore","BtnTransfer",
+        "BtnMaintenance","BtnSchedule","BtnCleanup","BtnDiagnostics","BtnReset","BtnFixSqlLogin",
         "BtnHistory","BtnHelp","BtnSettings","BtnAbout","BtnBack",
         "QBtnDiagnostics","QBtnCleanup","QBtnMaint","QBtnStart",
         "BtnToggleLog","BtnClearLog","BtnSaveLog","BtnLiveTerminal","BtnOpenLog",

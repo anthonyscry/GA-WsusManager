@@ -17,7 +17,7 @@ Use this runbook for a new deployment or an application upgrade. For emergency r
 | Privileges | Local Administrator on the WSUS server |
 | SQL | SQL Server Express 2022 instance `localhost\SQLEXPRESS` for standard deployments |
 | SQL access | Operator account or operator group has `sysadmin` on the SQL instance for SUSDB backup/restore |
-| Disk | At least 40 GB free before install; more for production content stores and export staging |
+| Disk | 200 GB recommended for the WSUS server/content drive; allow more for export staging |
 | Network | Static address recommended; clients must reach WSUS ports 8530 HTTP or 8531 HTTPS |
 | Package layout | `GA-WsusManager.exe`, `Scripts\`, and `Modules\` must stay in the same directory |
 
@@ -139,7 +139,7 @@ Do not deploy the repository working tree as the production runtime. Deploy the 
 1. Launch `GA-WsusManager.exe` as Administrator.
 2. Open **Settings** and confirm the content path and SQL instance match the existing deployment.
 3. Run **Diagnostics** before making changes.
-4. If database operations fail with permissions errors, click **Fix SQL Login**, sign out, and sign back in to refresh group membership.
+4. If database operations fail with permissions errors, click **Fix SQL Login** in the Diagnostics section. Sign out and back in only if your environment requires a token refresh.
 
 ---
 
@@ -191,7 +191,7 @@ Run these checks before handing the server to operations:
 - SQL sysadmin access is confirmed for the operator account or approved operator group.
 - A manual SUSDB backup can be created or the scheduled maintenance profile is known to create one.
 - Database size is below the SQL Express limit with enough headroom for the next sync cycle.
-- Monthly or weekly maintenance task is created only on the intended online/source WSUS server.
+- Monthly or weekly maintenance task is created only on a connected export server that is intentionally allowed to sync with Microsoft.
 
 ### Client path
 
@@ -201,10 +201,10 @@ Run these checks before handing the server to operations:
 
 ### Air-gap path, if applicable
 
-- Source server publishes a matching `SUSDB_YYYYMMDD.bak` and `WsusContent\` tree.
-- Air-gap server imports content to `C:\WSUS\WsusContent`.
+- The approved export folder contains a matching `SUSDB_YYYYMMDD.bak` and `WsusContent\` tree.
 - Air-gap server restores the matching SUSDB backup.
-- **Reset Content** is used only if WSUS still reports files as downloading after import/restore.
+- Air-gap server copies content to `C:\WSUS\WsusContent` with **Robocopy** when needed.
+- **Reset Content** is used only if WSUS still reports files as downloading after restore or Robocopy.
 
 ---
 
@@ -214,10 +214,10 @@ Run these checks before handing the server to operations:
 |---------|-----------------|
 | EXE opens but operations fail with missing scripts/modules | Re-deploy the full package; the EXE must sit beside `Scripts\` and `Modules\` |
 | Dashboard shows WSUS not installed on a fresh host | Expected before first install; click **Install WSUS** |
-| Database operation fails with access denied | Run **Fix SQL Login**, sign out/in, then retry |
-| Sync stays at 0% | Confirm DNS, proxy/firewall access, and that the server is the intended online/source WSUS server |
+| Database operation fails with access denied | Run **Fix SQL Login** in Diagnostics, sign out/in only if your environment requires token refresh, then retry |
+| Sync stays at 0% | Confirm DNS, proxy/firewall access, and that the server is an approved connected export server |
 | Clients scan but never download | Confirm `Authenticated Users` read access on `C:\WSUS` and IIS `/Content` path points to `C:\WSUS\WsusContent` |
-| Air-gap import shows downloads still pending | Confirm the `.bak` and `WsusContent\` came from the same source snapshot; then use **Reset Content** if still stuck |
+| Air-gap import shows downloads still pending | Confirm the `.bak` and `WsusContent\` came from the same approved export snapshot; then use **Reset Content** if still stuck |
 | GUI shows missing symbols as `?` | Confirm the deployed script package was not re-saved without UTF-8 BOM and use the release zip instead of hand-copied files |
 | Upgrade behaves unexpectedly | Stop using the new folder and follow [ROLLBACK.md](ROLLBACK.md) |
 

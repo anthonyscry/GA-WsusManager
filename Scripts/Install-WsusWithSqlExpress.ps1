@@ -43,8 +43,9 @@ param(
     [int]$UpstreamServerPort = 8530,
     [Parameter(HelpMessage = "Use SSL when connecting to the upstream server")]
     [switch]$UpstreamServerUseSsl,
-    [Parameter(HelpMessage = "Configure as a replica of the upstream server (inherit approvals)")]
-    [switch]$IsReplica
+    [switch]$IsReplica,
+    [Parameter(HelpMessage = "Additional Windows accounts to grant SQL sysadmin during install")]
+    [string[]]$SqlSysadminAccounts = @()
 )
 
 # -------------------------
@@ -214,6 +215,128 @@ function Get-SAPassword {
             [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
         }
     }
+}
+
+function New-SqlConnectionString {
+    param(
+        [Parameter(Mandatory)][string]$ServerInstance,
+        [Parameter(Mandatory)][string]$Database,
+        [System.Management.Automation.PSCredential]$Credential
+    )
+
+    $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
+    $builder['Data Source'] = $ServerInstance
+    $builder['Initial Catalog'] = $Database
+    $builder['Connect Timeout'] = 15
+    $builder['Encrypt'] = $false
+    if ($null -eq $Credential) {
+        $builder['Integrated Security'] = $true
+    } else {
+        $builder['Integrated Security'] = $false
+        $builder['User ID'] = $Credential.UserName
+        $builder['Password'] = $Credential.GetNetworkCredential().Password
+    }
+    return $builder.ConnectionString
+}
+
+function Invoke-InstallSqlNonQuery {
+    param(
+        [Parameter(Mandatory)][string]$ServerInstance,
+        [Parameter(Mandatory)][string]$Query,
+        [System.Management.Automation.PSCredential]$Credential
+    )
+
+    $connectionString = New-SqlConnectionString -ServerInstance $ServerInstance -Database 'master' -Credential $Credential
+    $connection = New-Object System.Data.SqlClient.SqlConnection $connectionString
+    try {
+        $connection.Open()
+        $command = $connection.CreateCommand()
+        $command.CommandText = $Query
+        $command.CommandTimeout = 30
+        [void]$command.ExecuteNonQuery()
+    } finally {
+        if ($command) { $command.Dispose() }
+        $connection.Dispose()
+    }
+}
+
+function Invoke-InstallSqlScalar {
+    param(
+        [Parameter(Mandatory)][string]$ServerInstance,
+        [Parameter(Mandatory)][string]$Query,
+        [System.Management.Automation.PSCredential]$Credential
+    )
+
+    $connectionString = New-SqlConnectionString -ServerInstance $ServerInstance -Database 'master' -Credential $Credential
+    $connection = New-Object System.Data.SqlClient.SqlConnection $connectionString
+    try {
+        $connection.Open()
+        $command = $connection.CreateCommand()
+        $command.CommandText = $Query
+        $command.CommandTimeout = 30
+        return $command.ExecuteScalar()
+    } finally {
+        if ($command) { $command.Dispose() }
+        $connection.Dispose()
+    }
+}
+
+function Get-InstallSqlAdminAccounts {
+    param([string[]]$AdditionalAccounts = @())
+
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $accounts = New-Object System.Collections.Generic.List[string]
+    if ($identity -and -not [string]::IsNullOrWhiteSpace($identity.Name)) {
+        $accounts.Add($identity.Name)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:USERDOMAIN)) {
+        $accounts.Add("$env:USERDOMAIN\dod_admin")
+    }
+    foreach ($account in @($AdditionalAccounts)) {
+        if (-not [string]::IsNullOrWhiteSpace($account)) {
+            $accounts.Add($account)
+        }
+    }
+
+    @($accounts | Select-Object -Unique)
+}
+
+function Grant-InstallSqlSysadmin {
+    param(
+        [Parameter(Mandatory)][string]$ServerInstance,
+        [Parameter(Mandatory)][string]$LoginName,
+        [System.Management.Automation.PSCredential]$SqlCredential
+    )
+
+    $loginLiteral = $LoginName -replace "'", "''"
+    $query = @"
+DECLARE @LoginName sysname = N'$loginLiteral';
+IF SUSER_ID(@LoginName) IS NULL
+BEGIN
+    DECLARE @CreateLogin nvarchar(max) = N'CREATE LOGIN ' + QUOTENAME(@LoginName) + N' FROM WINDOWS';
+    EXEC (@CreateLogin);
+END;
+IF IS_SRVROLEMEMBER(N'sysadmin', @LoginName) <> 1
+BEGIN
+    DECLARE @GrantRole nvarchar(max) = N'ALTER SERVER ROLE [sysadmin] ADD MEMBER ' + QUOTENAME(@LoginName);
+    EXEC (@GrantRole);
+END;
+"@
+
+    try {
+        Invoke-InstallSqlNonQuery -ServerInstance $ServerInstance -Query $query
+    } catch {
+        if ($null -eq $SqlCredential) { throw }
+        Invoke-InstallSqlNonQuery -ServerInstance $ServerInstance -Query $query -Credential $SqlCredential
+    }
+
+    try {
+        $check = Invoke-InstallSqlScalar -ServerInstance $ServerInstance -Query "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = N'$loginLiteral';"
+    } catch {
+        if ($null -eq $SqlCredential) { throw }
+        $check = Invoke-InstallSqlScalar -ServerInstance $ServerInstance -Query "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = N'$loginLiteral';" -Credential $SqlCredential
+    }
+    return ([int]$check -gt 0)
 }
 
 function Stop-SqlExpressSetup {
@@ -622,19 +745,20 @@ Write-Host "[+] Creating WSUS directories with proper permissions..."
     New-Item -Path $_ -ItemType Directory -Force | Out-Null
 }
 
-# Set comprehensive permissions (from Repair-WsusContentPath.ps1)
+# Set comprehensive permissions (kept in sync with WsusPermissions.psm1)
 # SYSTEM and Administrators - Full Control
-icacls $WSUSRoot /grant "SYSTEM:(OI)(CI)F" /T /Q | Out-Null
-icacls $WSUSRoot /grant "Administrators:(OI)(CI)F" /T /Q | Out-Null
+icacls $WSUSRoot /grant "NT AUTHORITY\SYSTEM:(OI)(CI)F" /T /Q | Out-Null
+icacls $WSUSRoot /grant "BUILTIN\Administrators:(OI)(CI)F" /T /Q | Out-Null
 
 # NETWORK SERVICE - Full Control (required for WSUS service)
-icacls $WSUSRoot /grant "NETWORK SERVICE:(OI)(CI)F" /T /Q | Out-Null
+icacls $WSUSRoot /grant "NT AUTHORITY\NETWORK SERVICE:(OI)(CI)F" /T /Q | Out-Null
 
 # LOCAL SERVICE - Full Control
 icacls $WSUSRoot /grant "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)F" /T /Q | Out-Null
 
-# IIS_IUSRS - Read (for web access)
-icacls $WSUSRoot /grant "IIS_IUSRS:(OI)(CI)R" /T /Q | Out-Null
+# IIS_IUSRS and Authenticated Users - list folder/read/execute for content downloads
+icacls $WSUSRoot /grant "BUILTIN\IIS_IUSRS:(OI)(CI)RX" /T /Q | Out-Null
+icacls $WSUSRoot /grant "NT AUTHORITY\Authenticated Users:(OI)(CI)RX" /T /Q | Out-Null
 
 # WsusPool application pool identity - Full Control (will be created after IIS setup)
 $wsusPoolExists = $false
@@ -660,61 +784,34 @@ Write-Host "[+] Granting SQL permissions to WSUS..."
 Start-Sleep -Seconds 5
 
 $sqlInstance = ".\SQLEXPRESS"
+$saCredential = New-Object System.Management.Automation.PSCredential($SaUsername, (ConvertTo-SecureString $SA_Password -AsPlainText -Force))
 
-# Refresh environment PATH to pick up sqlcmd
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-# Find sqlcmd.exe (multiple possible locations)
-$sqlcmdPaths = @(
-    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
-    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
-    "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\sqlcmd.exe",
-    "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
-    "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe"
-)
-
-$sqlcmd = $sqlcmdPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-if ($sqlcmd) {
+$adminAccounts = Get-InstallSqlAdminAccounts -AdditionalAccounts $SqlSysadminAccounts
+foreach ($adminAccount in $adminAccounts) {
     try {
-        # ODBC Driver 18+ requires TrustServerCertificate to connect without a trusted cert
-        $sqlcmdArgs = @("-S", $sqlInstance, "-E", "-C")
-
-        # Add current logged-in user as sysadmin
-        # Use [System.Security.Principal] to reliably get DOMAIN\USER even in workgroup
-        # Pass via sqlcmd -v variable to avoid string interpolation in SQL
-        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $currentUser = "$($identity.Name)"
-        # SQL-escape apostrophes for N'...' quoted contexts (e.g. CONTOSO\O'Brien -> O''Brien)
-        $currentUserSafe = $currentUser -replace "'", "''"
-        Write-Host "    Adding sysadmin for: $currentUser"
-
-        & $sqlcmd @sqlcmdArgs -v SafeUser="$currentUserSafe" RawUser="$currentUser" -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name=N'`$(SafeUser)') CREATE LOGIN [`$(RawUser)] FROM WINDOWS;" -b
-        & $sqlcmd @sqlcmdArgs -v CurrentUser="$currentUser" -Q "ALTER SERVER ROLE [sysadmin] ADD MEMBER [`$(CurrentUser)];" -b
-
-        # Verify (use sys.server_role_members - IS_SRVROLEMEMBER caches per-connection)
-        $check = & $sqlcmd @sqlcmdArgs -Q "SELECT COUNT(*) FROM sys.server_role_members rm JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'sysadmin' AND m.name = SUSER_SNAME()" -h -1 -W 2>$null
-        Write-Host "    sysadmin check: $check"
-
-        # Create NETWORK SERVICE login if not exists
-        & $sqlcmd @sqlcmdArgs -Q "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name='NT AUTHORITY\NETWORK SERVICE') CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;" -b
-        
-        # Grant dbcreator role to NETWORK SERVICE
-        & $sqlcmd @sqlcmdArgs -Q "ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];" -b
-        
-        Write-Host "    SQL permissions granted."
+        Write-Host "    Adding sysadmin for: $adminAccount"
+        if (Grant-InstallSqlSysadmin -ServerInstance $sqlInstance -LoginName $adminAccount -SqlCredential $saCredential) {
+            Write-Host "    sysadmin granted: $adminAccount"
+        } else {
+            Write-Host "    Warning: sysadmin verification failed for $adminAccount" -ForegroundColor Yellow
+        }
     } catch {
-        Write-Host "    Warning: Could not configure SQL permissions. Error: $_"
+        Write-Host "    Warning: Could not grant sysadmin to $adminAccount. Error: $($_.Exception.Message)" -ForegroundColor Yellow
     }
-} else {
-    Write-Host "    Warning: sqlcmd.exe not found. SQL permissions must be set manually."
-    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $currentUser = "$($identity.Name)"
-    Write-Host "    Run these commands to configure SQL permissions:"
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [$currentUser] FROM WINDOWS`""
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [sysadmin] ADD MEMBER [$currentUser]`""
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS`""
-    Write-Host "    sqlcmd -S .\SQLEXPRESS -E -C -Q `"ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE]`""
+}
+
+try {
+    $networkServiceQuery = @"
+IF SUSER_ID(N'NT AUTHORITY\NETWORK SERVICE') IS NULL
+    CREATE LOGIN [NT AUTHORITY\NETWORK SERVICE] FROM WINDOWS;
+IF IS_SRVROLEMEMBER(N'dbcreator', N'NT AUTHORITY\NETWORK SERVICE') <> 1
+    ALTER SERVER ROLE [dbcreator] ADD MEMBER [NT AUTHORITY\NETWORK SERVICE];
+"@
+    Invoke-InstallSqlNonQuery -ServerInstance $sqlInstance -Query $networkServiceQuery -Credential $saCredential
+    Write-Host "    SQL permissions granted."
+} catch {
+    Write-Host "    Warning: Could not configure SQL service permissions. Error: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 # =====================================================================
@@ -1011,8 +1108,10 @@ try {
 # =====================================================================
 Write-Host "[+] Applying final permissions to WSUS content directory..."
 
-# Re-apply WsusPool permissions now that it exists
+# Re-apply WsusPool and read principals now that IIS exists
 icacls $WSUSIisContent /grant "IIS APPPOOL\WsusPool:(OI)(CI)F" /T /Q 2>$null
+icacls $WSUSIisContent /grant "BUILTIN\IIS_IUSRS:(OI)(CI)RX" /T /Q | Out-Null
+icacls $WSUSIisContent /grant "NT AUTHORITY\Authenticated Users:(OI)(CI)RX" /T /Q | Out-Null
 
 Write-Host "    Permissions applied."
 

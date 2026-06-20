@@ -19,6 +19,7 @@ BeforeAll {
     $script:RepoRoot = Resolve-WsusTestRepoRoot -StartPath $PSScriptRoot
     $script:MaintContent = Get-WsusTestFileText -RepoRoot $script:RepoRoot -RelativePath 'Scripts\Invoke-WsusMonthlyMaintenance.ps1'
     $script:InstallContent = Get-WsusTestFileText -RepoRoot $script:RepoRoot -RelativePath 'Scripts\Install-WsusWithSqlExpress.ps1'
+    $script:GuiContent = Get-WsusTestFileText -RepoRoot $script:RepoRoot -RelativePath 'Scripts\WsusManagementGui.ps1'
 }
 
 Describe "Product Decline Pattern (Word-Boundary Matching)" {
@@ -70,103 +71,33 @@ Describe "Product Decline Pattern (Word-Boundary Matching)" {
     }
 }
 
-Describe "Office 365 LTSC Exception (Decline Logic)" {
-    Context "Pattern for identifying non-LTSC Microsoft 365 updates" {
-        It "Declines Microsoft 365 updates that lack LTSC or 2024 in title" {
-            # Simulates the logic at line 900-903
-            $updateProductString = "Microsoft 365 Apps"
-            $updateTitle = "Microsoft 365 Apps - Feature Update 2402"
+Describe "Office update policy" {
+    Context "Decline logic" {
+        It "Does not use the old broad Microsoft 365 decline bucket" {
+            $script:MaintContent | Should -Not -Match '\$officeDeclines\s*='
+            $script:MaintContent | Should -Match '\$x86OfficeDeclines\s*='
+        }
 
-            $isM365 = $updateProductString -like "*Microsoft 365*"
-            $isLTSC = $updateTitle -like "*LTSC*"
-            $is2024 = $updateTitle -like "*2024*"
-            $shouldDecline = $isM365 -and (-not $isLTSC) -and (-not $is2024)
+        It "Declines only x86 or 32-bit Office updates" {
+            $title = "Microsoft 365 Apps Update for x86"
+
+            $shouldDecline = (
+                $title -match '(?i)\b(Microsoft Office|Microsoft 365 Apps|Office)\b' -and
+                $title -match '(?i)\b(x86|32.bit|32-bit)\b'
+            )
 
             $shouldDecline | Should -BeTrue
         }
 
-        It "Preserves Microsoft 365 updates that have LTSC in title" {
-            $updateProductString = "Microsoft 365 Apps"
-            $updateTitle = "Microsoft 365 Apps for Enterprise 2024 LTSC"
+        It "Keeps x64 Microsoft 365 updates instead of broadly declining them" {
+            $title = "Microsoft 365 Apps - Feature Update 2402"
 
-            $isM365 = $updateProductString -like "*Microsoft 365*"
-            $isLTSC = $updateTitle -like "*LTSC*"
-            $is2024 = $updateTitle -like "*2024*"
-            $shouldDecline = $isM365 -and (-not $isLTSC) -and (-not $is2024)
-
-            $shouldDecline | Should -BeFalse
-        }
-
-        It "Preserves Microsoft 365 updates that have 2024 in title" {
-            $updateProductString = "Microsoft 365 Apps"
-            $updateTitle = "Microsoft 365 Apps - Update 2024.03"
-
-            $isM365 = $updateProductString -like "*Microsoft 365*"
-            $isLTSC = $updateTitle -like "*LTSC*"
-            $is2024 = $updateTitle -like "*2024*"
-            $shouldDecline = $isM365 -and (-not $isLTSC) -and (-not $is2024)
+            $shouldDecline = (
+                $title -match '(?i)\b(Microsoft Office|Microsoft 365 Apps|Office)\b' -and
+                $title -match '(?i)\b(x86|32.bit|32-bit)\b'
+            )
 
             $shouldDecline | Should -BeFalse
-        }
-
-        It "Does NOT affect non-Microsoft 365 updates" {
-            $updateProductString = "Windows 11"
-
-            $isM365 = $updateProductString -like "*Microsoft 365*"
-            $shouldDecline = $isM365 -and (-not $false) -and (-not $false)
-
-            $shouldDecline | Should -BeFalse
-        }
-
-        It "Declines Microsoft 365 without LTSC or 2024 (edge case)" {
-            $updateProductString = "Microsoft 365 Apps"
-            $updateTitle = "OneDrive sync update"
-
-            $isM365 = $updateProductString -like "*Microsoft 365*"
-            $isLTSC = $updateTitle -like "*LTSC*"
-            $is2024 = $updateTitle -like "*2024*"
-            $shouldDecline = $isM365 -and (-not $isLTSC) -and (-not $is2024)
-
-            $shouldDecline | Should -BeTrue
-        }
-    }
-}
-
-Describe "Office 365 LTSC Exception (Approval Logic)" {
-    Context "Pattern for filtering pending approvals" {
-        It "Script has the LTSC/2024 filter in approval section" {
-            $script:MaintContent | Should -Match 'skip Office 365 updates that are NOT Office 2024 LTSC'
-        }
-
-        It "Uses correct filter: notlike LTSC AND notlike 2024" {
-            # Simulates the logic at line 1109-1114
-            $update = @{
-                ProductTitles = @("Microsoft 365 Apps")
-                Title = "Feature Update 2402"
-            }
-
-            $prodStr = $update.ProductTitles -join ","
-            $isM365 = $prodStr -like "*Microsoft 365*"
-            $isLTSC = $update.Title -like "*LTSC*"
-            $is2024 = $update.Title -like "*2024*"
-            $skipApproval = $isM365 -and (-not $isLTSC) -and (-not $is2024)
-
-            $skipApproval | Should -BeTrue
-        }
-
-        It "Approves LTSC updates from Microsoft 365" {
-            $update = @{
-                ProductTitles = @("Microsoft 365 Apps")
-                Title = "Microsoft 365 Apps for Enterprise LTSC 2024"
-            }
-
-            $prodStr = $update.ProductTitles -join ","
-            $isM365 = $prodStr -like "*Microsoft 365*"
-            $isLTSC = $update.Title -like "*LTSC*"
-            $is2024 = $update.Title -like "*2024*"
-            $skipApproval = $isM365 -and (-not $isLTSC) -and (-not $is2024)
-
-            $skipApproval | Should -BeFalse
         }
     }
 }
@@ -282,31 +213,44 @@ Describe "Product Approval Filter" {
     }
 }
 
-Describe "SQL Injection Safety" {
-    Context "Install script uses sqlcmd -v for user context" {
-        It "Install script passes currentUser via sqlcmd -v variable" {
-            $script:InstallContent | Should -Match '-v CurrentUser='
-            $script:InstallContent | Should -Match '\$\(CurrentUser\)'  # sqlcmd variable syntax
+Describe "WSUS Content Permission Repair" {
+    It "Installer grants IIS_IUSRS and Authenticated Users list folder/read/execute access" {
+        $script:InstallContent | Should -Match 'BUILTIN\\IIS_IUSRS:\(OI\)\(CI\)RX'
+        $script:InstallContent | Should -Match 'NT AUTHORITY\\Authenticated Users:\(OI\)\(CI\)RX'
+    }
+}
+
+Describe "SQL Login Repair Safety" {
+    Context "Install script grants SQL sysadmin without requiring sqlcmd.exe" {
+        It "Uses SqlClient fallback for install-time SQL permission grants" {
+            $script:InstallContent | Should -Match 'System\.Data\.SqlClient\.SqlConnection'
+            $script:InstallContent | Should -Match 'Grant-InstallSqlSysadmin'
         }
 
-        It "Does NOT interpolate currentUser directly into SQL string" {
-            # Old pattern was: -Q "CREATE LOGIN [$currentUser] FROM WINDOWS"
-            # New pattern uses $(CurrentUser) which is sqlcmd variable, not PS interpolation
-            # Check that there's no bare $currentUser inside -Q quoted SQL strings
-            $lines = $script:InstallContent -split "`n"
-            $sqlLines = $lines | Where-Object { $_ -match '\-Q\s+"' }
-            foreach ($line in $sqlLines) {
-                # Extract the SQL string between -Q " and the closing "
-                if ($line -match '-Q\s+"([^"]+)"') {
-                    $sqlText = $matches[1]
-                    # Check if $currentUser appears as PS variable inside the SQL text
-                    # $currentUser appearing outside -Q (e.g., in -v values) is safe
-                    if ($sqlText -match '\$currentUser' -and $sqlText -notmatch '\$\(CurrentUser\)') {
-                        throw "Found potentially unsafe direct interpolation in SQL: $line"
-                    }
-                }
-            }
-            $true | Should -BeTrue
+        It "Includes the default maintenance operator account during install" {
+            $script:InstallContent | Should -Match '\$env:USERDOMAIN\\dod_admin'
+            $script:InstallContent | Should -Match 'SqlSysadminAccounts'
+        }
+    }
+
+    Context "Fix SQL Login works without sqlcmd.exe" {
+        It "Does not fail immediately when sqlcmd.exe is missing" {
+            $fixSqlBlock = [regex]::Match($script:GuiContent, '(?s)# Fix SQL Login.*?# Cancel operation button').Value
+            $fixSqlBlock | Should -Match 'Add-WsusGuiSqlSysadmin'
+            $fixSqlBlock | Should -Not -Match 'sqlcmd\.exe not found'
+        }
+
+        It "Can use SA password fallback when Windows auth cannot grant sysadmin" {
+            $script:GuiContent | Should -Match 'Get-WsusGuiSaCredential'
+            $script:GuiContent | Should -Match 'SA fallback is available'
+        }
+    }
+
+    Context "Online sync pre-flight checks SQL permission without SQL command-line tools" {
+        It "Uses System.Data.SqlClient when Invoke-Sqlcmd and sqlcmd.exe are unavailable" {
+            $script:MaintContent | Should -Match 'Invoke-WsusMaintenanceSqlScalar'
+            $script:MaintContent | Should -Match 'System\.Data\.SqlClient'
+            $script:MaintContent | Should -Not -Match 'SKIP \(no SQL tools\)'
         }
     }
 }

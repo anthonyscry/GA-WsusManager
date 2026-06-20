@@ -87,7 +87,6 @@ function Get-WsusKnownElementName {
         BtnInstall = '▶ Install WSUS'
         BtnFixSqlLogin = '[+] Fix SQL Login'
         BtnRestore = '↻ Restore DB'
-        BtnCreateGpo = '☰ Create GPO'
         BtnMaintenance = '↻ Online Sync'
         BtnSchedule = '⌛ Schedule Task'
         BtnCleanup = '✧ Deep Cleanup'

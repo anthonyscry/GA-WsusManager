@@ -1,6 +1,6 @@
 # Module Reference
 
-Complete reference for all PowerShell modules in WSUS Manager v4.1.0.
+Complete reference for the PowerShell modules in WSUS Manager v4.1.0.
 
 ---
 
@@ -433,7 +433,7 @@ $repair.IisContentPathFixed  # true/false
 
 #### Get-WsusHealthScore
 
-*Added in v4.0.* Calculates a 0-100 composite health score for the WSUS server using weighted components.
+*Added in v4.0.* Calculates a 0-100 composite health score for the WSUS server using services, database size, and disk space.
 
 ```powershell
 $score = Get-WsusHealthScore -ContentPath "C:\WSUS"
@@ -441,28 +441,24 @@ $score.Score       # 0-100, or -1 if all sources failed
 $score.Grade       # "Green", "Yellow", "Red", or "Unknown"
 $score.AllFailed   # true if every data source errored
 $score.Components  # Breakdown by category
-$score.Components.Services      # 0-30
-$score.Components.DatabaseSize  # 0-20
-$score.Components.SyncRecency   # 0-20
-$score.Components.DiskSpace     # 0-20
-$score.Components.LastOperation # 0-10
+$score.Components.Services      # 0-40
+$score.Components.DatabaseSize  # 0-30
+$score.Components.DiskSpace     # 0-30
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | SqlInstance | string | .\SQLEXPRESS | SQL Server instance |
 | ContentPath | string | C:\WSUS | WSUS content path for disk check |
-| HistoryPath | string | %APPDATA%\WsusManager\history.json | Path to operation history JSON file |
+| HistoryPath | string | %APPDATA%\WsusManager\history.json | Retained for compatibility; operation history no longer affects score |
 
 **Weight allocation:**
 
 | Component | Max Points | Scoring |
 |-----------|-----------|---------|
-| Services | 30 | 3 running = 30, 2 = 20, 1 = 10, 0 = 0 |
-| DatabaseSize | 20 | < 7 GB = 20, < 9 GB = 10, >= 9 GB = 0 |
-| SyncRecency | 20 | <= 7 days = 20, <= 30 days = 10, > 30 = 0 |
-| DiskSpace | 20 | > 50 GB = 20, >= 10 GB = 10, < 10 GB = 0 |
-| LastOperation | 10 | Pass = 10, Fail = 0, No history = 5 |
+| Services | 40 | Proportional to core services running; all core services = 40 |
+| DatabaseSize | 30 | < 7 GB = 30, < 9 GB = 15, >= 9 GB = 0 |
+| DiskSpace | 30 | > 50 GB = 30, >= 10 GB = 15, < 10 GB = 0 |
 
 **Grade thresholds:**
 
@@ -781,14 +777,12 @@ Get-WsusTimerInterval -Timer "DashboardRefresh"
 
 ```powershell
 $weights = Get-WsusHealthWeights
-$weights.Services       # 30
-$weights.DatabaseSize   # 20
-$weights.SyncRecency    # 20
-$weights.DiskSpace      # 20
-$weights.LastOperation  # 10
+$weights.Services       # 40
+$weights.DatabaseSize   # 30
+$weights.DiskSpace      # 30
 ```
 
-Returns a hashtable with keys: `Services`, `DatabaseSize`, `SyncRecency`, `DiskSpace`, `LastOperation`.
+Returns a hashtable with keys: `Services`, `DatabaseSize`, `DiskSpace`.
 
 #### Get-WsusOperationTimeout
 
@@ -863,7 +857,7 @@ $result.Message
 | ExcludeDirs | string[] | `Logs`, `SQLDB`, `Backup` | Directory names excluded from content copy |
 
 #### Invoke-WsusTransferPackage
-Copies a WSUS transfer package through the shared transfer engine. It normalizes import/export `WsusContent` paths, copies optional database backups, and delegates content copy to `Invoke-WsusRobocopy`; transfers are non-destructive and do not delete destination files.
+Copies a WSUS transfer package through the shared transfer engine. It normalizes `WsusContent` paths for restore/export folders, copies optional database backups, and delegates content copy to `Invoke-WsusRobocopy`; transfers are non-destructive and do not delete destination files.
 
 ```powershell
 $result = Invoke-WsusTransferPackage -Direction Import -SourcePath "E:\WSUS_Export" -DestinationPath "C:\WSUS" -IncludeDatabase -IncludeContent

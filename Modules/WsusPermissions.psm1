@@ -49,20 +49,23 @@ function Set-WsusContentPermissions {
 
     try {
         Write-Host "Setting permissions on $ContentPath..." -ForegroundColor Yellow
+        Write-Host "  Applying inherited object/container ACEs recursively with icacls." -ForegroundColor DarkGray
 
-        # SYSTEM and Administrators - Full Control
-        icacls "$ContentPath" /grant "SYSTEM:(OI)(CI)F" /T /Q | Out-Null
-        icacls "$ContentPath" /grant "Administrators:(OI)(CI)F" /T /Q | Out-Null
+        $permissionGrants = @(
+            @{ Identity = "NT AUTHORITY\SYSTEM"; Rights = "F"; Description = "Full control for local system" },
+            @{ Identity = "BUILTIN\Administrators"; Rights = "F"; Description = "Full control for local administrators" },
+            @{ Identity = "NT AUTHORITY\NETWORK SERVICE"; Rights = "F"; Description = "Full control for WSUS service writes" },
+            @{ Identity = "NT AUTHORITY\LOCAL SERVICE"; Rights = "F"; Description = "Full control for local service dependencies" },
+            @{ Identity = "BUILTIN\IIS_IUSRS"; Rights = "RX"; Description = "List folder/read/execute for IIS content reads" },
+            @{ Identity = "NT AUTHORITY\Authenticated Users"; Rights = "RX"; Description = "List folder/read/execute for WSUS client downloads" }
+        )
 
-        # NETWORK SERVICE - Full Control (required for WSUS service)
-        icacls "$ContentPath" /grant "NETWORK SERVICE:(OI)(CI)F" /T /Q | Out-Null
-
-        # LOCAL SERVICE - Full Control
-        icacls "$ContentPath" /grant "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)F" /T /Q | Out-Null
-
-        # IIS_IUSRS and Authenticated Users - Read (for web access and client download access)
-        icacls "$ContentPath" /grant "IIS_IUSRS:(OI)(CI)R" /T /Q | Out-Null
-        icacls "$ContentPath" /grant "Authenticated Users:(OI)(CI)R" /T /Q | Out-Null
+        foreach ($grant in $permissionGrants) {
+            $aclGrant = "$($grant.Identity):(OI)(CI)$($grant.Rights)"
+            Write-Host "  Granting $($grant.Description): $($grant.Identity) [$($grant.Rights)]..." -NoNewline -ForegroundColor DarkGray
+            icacls "$ContentPath" /grant $aclGrant /T /Q | Out-Null
+            Write-Host " OK" -ForegroundColor Green
+        }
 
         # WsusPool application pool identity - Full Control (if requested)
         if ($IncludeWsusPool) {
@@ -214,13 +217,26 @@ function Repair-WsusContentPermissions {
         return $true
     }
 
-    Write-Host "Missing permissions detected:" -ForegroundColor Yellow
+    Write-Host "Missing permissions detected on ${ContentPath}:" -ForegroundColor Yellow
     $check.Missing | ForEach-Object {
         Write-Host "  - $_" -ForegroundColor Red
     }
 
     Write-Host "Repairing permissions..." -ForegroundColor Yellow
-    return Set-WsusContentPermissions -ContentPath $ContentPath
+    $repairSucceeded = Set-WsusContentPermissions -ContentPath $ContentPath
+    if (-not $repairSucceeded) {
+        Write-Warning "Permission repair failed while applying ACLs to $ContentPath."
+        return $false
+    }
+
+    $postRepair = Test-WsusContentPermissions -ContentPath $ContentPath
+    if ($postRepair.AllCorrect) {
+        Write-Host "Permission repair verified successfully." -ForegroundColor Green
+        return $true
+    }
+
+    Write-Warning "Permission repair completed, but required ACLs are still missing: $($postRepair.Missing -join ', ')"
+    return $false
 }
 
 function Initialize-WsusDirectories {

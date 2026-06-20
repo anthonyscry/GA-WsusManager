@@ -156,7 +156,7 @@ Your account needs sysadmin privileges to manage SUSDB. Choose one of these meth
 **Option A: Use WSUS Manager GUI (Recommended)**
 
 1. Launch `GA-WsusManager.exe` as Administrator
-2. Click **Fix SQL Login** in the Setup section
+2. Click **Fix SQL Login** in the Diagnostics section
 3. The app automatically adds the current user as sysadmin
 
 **Option B: Use sqlcmd (No SSMS Required)**
@@ -238,18 +238,19 @@ New-NetFirewallRule -DisplayName "WSUS HTTPS Traffic (Port 8531)" `
 
 ### Deploy WSUS Group Policy
 
-Run this script on your Domain Controller (not the WSUS server):
+Copy the whole `DomainController/` folder to your Domain Controller, keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together, then run this from inside the copied folder:
 
 ```powershell
-.\DomainController\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
+.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
 ```
 
 ### What Gets Configured
 
-The script imports three GPOs:
-1. **WSUS Update Policy** - Configures clients to use your WSUS server
-2. **WSUS Inbound Firewall** - Allows update traffic
-3. **WSUS Outbound Firewall** - Allows reporting traffic
+The script imports four GPOs:
+1. **WSUS Update Policy - Servers** - Configures domain controllers and member servers to use your WSUS server
+2. **WSUS Update Policy - Workstations** - Configures workstations to use your WSUS server
+3. **WSUS Inbound Allow** - Allows client traffic to the WSUS server
+4. **WSUS Outbound Allow** - Allows clients to reach the WSUS server
 
 ### Manual GPO Configuration
 

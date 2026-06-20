@@ -506,9 +506,10 @@ WSUS Manager v$Version - Quick Start Guide
 
 REQUIREMENTS
 ------------
-- Windows Server 2016, 2019, 2022, or 2025
+- Windows Server 2019, 2022, or 2025
 - Administrator privileges
-- .NET Framework 4.7.2 or later
+- 200 GB+ disk space recommended for the WSUS server/content drive
+- SQL Server Express 2022 installer in C:\WSUS\SQLDB\
 
 INSTALLATION
 ------------
@@ -529,10 +530,10 @@ FIRST RUN
 2. The dashboard will auto-detect your WSUS configuration
 3. Use the menu for WSUS operations
 
-DOMAIN CONTROLLER SETUP (Optional)
-----------------------------------
-The DomainController folder contains GPO deployment scripts.
-Run Set-WsusGroupPolicy.ps1 on your DC to configure clients.
+DOMAIN CONTROLLER SETUP (Air-Gap GPOs)
+--------------------------------------
+Copy the whole DomainController folder to the Domain Controller.
+From inside that copied folder, run Set-WsusGroupPolicy.ps1 to import and link the packaged GPOs.
 
 Author: Tony Tran, ISSO, GA-ASI
 "@

@@ -60,6 +60,77 @@ Describe "Script Syntax Validation" {
             $content | Should -Match 'general_atomics_logo_big\.ico'
         }
 
+        It "Tray minimize keeps a taskbar recovery path" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match 'function Restore-WsusMainWindowFromTray'
+            $content | Should -Match 'function Set-WsusTrayIconVisible'
+            $trayBlock = [regex]::Match($content, '(?s)# Intercept minimize.*?\$script:window\.Add_Closing').Value
+            $trayBlock | Should -Not -Match '\.Hide\('
+            $trayBlock | Should -Match 'ShowInTaskbar\s*=\s*\$true'
+        }
+
+        It "GUI help and about copy reflects current air-gap guidance and disk sizing" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match '200 GB\+ disk space recommended'
+            $content | Should -Match 'approved export folder'
+            $content | Should -Match 'creates Member Servers, WSUS Server, and Workstations OUs if needed'
+            $content | Should -Not -Match 'Online WSUS: Internet-connected'
+            $content | Should -Not -Match '150 GB\+ disk space'
+            $quickStartBlock = [regex]::Match($content, '(?s)QUICK START GUIDE.*?KEYBOARD SHORTCUTS').Value
+            $quickStartBlock.IndexOf('AIR-GAPPED RESTORE') | Should -BeGreaterOrEqual 0
+            $quickStartBlock.IndexOf('ONLINE SYNC') | Should -BeGreaterThan $quickStartBlock.IndexOf('AIR-GAPPED RESTORE')
+            $content | Should -Match 'Use Robocopy if WsusContent still needs to be copied'
+            $content | Should -Not -Match 'Robocopy/Import'
+            $content | Should -Not -Match 'Robocopy Export'
+            $content | Should -Not -Match 'Robocopy Import'
+        }
+
+        It "GUI popups use the readable themed dialog before native MessageBox fallback" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Match 'function Show-WsusCustomPopup'
+            $popupFunction = [regex]::Match($content, '(?s)function Show-WsusPopup \{.*?\n\}').Value
+            $popupFunction | Should -Match 'Show-WsusCustomPopup'
+        }
+
+        It "GUI removes Create GPO menu and places Fix SQL Login under diagnostics" {
+            $content = Get-Content $script:GuiScript -Raw
+            $content | Should -Not -Match 'x:Name="BtnCreateGpo"'
+            $content | Should -Not -Match 'BtnCreateGpo\.Add_Click'
+            $content | Should -Match 'Copy the whole DomainController folder'
+
+            $diagnosticsBlock = [regex]::Match($content, '(?s)<Expander x:Name="DiagnosticsExpander".*?</Expander>').Value
+            $diagnosticsBlock | Should -Match 'Header="DIAGNOSTICS"'
+            $diagnosticsBlock | Should -Match 'IsExpanded="False"'
+            $diagnosticsBlock | Should -Match 'x:Name="BtnFixSqlLogin"'
+            $diagnosticsBlock | Should -Match 'x:Name="BtnDiagnostics"'
+        }
+
+        It "GUI groups maintenance and online operation buttons in the requested order" {
+            $content = Get-Content $script:GuiScript -Raw
+            $navBlock = [regex]::Match($content, '(?s)<ScrollViewer VerticalScrollBarVisibility="Auto".*?</ScrollViewer>').Value
+            $navBlock | Should -Match 'Text="MAINTENANCE"'
+            $navBlock | Should -Match 'x:Name="OnlineOperationsExpander"'
+            $navBlock | Should -Match 'Header="ONLINE OPERATIONS"'
+            $navBlock | Should -Match 'x:Name="DiagnosticsExpander"'
+            $navBlock | Should -Match 'IsExpanded="False"'
+
+            $restoreIndex = $navBlock.IndexOf('x:Name="BtnRestore"')
+            $transferIndex = $navBlock.IndexOf('x:Name="BtnTransfer"')
+            $cleanupIndex = $navBlock.IndexOf('x:Name="BtnCleanup"')
+            $onlineHeaderIndex = $navBlock.IndexOf('Header="ONLINE OPERATIONS"')
+            $maintenanceIndex = $navBlock.IndexOf('x:Name="BtnMaintenance"')
+            $scheduleIndex = $navBlock.IndexOf('x:Name="BtnSchedule"')
+
+            $restoreIndex | Should -BeGreaterOrEqual 0
+            $transferIndex | Should -BeGreaterThan $restoreIndex
+            $cleanupIndex | Should -BeGreaterThan $transferIndex
+            $onlineHeaderIndex | Should -BeGreaterThan $cleanupIndex
+            $maintenanceIndex | Should -BeGreaterThan $onlineHeaderIndex
+            $scheduleIndex | Should -BeGreaterThan $maintenanceIndex
+            $navButtonStyle = [regex]::Match($content, '(?s)<Style x:Key="NavBtn".*?</Style>').Value
+            $navButtonStyle | Should -Match 'Property="FontWeight" Value="Normal"'
+        }
+
 
     }
 
@@ -185,14 +256,17 @@ Describe "Security Validation" {
             $content | Should -Match 'Clear-WsusSecretEnvironment'
         }
 
-        It "GUI uses runtime-config DefaultExportPath" {
+        It "GUI keeps stable baseline export root default" {
             $content = Get-Content $script:GuiScript -Raw
-            $content | Should -Match '\$script:ExportRoot = \$script:RuntimeConfig\.DefaultExportPath'
+            $content | Should -Match '\$script:ExportRoot = "C:\\\"'
         }
 
-        It "GUI transfer import uses selected destination root directly" {
+        It "GUI transfer uses the selected destination root and appends the source folder" {
             $content = Get-Content $script:GuiScript -Raw
-            $content | Should -Match 'New-WsusTransferOperationPlan -SourcePath \$opts\.SourcePath -DestinationPath \$opts\.DestinationPath -ExportModulePath \$exportModule -Mode Embedded'
+            $content | Should -Match '\$dst = Get-EscapedPath \(Join-Path \$opts\.DestinationPath \$srcFolderName\)'
+            $content | Should -Match 'robocopy `"\$src`" `"\$dst`"'
+            $transferBlock = [regex]::Match($content, '(?s)"transfer" \{.*?\n        \}').Value
+            $transferBlock | Should -Not -Match '\$script:ForceEmbeddedMode\s*=\s*\$true'
         }
     }
 
@@ -225,9 +299,10 @@ Describe "Version Consistency" {
         Get-WsusAppVersion | Should -Be $expected
     }
 
-    It "GUI script delegates AppVersion to Get-WsusAppVersion (not hardcoded)" {
+    It "GUI script AppVersion matches the metadata version" {
         $guiContent = Get-Content $script:GuiScript -Raw
-        $guiContent | Should -Match 'Get-WsusAppVersion'
+        $expected = (Get-Content (Join-Path $script:RepoRoot "metadata.json") -Raw | ConvertFrom-Json).version
+        $guiContent | Should -Match "\`$script:AppVersion = `"$([regex]::Escape($expected))`""
     }
 
     It "build.ps1 reads version from metadata.json" {

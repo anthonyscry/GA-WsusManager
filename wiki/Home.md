@@ -21,7 +21,7 @@ Welcome to the WSUS Manager documentation! This wiki provides comprehensive guid
 WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides:
 
 - **Modern GUI Application** - Dark-themed WPF interface with auto-refresh dashboard
-- **Air-Gap Support** - Export/import operations for disconnected networks
+- **Air-Gap Support** - Restore approved export folders and copy content with Robocopy when needed
 - **Automated Maintenance** - Scheduled cleanup and optimization tasks
 - **Health Monitoring** - Health Score (0-100), service/database/disk status
 - **One-Click Operations** - Install, backup, restore, diagnostics
@@ -34,7 +34,7 @@ WSUS Manager is a PowerShell-based automation suite for Windows Server Update Se
 
 ### Dashboard
 Real-time monitoring with color-coded status cards and 30-second auto-refresh:
-- **Health Score** - 0-100 weighted composite (Green/Yellow/Red grading)
+- **Health Score** - 0-100 weighted score from services, database size, and disk space
 - **Services** - SQL Server, WSUS, IIS status
 - **Database** - SUSDB size vs 10GB SQL Express limit with trend indicator
 - **Disk Space** - Available storage for updates
@@ -52,25 +52,28 @@ Server Mode auto-detects Online vs Air-Gap based on internet connectivity to sho
 | Operation | Description |
 |-----------|-------------|
 | Install WSUS | Fresh installation with SQL Express 2022 |
-| Fix SQL Login | Grant SQL sysadmin permissions to the current user |
-| Restore DB | Restore SUSDB from a backup file |
-| Create GPO | Copy GPO files and display DC deployment instructions |
+| GPO Deployment | Copy the whole `DomainController/` folder to the Domain Controller, then run `Set-WsusGroupPolicy.ps1` there |
 
 **MAINTENANCE**
 | Operation | Description |
 |-----------|-------------|
+| Restore DB | Restore SUSDB from backup |
+| Robocopy | Copy approved export/content folders |
+| Deep Cleanup | Run database cleanup and optimization |
+
+**ONLINE OPERATIONS**
+| Operation | Description |
+|-----------|-------------|
 | Online Sync | Sync updates with Microsoft (Full Sync / Quick Sync / Sync Only) |
-| Schedule Task | Create or update the monthly sync scheduled task |
-| Deep Cleanup | Aggressive space recovery — 6-step database maintenance |
-| Robocopy | Transfer content to/from media (single dialog: Source + Destination + Start) |
+| Schedule Task | Create or update the recurring online sync scheduled task |
 
 **DIAGNOSTICS**
 | Operation | Description |
 |-----------|-------------|
 | Diagnostics | Comprehensive health check with automatic repair |
 | Reset Content | Re-verify content files against database after air-gap import |
-
-> **Note:** Online Sync and Schedule Task should run on the **Online** WSUS server only.
+| Fix SQL Login | Grant SQL sysadmin permissions to the current user |
+> **Note:** Online Sync and Schedule Task should run only on a connected export server that is intentionally allowed to sync with Microsoft.
 
 ---
 
@@ -112,7 +115,8 @@ git clone https://github.com/anthonyscry/GA-WsusManager.git
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 4.1.0 | Jun 2026 | Single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
+| 4.1.0 | Jun 2026 | Stable v4.0.5 baseline with GPO OU creation, SQL login repair, ACL auto-fix, live Robocopy, collapsible operations, simpler health score, and refreshed docs |
+| 4.0.5 | Jun 2026 | Stable rollback baseline with current GPO import, additive product sync, deeper diagnostics, and refreshed operator docs |
 | 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB ops, 6-month age decline (preserves approved), sysadmin check via sqlcmd |
 | 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180min sync timeout, default products, WID auto-migration |
 | 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, robocopy fix, removed differential export, stream piping fix |

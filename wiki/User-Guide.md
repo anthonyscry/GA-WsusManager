@@ -76,15 +76,13 @@ The dashboard displays color-coded status cards plus a Health Score band:
 
 ### Health Score
 
-The dashboard displays a **Health Score** band (0-100) that combines multiple indicators into a single weighted score:
+The dashboard displays a **Health Score** band (0-100) based only on services, database size, and disk space. Last sync and scheduled task state still appear on the dashboard, but they do not reduce the score.
 
 | Component | Weight | What It Measures |
 |-----------|--------|------------------|
-| Services | 30 | SQL Server, WSUS, IIS running status |
-| Database | 20 | SUSDB size relative to 10GB limit |
-| Sync Recency | 20 | Time since last successful sync |
-| Disk Space | 20 | Available storage for updates |
-| Last Operation | 10 | Result of most recent operation |
+| Services | 40 | SQL Server, WSUS, IIS running status |
+| Database | 30 | SUSDB size relative to 10GB limit |
+| Disk Space | 30 | Available storage for updates |
 
 **Grading:**
 | Grade | Score Range | Color |
@@ -162,22 +160,22 @@ Installs WSUS with SQL Server Express from scratch.
 - No existing WSUS installation
 - Administrator privileges
 
-### Create GPO
+### GPO Deployment
 
 > **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
 > WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
 
-Copies Group Policy Objects to `C:\WSUS\WSUS GPO` for transfer to a Domain Controller.
+The app no longer has a Create GPO menu item. The deployment files are already in the package.
 
 **Steps:**
-1. Click **Create GPO**
-2. Confirm the copy operation
-3. Copy the `C:\WSUS\WSUS GPO` folder to the Domain Controller
-4. On the DC, run as Administrator:
+1. Copy the whole `DomainController/` folder from the WSUS Manager package to the Domain Controller.
+2. Keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together.
+3. On the DC, open an elevated PowerShell prompt inside the copied folder.
+4. Run:
    ```powershell
-   cd 'C:\WSUS\WSUS GPO'
    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
    ```
+5. Allow the prompt to move the WSUS server computer object into `Member Servers\WSUS Server`.
 
 **To force clients to update:**
 ```powershell
@@ -188,10 +186,11 @@ gpupdate /force
 gpresult /r | findstr WSUS
 ```
 
-**GPOs Created:**
+**GPOs imported:**
 | GPO Name | Purpose | Link Target |
 |----------|---------|-------------|
-| WSUS Update Policy | Client update settings | Domain root |
+| WSUS Update Policy - Servers | Server update settings | Domain Controllers, Member Servers |
+| WSUS Update Policy - Workstations | Workstation update settings | Workstations |
 | WSUS Inbound Allow | Firewall rules for WSUS server | Member Servers\WSUS Server |
 | WSUS Outbound Allow | Firewall rules for clients | Workstations, Member Servers, DCs |
 
@@ -200,19 +199,19 @@ gpresult /r | findstr WSUS
 Restores SUSDB from a backup file.
 
 **Steps:**
-1. Click **Restore Database**
-2. Confirm the warning dialog
-3. Ensure backup file is at `C:\WSUS\`
-4. Wait for restore to complete
+1. Click **Restore DB** in the Maintenance section.
+2. Select the SUSDB `.bak` file from the approved export folder.
+3. Confirm the warning dialog.
+4. Wait for restore to complete.
 
 **Prerequisites:**
-- Valid `.bak` file at `C:\WSUS\`
-- Update files in `C:\WSUS\WsusContent\`
+- Valid `.bak` file from the approved export folder
+- Matching `WsusContent\` tree from the same export snapshot
 - SQL Server running
 
 ### Robocopy
 
-Copies update content between servers and USB media. Used for both directions: online server → USB (for transport to air-gap site), and USB → air-gap server (after physical transfer).
+Copies update content between folders and removable media. For air-gapped restore, use it when the approved export folder's `WsusContent\` still needs to be copied into `C:\WSUS\`.
 
 **Steps:**
 1. Click **Robocopy** in the Maintenance section
@@ -227,8 +226,7 @@ Copies update content between servers and USB media. Used for both directions: o
 **Common Usage:**
 | Direction | Source | Destination |
 |-----------|--------|-------------|
-| Online → USB | `C:\WSUS\WsusContent` | USB drive folder (e.g., `E:\WSUS_Transfer`) |
-| USB → Air-Gap | USB drive folder | `C:\WSUS` |
+| Approved media → Air-Gap | Approved export folder or `WsusContent\` folder | `C:\WSUS` |
 
 **Prerequisites:**
 - Sufficient disk space on destination
@@ -238,7 +236,7 @@ Copies update content between servers and USB media. Used for both directions: o
 
 Runs comprehensive sync and maintenance tasks.
 
-> **Online-only:** Run Online Sync on the **Online** WSUS server.
+> **Online-only:** Run Online Sync only on a connected server that is intentionally allowed to sync with Microsoft and produce approved export folders.
 
 **Sync Profiles:**
 | Profile | Operations | Use When |
@@ -336,7 +334,7 @@ Comprehensive health check with automatic repair (combines former Health Check a
 
 Troubleshooting action that forces WSUS to re-verify all content files against the database.
 
-> **Air-Gap Tip:** The install workflow already performs the normal post-install content step. Use this only when WSUS still shows imported files as downloading after restore/import.
+> **Air-Gap Tip:** The install workflow already performs the normal post-install content step. Use this only when WSUS still shows files as downloading after restore or Robocopy.
 
 **What it does:**
 1. Stops WSUS service
@@ -351,7 +349,7 @@ Troubleshooting action that forces WSUS to re-verify all content files against t
 - If the dashboard exposes file status, click **Refresh** and watch items move from **Downloading** to **Downloaded / Ready to Install**
 
 **When to use:**
-- After database restore/import on air-gapped servers
+- After database restore on air-gapped servers
 - When WSUS shows download status but content files are present
 - To fix content verification mismatches
 
@@ -496,7 +494,7 @@ The log panel also supports right-click context menu with **Copy All** and **Sav
 ### Regular Maintenance
 - Run **Online Sync** on a schedule
 - Monitor database size (aim for < 7 GB)
-- Keep at least 50 GB free disk space
+- Plan for 200 GB+ total server/content drive capacity and monitor free space before major operations
 
 ### Before Major Operations
 - Create a database backup

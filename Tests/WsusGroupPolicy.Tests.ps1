@@ -62,12 +62,16 @@ Describe 'Resolve-ExistingOuName' {
 }
 
 Describe 'Assert-OUExists' {
-    It 'Skips creation when neither Member Servers variant exists' {
-        $script:created = $false
+    It 'Creates Member Servers parent when neither variant exists' {
+        $script:calls = @()
         Set-Item Function:Get-ADOrganizationalUnit -Value { throw 'Not found' }
-        Set-Item Function:New-ADOrganizationalUnit -Value { $script:created = $true }
-        Assert-OUExists -OUPath 'Member Servers/WSUS Server' -DomainDN 'DC=example,DC=com' | Should -BeNullOrEmpty
-        $script:created | Should -BeFalse
+        Set-Item Function:New-ADOrganizationalUnit -Value { param($Name, $Path) $script:calls += [pscustomobject]@{ Name = $Name; Path = $Path } }
+        Assert-OUExists -OUPath 'Member Servers/WSUS Server' -DomainDN 'DC=example,DC=com' | Should -Be 'OU=WSUS Server,OU=Member Servers,DC=example,DC=com'
+        $script:calls.Count | Should -Be 2
+        $script:calls[0].Name | Should -Be 'Member Servers'
+        $script:calls[0].Path | Should -Be 'DC=example,DC=com'
+        $script:calls[1].Name | Should -Be 'WSUS Server'
+        $script:calls[1].Path | Should -Be 'OU=Member Servers,DC=example,DC=com'
     }
     It 'Creates child WSUS Server OU under existing Member_Servers parent' {
         $script:calls = @()
@@ -89,6 +93,39 @@ Describe 'Assert-OUExists' {
     }
 }
 
+
+Describe 'Move-WsusServerComputer' {
+    It 'Creates missing WSUS Server OU before moving computer' {
+        $script:createdOus = @()
+        $script:movedTo = $null
+        Set-Item Function:Import-Module -Value { param($Name) }
+        Set-Item Function:Get-ADOrganizationalUnit -Value {
+            param($Identity)
+            if ($Identity -eq 'OU=Member_Servers,DC=example,DC=com') {
+                return [pscustomobject]@{ DistinguishedName = $Identity }
+            }
+            throw 'Directory object not found'
+        }
+        Set-Item Function:New-ADOrganizationalUnit -Value {
+            param($Name, $Path)
+            $script:createdOus += [pscustomobject]@{ Name = $Name; Path = $Path }
+        }
+        Set-Item Function:Get-ADComputer -Value {
+            param($Identity)
+            [pscustomobject]@{ DistinguishedName = "CN=$Identity,CN=Computers,DC=example,DC=com" }
+        }
+        Set-Item Function:Move-ADObject -Value {
+            param($Identity, $TargetPath)
+            $script:movedTo = $TargetPath
+        }
+
+        Move-WsusServerComputer -ComputerName 'WSUS01' -DomainDN 'DC=example,DC=com' -Force | Should -BeTrue
+        $script:createdOus.Count | Should -Be 1
+        $script:createdOus[0].Name | Should -Be 'WSUS Server'
+        $script:createdOus[0].Path | Should -Be 'OU=Member_Servers,DC=example,DC=com'
+        $script:movedTo | Should -Be 'OU=WSUS Server,OU=Member_Servers,DC=example,DC=com'
+    }
+}
 Describe 'Import-WsusGpo' {
     It 'Removes GPO links before deleting an existing GPO' {
         $script:links = @(); $script:removed = @()

@@ -231,7 +231,6 @@ Describe "WSUS Manager Navigation" -Tag "Navigation","FlaUI" -Skip:(-not $script
             @{ AutomationId = "BtnDashboard";    Label = "Dashboard" },
             @{ AutomationId = "BtnInstall";      Label = "Install WSUS" },
             @{ AutomationId = "BtnRestore";      Label = "Restore DB" },
-            @{ AutomationId = "BtnCreateGpo";    Label = "Create GPO" },
             @{ AutomationId = "BtnTransfer";     Label = "Export/Import" },
             @{ AutomationId = "BtnMaintenance";  Label = "Online Sync" },
             @{ AutomationId = "BtnSchedule";     Label = "Schedule Task" },
@@ -554,8 +553,8 @@ Describe "WSUS Manager WSUS-Dependent Buttons" -Tag "Dialogs","FlaUI" -Skip:(-no
         # and tooltip "WSUS is not installed. Use 'Install WSUS' first."
         # This is the EXPECTED behavior — test that disabled state is correct.
         $wsusButtons = @(
-            "BtnRestore", "BtnCreateGpo", "BtnTransfer", "BtnMaintenance",
-            "BtnSchedule", "BtnCleanup", "BtnDiagnostics", "BtnReset",
+            "BtnRestore", "BtnTransfer", "BtnMaintenance", "BtnSchedule",
+            "BtnCleanup", "BtnDiagnostics", "BtnReset", "BtnFixSqlLogin",
             "QBtnDiagnostics", "QBtnCleanup", "QBtnMaint", "QBtnStart"
         )
 

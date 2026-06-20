@@ -126,19 +126,27 @@ Describe "Set-WsusContentPermissions" {
             $result | Should -BeOfType [bool]
         }
 
-        It "Should grant Authenticated Users read access" {
+        It "Should grant Authenticated Users list folder and read/execute access" {
             $null = Set-WsusContentPermissions -ContentPath "C:\WSUS"
 
             Should -Invoke icacls -ModuleName WsusPermissions -ParameterFilter {
-                $args -join ' ' -match 'Authenticated Users:\(OI\)\(CI\)R'
+                $args -join ' ' -match 'NT AUTHORITY\\Authenticated Users:\(OI\)\(CI\)RX'
             }
         }
 
-        It "Should still grant IIS_IUSRS read access for IIS content reads" {
+        It "Should grant IIS_IUSRS list folder and read/execute access" {
             $null = Set-WsusContentPermissions -ContentPath "C:\WSUS"
 
             Should -Invoke icacls -ModuleName WsusPermissions -ParameterFilter {
-                $args -join ' ' -match 'IIS_IUSRS:\(OI\)\(CI\)R'
+                $args -join ' ' -match 'BUILTIN\\IIS_IUSRS:\(OI\)\(CI\)RX'
+            }
+        }
+
+        It "Should log every required permission grant" {
+            $null = Set-WsusContentPermissions -ContentPath "C:\WSUS"
+
+            Should -Invoke icacls -ModuleName WsusPermissions -Times 6 -ParameterFilter {
+                ($args -join ' ') -match '/grant'
             }
         }
     }

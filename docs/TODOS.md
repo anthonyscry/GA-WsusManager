@@ -40,7 +40,7 @@
 
 ### TODO: Health Score (0-100) on Dashboard
 - **Priority:** P2 | **Effort:** S | **Status:** ✅ Done
-- **Delivered:** `Get-WsusHealthScore` in `WsusHealth.psm1`, `Get-WsusHealthWeights` in `WsusConfig.psm1`, 18 new health tests + 16 config tests
+- **Delivered:** `Get-WsusHealthScore` in `WsusHealth.psm1`, `Get-WsusHealthWeights` in `WsusHealth.psm1` (Services=40, DB=30, Disk=30), health tests, and config tests
 
 ### TODO: Notification Engine
 - **Priority:** P2 | **Effort:** S | **Status:** ✅ Done

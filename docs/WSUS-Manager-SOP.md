@@ -2,7 +2,7 @@
 
 **Version:** 4.1.0
 **Author:** Tony Tran, ISSO, GA-ASI
-**Last Updated:** 2026-06-07
+**Last Updated:** 2026-06-20
 
 ---
 
@@ -48,8 +48,8 @@
 ```
 GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
-Modules/                  # Required - PowerShell modules (26 modules)
-DomainController/         # Optional - GPO deployment scripts
+Modules/                  # Required - PowerShell modules
+DomainController/         # GPO deployment folder; copy whole folder to the DC when needed
 QUICK-START.txt           # Quick reference guide
 README.md                 # Full documentation
 ```
@@ -73,7 +73,7 @@ README.md                 # Full documentation
 | Operating System | Windows Server 2016, 2019, or 2022 |
 | CPU | 4 cores minimum |
 | RAM | 16 GB minimum |
-| Disk Space | 150 GB minimum (recommended) |
+| Disk Space | 200 GB recommended for the WSUS server/content drive |
 | Network | Valid IPv4 configuration (static IP recommended) |
 | PowerShell | 5.1 or higher |
 
@@ -100,7 +100,7 @@ README.md                 # Full documentation
 | Step | Action |
 |------|--------|
 | 1 | Launch `GA-WsusManager.exe` as Administrator |
-| 2 | Click **Fix SQL Login** in the Setup section |
+| 2 | Click **Fix SQL Login** in the Diagnostics section |
 | 3 | The app automatically adds the current user as sysadmin |
 
 #### Option B: Use PowerShell / sqlcmd (No SSMS Required)
@@ -180,7 +180,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | 5 | Click **Install WSUS** and keep the WSUS root/content path at `C:\WSUS` |
 | 6 | After install, confirm IIS `WSUS Administration/Content` resolves to `C:\WSUS\WsusContent` |
 
-> **Priority for air-gapped operators:** After installation, go next to [Air-Gapped Network Workflow](#air-gapped-network-workflow). The later Online Sync reference is only for the source-server maintainer.
+> **Priority for air-gapped operators:** After installation, go next to [Air-Gapped Network Workflow](#air-gapped-network-workflow).
 ### Deployment Layout
 
 | Path | Purpose |
@@ -226,7 +226,7 @@ WSUS Manager v4.1.0 includes a full GUI application (`GA-WsusManager.exe`) built
 | Database Size | Current SUSDB size (alerts at 8GB+) with trend indicator |
 | DB Trend | Days-until-full estimate using linear regression over 30 days |
 | Last Sync | Most recent synchronization timestamp (green <7d, yellow 7-30d, red >30d) |
-| Health Score | Weighted composite score 0-100 (Green 80+, Yellow 50-79, Red <50) |
+| Health Score | Weighted score from services, database size, and disk space only (Green 80+, Yellow 50-79, Red <50) |
 | Update Count | Total updates in database |
 | Clients | Number of registered WSUS clients |
 | Scheduled Task | Next scheduled sync task status |
@@ -253,22 +253,21 @@ The dashboard includes a **Quick Actions** bar with shortcut buttons for the mos
 
 ### GUI Operations
 
-| Button | Function |
-|--------|----------|
-| **Install WSUS** | Install WSUS + SQL Server Express 2022 |
-| **Fix SQL Login** | Adds current Windows user as sysadmin on localhost\SQLEXPRESS. Use when database operations fail with a permissions error. |
-| **Diagnostics** | Comprehensive health check with automatic repair |
-| **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
-| **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
-| **Robocopy** | Copy WSUS content between folders using robocopy. Non-destructive. Used for both export to USB and import from USB. |
-| **Restore Database** | Restore SUSDB from backup file |
-| **Reset Content** | Troubleshooting action to re-register content files when updates remain stuck in downloading state |
-| **Schedule Task** | Create scheduled online sync task |
-| **Create GPO** | Copy GPO files to C:\WSUS\WSUS GPO |
-| **History** | View last 50 operations with duration, result, and summary |
-| **Settings** | Configure content path, SQL instance, notifications, and preferences |
-| **Help** | Application documentation and reference |
-| **About** | Version information and credits |
+| Section | Button | Function |
+|---------|--------|----------|
+| Setup | **Install WSUS** | Install WSUS + SQL Server Express 2022 |
+| Maintenance | **Restore DB** | Restore SUSDB from backup file |
+| Maintenance | **Robocopy** | Copy approved export/content folders between locations. Non-destructive. |
+| Maintenance | **Deep Cleanup** | Full database cleanup: supersession records, index optimization, shrink |
+| Online Operations | **Online Sync** | Profile-based sync and maintenance (Full/Quick/Sync Only) |
+| Online Operations | **Schedule Task** | Create scheduled online sync task |
+| Diagnostics | **Diagnostics** | Comprehensive health check with automatic repair |
+| Diagnostics | **Reset Content** | Re-register content files when updates remain stuck in downloading state |
+| Diagnostics | **Fix SQL Login** | Adds current Windows user as sysadmin on localhost\SQLEXPRESS. Use when database operations fail with a permissions error. |
+| Bottom bar | **History** | View last 50 operations with duration, result, and summary |
+| Bottom bar | **Settings** | Configure content path, SQL instance, notifications, and preferences |
+| Bottom bar | **Help** | Application documentation and reference |
+| Bottom bar | **About** | Version information and credits |
 
 ### Smart Update Policy
 
@@ -324,15 +323,13 @@ Toggle via **Settings** dialog or mode indicator in GUI.
 
 ### Health Score
 
-The dashboard displays a weighted health score from 0 to 100:
+The dashboard displays a weighted health score from 0 to 100. It is based only on core services, SUSDB size, and disk space so air-gapped servers are not penalized for sync recency, scheduled task state, or operation history.
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Services | 30 | SQL Server, IIS, and WSUS service status |
-| Database | 20 | SUSDB size relative to 10GB SQL Express limit |
-| Sync Recency | 20 | Time since last successful synchronization |
-| Disk Space | 20 | Free disk space on WSUS content drive |
-| Last Operation | 10 | Result of the most recent operation |
+| Services | 40 | SQL Server, IIS, and WSUS service status |
+| Database | 30 | SUSDB size relative to 10GB SQL Express limit |
+| Disk Space | 30 | Free disk space on WSUS content drive |
 
 **Grade scale:** Green (80+), Yellow (50-79), Red (below 50), Unknown (all sources failed).
 
@@ -429,31 +426,31 @@ Toggle in log panel header to open operations in an external PowerShell window:
 
 ### Workflow Overview
 
-This is the operator workflow when the online WSUS source server is already maintained and publishes the latest backup plus `WsusContent` to an approved share drive.
+This is the operator workflow when an approved WSUS export folder has been transferred into the air-gapped network by approved USB/removable media.
 
 | Step | Location | Action |
 |------|----------|--------|
 | 1 | Air-Gapped WSUS Server | Install WSUS Manager and build the server using `C:\WSUS` as the WSUS root |
-| 2 | Share Drive / Transfer Media | Copy the latest `SUSDB_YYYYMMDD.bak` and `WsusContent\` tree |
-| 3 | Air-Gapped WSUS Server | Run **Robocopy / Transfer Import** to copy the share or USB folder into `C:\WSUS\` |
-| 4 | Air-Gapped WSUS Server | Confirm update files are present in `C:\WSUS\WsusContent` |
-| 5 | Air-Gapped WSUS Server | Run **Restore Database** using the copied `.bak` file in `C:\WSUS\` |
+| 2 | Approved USB / Transfer Media | Copy the complete approved export folder to the server or attach the media |
+| 3 | Air-Gapped WSUS Server | Run **Restore DB** and select the SUSDB `.bak` file from the export folder |
+| 4 | Air-Gapped WSUS Server | Run **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\` |
+| 5 | Air-Gapped WSUS Server | Run **Reset Content** if WSUS still shows files as downloading |
 | 6 | Air-Gapped WSUS Server | Run **Diagnostics** and confirm ACL + IIS content-path health |
-| 7 | Domain Controller | Run `.\Set-WsusGroupPolicy.ps1` (one-time setup) |
+| 7 | Domain Controller | Copy the whole `DomainController/` folder to the DC, then run `.\Set-WsusGroupPolicy.ps1` from inside it |
 
 ### Use Reset Content only when needed
 
 - The install workflow already performs the normal post-install content step.
-- After import/restore, use **Reset Content** only if WSUS still shows files as downloading.
+- After restore or Robocopy, use **Reset Content** only if WSUS still shows files as downloading.
 - After running **Reset Content**, wait about 5-10 minutes for WSUS to register files before judging the result.
 - If the dashboard exposes file status, click **Refresh** and watch items move from **Downloading** to **Downloaded / Ready to Install**.
 
 ### GUI Robocopy Dialog
 
-The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped import, use source=share-drive copy or USB folder and destination=`C:\WSUS\`.
-The GUI dialog, CLI import/export, and monthly export share this transfer engine, so copy behavior is consistent across entry points.
+The Robocopy dialog (`⇄ Robocopy`) prompts for a source folder and destination folder. It runs robocopy non-destructively (copies only, never deletes). For air-gapped restore, use source=approved USB/export folder and destination=`C:\WSUS\`.
+The GUI Robocopy dialog, CLI transfer paths, and monthly export use the same robocopy engine, so copy behavior is consistent across entry points.
 
-### Import Folder Structure
+### Restored Folder Structure
 
 The air-gapped server should end up with:
 
@@ -463,15 +460,12 @@ C:\WSUS\
 └── WsusContent\
 ```
 
-### Reference: source-server export commands
-
-The online/source WSUS server workflow is reference material only for operators who maintain the upstream share drive.
+### Reference: removable-media copy commands
 
 | Purpose | Command |
 |---------|---------|
-| Copy export to USB | `robocopy "\\server\WSUS-Export" "E:\" /E /MT:16 /R:2 /W:5` |
-| Copy USB to air-gap server | `robocopy "E:\WSUS-Export" "C:\WSUS" /E /MT:16 /R:2 /W:5` |
-| Import to air-gap server | `robocopy "E:\" "C:\WSUS" /E /MT:16 /R:2 /W:5 /XO` |
+| Copy approved export folder from USB to air-gap server | `robocopy "E:\WSUS-Export" "C:\WSUS" /E /MT:16 /R:2 /W:5` |
+| Copy content folder into WSUS root | `robocopy "E:\WSUS-Export\WsusContent" "C:\WSUS\WsusContent" /E /MT:16 /R:2 /W:5 /XO` |
 
 **Robocopy Flags:**
 
@@ -495,7 +489,7 @@ The online/source WSUS server workflow is reference material only for operators 
 ### Prerequisites
 
 - RSAT Group Policy Management tools installed
-- Copy `DomainController/` folder to DC
+- Copy the whole `DomainController/` folder to the DC. Keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together.
 
 ### Usage
 
@@ -504,20 +498,19 @@ The online/source WSUS server workflow is reference material only for operators 
 | Interactive | `.\Set-WsusGroupPolicy.ps1` |
 | Non-interactive | `.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"` |
 
-### GUI Method
+### Folder Copy Method
 
-1. On WSUS server, click **Create GPO** button
-2. Files are copied to `C:\WSUS\WSUS GPO`
-3. Copy folder to Domain Controller
-4. Run `.\Set-WsusGroupPolicy.ps1`
+1. Copy the whole `DomainController/` folder from the WSUS Manager package to the Domain Controller.
+2. Open an elevated PowerShell prompt on the Domain Controller.
+3. Run `.\Set-WsusGroupPolicy.ps1` from inside the copied `DomainController/` folder.
 
 ### What the Script Does
 
 | Step | Action |
 |------|--------|
 | 1 | Auto-detect the domain |
-| 2 | Delete and reimport all 3 GPOs from backup (removes stale registry values) |
-| 3 | Reuse an existing `Member Servers` or `Member_Servers` OU if present; create child OUs such as `WSUS Server` when the parent structure already exists |
+| 2 | Delete and reimport all 4 GPOs from backup (removes stale registry values) |
+| 3 | Reuse existing `Member Servers` or `Member_Servers` OU if present; create missing `Member Servers`, `WSUS Server`, and `Workstations` OUs |
 | 4 | Link each GPO to appropriate OUs |
 | 5 | Push policy update to all domain computers via schtasks RPC (no WinRM required) |
 
@@ -772,8 +765,8 @@ SESSION START: 2026-01-19 10:30:00
 | Scripts/Invoke-WsusClientCheckIn.ps1 | Client-side check-in |
 | Scripts/Set-WsusHttps.ps1 | Optional HTTPS configuration |
 | DomainController/Set-WsusGroupPolicy.ps1 | GPO import script |
-| DomainController/WSUS GPOs/ | Pre-configured GPO backups |
-| Modules/*.psm1 | 26 shared PowerShell modules |
+| DomainController/WSUS GPOs/ | Pre-configured GPO backups (4 GPOs) |
+| Modules/*.psm1 | Shared PowerShell modules |
 
 ### PowerShell Modules
 
@@ -786,7 +779,7 @@ SESSION START: 2026-01-19 10:30:00
 | WsusServices.psm1 | Service management |
 | WsusFirewall.psm1 | Firewall rules |
 | WsusPermissions.psm1 | Directory permissions |
-| WsusExport.psm1 | Export/import for air-gap transfer |
+| WsusExport.psm1 | Transfer package and Robocopy helpers for air-gap workflows |
 | WsusScheduledTask.psm1 | Scheduled tasks (daily/weekly/monthly) |
 | WsusAutoDetection.psm1 | Server detection, auto-recovery, dashboard data, 30s TTL cache |
 | WsusDialogs.psm1 | Dialog factory for WPF GUI (dark-themed windows, folder browsers) |
@@ -811,7 +804,7 @@ SESSION START: 2026-01-19 10:30:00
 | Feature | Description |
 |---------|-------------|
 | GUI Application | WPF-based dark theme interface with dashboard and splash screen |
-| Health Score | Weighted composite 0-100 (Services, DB, Sync, Disk, LastOp) with color-coded grade |
+| Health Score | Weighted composite 0-100 (Services, DB, Disk) with color-coded grade |
 | DB Size Trending | Linear regression over 30 days with days-until-full estimate |
 | Operation History | Last 50 operations with duration, result, and summary |
 | Desktop Notifications | Toast/balloon/log-only fallback on operation completion |
@@ -820,26 +813,27 @@ SESSION START: 2026-01-19 10:30:00
 | sqlcmd.exe Fallback | All database operations work without SqlServer PowerShell module |
 | DNS Preflight | Sync checks DNS resolution before starting to prevent stuck syncs |
 | Automated Installation | One-click deployment of SQL Server Express 2022 + WSUS (auto-removes WID); SSMS installed only if present |
-| Air-Gap Support | Full content transfer via Robocopy for offline networks |
+| Air-Gap Support | Restore approved export folders from removable media, then import/verify content with Robocopy and Diagnostics |
 | Database Management | Backup, restore, cleanup, and optimization |
 | Unified Diagnostics | Combined health check and auto-repair in a single operation |
 | Scheduled Sync | GUI and CLI support for Windows Task Scheduler (daily, weekly, monthly) |
-| GPO Deployment | Pre-configured GPOs with schtasks-based push (no WinRM required) |
+| GPO Deployment | Copy the whole DomainController folder to the DC; script imports four GPOs and pushes policy via schtasks (no WinRM required) |
 | Live Terminal Mode | External PowerShell window for operation output |
 | Server Mode Toggle | Online vs Air-Gap mode switching with context-aware menus |
 | Auto-Refresh Dashboard | 30-second interval status updates with operation skip |
 | Keyboard Shortcuts | Ctrl+D, Ctrl+S, Ctrl+H, Ctrl+R/F5 for quick navigation |
 | DPI Awareness | Crisp rendering on high-DPI displays |
-| Modular Architecture | 25 reusable PowerShell modules |
-| Two-Tier CI | GitHub-hosted standard CI (every push) + self-hosted daily GUI test runs |
+| Modular Architecture | Reusable PowerShell modules |
+| CI | Local validation plus self-hosted Windows GUI test workflow |
 
 ---
 
 ## Version History
 
 | Version | Date | Highlights |
-| 4.1.0 | Jun 2026 | Single-source version via metadata.json, two-tier CI pipeline, 40+ new tests, full PS 5.1 compat for monthly scheduled tasks, documentation consolidation |
 |---------|------|------------|
+| 4.1.0 | Jun 2026 | Stable v4.0.5 baseline with GPO OU creation, SQL login repair, ACL auto-fix, live Robocopy, collapsible operations, simpler health score, and refreshed docs |
+| 4.0.5 | Jun 2026 | Stable rollback baseline with current GPO import, additive product sync, deeper diagnostics, and refreshed operator docs |
 | 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB operations, 6-month age decline (preserves approved updates), sysadmin check via sqlcmd, explicit SQLPS module import |
 | 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight check, 180-minute sync timeout, default products and classifications, WID auto-migration, exact product name matching |
 | 4.0.2 | Mar 2026 | GPO schtasks push (no WinRM), 15+ security fixes, robocopy exit code normalization, removed differential export, removed .GetNewClosure() |

@@ -5,87 +5,63 @@ All notable changes to WSUS Manager are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.1.0] - 2026-06-07
+## [4.1.0] - 2026-06-20
 
 ### Added
-- **CI pipeline** — `.github/workflows/ci.yml` runs on every push/PR via
-  `windows-latest`: syntax check, PSScriptAnalyzer, unit tests, and EXE build
-- `build/Invoke-SyntaxCheck.ps1` — Quick PS parser check across all repo files
-- `Get-WsusAppVersion` — Single-source version reader from `metadata.json`
+- Add one-click **Fix SQL Login** to grant the current operator SQL sysadmin access.
+- Add SQL sysadmin grants during install so first maintenance runs do not fail preflight.
+- Add deeper diagnostics with SQL, IIS, service, firewall, content ACL, and download checks.
+- Add repair plans and auto-fixes for content permissions, SQL login, services, and WSUS reset.
+- Add Online Sync product picker with additive product sync and safer default selections.
+- Add .NET Framework, Visual Studio 2022, Exchange 2019, and Defender product defaults.
+- Add split server/workstation WSUS GPO backups plus inbound and outbound firewall GPOs.
+- Add OU creation for Member Servers, WSUS Server, Workstations, and Domain Controllers links.
+- Add Live Terminal streaming for Robocopy and long-running operations.
+- Add themed WPF popups with scrollable readable content and native dialog fallback.
+- Add build/package metadata copying so deployed apps can read `metadata.json`.
+- Add CI, syntax-check, and ship-readiness validation helpers for release verification.
+
+### Changed
+- Restore the app to the v4.0.5 PowerShell/WPF baseline while keeping v4.1 operational fixes.
+- Reorganize navigation into Setup, Maintenance, collapsible Online Operations, and Diagnostics.
+- Move Restore DB, Robocopy, and Deep Cleanup to the Maintenance section in operator order.
+- Move Online Sync and Schedule Task under collapsed Online Operations.
+- Move Fix SQL Login under collapsed Diagnostics.
+- Recalculate Health Score from services, SUSDB size, and content-drive free space only.
+- Preserve existing WSUS subscriptions when adding selected sync products before sync starts.
+- Keep Robocopy progress visible in Live Terminal and embedded logs for post-run review.
+- Recommend at least 200 GB for the WSUS server/content drive across app help and docs.
+- Rewrite air-gap restore guidance around approved USB media, Restore DB, Robocopy, and Reset Content.
+- Document that the whole `DomainController/` folder must be copied to the DC before GPO import.
+- Align GUI Help, About, README, Quick Start, SOP, wiki, and Confluence docs to v4.1.0.
+- Keep PowerShell 5.1-safe UTF-8/BMP UI symbols for compiled GUI reliability.
+- Use `metadata.json` as the release version source for build output and runtime helpers.
 
 ### Fixed
-- **Hardcoded dev paths removed** — `\\lab-hyperv\d\WSUS-Exports` replaced with `C:\WSUS\Exports`
-  in all default parameters across CLI, monthly maintenance, and config
-- **Emoji corruption in GUI menus** — Replaced non-BMP emoji (🔑, U+1F511) with
-  BMP-safe text (`[+]`) and added UTF-8 BOM to all PS files with non-ASCII content.
-  PowerShell 5.1 here-strings corrupt surrogate pairs without a BOM, which
-  displayed as `?` boxes in the compiled EXE
+- Fix GPO import when Member Servers, Member_Servers, WSUS Server, or Workstations OUs are missing.
+- Fix WSUS server computer moves so inbound firewall policy applies after GPO import.
+- Fix GPO targeting for Domain Controllers, member servers, workstations, and WSUS server OUs.
+- Fix SQL sysadmin preflight false failures when SQL tooling is unavailable.
+- Fix Fix SQL Login popup readability and duplicate native/custom dialog behavior.
+- Fix WSUS content ACL auto-repair for IIS_IUSRS and Authenticated Users list/read/execute rights.
+- Fix tray minimize behavior so the app remains recoverable from the taskbar/tray.
+- Fix Robocopy output not appearing in the live terminal.
+- Fix product sync so selected products are added without replacing existing subscriptions.
+- Fix smart decline/approval filtering for Office, Visual Studio, Edge, WSL, ARM64, and preview builds.
+- Fix dashboard health scores capped below 100 by non-core task/sync history components.
+- Fix default package/version references that still pointed at v4.0.5.
+- Fix hardcoded dev paths and stale operator language in release docs.
+- Fix PowerShell 5.1 scheduled-task monthly trigger registration by using XML registration.
+
+### Removed
+- Remove the GUI **Create GPO** menu option; the packaged Domain Controller script is authoritative.
+- Remove current-score impact from scheduled task state, last sync, and last operation history.
 
 ### Tests
-- Added targeted coverage for version consistency, scheduled task registration,
-  and repository validation flows
-
-### Hardening
-- **ScheduledTask -Monthly parameter** — Replaced invalid `-Monthly` switch with XML-based
-  `Register-ScheduledTask -Xml` for PowerShell 5.1 compatibility. Triggers now use the
-  correct `ScheduleByMonth/DaysOfMonth` Win32 schema
-- **Single-source version** — Added `Get-WsusAppVersion` in `WsusConfig.psm1` that reads
-  `metadata.json` (single source of truth). GUI/CLI/maintenance scripts delegate to it
-- **metadata.json version** — Bumped to 4.1.0 so build output, GUI, CLI, and documentation share the same release number
-
-### Automation
-- `build/Invoke-SyntaxCheck.ps1` — Quick PS parser check across all repo files
-- `build/Invoke-ShipReadiness.ps1` — Aggregated 3-step verification (syntax + lint + tests)
-
-### CI
-- **`.github/workflows/ci.yml`** — New tier-1 standard CI. Runs on every push and
-  PR via `windows-latest` (no self-hosted runner needed). Jobs: syntax check,
-  PSScriptAnalyzer, Pester unit tests, EXE build
-- **`.github/workflows/gui-tests.yml`** — Renamed from "triton-ajt" to
-  "self-hosted, daily" for clarity. Now documented as the tier-2 GUI pipeline
-  (tier-1 is ci.yml)
-- **Concurrency** — CI cancels in-progress runs on the same branch when a new
-  push lands (`concurrency.cancel-in-progress: true`)
-
-### Documentation
-- `docs/ci-cd.md` — Full rewrite documenting the two-tier CI model, what each
-  job does, why GUI tests need a self-hosted runner, and how to add a new
-  self-hosted runner label
-- `wiki/Configuration-Guide.md` — Environment variables, paths, ports, timeouts
-- **README.md** — Full rewrite for v4.1.0 with env vars, CI table,
-  troubleshooting, and documentation index
-- **`docs/QUICK-START.md`** — Updated title to v4.1.0 and synced quick-start steps
-- **`docs/WSUS-Manager-SOP.md`** — Version bumped to v4.1.0. Module list expanded
-  from 16 to 25 with new modules documented. Two-Tier CI added to Features Summary.
-  v4.1.0 row added to version history
-- **`docs/WSUS-Manager-SOP-Confluence.txt`** — All v4.0.4 to v4.1.0 references
-  updated. Module list expanded to all 25. v4.1.0 row added to version history.
-  Distribution link updated to v4.1.0
-- **`wiki/Home.md`** — v4.1.0 row added to version history
-- **`wiki/Developer-Guide.md`** — Current Version bumped to 4.1.0
-- **`wiki/Module-Reference.md`** — TOC expanded from 16 to 25 modules
-- **`wiki/Changelog.md`** — v4.1.0 section added with the full changelog
-- **`CLAUDE.md`** — Current Version bumped to 4.1.0
-- **Version inconsistencies** — All v4.0.4/v4.0.5 mismatches across docs resolved.
-  All public docs now reference v4.1.0 (with historical version history preserved)
-
-### Cleanup
-- **Empty catch blocks fixed** — All 8 empty `catch { }` blocks in GUI test files
-  (`Tests/FlaUI.Tests.ps1`, `Tests/GuiFullTest.ps1`) replaced with explicit
-  `Write-Verbose` logging of the exception message
-- **Unapproved verbs renamed** — Local helper functions in `Tests/GuiFullTest.ps1`
-  renamed to use approved PowerShell verbs:
-  `Click-El` → `Invoke-ElementClick`
-  `Go-Dash` → `Open-Dashboard`
-- **Unused variable removed** — `$ctx = Start-GuiApplication ...` in
-  `Tests/FlaUI.Tests.ps1` performance test piped to `Out-Null` instead
-- **Repository cleanup** — Moved AI audit instructions under `docs/ai-audit/`,
-  ship-readiness reports under `docs/reports/`, removed stale generated root artifacts,
-  and removed stale `.planning-archive-reverted-c#-era/` C#-era planning archive,
-  `.agents/skills/`, and `.claude/skills/` vendored agent artifacts
-
-### Lint
-- PSScriptAnalyzer errors: 11 → 0 across 70 files
+- Add/update Pester coverage for GPO OU creation and WSUS computer moves.
+- Add/update Pester coverage for product filtering, SQL login safety, and ACL repair.
+- Add/update Pester coverage proving the new health score can reach 100.
+- Add/update GUI/startup checks for navigation, Help text, popups, tray recovery, and live output.
 
 ## [4.0.5] - 2026-05-11
 

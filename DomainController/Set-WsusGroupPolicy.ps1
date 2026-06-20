@@ -194,8 +194,8 @@ function Assert-OUExists {
     .DESCRIPTION
         Takes an OU path like "Member Servers/WSUS Server" and creates each level if needed.
         For legacy domains with either "Member Servers" or "Member_Servers", the existing
-        OU name is reused. If neither exists, this function will not create a new
-        top-level Member Servers OU automatically.
+        OU name is reused. If neither exists, this function creates "Member Servers" and
+        then creates the requested child OU.
     #>
     param(
         [string]$OUPath,
@@ -216,11 +216,6 @@ function Assert-OUExists {
             $exists = $null
         }
 
-        $skipCreateForLegacyMemberServers = ($part -eq 'Member Servers' -and $resolvedPart -eq 'Member Servers' -and -not $exists)
-        if ($skipCreateForLegacyMemberServers) {
-            Write-Host "  OU not found: Member Servers / Member_Servers. Skipping automatic creation." -ForegroundColor Yellow
-            return $null
-        }
 
         if (-not $exists) {
             Write-Host "  Creating OU: $resolvedPart..." -NoNewline -ForegroundColor Yellow
@@ -618,8 +613,17 @@ function Move-WsusServerComputer {
         return $false
     }
 
-    if (-not (Get-ADOrganizationalUnit -Identity "$TargetOuPath,$DomainDN" -ErrorAction SilentlyContinue)) {
-        Write-Warning "  Target OU not found: $TargetOuPath,$DomainDN. Skipping computer move."
+    $targetOuParts = @($TargetOuPath -split ',' | Where-Object { $_ -like 'OU=*' } | ForEach-Object { $_.Substring(3) })
+    if ($targetOuParts.Count -gt 0) {
+        [array]::Reverse($targetOuParts)
+        $targetOuPath = $targetOuParts -join '/'
+    } else {
+        $targetOuPath = $TargetOuPath
+    }
+
+    $targetDn = Assert-OUExists -OUPath $targetOuPath -DomainDN $DomainDN
+    if (-not $targetDn) {
+        Write-Warning "  Target OU not found and could not be created: $targetOuPath,$DomainDN. Skipping computer move."
         return $false
     }
 
@@ -629,15 +633,14 @@ function Move-WsusServerComputer {
         return $false
     }
 
-    $targetDn = "$TargetOuPath,$DomainDN"
     if ($comp.DistinguishedName -eq "CN=$ComputerName,$targetDn") {
-        Write-Host "  $ComputerName is already in $TargetOuPath" -ForegroundColor DarkGray
+        Write-Host "  $ComputerName is already in $targetOuPath" -ForegroundColor DarkGray
         return $true
     }
 
     if (-not $Force) {
         Write-Host ""
-        Write-Host "  Move $ComputerName to $TargetOuPath ? [Y/n]:" -NoNewline -ForegroundColor Yellow
+        Write-Host "  Move $ComputerName to $targetOuPath ? [Y/n]:" -NoNewline -ForegroundColor Yellow
         $answer = Read-Host
         if ($answer -and $answer -notin @('y','Y','yes','Yes')) {
             Write-Host "  Skipped." -ForegroundColor DarkGray

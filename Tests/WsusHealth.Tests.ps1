@@ -441,13 +441,13 @@ Describe "Get-WsusHealthScore" {
             $script:HealthResult.Keys | Should -Contain 'AllFailed'
         }
 
-        It "Components should have all five keys" {
+        It "Components should have only scoring keys" {
             $c = $script:HealthResult.Components
             $c.Keys | Should -Contain 'Services'
             $c.Keys | Should -Contain 'DatabaseSize'
-            $c.Keys | Should -Contain 'SyncRecency'
             $c.Keys | Should -Contain 'DiskSpace'
-            $c.Keys | Should -Contain 'LastOperation'
+            $c.Keys | Should -Not -Contain 'SyncRecency'
+            $c.Keys | Should -Not -Contain 'LastOperation'
         }
 
         It "Score should be -1 or an integer in range 0-100" {
@@ -461,6 +461,40 @@ Describe "Get-WsusHealthScore" {
 
         It "AllFailed should be a boolean" {
             $script:HealthResult.AllFailed | Should -BeOfType [bool]
+        }
+    }
+
+    Context "Current scoring formula" {
+        BeforeEach {
+            Mock Get-WsusSqlServiceName { 'MSSQL$SQLEXPRESS' } -ModuleName WsusHealth
+            Mock Get-WsusHostServiceState {
+                param([string[]]$Name)
+                foreach ($serviceName in $Name) {
+                    [pscustomobject]@{ Name = $serviceName; Running = $true }
+                }
+            } -ModuleName WsusHealth
+            Mock Get-WsusDatabaseSize { 1 } -ModuleName WsusHealth
+            Mock Get-PSDrive { [pscustomobject]@{ Free = 100GB } } -ModuleName WsusHealth
+        }
+
+        It "Can return 100 when services database and disk are healthy" {
+            $result = Get-WsusHealthScore -SqlInstance '.\SQLEXPRESS' -ContentPath 'C:\WSUS' -HistoryPath (Join-Path $TestDrive 'failed-history.json')
+
+            $result.Score | Should -Be 100
+            $result.Grade | Should -Be 'Green'
+            $result.Components.Services | Should -Be 40
+            $result.Components.DatabaseSize | Should -Be 30
+            $result.Components.DiskSpace | Should -Be 30
+        }
+
+        It "Publishes the services database and disk weights only" {
+            $weights = Get-WsusHealthWeights
+
+            $weights.Services | Should -Be 40
+            $weights.DatabaseSize | Should -Be 30
+            $weights.DiskSpace | Should -Be 30
+            $weights.Keys | Should -Not -Contain 'SyncRecency'
+            $weights.Keys | Should -Not -Contain 'LastOperation'
         }
     }
 

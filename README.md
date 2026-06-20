@@ -3,43 +3,54 @@
 **Version:** 4.1.0
 **Author:** Tony Tran, ISSO, GA-ASI
 
-WSUS Manager is a PowerShell GUI + CLI application for managing Windows Server Update Services (WSUS) on air-gapped and controlled networks. It handles the entire lifecycle of keeping Windows machines patched: installing WSUS and SQL Server Express, syncing updates on a connected server, transferring them to a disconnected network via USB or share, importing them, configuring HTTPS, and pushing updates out to client machines through Group Policy.
-
+WSUS Manager is a PowerShell GUI application for managing Windows Server Update Services (WSUS) on air-gapped networks. It installs WSUS and SQL Server Express, restores approved WSUS export folders on disconnected servers, manages update synchronization/cleanup, deploys air-gap Group Policy Objects, and provides diagnostics/repair workflows.
 
 ---
 
 ## Table of Contents
 
+- [What is WSUS?](#what-is-wsus)
 - [Quick Start](#quick-start)
 - [Requirements](#requirements)
 - [Features](#features)
 - [Workflows](#workflows)
   - [Setting Up a New WSUS Server from Scratch](#setting-up-a-new-wsus-server-from-scratch)
-  - [Air-Gapped Server Build + Import Workflow](#air-gapped-server-build--import-workflow)
-  - [Reference: Online Sync Workflow (Source Server Only)](#reference-online-sync-workflow-source-server-only)
+  - [Air-Gap Transfer Workflow](#air-gap-transfer-workflow)
+  - [Monthly Sync Workflow (Online Operations)](#monthly-sync-workflow-online-operations)
   - [Deploying GPOs to Clients](#deploying-gpos-to-clients)
+- [GPO Reference](#gpo-reference)
+  - [GPO 1: WSUS Update Policy - Servers](#gpo-1-wsus-update-policy---servers)
+  - [GPO 2: WSUS Update Policy - Workstations](#gpo-2-wsus-update-policy---workstations)
+  - [GPO 3: WSUS Inbound Allow](#gpo-3-wsus-inbound-allow)
+  - [GPO 4: WSUS Outbound Allow](#gpo-4-wsus-outbound-allow)
 - [Project Structure](#project-structure)
 - [Modules](#modules)
-- [Build, Test, and CI](#build-test-and-ci)
+- [Build and Test](#build-and-test)
 - [Standard Paths](#standard-paths)
-- [Environment Variables](#environment-variables)
-- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
 ---
 
+## What is WSUS?
+
+Windows Server Update Services (WSUS) is a Microsoft tool that lets an administrator approve and distribute Windows updates from a central server instead of having every computer download them individually from the internet. This is important in two scenarios:
+
+1. **Controlled environments** -- you want to test updates before rolling them out.
+2. **Air-gapped networks** -- your computers have no internet access at all. Updates must be physically carried in on a USB drive.
+
+WSUS stores its data in a SQL Server Express database (called SUSDB) and its update files in a content directory on disk. WSUS Manager automates the setup, maintenance, and monitoring of both.
+
+---
+
 ## Quick Start
 
-1. Download `WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page.
-2. Extract the full archive to a folder under `C:\WSUS\` (for example, `C:\WSUS\WsusManager\`).
-3. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
+1. Go to the [Releases](../../releases) page.
+2. Download `WsusManager-vX.X.X.zip`.
+3. Extract the full archive to a folder (for example, `C:\WsusManager\`).
+4. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
 
-> **Important:** The EXE requires the `Scripts/` and `Modules/` folders in the same directory. Do not move the EXE without also moving those folders.
-
-**If your online/source WSUS server is already set up:** skip straight to the [Air-Gapped Server Build + Import Workflow](#air-gapped-server-build--import-workflow).
-
-For step-by-step installation including the SQL Server Express prerequisite, see [docs/QUICK-START.md](docs/QUICK-START.md).
+**Important:** The EXE requires the `Scripts/` and `Modules/` folders to be in the same directory. Do not move the EXE without also moving those folders.
 
 ---
 
@@ -52,7 +63,7 @@ For step-by-step installation including the SQL Server Express prerequisite, see
 | Privileges | Administrator (right-click, Run as Administrator) |
 | WSUS role | Installed by the setup workflow if not present |
 | SQL Server | SQL Server Express 2022 (installed by the setup workflow) |
-| Disk space | At least 40 GB free on the WSUS content drive |
+| Disk space | At least 200 GB recommended for the WSUS server/content drive |
 
 ---
 
@@ -60,39 +71,37 @@ For step-by-step installation including the SQL Server Express prerequisite, see
 
 ### Dashboard
 - Auto-refreshing dashboard (every 30 seconds) showing service status, disk space, database size, and scheduled task status.
-- Health Score (0-100) with color-coded grade: Green (80+), Yellow (50-79), Red (below 50).
+- Health Score (0-100) from services, database size, and disk space with color-coded grade: Green (80+), Yellow (50-79), Red (below 50).
 - Database size trending with days-until-full estimate using linear regression. Alerts when approaching the 10 GB SQL Express limit.
 - Last successful sync timestamp.
 
 ### Server Management
-- One-click WSUS + SQL Server Express 2022 installation with guided setup.
+- One-click WSUS + SQL Server Express installation with guided setup.
 - Unified Diagnostics (health check + auto-repair in a single operation).
 - Database backup, restore, and deep cleanup (6-step maintenance including index rebuild and database shrink).
 - Online Sync with Full, Quick, and Sync Only profiles.
-- Scheduled task creation for recurring sync operations (daily, weekly, monthly).
+- Scheduled task creation for recurring sync operations.
 - HTTPS configuration via `Set-WsusHttps.ps1`.
 
 ### Air-Gap Support
-- Server Mode toggle: Online vs Air-Gap.
-- Export updates and content to USB for transfer to disconnected networks.
-- Import updates and content from USB on the air-gapped server.
-- "Reset Content" button for troubleshooting content registration issues after import.
-- Diagnostics verify both WSUS root permissions on `C:\WSUS` and the IIS `/Content` path to `C:\WSUS\WsusContent`.
-
+- Restore approved WSUS export folders from USB/removable media on disconnected servers.
+- Copy approved content folders with **Robocopy** when needed.
+- "Reset Content" button to fix content download status after restore or copy.
 
 ### Client Deployment
-- GPO deployment scripts for air-gapped domains (no WinRM required).
+- GPO deployment scripts for air-gapped domains.
+- Copy the whole `DomainController/` folder to the Domain Controller, then run `Set-WsusGroupPolicy.ps1` there.
 - Client check-in script to force update detection.
-- "Create GPO" button copies GPO files and shows deployment instructions.
 
 ### GUI Features
-- Dark theme with high-DPI awareness.
+- Dark theme with light theme toggle in Settings (reserved).
 - Startup splash screen with progress bar.
 - Keyboard shortcuts: Ctrl+D (Diagnostics), Ctrl+S (Sync), Ctrl+H (History), Ctrl+R or F5 (Refresh Dashboard).
 - Right-click context menu on log panel: Copy All / Save to File.
 - Operation history view showing last 50 operations.
 - Desktop notifications on operation completion (toast, balloon, or log-only fallback).
 - Live Terminal Mode to open operations in an external PowerShell window.
+- DPI-aware rendering on high-DPI displays.
 
 ---
 
@@ -102,52 +111,61 @@ For step-by-step installation including the SQL Server Express prerequisite, see
 
 This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
-1. **Copy the application.** Extract `WsusManager-vX.X.X.zip` to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`).
-2. **Place the SQL installer.** If the server has no internet access, download SQL Server Express 2022 and SSMS on a connected machine and copy the installers to `C:\WSUS\SQLDB\` on the target server.
-3. **Launch WSUS Manager.** Right-click `GA-WsusManager.exe` and select **Run as Administrator**. The dashboard will show "WSUS Not Installed" — this is expected.
-4. **Run Install.** Click the **Install WSUS** button. The application will:
-   - Use `C:\WSUS` as the WSUS root/content directory by default.
+1. **Prepare the server.** Log in as an Administrator. Plan for at least 200 GB on the WSUS server/content drive (default: `C:\WSUS\`).
+
+2. **Copy the application.** Extract the `WsusManager-vX.X.X.zip` archive to a folder such as `C:\WsusManager\`.
+
+3. **Place the SQL installer.** If the server has no internet access, download `SQL Server Express 2022` and `SQL Server Management Studio (SSMS)` on a connected machine and copy the installers to `C:\WSUS\SQLDB\` on the target server. The install script will look for them there.
+
+4. **Launch WSUS Manager.** Right-click `GA-WsusManager.exe` and select Run as Administrator. The dashboard will show "WSUS Not Installed" -- this is expected.
+
+5. **Run Install.** Click the **Install WSUS** button. The application will:
+   - Prompt for the content directory (default: `C:\WSUS\`).
    - Install SQL Server Express 2022 if not already present.
    - Install the WSUS Windows Server role.
    - Run post-installation configuration.
    - Set up firewall rules and directory permissions.
-5. **Verify.** Once installation completes, the dashboard should show green status for SQL Server, IIS, and WSUS services.
-6. **Deploy GPOs** (air-gapped networks only) — see [Deploying GPOs to Clients](#deploying-gpos-to-clients).
 
-### Air-Gapped Server Build + Import Workflow
+6. **Verify.** Once installation completes, the dashboard should show green status for SQL Server, IIS, and WSUS services.
 
-If your online WSUS server is already syncing updates and publishing a database backup plus `WsusContent` to a share drive, this is the workflow most operators should follow.
-GUI transfer, CLI import/export, and monthly export use the same non-destructive transfer engine.
+7. **Deploy GPOs.** If this is an air-gapped server, follow the [Deploying GPOs to Clients](#deploying-gpos-to-clients) workflow to tell client machines where to find the WSUS server.
 
-**On the air-gapped server:**
+### Air-Gap Transfer Workflow
 
-1. Build the server using the steps above.
-2. Copy these items from the approved share drive or transfer media:
-   - Latest `SUSDB_YYYYMMDD.bak`
-   - Latest `WsusContent\` tree
-3. Click **Transfer > Import**. Select the share-drive copy or USB folder as the source and `C:\WSUS\` as the destination.
-4. Confirm the update files land in `C:\WSUS\WsusContent`.
-5. Click **Restore Database** and select the copied `.bak` file from `C:\WSUS\`.
-6. Run **Diagnostics** and confirm:
-   - `Authenticated Users` has read access on `C:\WSUS`
-   - IIS `WSUS Administration/Content` points to `C:\WSUS\WsusContent`
-   - No permission or content-path errors remain
+Use this workflow when an approved WSUS export folder has been released for a disconnected network.
 
-### Reference: Online Sync Workflow (Source Server Only)
+1. Transfer the complete export folder to the air-gapped server using approved USB/removable media.
 
-This section is only for the internet-connected source WSUS server that produces the share-drive export for the air-gapped server.
+2. Launch WSUS Manager as Administrator.
 
-1. Launch WSUS Manager as Administrator.
-2. Click **Online Sync** in the navigation panel (or use the Quick Action button).
-3. Choose a sync profile:
-   - **Full Sync** — Decline superseded updates, sync with Microsoft, approve new updates, clean up the database, and export.
-   - **Quick Sync** — Sync and approve only (skip cleanup).
-   - **Sync Only** — Just sync with Microsoft, no approvals or cleanup.
-4. Set the export path to the approved share drive or staging folder used for air-gap transfer.
-5. Click **OK.** A Full Sync typically takes 30-120 minutes depending on how many updates are available.
-6. Check the dashboard. After the sync completes, the Last Sync timestamp should update and the database size may increase.
+3. Click **Restore DB** and select the SUSDB backup from the transferred export folder.
 
-> **Tip:** To automate this, click **Schedule** to create a Windows Scheduled Task that runs the sync monthly.
+4. Click **Robocopy** if the exported `WsusContent\` folder still needs to be copied into `C:\WSUS\`.
+
+5. After restore or Robocopy completes, click **Reset Content** (under Diagnostics) to run `wsusutil reset`. This tells WSUS to re-verify all content files against the database. Without this step, some updates may show "still downloading" even though the files are present.
+
+6. Run **Diagnostics** to verify services, database access, IIS content mapping, and content permissions.
+
+### Monthly Sync Workflow (Online Operations)
+
+Run this monthly on a connected export server that is intentionally allowed to sync with Microsoft.
+
+1. **Launch WSUS Manager** as Administrator.
+
+2. **Click Online Sync** in the navigation panel (or use the Quick Action button).
+
+3. **Choose a sync profile:**
+   - **Full Sync** -- Sync, cleanup, ultimate cleanup, backup, and export.
+   - **Quick Sync** -- Sync, cleanup, and backup (skips heavy cleanup and export).
+   - **Sync Only** -- Just sync with Microsoft and apply the approval policy.
+
+4. **Set the export path** (Full Sync only). Enter the approved destination for the export folder, such as `E:\WSUS-Export` or `C:\WSUS\Exports`.
+
+5. **Click OK.** The operation runs in the log panel. A Full Sync typically takes 30-120 minutes depending on how many updates are available.
+
+6. **Check the dashboard.** After the sync completes, the Last Sync timestamp should update and the database size may increase.
+
+**Tip:** To automate this, click **Schedule Task** to create a Windows Scheduled Task that runs the sync monthly.
 
 ### Deploying GPOs to Clients
 
@@ -159,24 +177,130 @@ Group Policy Objects (GPOs) tell Windows client machines where the WSUS server i
 
 **Steps:**
 
-1. Copy the `DomainController/` folder to the Domain Controller.
+1. Copy the whole `DomainController/` folder to the Domain Controller. Keep `Set-WsusGroupPolicy.ps1` and the `WSUS GPOs/` backup folder together.
+
 2. Open an elevated PowerShell prompt on the Domain Controller.
-3. Run the GPO deployment script:
+
+3. From inside the copied `DomainController/` folder, run the GPO deployment script:
    ```powershell
    .\Set-WsusGroupPolicy.ps1
    ```
+
 4. When prompted, enter the WSUS server hostname (just the name, not the full URL). For example, if your WSUS server is called `WSUS01`, type `WSUS01`. The script builds the URL `http://WSUS01:8530` automatically.
+
 5. The script will:
    - Auto-detect your domain.
-   - Import three GPOs from the `WSUS GPOs/` backup folder.
-   - Reuse an existing `Member Servers` or `Member_Servers` OU if present, and create `WSUS Server` beneath it when needed.
-6. Move the WSUS server computer object to the `Member Servers\WSUS Server` OU.
+   - Import four GPOs from the `WSUS GPOs/` backup folder.
+   - Reuse existing `Member Servers` or `Member_Servers` OUs when present.
+   - Create missing `Member Servers`, `WSUS Server`, and `Workstations` OUs when needed.
+   - Link each GPO to the correct OUs.
+   - Replace placeholder WSUS URLs with your server.
+   - Prompt to move the WSUS server computer object into `Member Servers\WSUS Server` so the inbound firewall GPO applies.
+   - Push a Group Policy update to all domain computers via scheduled task (no WinRM required).
 
-**Verify on a client:**
-```powershell
-gpresult /r | findstr WSUS
-```
+6. **Verify on a client machine:**
+   ```powershell
+   gpresult /r | findstr WSUS
+   ```
+   You should see the WSUS GPOs listed under "Applied Group Policy Objects."
 
+---
+
+## GPO Reference
+
+The `DomainController/WSUS GPOs/` folder contains four pre-configured Group Policy Objects. The deployment script (`Set-WsusGroupPolicy.ps1`) imports them, updates WSUS URLs for your environment, links them to the expected OUs, creates missing `Member Servers`, `WSUS Server`, and `Workstations` OUs, and prompts to move the WSUS server computer object into the WSUS Server OU.
+
+**WARNING:** These GPOs are designed for AIR-GAPPED networks only. Deploying them on internet-connected systems will redirect Windows Update traffic to the internal WSUS server and prevent machines from getting updates directly from Microsoft.
+
+### GPO 1: WSUS Update Policy - Servers
+
+**Purpose:** Points domain controllers and member servers to your internal WSUS server and applies the server update schedule/deadline policy.
+
+**Linked to:** `Domain Controllers` and `Member Servers`.
+
+### GPO 2: WSUS Update Policy - Workstations
+
+**Purpose:** Points workstation clients to your internal WSUS server and applies the workstation update schedule/deadline policy.
+
+**Linked to:** `Workstations`.
+
+**Registry keys set by the deployment script for both update-policy GPOs:**
+
+| Registry Path | Value Name | Type | Value | What It Does |
+|---------------|-----------|------|-------|--------------|
+| `HKLM\...\WindowsUpdate` | `WUServer` | String | `http://WSUS01:8530` | The URL of your WSUS server. The deployment script replaces this with the hostname you provide. |
+| `HKLM\...\WindowsUpdate` | `WUStatusServer` | String | `http://WSUS01:8530` | Where clients report update status. Usually the same server. |
+| `HKLM\...\WindowsUpdate\AU` | `UseWUServer` | DWORD | `1` | Forces clients to use the intranet WSUS server. |
+| `HKLM\...\WindowsUpdate\AU` | `AUOptions` | DWORD | `4` | Auto-download and install on the schedule below. |
+| `HKLM\...\WindowsUpdate\AU` | `ScheduledInstallDay` | DWORD | `0` | Install every day. |
+| `HKLM\...\WindowsUpdate\AU` | `ScheduledInstallTime` | DWORD | `22` | Install at 10:00 PM. |
+| `HKLM\...\WindowsUpdate` | `SetComplianceDeadline` | DWORD | `1` | Enables compliance deadlines. |
+| `HKLM\...\WindowsUpdate` | `ConfigureDeadlineForQualityUpdates` | DWORD | `7` | Force-install quality updates after 7 days. |
+| `HKLM\...\WindowsUpdate` | `ConfigureDeadlineForFeatureUpdates` | DWORD | `7` | Force-install feature updates after 7 days. |
+| `HKLM\...\WindowsUpdate` | `ConfigureDeadlineGracePeriod` | DWORD | `0` | No extra grace period after deadline. |
+
+All registry paths above are under `HKLM\Software\Policies\Microsoft\Windows\`.
+
+**Additional policy intent baked into the update-policy backups:**
+- Use the intranet Microsoft update service location.
+- Do not connect to Windows Update Internet locations.
+- Allow signed updates from an intranet update service.
+- Enforce automatic restart behavior for scheduled installs.
+### GPO 3: WSUS Inbound Allow
+
+
+**Purpose:** Opens the WSUS server's firewall to accept incoming connections from client machines. Without this, clients would be told to connect to the WSUS server but the server's firewall would block them.
+
+**Linked to:** `Member Servers\WSUS Server` OU. Apply this only to the WSUS server itself. The deployment script creates this OU if it does not exist.
+
+**Firewall rule:**
+
+| Property | Value |
+|----------|-------|
+| Rule name | WSUS Inbound Allow |
+| Direction | Inbound |
+| Action | Allow |
+| Protocol | TCP (protocol 6) |
+| Local ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows inbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS). |
+
+**Additional setting:**
+
+| Policy | State | What It Does |
+|--------|-------|--------------|
+| Windows Defender Firewall: Protect all network connections (Domain Profile) | Enabled | Ensures the Windows firewall is turned on. The firewall rule above then pokes the specific holes WSUS needs. You do not want to disable the firewall entirely. |
+
+**What the ports are for:**
+- **Port 8530 (HTTP):** The default WSUS communication port. Clients download update metadata and content files over this port.
+- **Port 8531 (HTTPS):** The encrypted alternative. Used if you configure WSUS for SSL/TLS (recommended for sensitive environments).
+
+**After deploying this GPO:** The deployment script prompts to move the WSUS server computer object into `Member Servers\WSUS Server` so this GPO applies to it.
+
+### GPO 4: WSUS Outbound Allow
+
+**Purpose:** Opens the firewall on every client machine so they can reach the WSUS server on ports 8530 and 8531. On a hardened network where outbound traffic is blocked by default, clients need an explicit rule allowing them to talk to the WSUS server.
+
+**Linked to:** Three OUs:
+- `Domain Controllers`
+- `Member Servers`
+- `Workstations`
+
+This covers all domain-joined machines. If you have computers in other OUs, you will need to link this GPO to those OUs manually using the Group Policy Management Console (GPMC).
+
+**Firewall rule:**
+
+| Property | Value |
+|----------|-------|
+| Rule name | WSUS Outbound Allow |
+| Direction | Outbound |
+| Action | Allow |
+| Protocol | TCP (protocol 6) |
+| Remote ports | 8530, 8531 |
+| Profiles | Domain, Private |
+| Description | Allows outbound WSUS connections over TCP 8530 (HTTP) and 8531 (HTTPS). |
+
+**Why this matters:** Many security-hardened environments block outbound connections by default. Without this rule, the Windows Update client on each machine would try to contact the WSUS server and be silently blocked by the local firewall. The client would then report "unable to contact update server" in its logs.
 
 ---
 
@@ -184,165 +308,134 @@ gpresult /r | findstr WSUS
 
 ```
 GA-WsusManager/
-├── Scripts/             # PowerShell entry points (GUI, CLI, install, monthly maintenance, HTTPS, client check-in)
-├── Modules/             # 26 shared PowerShell modules
-├── Tests/               # 900+ Pester tests across 30 *.Tests.ps1 files
-├── DomainController/    # GPO deployment script + backed-up GPOs
-├── build/               # Local validation + ship-readiness scripts
-├── docs/                # SOP, quick-start, CI/CD docs, Confluence export
-├── wiki/                # User / developer / configuration guides
-├── .github/workflows/   # CI pipelines (ci.yml for standard, gui-tests.yml for self-hosted)
-├── build.ps1            # EXE + ZIP packaging
-└── metadata.json        # Single source of truth for version (read by Get-WsusAppVersion)
+|-- build.ps1                        # Build script (PS2EXE compiler)
+|-- dist/                            # Build output (gitignored)
+|   |-- GA-WsusManager.exe
+|   +-- WsusManager-vX.X.X.zip
+|-- Scripts/
+|   |-- WsusManagementGui.ps1        # Main GUI application (WPF/XAML)
+|   |-- Invoke-WsusManagement.ps1    # CLI for WSUS operations
+|   |-- Invoke-WsusMonthlyMaintenance.ps1  # Online sync CLI
+|   |-- Install-WsusWithSqlExpress.ps1     # WSUS + SQL installer
+|   |-- Invoke-WsusClientCheckIn.ps1       # Force client check-in
+|   +-- Set-WsusHttps.ps1                  # HTTPS configuration
+|-- Modules/                         # PowerShell modules
+|-- Tests/                           # Pester unit tests
+|-- DomainController/                # Air-gap GPO deployment
+|   |-- Set-WsusGroupPolicy.ps1      # GPO import + link script
+|   +-- WSUS GPOs/                   # GPO backup files (4 GPOs)
+|-- .github/workflows/               # CI/CD pipeline
+|-- CLAUDE.md                        # Developer documentation
++-- README.md                        # This file
 ```
 
 ---
 
 ## Modules
 
-26 PowerShell modules live in `Modules/`. Key ones:
+WSUS Manager uses PowerShell modules in the `Modules/` directory. Core modules include:
 
 | Module | Purpose |
 |--------|---------|
-| `WsusUtilities.psm1` | Logging, colors, helpers |
-| `WsusConfig.psm1` | Configuration, operation timeouts, health weights, version |
-| `WsusDatabase.psm1` | Database operations with sqlcmd.exe fallback |
-| `WsusHealth.psm1` | Health checks, repair, health score |
-| `WsusServices.psm1` | Service management |
-| `WsusFirewall.psm1` | Firewall rules |
-| `WsusPermissions.psm1` | Directory permissions |
-| `WsusExport.psm1` | Export/import for air-gap transfer |
-| `WsusScheduledTask.psm1` | Scheduled tasks (daily/weekly/monthly) |
-| `WsusAutoDetection.psm1` | Server detection, dashboard data, 30s TTL cache |
-| `WsusDialogs.psm1` | Dialog factory for WPF GUI |
-| `WsusOperationRunner.psm1` | Unified operation lifecycle with timeout watchdog |
-| `WsusHistory.psm1` | Operation history (JSON at `%APPDATA%\WsusManager\history.json`) |
-| `WsusNotification.psm1` | Toast/balloon/log-only completion notifications |
-| `WsusTrending.psm1` | DB size trending with linear regression |
-| `WsusOperationPlan.psm1` | Cross-process plan for child PowerShell operations |
-| `WsusProvisioning.psm1` | Pre-install provisioning checks |
-| `WsusGuiShell.psm1` | WPF shell for GUI application |
-| `WsusProcessHost.psm1` | Long-running process management |
-| `WsusHostEnvironment.psm1` | Environment detection helpers |
-| `WsusRepairPlan.psm1` | Repair plan builder |
-| `WsusRepairHarness.psm1` | Repair execution harness |
-| `WsusDiagnosticResult.psm1` | Diagnostic result types |
-| `WsusTestHarness.psm1` | Test harness for modules |
-
-See [wiki/Module-Reference.md](wiki/Module-Reference.md) for the full reference.
+| `WsusUtilities.psm1` | Logging, admin checks, SQL helpers, path utilities |
+| `WsusConfig.psm1` | Centralized configuration, timeouts, health weights, GUI settings |
+| `WsusHealth.psm1` | Diagnostics, auto-repair, health score, repair plans/results |
+| `WsusDatabase.psm1` | Database size queries, supersession cleanup, index optimization, shrink |
+| `WsusPermissions.psm1` | WSUS content ACL validation and repair |
+| `WsusServices.psm1` | SQL Server, IIS, and WSUS service control |
+| `WsusFirewall.psm1` | Firewall rule creation, testing, and repair |
+| `WsusExport.psm1` | Robocopy/content transfer planning and execution |
+| `WsusOperationRunner.psm1` | GUI operation lifecycle, child process hosting, timeouts |
+| `WsusAutoDetection.psm1` | Server detection, dashboard data, cached health probes |
+| `WsusTrending.psm1` | SUSDB growth history and days-until-full estimate |
+| `WsusScheduledTask.psm1` | Recurring online sync task creation and status |
+| `WsusNotification.psm1` | Toast/balloon/log-only operation notifications |
+| `WsusDialogs.psm1` | WPF dialog helpers |
+| `AsyncHelpers.psm1` | Runspace and dispatcher helpers |
+| `WsusGuiShell.psm1` / `WsusDashboardViewModel.psm1` | GUI-facing dashboard shaping |
+| `WsusProvisioning.psm1` | Install/restore path and backup discovery helpers |
+| `WsusHostEnvironment.psm1` | Host adapters for diagnostic probes |
+| `WsusOperationPlan.psm1` / `WsusOperationCompletion.psm1` | Operation planning and completion details |
+| `WsusDiagnosticResult.psm1` / `WsusRepairPlan.psm1` | Structured diagnostic and repair output |
+| `WsusProcessHost.psm1` | Process execution wrapper |
+| `WsusStartupProbe.psm1` | GUI startup probe result helpers |
+| `WsusTestHarness.psm1` / `WsusRepairHarness.psm1` | Test-facing harness helpers |
+See `Modules/README.md` for full API documentation and examples.
 
 ---
 
-## Build, Test, and CI
+## Build and Test
 
-### Local validation
+The project uses PS2EXE to compile PowerShell scripts into a standalone `.exe`.
 
 ```powershell
-# Aggregate gate (matches what CI runs)
-.\build\Invoke-ShipReadiness.ps1
-
-# Quick syntax check across all PS files
-.\build\Invoke-SyntaxCheck.ps1
-
-
-# Full local validation (lint + tests + XAML)
-.\build\Invoke-LocalValidation.ps1
-
-# Full build pipeline (EXE + ZIP, git publish opt-in)
+# Full build: tests + code analysis + compile
 .\build.ps1
+
+# Build without running tests
+.\build.ps1 -SkipTests
+
+# Build without code review (PSScriptAnalyzer)
+.\build.ps1 -SkipCodeReview
+
+# Run tests only (no build)
+.\build.ps1 -TestOnly
+
+# Run Pester tests directly
+Invoke-Pester -Path .\Tests -Output Detailed
+
+# Run code analysis directly
+Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
 ```
 
-### CI
+Build output goes to `dist/` as `GA-WsusManager.exe` and `WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
 
-Two-tier CI model — see [docs/ci-cd.md](docs/ci-cd.md) for the full design.
-
-| Workflow | Trigger | Runner | Purpose |
-|----------|---------|--------|---------|
-| `.github/workflows/ci.yml` | every push + PR | `windows-latest` (GitHub-hosted) | syntax, lint, unit tests, EXE build |
-| `.github/workflows/gui-tests.yml` | manual + daily | `self-hosted, windows, triton-ajt` | full Pester suite including FlaUI GUI automation |
-
-### Test counts (as of v4.1.0)
-
-- **791 tests** in the standard unit suite gate
-- **Last standard validation run:** 790 pass, 0 fail, 1 skip (excluding E2E / GUI / Integration / FlaUI)
+**CI pipeline** (`.github/workflows/ci.yml` and `.github/workflows/gui-tests.yml`) runs local validation, PSScriptAnalyzer/Pester checks, packaging checks, and GUI smoke tests on the self-hosted Windows runner.
 
 ---
 
 ## Standard Paths
 
-| Path | Purpose |
-|------|---------|
-| `C:\WSUS` | WSUS root + content directory |
-| `C:\WSUS\WsusContent` | WSUS update file store |
-| `C:\WSUS\UpdateServicesPackages` | WSUS update packages |
-| `C:\WSUS\Logs` | Daily log files (`WsusManagement_YYYY-MM-DD.log`) |
-| `C:\WSUS\SQLDB` | SQL installer staging area |
-| `C:\WSUS\Exports` | Default export destination for air-gap transfer |
-| `%APPDATA%\WsusManager\settings.json` | GUI persisted settings |
-| `%APPDATA%\WsusManager\history.json` | Operation history |
-| `%APPDATA%\WsusManager\trends.json` | DB size trend data |
+| Item | Path |
+|------|------|
+| WSUS content directory | `C:\WSUS\` |
+| SQL Server instance | `localhost\SQLEXPRESS` |
+| WSUS database | `SUSDB` |
+| Log files | `C:\WSUS\Logs\` |
+| SQL/SSMS installers (for offline install) | `C:\WSUS\SQLDB\` |
+| WSUS HTTP port | 8530 |
+| WSUS HTTPS port | 8531 |
+| Application settings | `%APPDATA%\WsusManager\settings.json` |
+| Operation history | `%APPDATA%\WsusManager\history.json` |
+| Database trend data | `%APPDATA%\WsusManager\trends.json` |
 
-Network ports: 8530 (WSUS HTTP), 8531 (WSUS HTTPS), 1433 (SQL TCP), 1434 (SQL Browser UDP).
-
----
-
-## Environment Variables
-
-| Variable | Purpose | Lifetime |
-|----------|---------|----------|
-| `WSUS_INSTALL_SA_PASSWORD` | SQL `sa` password for install | Set in child process by `WsusOperationPlan.psm1`, cleared in `try/finally` |
-| `WSUS_TASK_PASSWORD` | User password for scheduled task | Same |
-| `WSUS_REPORT_PATH` | Path where deep diagnostics writes JSON report | Set by GUI, read by child |
-
-See [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) for the full reference including how to read all config values via `Get-WsusRuntimeConfig` and `Get-WsusAppVersion`.
-
----
-
-## Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [README.md](README.md) | This file — project overview and quick start |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment runbook |
-| [docs/ROLLBACK.md](docs/ROLLBACK.md) | Application, settings, SUSDB, and service rollback runbook |
-| [docs/QUICK-START.md](docs/QUICK-START.md) | Step-by-step install guide |
-| [docs/WSUS-Manager-SOP.md](docs/WSUS-Manager-SOP.md) | Full operator Standard Operating Procedure |
-| [docs/WSUS-Manager-SOP-Confluence.txt](docs/WSUS-Manager-SOP-Confluence.txt) | Confluence wiki markup version of the SOP |
-| [docs/ci-cd.md](docs/ci-cd.md) | Build, test, and CI/CD pipeline |
-| [docs/releases.md](docs/releases.md) | Release process |
-| [CHANGELOG.md](CHANGELOG.md) | Version history with added/changed/fixed sections |
-| [wiki/Home.md](wiki/Home.md) | Wiki landing page |
-| [wiki/Installation-Guide.md](wiki/Installation-Guide.md) | Detailed install walk-through |
-| [wiki/User-Guide.md](wiki/User-Guide.md) | GUI usage guide |
-| [wiki/Air-Gap-Workflow.md](wiki/Air-Gap-Workflow.md) | Air-gapped network operations |
-| [wiki/Troubleshooting.md](wiki/Troubleshooting.md) | Common issues |
-| [wiki/Developer-Guide.md](wiki/Developer-Guide.md) | Building from source |
-| [wiki/Configuration-Guide.md](wiki/Configuration-Guide.md) | Env vars, paths, ports, timeouts |
-| [wiki/Module-Reference.md](wiki/Module-Reference.md) | Module function reference |
-| [wiki/Changelog.md](wiki/Changelog.md) | Wiki changelog mirror |
-| [docs/ai-audit/README.md](docs/ai-audit/README.md) | AI ship-readiness audit instruction pack |
+**SQL Express limit:** The free edition of SQL Server Express has a 10 GB database size cap. The dashboard monitors this and shows warnings when the database approaches the limit. The trending module estimates how many days until the limit is reached based on historical growth.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
-| Dashboard shows "Not Installed" | Click **Install WSUS** |
-| Sync stuck at 0% | Check DNS; GUI runs a DNS preflight check before sync |
-| Endless downloads | Content path must be `C:\WSUS` (NOT `C:\WSUS\wsuscontent`) |
-| Clients scan but never download | Verify `Authenticated Users` read access on `C:\WSUS` and IIS `/Content` points to `C:\WSUS\WsusContent` |
-| Database near 10 GB | Run **Deep Cleanup** |
-| Database restore fails | Verify sysadmin privileges on SQL Server |
-| `SqlServer` module missing | v4.0.4+ auto-falls back to `sqlcmd.exe` — no manual install needed |
-| GroupPolicy module not found | Install RSAT: `Install-WindowsFeature GPMC` |
-| GUI shows `?` for emoji/symbols | v4.1.0+ has UTF-8 BOM applied; symbols verified against Segoe UI font coverage |
-| Operation hangs | Check whether running in non-interactive mode; GUI passes `-NonInteractive` |
+**"WSUS Not Installed" on the dashboard**
+The WSUS Windows Server role is not present. Click Install WSUS to set it up.
 
-For the full troubleshooting guide see [wiki/Troubleshooting.md](wiki/Troubleshooting.md) and [docs/WSUS-Manager-SOP.md § Troubleshooting](docs/WSUS-Manager-SOP.md#troubleshooting).
+
+**"Content is still downloading" after air-gap restore**
+After restoring the database or copying content with Robocopy, run Diagnostics > Reset Content to execute `wsusutil reset`. This tells WSUS to re-verify all content files against the database.
+
+**Client machines not finding the WSUS server**
+Verify GPOs are applied: run `gpresult /r` on the client. Check that the WSUS Outbound Allow GPO is linked to the client's OU. Check that the WSUS server firewall allows inbound on ports 8530/8531.
+
+**Database approaching 10 GB limit**
+Run a Deep Cleanup from the Database menu. This declines superseded updates, removes obsolete records, rebuilds indexes, and shrinks the database.
+
+
+**Script not found errors**
+Make sure the `Scripts/` and `Modules/` folders are in the same directory as `GA-WsusManager.exe`. If you moved only the EXE, the application cannot find its scripts.
+
+See [CLAUDE.md](CLAUDE.md) for detailed developer documentation, architecture notes, and a full catalog of known GUI issues with solutions.
 
 ---
 
 ## License
 
-*Internal use — General Atomics Aeronautical Systems, Inc.*
+This project is proprietary software developed for GA-ASI internal use.

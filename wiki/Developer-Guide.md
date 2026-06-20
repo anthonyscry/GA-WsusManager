@@ -238,7 +238,7 @@ The distribution zip contains everything needed for deployment:
 GA-WsusManager.exe
 Scripts/                         # Required -- operation scripts
 Modules/                         # Required -- PowerShell modules
-DomainController/                # Optional -- air-gap GPO scripts
+DomainController/                # GPO script and backups; copy whole folder to the DC
 general_atomics_logo_big.ico
 general_atomics_logo_small.ico
 QUICK-START.txt
@@ -463,7 +463,7 @@ The GUI (`WsusManagementGui.ps1`) uses:
 
 - **Operation History Tracking** (`WsusHistory.psm1`) - Every operation writes to `%APPDATA%\WsusManager\history.json` with type, duration, result, and summary. The **☰ History** button in the bottom bar shows the last 100 operations.
 
-- **Health Score Dashboard** (`WsusHealth.psm1`) - `Get-WsusHealthScore` returns a weighted composite (0-100): Services=30, DB=20, Sync=20, Disk=20, LastOp=10. Displayed as a color-coded card (Green >=80, Yellow 50-79, Red <50).
+- **Health Score Dashboard** (`WsusHealth.psm1`) - `Get-WsusHealthScore` returns a weighted composite (0-100): Services=40, DB=30, Disk=30. Sync recency, scheduled task state, and last operation history are displayed separately and do not reduce the score. Displayed as a color-coded card (Green >=80, Yellow 50-79, Red <50).
 
 - **Completion Notifications** (`WsusNotification.psm1`) - 3-tier fallback: Windows 10 toast, balloon tip, or log-only. Called automatically by operation exit handlers.
 
@@ -475,7 +475,7 @@ The GUI (`WsusManagementGui.ps1`) uses:
 - **Startup Probe** (`Tests/StartupE2E.Tests.ps1`) launches the GUI in `-E2EStartupProbe` mode and asserts the JSON result file rather than relying on screenshots.
 - **GUI VM Harness** (`Tests/GuiFullTest.ps1`) validates post-install navigation and control state in an interactive desktop session.
 - **Shared Test Harness** (`WsusTestHarness.psm1`) owns repo-root resolution, module-path lookup, STA harness setup, temp/evidence roots, and GUI executable discovery.
-- **VM Evidence Boundary** (`docs/reports/Integrated_GUI_Test_Report_MS01.md`) is the current source of truth for what was actually executed in MS01/WS01 versus what remains unproven.
+- **Historical VM Evidence** (`docs/reports/Integrated_GUI_Test_Report_MS01.md`) records the MS01/WS01 v4.0.5 evidence boundary; current v4.1.0 release verification is captured by the release build and targeted test output.
 - **DB Size Trending** (`WsusTrending.psm1`) - Linear regression over last 30 days estimates days until the 10GB SQL Express limit. Shows Critical/Warning alerts on the dashboard.
 
 ### Key Design Patterns

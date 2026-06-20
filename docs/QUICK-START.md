@@ -1,7 +1,7 @@
 # WSUS Manager v4.1.0 — Quick Start Guide
 
 **Author:** Tony Tran, ISSO, GA-ASI
-**Last updated:** 2026-06-07
+**Last updated:** 2026-06-20
 
 This is a quick-start guide for new operators. For the full reference see [WSUS-Manager-SOP.md](WSUS-Manager-SOP.md) and the [README](../README.md).
 
@@ -11,7 +11,7 @@ This is a quick-start guide for new operators. For the full reference see [WSUS-
 
 | Item | Details |
 |------|---------|
-| Server | Windows Server 2019 or 2022, 16 GB RAM, 150 GB disk |
+| Server | Windows Server 2019 or 2022, 16 GB RAM, 200 GB disk recommended |
 | Installers | `SQLEXPRADV_x64_ENU.exe` in `C:\WSUS\SQLDB\` (SSMS optional) |
 | Package | `WsusManager-v4.1.0.zip` extracted to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`) |
 | Privileges | Local Administrator |
@@ -27,55 +27,43 @@ This is a quick-start guide for new operators. For the full reference see [WSUS-
 5. Wait 15-30 minutes for SQL Express + WSUS installation.
 6. The dashboard turns green when services are running.
 
-The installer auto-detects WID and migrates to SQL Express if needed. No `SqlServer` PowerShell module required — all database operations fall back to `sqlcmd.exe`.
+The installer auto-detects WID and migrates to SQL Express if needed. Database operations use `Invoke-Sqlcmd`, `sqlcmd.exe`, or .NET SQL client fallback depending on what is available.
 
 ---
 
-## 2. Build an Air-Gapped WSUS Server from the Existing Share
+## 2. Restore an Air-Gapped WSUS Server from Approved Media
 
-**Assumption:** the online/source WSUS server is already maintained and publishes the latest database backup plus `WsusContent` to your approved share drive.
-
-**On the air-gapped server:**
+Use this when an approved export folder has been transferred into the air-gapped network by USB/removable media.
 
 1. Build the server using the install steps above.
-2. Copy the latest `SUSDB_YYYYMMDD.bak` and `WsusContent\` from the share drive or transfer media to the new server.
-3. Click **Robocopy**. Set source to the share-drive copy or USB folder and destination to `C:\WSUS\`, then click **Start Transfer**.
-4. Click **Restore DB** to import the SUSDB backup from `C:\WSUS\`.
+2. Copy the complete export folder from the approved USB drive to the server or attach the drive directly.
+3. Click **Restore DB** and select the SUSDB `.bak` file from the export folder.
+4. Click **Robocopy** if the exported `WsusContent\` folder still needs to be copied into `C:\WSUS\`.
 5. Run **Diagnostics** to confirm:
-   - `Authenticated Users` has read access on `C:\WSUS`
+   - `BUILTIN\IIS_IUSRS` has list/read/execute access on `C:\WSUS`
+   - `NT AUTHORITY\Authenticated Users` has list/read/execute access on `C:\WSUS`
    - IIS `/Content` points to `C:\WSUS\WsusContent`
    - Update files are present in `C:\WSUS\WsusContent`
-6. Only use **Reset Content** if WSUS still shows files as downloading after import or restore.
+6. Click **Reset Content** if WSUS still shows files as downloading after restore or Robocopy.
 7. After running **Reset Content**, wait 5-10 minutes for file registration to settle before re-checking status.
 
 ---
 
-## 3. Reference: Source Server Sync
-
-Only the source/online WSUS maintainer needs this section.
-
-1. Run **Online Sync** with export path set to the approved share drive or staging folder.
-2. Verify the share contains:
-   - `SUSDB_YYYYMMDD.bak`
-   - `WsusContent\`
-
----
-
-## 4. Deploy GPOs (Air-Gap Only)
+## 3. Deploy GPOs (Air-Gap Only)
 
 > **WARNING:** These GPOs block all direct Microsoft Update traffic. Only deploy on air-gapped networks.
 
 **On the Domain Controller:**
 
-1. Copy the `DomainController/` folder from the WSUS Manager package to the DC.
+1. Copy the whole `DomainController/` folder from the WSUS Manager package to the DC. Keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together.
 2. Open an elevated PowerShell prompt.
-3. Run:
+3. From inside the copied `DomainController/` folder, run:
    ```powershell
    .\Set-WsusGroupPolicy.ps1
    ```
 4. Enter the WSUS server hostname when prompted (e.g. `WSUS01`).
-5. The script imports 3 GPOs, reuses an existing `Member Servers` (or `Member_Servers`) OU if present, creates the `WSUS Server` child OU when possible, and pushes policy via schtasks (no WinRM needed).
-6. Move the WSUS server computer object to the `Member Servers\WSUS Server` OU.
+5. The script imports 4 GPOs, reuses an existing `Member Servers` or `Member_Servers` OU if present, creates missing `Member Servers`, `WSUS Server`, and `Workstations` OUs, and pushes policy via schtasks (no WinRM required).
+6. When prompted, allow the script to move the WSUS server computer object to the `Member Servers\WSUS Server` OU so the inbound firewall GPO applies.
 
 **Verify on a client:**
 
@@ -85,13 +73,13 @@ gpresult /r | findstr WSUS
 
 ---
 
-## 5. Schedule Recurring Sync
+## 4. Schedule Recurring Sync
 
 1. Click **Schedule Task** in the GUI.
 2. Select a maintenance profile:
-   - **Full** (recommended monthly) — full cycle: sync, auto-decline, auto-approve, deep cleanup, optional export
-   - **Quick** (weekly) — sync and approve only, skips cleanup
-   - **Sync Only** — sync with Microsoft only, no approvals or cleanup
+   - **Full** (recommended monthly) — sync, cleanup, ultimate cleanup, backup, and export
+   - **Quick** (weekly) — sync, cleanup, and backup; skips heavy cleanup and export
+   - **Sync Only** — sync with Microsoft and apply the approval policy
 3. Set the schedule (daily / weekly / monthly) and time (default: Tuesday 23:00).
 4. Enter credentials and click **Create**.
 
@@ -99,8 +87,6 @@ gpresult /r | findstr WSUS
 
 ---
 
-
----
 
 ## Keyboard Shortcuts
 
@@ -119,7 +105,7 @@ gpresult /r | findstr WSUS
 |---------|-----|
 | Dashboard shows "Not Installed" | Click **Install WSUS** |
 | Sync stuck at 0% | Check DNS configuration |
-| "Content is still downloading" after import | Click **Reset Content**, wait 5-10 minutes, then run **Diagnostics** to verify `C:\WSUS` ACLs and IIS `/Content` |
+| "Content is still downloading" after restore | Click **Reset Content**, wait 5-10 minutes, then run **Diagnostics** to verify `C:\WSUS` ACLs and IIS `/Content` |
 | Database near 10 GB | Run **Deep Cleanup** |
 | `?` boxes in GUI buttons | File lacks UTF-8 BOM, or non-BMP character was used. See [Configuration Guide](../wiki/Configuration-Guide.md) |
 
