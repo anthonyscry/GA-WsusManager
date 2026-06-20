@@ -526,14 +526,15 @@ Describe "Start-WsusOperation Terminal mode (visible console)" {
             $script:RunnerContent = Get-Content -LiteralPath $script:RunnerPath -Raw
         }
 
-        It "Stores the wrapped command on the context as BaseWrappedCmd" {
-            $script:RunnerContent | Should -Match '\$Context\[''BaseWrappedCmd''\]\s*=\s*\$baseWrappedCmd'
+        It "Captures the wrapped command in a local variable (no context stash)" {
+            # Simplification: $baseWrappedCmd is a local var read directly by
+            # both the embedded child ($psi.Arguments) and the wrapper generator.
+            $script:RunnerContent | Should -Match '\$baseWrappedCmd\s*=\s*"`\$VerbosePreference'
         }
 
-        It "Launches the visible terminal from the BaseWrappedCmd" {
+        It "Launches the visible terminal from the wrapped command" {
             # The visible console process is started with the same wrapped
             # command the embedded child received.
-            $script:RunnerContent | Should -Match '\$Context\[''BaseWrappedCmd''\]'
             $script:RunnerContent | Should -Match '\$Context\[''TerminalProcess''\]\s*=\s*\$terminalProc'
         }
 
@@ -558,9 +559,8 @@ Describe "Start-WsusOperation Terminal mode (visible console)" {
             $script:RunnerContent | Should -Match "'q'.*'Q'|KeyChar\s*-eq\s*'q'"
         }
 
-        It "Wrapper script is cleaned up on completion" {
-            $script:RunnerContent | Should -Match 'TerminalWrapperPath'
-            $script:RunnerContent | Should -Match 'Remove-Item.*TerminalWrapperPath'
+        It "Wrapper script is cleaned up via Remove-WsusEnvironmentBootstrapFile helper" {
+            $script:RunnerContent | Should -Match 'Remove-WsusEnvironmentBootstrapFile.*TerminalWrapperPath'
         }
     }
 }
