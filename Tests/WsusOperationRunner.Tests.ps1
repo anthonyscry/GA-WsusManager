@@ -513,3 +513,54 @@ Describe "Complete-WsusOperation env bootstrap cleanup" -Skip:(-not $script:WpfA
         }
     }
 }
+
+Describe "Start-WsusOperation Terminal mode (visible console)" {
+    # Live Terminal mode opens a visible PowerShell console window in addition
+    # to the embedded child process, and both run the same wrapped command
+    # (stream preferences + *>&1 + the user's command). We verify the wiring
+    # via source inspection rather than actually spawning powershell.exe, so
+    # the test runs without WPF dispatcher requirements.
+    Context "Module wiring for visible terminal" {
+        BeforeAll {
+            $script:RunnerPath = Join-Path $PSScriptRoot '..\Modules\WsusOperationRunner.psm1'
+            $script:RunnerContent = Get-Content -LiteralPath $script:RunnerPath -Raw
+        }
+
+        It "Stores the wrapped command on the context as BaseWrappedCmd" {
+            $script:RunnerContent | Should -Match '\$Context\[''BaseWrappedCmd''\]\s*=\s*\$baseWrappedCmd'
+        }
+
+        It "Launches the visible terminal from the BaseWrappedCmd" {
+            # The visible console process is started with the same wrapped
+            # command the embedded child received.
+            $script:RunnerContent | Should -Match '\$Context\[''BaseWrappedCmd''\]'
+            $script:RunnerContent | Should -Match '\$Context\[''TerminalProcess''\]\s*=\s*\$terminalProc'
+        }
+
+        It "Cleans up the visible TerminalProcess on completion" {
+            $script:RunnerContent | Should -Match "TerminalProcess.*HasExited"
+            $script:RunnerContent | Should -Match "CloseMainWindow\(\)"
+        }
+
+        It "Generates a terminal wrapper script that runs the same wrapped command" {
+            # The wrapper .ps1 is generated per-operation so the visible console
+            # can stay open after the operation completes and surface a
+            # "press Q or Escape" prompt. It must contain the same wrapped
+            # command the embedded child receives.
+            $script:RunnerContent | Should -Match 'wsusmanager-terminal-wrap-'
+            $script:RunnerContent | Should -Match '\$terminalWrapperPath\s*=\s*Join-Path'
+            $script:RunnerContent | Should -Match 'baseCmdEscaped'
+        }
+
+        It "Wrapper waits up to 5 seconds and accepts Q or Escape" {
+            $script:RunnerContent | Should -Match 'TotalSeconds\s*-\s*lt\s*5'
+            $script:RunnerContent | Should -Match "'Escape'"
+            $script:RunnerContent | Should -Match "'q'.*'Q'|KeyChar\s*-eq\s*'q'"
+        }
+
+        It "Wrapper script is cleaned up on completion" {
+            $script:RunnerContent | Should -Match 'TerminalWrapperPath'
+            $script:RunnerContent | Should -Match 'Remove-Item.*TerminalWrapperPath'
+        }
+    }
+}

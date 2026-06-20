@@ -14,13 +14,18 @@ BeforeAll {
 }
 
 Describe 'Get-GpoDefinitions' {
-    It 'Returns 3 GPO definitions' {
+    It 'Returns 4 GPO definitions' {
         $defs = Get-GpoDefinitions -DomainDN 'DC=example,DC=com'
-        $defs.Count | Should -Be 3
+        $defs.Count | Should -Be 4
     }
-    It 'Includes WSUS Update Policy targeting domain root' {
+    It 'Includes WSUS Update Policy - Servers targeting Member Servers' {
         $defs = Get-GpoDefinitions -DomainDN 'DC=example,DC=com'
-        ($defs | Where-Object DisplayName -eq 'WSUS Update Policy').TargetOUs[0] | Should -Be 'DC=example,DC=com'
+        ($defs | Where-Object DisplayName -eq 'WSUS Update Policy - Servers').TargetOUPaths[0] | Should -Be 'Member Servers'
+        ($defs | Where-Object DisplayName -eq 'WSUS Update Policy - Servers').IncludeDomainControllers | Should -BeTrue
+    }
+    It 'Includes WSUS Update Policy - Workstations targeting Workstations' {
+        $defs = Get-GpoDefinitions -DomainDN 'DC=example,DC=com'
+        ($defs | Where-Object DisplayName -eq 'WSUS Update Policy - Workstations').TargetOUPaths[0] | Should -Be 'Workstations'
     }
     It 'Includes WSUS Inbound Allow' {
         (Get-GpoDefinitions -DomainDN 'DC=example,DC=com' | Where-Object DisplayName -eq 'WSUS Inbound Allow').UpdateWsusSettings | Should -BeFalse

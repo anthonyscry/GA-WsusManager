@@ -156,6 +156,22 @@ Describe "Set-WsusConfig" {
     }
 }
 
+Describe "Get-WsusGuiSetting" {
+    Context "GUI timer intervals" {
+        It "Should return 5000ms for KeystrokeFlush" {
+            # The visible PowerShell window in Live Terminal mode gets an Enter
+            # sent every 5s to keep it from getting stuck waiting on input.
+            $result = Get-WsusGuiSetting -Setting "Timers.KeystrokeFlush"
+            $result | Should -Be 5000
+        }
+
+        It "Should return 30000ms for DashboardRefresh" {
+            $result = Get-WsusGuiSetting -Setting "Timers.DashboardRefresh"
+            $result | Should -Be 30000
+        }
+    }
+}
+
 Describe "Get-SqlInstanceName" {
     It "Should return Short format" {
         $result = Get-SqlInstanceName -Format 'Short'

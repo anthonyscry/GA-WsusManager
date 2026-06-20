@@ -117,13 +117,61 @@ function Invoke-WsusRobocopy {
     }
 
     try {
-        $proc = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -Wait -PassThru -NoNewWindow
+        # Invoke robocopy line-by-line so each progress line streams to the GUI
+        # log panel as it's produced. Two non-obvious pitfalls drive this design:
+        #
+        # 1. Start-Process -Wait buffers everything until robocopy exits, so the
+        #    GUI sees nothing until the copy is done.
+        # 2. PowerShell captures native-exe stdout into the assignment variable
+        #    if you write `$x = & robocopy.exe ...`. To make lines flow to the
+        #    parent pipeline you must NOT assign the call directly.
+        # 3. Even piping through `Out-Default` is not enough: the line goes to
+        #    THIS function's success stream, which is captured by the caller's
+        #    `$contentResult = Invoke-WsusRobocopy ...` and never reaches the
+        #    outer pipeline that the GUI's OutputDataReceived is reading.
+        #
+        # The fix is to read stdout line-by-line via a StreamReader and emit each
+        # line via Write-Host. Write-Host bypasses the function output stream
+        # entirely; combined with the GUI's `& { ... } *>&1` wrapper, each line
+        # ends up in the child process's stdout where the GUI captures it.
+        #
+        # /TEE (added above when LogPath is set) makes robocopy also write to the
+        # log file so we have a complete record afterwards.
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName               = 'robocopy.exe'
+        $psi.Arguments              = [string[]]$robocopyArgs
+        $psi.UseShellExecute        = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.CreateNoWindow         = $true
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+        $null = $proc.Start()
+
+        # Stream stdout and stderr concurrently. We can't use async event
+        # handlers in a synchronous helper without blocking, so we drain stdout
+        # line-by-line; stderr gets drained in the background and we join at
+        # the end.
+        $stderrTask = $proc.StandardError.ReadToEndAsync()
+        while (-not $proc.StandardOutput.EndOfStream) {
+            $line = $proc.StandardOutput.ReadLine()
+            if ($null -ne $line -and $line -ne '') {
+                Write-Host $line
+            }
+        }
+        $proc.WaitForExit()
+        $stderrText = $stderrTask.Result
+        if (-not [string]::IsNullOrWhiteSpace($stderrText)) {
+            foreach ($line in $stderrText -split "`r?`n") {
+                if (-not [string]::IsNullOrWhiteSpace($line)) { Write-Host $line }
+            }
+        }
         $result.ExitCode = $proc.ExitCode
 
         # Robocopy exit codes: 0-7 = success, 8+ = error
-        if ($proc.ExitCode -lt 8) {
+        if ($result.ExitCode -lt 8) {
             $result.Success = $true
-            $result.Message = switch ($proc.ExitCode) {
+            $result.Message = switch ($result.ExitCode) {
                 0 { "No files copied. Source and destination are synchronized." }
                 1 { "All files copied successfully." }
                 2 { "Extra files or directories detected." }
@@ -134,10 +182,10 @@ function Invoke-WsusRobocopy {
                 7 { "Files copied, extra and mismatched files detected." }
             }
         } else {
-            $result.Message = switch ($proc.ExitCode) {
+            $result.Message = switch ($result.ExitCode) {
                 8 { "Some files or directories could not be copied (copy errors occurred)." }
                 16 { "Serious error. Robocopy did not copy any files." }
-                default { "Robocopy failed with exit code $($proc.ExitCode)" }
+                default { "Robocopy failed with exit code $($result.ExitCode)" }
             }
         }
     } catch {

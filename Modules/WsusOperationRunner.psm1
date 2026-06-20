@@ -307,6 +307,26 @@ function Complete-WsusOperation {
         $Context['EnvBootstrapPath'] = $null
     }
 
+    # Clean up Live Terminal mode: close the visible PowerShell console window
+    # that was launched in parallel with the embedded child, and remove the
+    # wrapper script. Close politely (sends WM_CLOSE); fall back to Kill if
+    # it doesn't respond within 2s.
+    if ($Context.ContainsKey('TerminalProcess') -and $null -ne $Context['TerminalProcess']) {
+        try {
+            if (-not $Context['TerminalProcess'].HasExited) {
+                $Context['TerminalProcess'].CloseMainWindow() | Out-Null
+                if (-not $Context['TerminalProcess'].WaitForExit(2000)) {
+                    $Context['TerminalProcess'].Kill()
+                }
+            }
+        } catch { Write-Verbose $_.Exception.Message }
+        $Context['TerminalProcess'] = $null
+    }
+    if ($Context.ContainsKey('TerminalWrapperPath') -and -not [string]::IsNullOrWhiteSpace($Context['TerminalWrapperPath'])) {
+        try { Remove-Item -LiteralPath ([string]$Context['TerminalWrapperPath']) -Force -ErrorAction SilentlyContinue } catch {}
+        $Context['TerminalWrapperPath'] = $null
+    }
+
     $completionState = if ($Success) { 'Completed' } else { 'Failed' }
     if (Get-Command Set-WsusGuiOperationUiState -ErrorAction SilentlyContinue) {
         Set-WsusGuiOperationUiState -Context $Context -State $completionState -Title $Title
@@ -519,17 +539,26 @@ function Start-WsusOperation {
         }
     }
 
+    # The wrapped command (with stream preferences forced on and *>&1 redirect)
+    # is what both the embedded child and the visible terminal run. Capture it
+    # here so the Terminal branch can hand the same string to the visible window.
+    $baseWrappedCmd = "`$VerbosePreference='Continue'; `$WarningPreference='Continue'; `$InformationPreference='Continue'; & { $Command } *>&1"
+    $Context['BaseWrappedCmd'] = $baseWrappedCmd
+
     switch ($Mode) {
         'Terminal' {
-            $psi.UseShellExecute  = $true
-            $psi.CreateNoWindow   = $false
-            $terminalCmd = $Command
-            if ($useEnvBootstrap) {
-                # Dot-source the bootstrap ahead of the user command so env vars
-                # are in scope before Install-WsusWithSqlExpress.ps1 reads them.
-                $terminalCmd = ". '$envBootstrapPath'; $Command"
-            }
-            $psi.Arguments        = "-NoProfile -ExecutionPolicy Bypass -Command `"$terminalCmd`""
+            # Embedded child runs the same command as the visible terminal,
+            # but with redirected stdio so the GUI's OutputDataReceived can
+            # capture lines into the embedded log panel. The visible terminal
+            # (launched below) runs the identical wrapped command in a real
+            # console with no redirection, so the user sees the actual script
+            # output (robocopy progress, Write-Host, Write-Output, etc.) live.
+            $psi.UseShellExecute        = $false
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError  = $true
+            $psi.RedirectStandardInput  = $true
+            $psi.CreateNoWindow         = $true
+            $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `"$baseWrappedCmd`""
         }
         'Embedded' {
             $psi.UseShellExecute         = $false
@@ -537,9 +566,7 @@ function Start-WsusOperation {
             $psi.RedirectStandardError   = $true
             $psi.RedirectStandardInput   = $true
             $psi.CreateNoWindow          = $true
-            # Wrap command so all PS streams (Warning/Verbose/Debug/Info) flow to stdout
-            $wrappedCmd = "`$VerbosePreference='Continue'; `$WarningPreference='Continue'; `$InformationPreference='Continue'; & { $Command } *>&1"
-            $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"$wrappedCmd`""
+            $psi.Arguments               = "-NoProfile -ExecutionPolicy Bypass -Command `"$baseWrappedCmd`""
         }
     }
     #endregion
@@ -563,6 +590,67 @@ function Start-WsusOperation {
         }
         Complete-WsusOperation -Context $Context -Title $Title -Success $false -OnComplete $OnComplete
         throw
+    }
+
+    # Terminal mode: launch a visible PowerShell console window that runs
+    # the SAME wrapped command as the embedded child. The visible console
+    # shows the script's real output (Write-Host, robocopy progress, etc.)
+    # live, with full scrollback, selection, and Ctrl+C. The embedded child
+    # runs in parallel with redirected stdio so the GUI can stream identical
+    # output into the embedded log panel.
+    #
+    # After the operation finishes, the wrapper waits up to 5s for the user
+    # to press Q or Escape to dismiss, then auto-closes.
+    if ($Mode -eq 'Terminal' -and $Context.ContainsKey('BaseWrappedCmd')) {
+        try {
+            # Generate a tiny wrapper script so we can keep the visible console
+            # open after the operation completes, surface a 'press Q/Esc or wait
+            # 5s' prompt, and then close. We can't do that with a -Command
+            # string because PowerShell exits as soon as the command finishes.
+            $terminalWrapperPath = Join-Path $env:TEMP ("wsusmanager-terminal-wrap-" + [guid]::NewGuid() + ".ps1")
+            $baseCmdEscaped = $Context['BaseWrappedCmd']
+            $wrapperTemplate = @'
+#Requires -Version 5.1
+$ErrorActionPreference = 'Continue'
+try {
+    & { __WSUS_BASE_CMD__ }
+} catch {
+    Write-Host ('[!] Terminal wrapper caught exception: ' + $_.Exception.Message) -ForegroundColor Red
+}
+Write-Host ''
+Write-Host '--- Operation complete ---' -ForegroundColor Cyan
+Write-Host 'Press Q or Escape to close, or wait 5 seconds...' -ForegroundColor DarkGray
+$start = Get-Date
+while (((Get-Date) - $start).TotalSeconds -lt 5) {
+    try {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                exit 0
+            }
+        }
+    } catch {
+        # Non-interactive host (no console attached); just wait out the timer.
+    }
+    Start-Sleep -Milliseconds 100
+}
+exit 0
+'@
+            $wrapper = $wrapperTemplate.Replace('__WSUS_BASE_CMD__', $baseCmdEscaped)
+            Set-Content -LiteralPath $terminalWrapperPath -Value $wrapper -Force
+            $Context['TerminalWrapperPath'] = $terminalWrapperPath
+
+            $visiblePsi = New-Object System.Diagnostics.ProcessStartInfo
+            $visiblePsi.FileName        = 'powershell.exe'
+            $visiblePsi.UseShellExecute = $true
+            $visiblePsi.CreateNoWindow  = $false
+            $visiblePsi.WindowStyle     = 'Normal'
+            $visiblePsi.Arguments       = "-NoProfile -ExecutionPolicy Bypass -File `"$terminalWrapperPath`""
+            $terminalProc = [System.Diagnostics.Process]::Start($visiblePsi)
+            $Context['TerminalProcess'] = $terminalProc
+        } catch {
+            Write-Verbose "Failed to launch terminal window: $($_.Exception.Message)"
+        }
     }
     #endregion
 
@@ -591,9 +679,26 @@ function Start-WsusOperation {
     #region Mode-specific wiring
     switch ($Mode) {
         'Terminal' {
-            # Keystroke timer - sends Enter every 2 s to flush PowerShell output buffer
+            # Keystroke timer - sends Enter periodically to flush the PowerShell
+            # window's output buffer. Default interval is 30s (configurable via
+            # WsusConfig.Gui.Timers.KeystrokeFlush). The PowerShell window can
+            # occasionally block waiting for input on certain Read-Host / prompt
+            # paths; sending a newline nudges it forward without affecting
+            # non-interactive output (Write-Host / Write-Output are unaffected by
+            # spurious newlines on stdin).
+            $flushMs = 5000
+            try {
+                $cfgPath = Join-Path $PSScriptRoot 'WsusConfig.psm1'
+                if (Test-Path -LiteralPath $cfgPath) {
+                    Import-Module $cfgPath -Global -Force -DisableNameChecking -ErrorAction SilentlyContinue
+                    if (Get-Command Get-WsusTimerInterval -ErrorAction SilentlyContinue) {
+                        $flushMs = Get-WsusTimerInterval -Timer 'KeystrokeFlush'
+                    }
+                }
+            } catch { Write-Verbose $_.Exception.Message }
+
             $kTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $kTimer.Interval = [TimeSpan]::FromMilliseconds(2000)
+            $kTimer.Interval = [TimeSpan]::FromMilliseconds($flushMs)
             $kTimerData = @{ Proc = $proc }
             $kTimer.Add_Tick({
                 $p = $kTimerData.Proc

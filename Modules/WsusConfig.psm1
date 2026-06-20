@@ -106,7 +106,12 @@ $script:WsusConfig = @{
             DashboardRefresh = 30000        # 30 seconds - auto-refresh dashboard
             UiUpdate = 250                   # 250ms - UI responsiveness
             OpCheck = 500                    # 500ms - operation status check
-            KeystrokeFlush = 2000            # 2 seconds - flush console buffer
+            KeystrokeFlush = 5000            # 5 seconds - flush console buffer
+                                       # Sends a periodic Enter to the visible
+                                       # PowerShell window in Live Terminal mode
+                                       # so it doesn't get stuck waiting for
+                                       # input. 5s keeps it responsive without
+                                       # being too noisy.
             ProcessWait = 100                # 100ms - wait for process start
         }
 

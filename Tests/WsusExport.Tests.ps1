@@ -147,6 +147,65 @@ Describe "Invoke-WsusRobocopy" {
             $result.Keys | Should -Contain "Success"
         }
     }
+
+    # Behavior test: when Invoke-WsusRobocopy actually runs robocopy (not a
+    # mock), the native-exe stdout lines must reach the caller's pipeline so
+    # the GUI's OutputDataReceived handler can stream them into the log
+    # panel. Previously $x = & robocopy ... captured the lines into $x
+    # silently; the user saw only "Starting Transfer..." with no progress.
+    #
+    # The current implementation emits robocopy's stdout via Write-Host to
+    # bypass PowerShell's function output capture. Write-Host cannot be
+    # captured into a variable the way pipeline output can, so we verify the
+    # behavior by counting how many times Write-Host was invoked with lines
+    # that look like robocopy output.
+    Context "Live robocopy stdout streams to caller (Write-Host path)" {
+        BeforeAll {
+            $script:RcTestDir = Join-Path ([System.IO.Path]::GetTempPath()) "wsusrobocopystreamtest-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            $script:RcSrc  = Join-Path $script:RcTestDir "src"
+            $script:RcDst  = Join-Path $script:RcTestDir "dst"
+            New-Item -ItemType Directory -Path $script:RcSrc  -Force | Out-Null
+            New-Item -ItemType Directory -Path $script:RcDst  -Force | Out-Null
+            # 3 source files so robocopy emits per-file progress lines
+            1..3 | ForEach-Object {
+                Set-Content -LiteralPath (Join-Path $script:RcSrc "file$_.txt") -Value "test data $_"
+            }
+        }
+
+        AfterAll {
+            if ($script:RcTestDir -and (Test-Path -LiteralPath $script:RcTestDir)) {
+                Remove-Item -LiteralPath $script:RcTestDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It "Emits robocopy's banner and file-count line via Write-Host" {
+            $script:WriteHostLines = New-Object System.Collections.Generic.List[string]
+            Mock Write-Host {
+                param([Parameter(ValueFromPipeline=$true, Position=0)]$Object)
+                $script:WriteHostLines.Add([string]$Object)
+            } -ModuleName WsusExport -Verifiable
+
+            $null = Invoke-WsusRobocopy `
+                -Source $script:RcSrc `
+                -Destination $script:RcDst `
+                -ExcludeExtensions @() `
+                -ExcludeDirs @() `
+                -ThreadCount 1
+
+            # Verify robocopy's stdout was actually emitted line by line. We
+            # don't care how many times the banner repeats; we just need to
+            # see at least one match for both the ROBOCOPY banner and the
+            # "Files : 3" summary that proves the 3 source files were seen.
+            $sawBanner  = $false
+            $sawFileCnt = $false
+            foreach ($line in $script:WriteHostLines) {
+                if ($line -match 'ROBOCOPY')             { $sawBanner  = $true }
+                if ($line -match 'Files\s*:\s*3')         { $sawFileCnt = $true }
+            }
+            $sawBanner  | Should -BeTrue -Because 'robocopy banner should be emitted'
+            $sawFileCnt | Should -BeTrue -Because 'file count summary should be emitted'
+        }
+    }
 }
 
 Describe "Export-WsusContent" {

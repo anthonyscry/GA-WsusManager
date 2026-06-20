@@ -96,7 +96,12 @@ $script:OpCheckTimer = $null
 $script:PopupHistory = @{}
 # Deduplication tracking - prevents same line appearing multiple times
 $script:RecentLines = @{}
-# Live Terminal Mode - launches operations in visible console window
+# Live Terminal Mode - when enabled, operations open a separate PowerShell
+# console window that runs the same script the GUI is running, so the user
+# gets a real terminal with full scrollback, selection, and Ctrl+C. The
+# embedded log also streams the same output. Default: $true so the user
+# always sees a real terminal. Toggle via the 'Live Terminal' button in the
+# log panel header.
 $script:LiveTerminalMode = $true
 $script:ForceEmbeddedMode = $false
 $script:NotificationsEnabled = $true  # Show notifications when operations complete
@@ -870,7 +875,7 @@ $script:StdinFlushTimer = $null
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button x:Name="BtnCancelOp" Content="Cancel" Background="{StaticResource Red}" Foreground="{StaticResource Text1}" BorderThickness="0" Padding="8,4" FontSize="10" Margin="0,0,8,0" Visibility="Collapsed"/>
-                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0" ToolTip="Toggle between embedded log and live PowerShell console"/>
+                                <Button x:Name="BtnLiveTerminal" Content="Live Terminal: Off" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0" ToolTip="Open a separate PowerShell console window that tails the operation output. Embedded log continues to stream."/>
                                 <Button x:Name="BtnToggleLog" Content="Hide" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0"/>
                                 <Button x:Name="BtnClearLog" Content="Clear" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10" Margin="0,0,8,0"/>
                                 <Button x:Name="BtnSaveLog" Content="Save" Style="{StaticResource BtnSec}" Padding="8,4" FontSize="10"/>
@@ -3215,13 +3220,19 @@ function Invoke-LogOperation {
         default { "Write-Host 'Unknown: $Id'" }
     }
 
+    # Live Terminal mode opens a separate PowerShell console window that tails
+    # the same output the embedded log streams. The embedded log keeps working
+    # either way, so admins always have GUI scrollback plus the option of a
+    # real terminal for selection, Ctrl+C, etc.
     $useTerminal = $script:LiveTerminalMode -and -not $script:ForceEmbeddedMode
     $script:ForceEmbeddedMode = $false
     $mode = if ($useTerminal) { 'Terminal' } elseif ($operationPlan -and $operationPlan.Mode) { $operationPlan.Mode } else { 'Embedded' }
     $startedAt = Get-Date
 
     if ($mode -eq 'Terminal') {
-        $controls.LogOutput.Text = "Live Terminal Mode - $Title`r`n`r`nA PowerShell console window has been opened.`r`nYou can interact with the terminal, scroll, and see live output."
+        $controls.LogOutput.Clear()
+        Write-LogOutput "Starting $Title (Live Terminal)..." -Level Info
+        Write-LogOutput "A separate PowerShell console will open. It tails the same output that streams here." -Level Info
     } else {
         $controls.LogOutput.Clear()
         Write-LogOutput "Starting $Title..." -Level Info
@@ -3635,11 +3646,11 @@ $controls.BtnLiveTerminal.Add_Click({
     if ($script:LiveTerminalMode) {
         $controls.BtnLiveTerminal.Content = "Live Terminal: On"
         $controls.BtnLiveTerminal.Background = $script:BrushGreen
-        $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
+        $controls.LogOutput.AppendText("`r`n[$(Get-Date -Format 'HH:mm:ss')] [*] Live Terminal Mode enabled. Operations will open a separate PowerShell console window that tails the output. The embedded log continues to stream.`r`n")
     } else {
         $controls.BtnLiveTerminal.Content = "Live Terminal: Off"
         $controls.BtnLiveTerminal.Background = $script:BrushBgCard
-        $controls.LogOutput.Clear()
+        $controls.LogOutput.AppendText("`r`n[$(Get-Date -Format 'HH:mm:ss')] [*] Live Terminal Mode disabled. Operations stream only into the embedded log.`r`n")
     }
     Save-Settings
 })
@@ -3689,7 +3700,6 @@ $controls.AboutVersion.Text = "Version $versionDisplay"
 if ($script:LiveTerminalMode) {
     $controls.BtnLiveTerminal.Content = "Live Terminal: On"
     $controls.BtnLiveTerminal.Background = $script:BrushGreen
-    $controls.LogOutput.Text = "Live Terminal Mode enabled.`r`n`r`nOperations will open in a separate PowerShell console window.`r`nYou can interact with the terminal, scroll, and see live output.`r`n`r`nClick 'Live Terminal: On' to switch back to embedded log mode."
 }
 
 try {
