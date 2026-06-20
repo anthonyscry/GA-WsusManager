@@ -4,8 +4,8 @@
 ===============================================================================
 Script: Set-WsusGroupPolicy.ps1
 Author: Tony Tran, ISSO, GA-ASI
-Version: 1.6.0
-Date: 2026-03-20
+Version: 1.7.0
+Date: 2026-06-19
 ===============================================================================
 
 .SYNOPSIS
@@ -34,13 +34,28 @@ Date: 2026-03-20
 .PARAMETER BackupPath
     Path to GPO backup directory. Defaults to ".\WSUS GPOs" relative to script location.
 
+.PARAMETER MoveWsusServer
+    Computer name to move into OU=WSUS Server,OU=Member Servers. Defaults to the hostname
+    extracted from -WsusServerUrl (e.g., "WSUS01" from "http://WSUS01:8530"). Skipped
+    automatically if the computer is already in the target OU. Use -SkipComputerMove
+    to disable the move entirely, or -ForceComputerMove to bypass the [Y/n] prompt.
+
 .EXAMPLE
     .\Set-WsusGroupPolicy.ps1
-    Prompts for WSUS server name and imports all three GPOs.
+    Prompts for WSUS server name and imports all four GPOs.
 
 .EXAMPLE
     .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
-    Imports GPOs using specified WSUS server URL.
+    Imports GPOs using specified WSUS server URL, then prompts to move WSUS01 into
+    Member Servers\WSUS Server.
+
+.EXAMPLE
+    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -ForceComputerMove
+    Same as above but skips the [Y/n] prompt.
+
+.EXAMPLE
+    .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530" -SkipComputerMove
+    Imports GPOs only; leaves the computer object where it is.
 
 .NOTES
     IMPORTANT: These GPOs are designed for AIR-GAPPED systems only.
@@ -57,7 +72,10 @@ Date: 2026-03-20
 [CmdletBinding()]
 param(
     [string]$WsusServerUrl,
-    [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs")
+    [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs"),
+    [string]$MoveWsusServer,
+    [switch]$SkipComputerMove,
+    [switch]$ForceComputerMove
 )
 
 #region Helper Functions
@@ -352,35 +370,59 @@ function Import-WsusGpo {
 
     # Update WSUS server URLs for Update Policy GPO
     if ($GpoDefinition.UpdateWsusSettings) {
+        # Helper: Set-GPRegistryValue occasionally fails with COM E_FAIL when
+        # AD/sysvol replication is still settling after Import-GPO. Retry a
+        # few times before giving up.
+        function Set-GPRegistryValueWithRetry {
+            param(
+                [Parameter(Mandatory)][string]$Name,
+                [Parameter(Mandatory)][string]$Key,
+                [Parameter(Mandatory)][string]$ValueName,
+                [Parameter(Mandatory)][string]$Type,
+                [Parameter(Mandatory)]$Value
+            )
+            $lastError = $null
+            for ($attempt = 1; $attempt -le 6; $attempt++) {
+                try {
+                    Set-GPRegistryValue -Name $Name -Key $Key -ValueName $ValueName -Type $Type -Value $Value -ErrorAction Stop | Out-Null
+                    return
+                } catch {
+                    $lastError = $_
+                    Start-Sleep -Seconds 5
+                }
+            }
+            throw $lastError
+        }
+
         Write-Host "  Setting WSUS URL..." -NoNewline
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "WUServer" -Type String -Value $WsusUrl -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "WUStatusServer" -Type String -Value $WsusUrl -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
-            -ValueName "UseWUServer" -Type DWord -Value 1 -ErrorAction Stop
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "WUServer" -Type String -Value $WsusUrl
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "WUStatusServer" -Type String -Value $WsusUrl
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "UseWUServer" -Type DWord -Value 1
         Write-Host " OK" -ForegroundColor Green
 
         # Schedule: auto-download and install daily at 22:00
         Write-Host "  Setting install schedule (daily 22:00)..." -NoNewline
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
-            -ValueName "AUOptions" -Type DWord -Value 4 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
-            -ValueName "ScheduledInstallDay" -Type DWord -Value 0 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
-            -ValueName "ScheduledInstallTime" -Type DWord -Value 22 -ErrorAction Stop
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "AUOptions" -Type DWord -Value 4
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "ScheduledInstallDay" -Type DWord -Value 0
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
+            -ValueName "ScheduledInstallTime" -Type DWord -Value 22
         Write-Host " OK" -ForegroundColor Green
 
         # Deadline: 7 days to install, auto-restart
         Write-Host "  Setting 7-day deadline with auto-restart..." -NoNewline
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "SetComplianceDeadline" -Type DWord -Value 1 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "ConfigureDeadlineForQualityUpdates" -Type DWord -Value 7 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "ConfigureDeadlineForFeatureUpdates" -Type DWord -Value 7 -ErrorAction Stop
-        Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
-            -ValueName "ConfigureDeadlineGracePeriod" -Type DWord -Value 0 -ErrorAction Stop
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "SetComplianceDeadline" -Type DWord -Value 1
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineForQualityUpdates" -Type DWord -Value 7
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineForFeatureUpdates" -Type DWord -Value 7
+        Set-GPRegistryValueWithRetry -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate" `
+            -ValueName "ConfigureDeadlineGracePeriod" -Type DWord -Value 0
         Write-Host " OK" -ForegroundColor Green
     }
 
@@ -525,7 +567,8 @@ function Show-Summary {
     #>
     param(
         [string]$WsusUrl,
-        [int]$GpoCount
+        [int]$GpoCount,
+        [bool]$MovedComputer
     )
 
     Write-Host "===============================================================" -ForegroundColor Green
@@ -536,13 +579,76 @@ function Show-Summary {
     Write-Host $WsusUrl -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Next Steps:" -ForegroundColor Yellow
-    Write-Host "  1. Move WSUS server computer object to: Member Servers\WSUS Server"
-    Write-Host "  2. Verify on clients: gpresult /r | findstr WSUS"
+    if ($MovedComputer) {
+        Write-Host "  1. Verify on clients: gpresult /r | findstr WSUS"
+    } else {
+        Write-Host "  1. Move WSUS server computer object to: Member Servers\WSUS Server"
+        Write-Host "  2. Verify on clients: gpresult /r | findstr WSUS"
+    }
     Write-Host ""
     Write-Host "NOTE:" -ForegroundColor Yellow -NoNewline
     Write-Host " Computers outside Domain Controllers, Member Servers, or Workstations"
     Write-Host "      need 'WSUS Outbound Allow' linked manually in GPMC."
     Write-Host ""
+}
+
+function Move-WsusServerComputer {
+    <#
+    .SYNOPSIS
+        Moves the WSUS server computer object into OU=WSUS Server,OU=Member Servers so the
+        Inbound Allow firewall GPO applies to it. Idempotent: skips if already in target OU.
+    .DESCRIPTION
+        Interactive [Y/n] prompt unless -Force is passed. Requires the ActiveDirectory
+        module (auto-imports it).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ComputerName,
+        [string]$DomainDN,
+        [string]$TargetOuPath = 'OU=WSUS Server,OU=Member Servers',
+        [switch]$Force,
+        [switch]$Skip
+    )
+
+    if ($Skip) { return $false }
+
+    try {
+        Import-Module ActiveDirectory -ErrorAction Stop
+    } catch {
+        Write-Warning "  ActiveDirectory module not available. Skipping computer move. Move manually with Move-ADObject."
+        return $false
+    }
+
+    if (-not (Get-ADOrganizationalUnit -Identity "$TargetOuPath,$DomainDN" -ErrorAction SilentlyContinue)) {
+        Write-Warning "  Target OU not found: $TargetOuPath,$DomainDN. Skipping computer move."
+        return $false
+    }
+
+    $comp = Get-ADComputer -Identity $ComputerName -ErrorAction SilentlyContinue
+    if (-not $comp) {
+        Write-Warning "  Computer '$ComputerName' not found in AD. Skipping computer move."
+        return $false
+    }
+
+    $targetDn = "$TargetOuPath,$DomainDN"
+    if ($comp.DistinguishedName -eq "CN=$ComputerName,$targetDn") {
+        Write-Host "  $ComputerName is already in $TargetOuPath" -ForegroundColor DarkGray
+        return $true
+    }
+
+    if (-not $Force) {
+        Write-Host ""
+        Write-Host "  Move $ComputerName to $TargetOuPath ? [Y/n]:" -NoNewline -ForegroundColor Yellow
+        $answer = Read-Host
+        if ($answer -and $answer -notin @('y','Y','yes','Yes')) {
+            Write-Host "  Skipped." -ForegroundColor DarkGray
+            return $false
+        }
+    }
+
+    Write-Host "  Moving $ComputerName ... " -NoNewline
+    Move-ADObject -Identity $comp.DistinguishedName -TargetPath $targetDn -ErrorAction Stop
+    Write-Host "OK" -ForegroundColor Green
+    return $true
 }
 
 #endregion
@@ -553,7 +659,10 @@ function Invoke-WsusGroupPolicyImport {
     [CmdletBinding()]
     param(
         [string]$WsusServerUrl,
-        [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs")
+        [string]$BackupPath = (Join-Path $PSScriptRoot "WSUS GPOs"),
+        [string]$MoveWsusServer,
+        [switch]$SkipComputerMove,
+        [switch]$ForceComputerMove
     )
 
     try {
@@ -630,7 +739,23 @@ function Invoke-WsusGroupPolicyImport {
                            -DomainDN $domainInfo.DomainDN
         }
 
-        Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count
+        # Move WSUS server computer object into Member Servers\WSUS Server so the
+        # Inbound Allow firewall GPO applies to it. Auto-derives computer name from
+        # the WsusServerUrl hostname unless -MoveWsusServer is passed explicitly.
+        if (-not $MoveWsusServer -and $WsusServerUrl -match '://([^:/\s]+)') {
+            $MoveWsusServer = $Matches[1]
+        }
+        $movedComputer = $false
+        if ($MoveWsusServer -and -not $SkipComputerMove) {
+            Write-Host ""
+            Write-Host "Moving WSUS server computer object..." -ForegroundColor Yellow
+            $movedComputer = Move-WsusServerComputer `
+                -ComputerName $MoveWsusServer `
+                -DomainDN $domainInfo.DomainDN `
+                -Force:$ForceComputerMove
+        }
+
+        Show-Summary -WsusUrl $WsusServerUrl -GpoCount $gpoDefinitions.Count -MovedComputer $movedComputer
     } catch {
         Write-Host ""
         Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
@@ -640,7 +765,8 @@ function Invoke-WsusGroupPolicyImport {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Invoke-WsusGroupPolicyImport -WsusServerUrl $WsusServerUrl -BackupPath $BackupPath
+    Invoke-WsusGroupPolicyImport -WsusServerUrl $WsusServerUrl -BackupPath $BackupPath `
+        -MoveWsusServer $MoveWsusServer -SkipComputerMove:$SkipComputerMove -ForceComputerMove:$ForceComputerMove
 }
 
 #endregion
