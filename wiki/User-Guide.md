@@ -1,520 +1,134 @@
 # User Guide
 
-This guide explains how to use the WSUS Manager GUI application for day-to-day operations.
+Run `GA-WsusManager.exe` as Administrator. If WSUS is not installed, click **Install WSUS** first.
 
----
+## Dashboard
 
-## Table of Contents
+The dashboard shows services, SUSDB size, disk space, scheduled task state, last sync, and Health Score.
 
-1. [Getting Started](#getting-started)
-2. [Dashboard Overview](#dashboard-overview)
-3. [Server Mode Toggle](#server-mode-toggle)
-4. [Operations Menu](#operations-menu)
-5. [Quick Actions](#quick-actions)
-6. [Operation History](#operation-history)
-7. [Notifications](#notifications)
-8. [Settings](#settings)
-9. [Viewing Logs](#viewing-logs)
-10. [Keyboard Shortcuts](#keyboard-shortcuts)
+Health Score uses only:
 
----
+| Component | Weight |
+|---|---:|
+| Services | 40 |
+| SUSDB size | 30 |
+| Disk free space | 30 |
 
-## Getting Started
+Last sync and scheduled task state are visible but do not reduce the score.
 
-### Launching the Application
+## Menu layout
 
-1. Right-click `GA-WsusManager.exe`
-2. Select **Run as administrator**
+**Setup**
+- **Install WSUS** — installs SQL Express + WSUS and configures baseline paths/permissions.
 
-> **Important**: Administrator privileges are required for all WSUS operations.
+**Maintenance**
+- **Restore DB** — restores SUSDB from an approved `.bak`.
+- **Robocopy** — copies approved export/content folders.
+- **Deep Cleanup** — WSUS cleanup, SQL cleanup, index maintenance, and database shrink.
 
-### First Launch
+**Online Operations** *(collapsed by default)*
+- **Online Sync** — syncs with Microsoft Update, applies approval/decline policy, optionally backs up/exports.
+- **Schedule Task** — creates or updates recurring Online Sync.
 
-On first launch, the application will:
-1. Detect your WSUS installation
-2. Load default settings
-3. Display the dashboard
+**Diagnostics** *(collapsed by default)*
+- **Run Diagnostics** — checks and auto-fixes services, SQL, firewall, IIS, permissions, and content state.
+- **Reset Content** — runs `wsusutil reset` when content appears stuck as downloading.
+- **Fix SQL Login** — grants the current operator SQL sysadmin access when preflight fails.
 
-If WSUS is not installed, you'll see warnings on the dashboard. Use **Install WSUS** to set up a new server.
+## Install WSUS
 
----
+1. Click **Install WSUS**.
+2. Select the folder containing `SQLEXPRADV_x64_ENU.exe`.
+3. Enter and confirm the SQL `sa` password.
+4. Keep content path at `C:\WSUS` unless your deployment standard says otherwise.
+5. Wait for install to finish, then run **Diagnostics**.
 
-## Dashboard Overview
+## Air-gap restore
 
-The dashboard is your main monitoring view, showing the health of your WSUS infrastructure at a glance.
+Use this when an approved export folder arrives by USB/removable media.
 
-### Status Cards
+1. Click **Restore DB** and select the SUSDB `.bak`.
+2. Click **Robocopy** if `WsusContent\` still needs to be copied into `C:\WSUS\`.
+3. Click **Reset Content** only if WSUS still reports files as downloading.
+4. Run **Diagnostics**.
 
-The dashboard displays color-coded status cards plus a Health Score band:
+No `manifest.json` is required. Keep the `.bak` and `WsusContent\` from the same export snapshot.
 
-#### Services Card
-| Color | Meaning |
-|-------|---------|
-| Green | All services running (SQL, WSUS, IIS) |
-| Orange | Some services running |
-| Red | Critical services stopped |
+## GPO deployment
 
-#### Database Card
-| Color | Size Range | Action |
-|-------|------------|--------|
-| Green | < 7 GB | Healthy |
-| Yellow | 7-9 GB | Consider cleanup |
-| Red | > 9 GB | Cleanup required (approaching 10GB limit) |
+The GUI does not have a Create GPO button. Use the packaged script.
 
-#### Disk Space Card
-| Color | Free Space | Action |
-|-------|------------|--------|
-| Green | > 50 GB | Healthy |
-| Yellow | 10-50 GB | Monitor |
-| Red | < 10 GB | Free space immediately |
+1. Copy the whole `DomainController\` folder to the Domain Controller.
+2. Open an elevated PowerShell prompt inside that folder.
+3. Run:
 
-#### Automation Card
-| Color | Meaning |
-|-------|---------|
-| Green | Scheduled task configured and ready |
-| Orange | No scheduled task configured |
-
-### Health Score
-
-The dashboard displays a **Health Score** band (0-100) based only on services, database size, and disk space. Last sync and scheduled task state still appear on the dashboard, but they do not reduce the score.
-
-| Component | Weight | What It Measures |
-|-----------|--------|------------------|
-| Services | 40 | SQL Server, WSUS, IIS running status |
-| Database | 30 | SUSDB size relative to 10GB limit |
-| Disk Space | 30 | Available storage for updates |
-
-**Grading:**
-| Grade | Score Range | Color |
-|-------|------------|-------|
-| Green | 80-100 | Healthy |
-| Yellow | 50-79 | Needs attention |
-| Red | 0-49 | Critical issues |
-| Unknown | N/A | All data sources failed |
-
-### DB Size Trend Indicator
-
-The database card includes a **trend indicator** showing the projected days until the database reaches the 10GB SQL Express limit. This uses linear regression over the last 30 days of size snapshots.
-
-| Alert Level | Days Until Full | Action |
-|-------------|-----------------|--------|
-| Normal | > 180 days | No action needed |
-| Warning | 90-180 days | Plan a cleanup |
-| Critical | < 90 days | Run Deep Cleanup immediately |
-
-### Last Successful Sync
-
-A timestamp showing when the last successful sync completed:
-
-| Color | Time Since Sync | Meaning |
-|-------|-----------------|---------|
-| Green | < 7 days | Up to date |
-| Yellow | 7-30 days | Sync soon |
-| Red | > 30 days | Overdue -- sync immediately |
-
-### Auto-Refresh
-
-The dashboard automatically refreshes every **30 seconds**. A refresh guard prevents overlapping operations that could hang the UI. Dashboard refresh is also skipped while an operation is running to prevent log output stutter.
-
----
-
-## Server Mode Toggle
-
-WSUS Manager supports two server modes to show only relevant operations:
-
-### Online Mode
-For WSUS servers connected to the internet:
-- **Visible**: Online Sync (sync with Microsoft Update), Robocopy
-
-### Air-Gap Mode
-For WSUS servers on disconnected networks:
-- **Hidden**: Online Sync (not applicable without internet)
-- **Always available**: Robocopy (for file transfers in both directions)
-
-### Changing Modes
-
-Server Mode is auto-detected based on internet connectivity.
-
-1. Ensure the server has internet access for Online mode
-2. Disconnect to switch to Air-Gap mode
-3. Menu items update automatically
-
----
-
-## Operations Menu
-
-### Install WSUS
-
-Installs WSUS with SQL Server Express from scratch.
-
-**Steps:**
-1. Click **Install WSUS**
-2. Browse to folder containing SQL installers
-3. Click **Install**
-4. Wait 15-30 minutes for completion
-
-> **Note:** If the default installer folder is missing the SQL Express installer, the app will prompt you to select the correct folder. SSMS is optional and will be skipped if not present.
-
-**Prerequisites:**
-- SQL installers in selected folder
-- No existing WSUS installation
-- Administrator privileges
-
-### GPO Deployment
-
-> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
-> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
-
-The app no longer has a Create GPO menu item. The deployment files are already in the package.
-
-**Steps:**
-1. Copy the whole `DomainController/` folder from the WSUS Manager package to the Domain Controller.
-2. Keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together.
-3. On the DC, open an elevated PowerShell prompt inside the copied folder.
-4. Run:
-   ```powershell
-   .\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://YOURSERVER:8530"
-   ```
-5. Allow the prompt to move the WSUS server computer object into `Member Servers\WSUS Server`.
-
-**To force clients to update:**
 ```powershell
-# On individual clients:
-gpupdate /force
-
-# Verify on clients:
-gpresult /r | findstr WSUS
+.\Set-WsusGroupPolicy.ps1
 ```
 
-**GPOs imported:**
-| GPO Name | Purpose | Link Target |
-|----------|---------|-------------|
-| WSUS Update Policy - Servers | Server update settings | Domain Controllers, Member Servers |
-| WSUS Update Policy - Workstations | Workstation update settings | Workstations |
-| WSUS Inbound Allow | Firewall rules for WSUS server | Member Servers\WSUS Server |
-| WSUS Outbound Allow | Firewall rules for clients | Workstations, Member Servers, DCs |
+The script imports:
 
-### Restore Database
+| GPO | Target |
+|---|---|
+| WSUS Update Policy - Servers | Domain Controllers, Member Servers |
+| WSUS Update Policy - Workstations | Workstations |
+| WSUS Inbound Allow | `Member Servers\WSUS Server` |
+| WSUS Outbound Allow | Workstations, Member Servers, Domain Controllers |
 
-Restores SUSDB from a backup file.
+## Online Sync
 
-**Steps:**
-1. Click **Restore DB** in the Maintenance section.
-2. Select the SUSDB `.bak` file from the approved export folder.
-3. Confirm the warning dialog.
-4. Wait for restore to complete.
+Run Online Sync only on a server intentionally allowed to reach Microsoft Update.
 
-**Prerequisites:**
-- Valid `.bak` file from the approved export folder
-- Matching `WsusContent\` tree from the same export snapshot
-- SQL Server running
+| Profile | Operations |
+|---|---|
+| Full | Sync, Cleanup, Ultimate Cleanup, Backup, Export |
+| Quick | Sync, Cleanup, Backup |
+| Sync Only | Sync and approval policy only |
 
-### Robocopy
+Online Sync preserves existing product subscriptions and adds selected products before sync.
 
-Copies update content between folders and removable media. For air-gapped restore, use it when the approved export folder's `WsusContent\` still needs to be copied into `C:\WSUS\`.
+## Robocopy
 
-**Steps:**
-1. Click **Robocopy** in the Maintenance section
-2. In the Robocopy dialog:
-   - Browse to **Source** folder
-   - Browse to **Destination** folder
-3. Click **Start Transfer**
-4. Wait for transfer to complete
+Robocopy is non-destructive.
 
-> **Note:** Robocopy is non-destructive. It creates a subfolder at the destination and will not delete any files from the source.
+| Scenario | Source | Destination |
+|---|---|---|
+| Air-gap restore | approved export folder or `WsusContent\` | `C:\WSUS\` |
+| Export staging | WSUS content/export source | approved staging path |
 
-**Common Usage:**
-| Direction | Source | Destination |
-|-----------|--------|-------------|
-| Approved media → Air-Gap | Approved export folder or `WsusContent\` folder | `C:\WSUS` |
+## Diagnostics
 
-**Prerequisites:**
-- Sufficient disk space on destination
-- Source folder accessible
+Run Diagnostics after install, restore, permission changes, SQL login changes, or GPO deployment.
 
-### Online Sync
+Diagnostics checks:
 
-Runs comprehensive sync and maintenance tasks.
+- SQL Server, WSUS Service, IIS/W3SVC.
+- SUSDB connectivity and SQL login state.
+- WSUS and SQL firewall rules.
+- IIS content path.
+- `C:\WSUS` ACLs for WSUS, IIS, and client download access.
+- WsusPool/application health when IIS tooling is available.
 
-> **Online-only:** Run Online Sync only on a connected server that is intentionally allowed to sync with Microsoft and produce approved export folders.
+## Settings and logs
 
-**Sync Profiles:**
-| Profile | Operations | Use When |
-|---------|------------|----------|
-| **Full Sync** | Sync -> Cleanup -> Ultimate Cleanup -> Backup -> Export | Monthly maintenance |
-| **Quick Sync** | Sync -> Cleanup -> Backup (skip heavy cleanup) | Weekly quick sync |
-| **Sync Only** | Synchronize and approve updates only | Just need updates |
+| Item | Location |
+|---|---|
+| Settings | `%APPDATA%\WsusManager\settings.json` |
+| History | `%APPDATA%\WsusManager\history.json` |
+| Trends | `%APPDATA%\WsusManager\trends.json` |
+| Logs | `C:\WSUS\Logs\WsusOperations_YYYY-MM-DD.log` |
 
-**What Full Sync does:**
-1. Synchronizes with Microsoft Update
-2. Declines superseded, expired, and old updates
-3. Approves new updates (Critical, Security, Rollups, Service Packs, Updates, Definition Updates)
-4. Runs WSUS cleanup wizard
-5. Cleans database records and purges declined updates
-6. Optimizes indexes
-7. Backs up database
-8. Exports to configured paths (optional)
-
-**Export Options (Optional):**
-| Field | Description |
-|-------|-------------|
-| **Full Export Path** | Network share for complete backup + content mirror |
-
-> **Note:** Export path is optional. If not specified, the export step is skipped.
-
-**When to run:**
-- Monthly (Full Sync recommended)
-- Weekly (Quick Sync)
-- After initial sync
-- When database grows large
-
-**UX Note:** Some phases can be quiet for several minutes; the GUI refreshes status roughly every 30 seconds.
-
-### Schedule Online Sync Task
-
-Creates or updates the scheduled task that runs Online Sync.
-
-> **Online-only:** Create the schedule on the **Online** WSUS server.
-
-**Steps:**
-1. Click **Schedule Task** in the Online Sync section
-2. Choose schedule (Weekly/Monthly/Daily)
-3. Set the start time (default: Saturday at 02:00)
-4. Select the sync profile (Full, Quick, or SyncOnly)
-5. Enter credentials for unattended execution
-6. Click **Create Task**
-
-**Default Recommendation:** Weekly Full Sync on Saturday at 02:00.
-
-### Deep Cleanup
-
-Comprehensive database cleanup for space recovery and performance optimization.
-
-**What it does (6 steps):**
-1. **WSUS built-in cleanup** - Declines superseded updates, removes obsolete updates, cleans unneeded content files
-2. **Remove declined supersession records** - Cleans `tbRevisionSupersedesUpdate` table for declined updates
-3. **Remove superseded supersession records** - Batched cleanup (10,000 records per batch) for superseded updates
-4. **Delete declined updates** - Purges declined updates from database via `spDeleteUpdate` (100-record batches)
-5. **Index optimization** - Rebuilds highly fragmented indexes (>30%), reorganizes moderately fragmented (10-30%), updates statistics
-6. **Database shrink** - Compacts database to reclaim disk space (with retry logic for backup contention)
-
-**Progress reporting:**
-- Shows step number and description for each phase
-- Reports batch progress during large operations
-- Displays database size before and after shrink
-- Shows total duration at completion
-
-**When to use:**
-- Database approaching 10GB limit (SQL Express)
-- Disk space critically low
-- After declining many updates manually
-- Quarterly maintenance
-
-**Duration:** 30-90 minutes depending on database size
-
-### Diagnostics
-
-Comprehensive health check with automatic repair (combines former Health Check and Health + Repair).
-
-**What it checks and fixes:**
-- **Services**: SQL Server, WSUS, IIS - starts stopped services, sets correct startup type
-- **SQL Browser**: Starts and sets to Automatic if not running
-- **Database connectivity**: Verifies connection to SUSDB
-- **SQL Login**: Creates NETWORK SERVICE login with dbcreator role if missing
-- **Firewall rules**: Creates inbound rules for ports 8530/8531 if missing
-- **Directory permissions**: Verifies and repairs `C:\WSUS`, including `Authenticated Users` read access
-- **IIS content path**: Verifies `WSUS Administration/Content` points to `C:\WSUS\WsusContent`
-- **Application Pool**: Starts WsusPool if stopped
-**Output:**
-- Clear pass/fail status for each check
-- Automatic fix applied when issues detected
-- Summary of all findings at completion
-
-### Reset Content
-
-Troubleshooting action that forces WSUS to re-verify all content files against the database.
-
-> **Air-Gap Tip:** The install workflow already performs the normal post-install content step. Use this only when WSUS still shows files as downloading after restore or Robocopy.
-
-**What it does:**
-1. Stops WSUS service
-2. Runs `wsusutil reset`
-3. Restarts WSUS service
-
-**After it finishes:**
-- Wait about **5-10 minutes** for WSUS to register file state
-- Run **Diagnostics**
-- Confirm `Authenticated Users` has read access on `C:\WSUS`
-- Confirm IIS `/Content` points to `C:\WSUS\WsusContent`
-- If the dashboard exposes file status, click **Refresh** and watch items move from **Downloading** to **Downloaded / Ready to Install**
-
-**When to use:**
-- After database restore on air-gapped servers
-- When WSUS shows download status but content files are present
-- To fix content verification mismatches
-
-**Note:** This operation can take several minutes depending on content size, as WSUS re-verifies each file.
-
----
-
-## Quick Actions
-
-The dashboard provides quick action buttons for common tasks:
-
-| Button | Action |
-|--------|--------|
-| **Diagnostics** | Run comprehensive health check with automatic repair |
-| **Deep Cleanup** | Run full database cleanup (supersession, indexes, shrink) |
-| **Online Sync** | Run online sync with Microsoft Update |
-| **Start Services** | Start all WSUS services (SQL, WSUS, IIS) |
-
-### Start Services
-
-The **Start Services** button starts services in dependency order:
-1. SQL Server Express
-2. IIS (W3SVC)
-3. WSUS Service
-
----
-
-## Operation History
-
-Click the **History** button in the bottom bar (or press **Ctrl+H**) to view a list of past operations.
-
-### What It Shows
-
-The History view displays the last **50 operations** with:
-- Operation type (Diagnostics, Online Sync, Deep Cleanup, etc.)
-- Duration
-- Result (Success, Failed, Cancelled)
-- Summary text
-
-### Storage
-
-History is stored in JSON format at:
-```
-%APPDATA%\WsusManager\history.json
-```
-
-The file is automatically trimmed to 100 entries. File-lock retry logic prevents corruption if multiple processes access the file simultaneously.
-
----
-
-## Notifications
-
-WSUS Manager displays a notification when an operation completes. This is useful when running long operations (Deep Cleanup, Online Sync) while working in other applications.
-
-### Notification Fallback
-
-The notification system uses a 3-tier fallback:
-1. **Windows 10 Toast** -- native toast notification (preferred)
-2. **Balloon Tip** -- system tray balloon notification (fallback)
-3. **Log Only** -- writes to the application log if neither UI method is available
-
-### Configuration
-
-Notifications can be enabled or disabled in the **Settings** dialog:
-- **Enable Notifications** -- toggle completion notifications on/off
-- **Enable Beep** -- play a sound on operation completion
-
----
-
-## Settings
-
-Access settings via the **Settings** button in the bottom bar.
-
-### Configurable Options
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| WSUS Content Path | `C:\WSUS` | Root directory for WSUS |
-| SQL Instance | `.\SQLEXPRESS` | SQL Server instance name |
-| Notifications | Enabled | Show toast/balloon on operation completion |
-| Beep on Completion | Disabled | Play sound when operations finish |
-| Minimize to Tray | Disabled | Minimize to system tray instead of taskbar |
-
-### Settings Storage
-
-Settings are saved to:
-```
-%APPDATA%\WsusManager\settings.json
-```
-
----
-
-## Viewing Logs
-
-### Application Logs
-
-WSUS Manager logs operations to:
-```
-C:\WSUS\Logs\
-```
-
-Log files are named with timestamps:
-```
-WsusManager_2026-01-11_143022.log
-```
-
-### Opening Log Folder
-
-Click the **folder icon** next to "Open Log" in the sidebar to open the logs directory in Explorer.
-
-### Log Format
-
-```
-2026-01-11 14:30:22 [INFO] Starting monthly maintenance
-2026-01-11 14:30:25 [OK] Database connection verified
-2026-01-11 14:31:00 [WARN] High database size: 7.5 GB
-2026-01-11 14:35:00 [OK] Maintenance completed successfully
-```
-
----
-
-## Keyboard Shortcuts
-
-WSUS Manager supports the following keyboard shortcuts:
+## Keyboard shortcuts
 
 | Shortcut | Action |
-|----------|--------|
-| **Ctrl+D** | Run Diagnostics |
-| **Ctrl+S** | Run Online Sync |
-| **Ctrl+H** | Open History view |
-| **Ctrl+R** / **F5** | Refresh Dashboard |
-| **Tab** | Navigate between controls |
-| **Enter** | Activate selected button |
-| **Escape** | Close dialogs |
+|---|---|
+| Ctrl+D | Diagnostics |
+| Ctrl+S | Online Sync |
+| Ctrl+H | History |
+| Ctrl+R / F5 | Refresh Dashboard |
 
-The log panel also supports right-click context menu with **Copy All** and **Save to File** options.
+## Related pages
 
----
-
-## Tips and Best Practices
-
-### Regular Maintenance
-- Run **Online Sync** on a schedule
-- Monitor database size (aim for < 7 GB)
-- Plan for 200 GB+ total server/content drive capacity and monitor free space before major operations
-
-### Before Major Operations
-- Create a database backup
-- Check disk space availability
-- Verify all services are running
-
-### After Sync
-- Review new updates
-- Decline unneeded updates
-- Run cleanup if needed
-
-### Air-Gap Transfers
-- Use USB 3.0 drives for speed
-- Verify the Robocopy transfer completed before disconnecting the drive
-- Test the workflow on non-production servers first
-
----
-
-## Next Steps
-
-- [[Air-Gap Workflow]] - Detailed disconnected network guide
-- [[Troubleshooting]] - Fix common issues
-- [[Module Reference]] - PowerShell function documentation
+- [[Air-Gap Workflow]]
+- [[Troubleshooting]]
+- [[Configuration Guide]]

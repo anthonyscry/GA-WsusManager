@@ -1,144 +1,100 @@
 # WSUS Manager Wiki
 
-Welcome to the WSUS Manager documentation! This wiki provides comprehensive guidance for installing, configuring, and using the WSUS Manager application.
+WSUS Manager is a PowerShell 5.1 / WPF tool for installing, restoring, maintaining, and diagnosing WSUS servers backed by SQL Server Express.
 
-## Quick Links
+Current release: **4.1.0**
+Release package: **`GA-WsusManager-v4.1.0.zip`**
 
-| Page | Description |
-|------|-------------|
-| [[Installation Guide]] | System requirements and setup instructions |
-| [Deployment Runbook](../docs/DEPLOYMENT.md) | Production deployment checklist and validation |
-| [Rollback Runbook](../docs/ROLLBACK.md) | Application, settings, SUSDB, and service rollback |
-| [[User Guide]] | How to use the GUI application |
-| [[Air-Gap Workflow]] | Managing updates on disconnected networks |
-| [[Troubleshooting]] | Common issues and solutions |
-| [[Developer Guide]] | Building from source and contributing |
-| [[Configuration Guide]] | Environment variables, paths, ports, and timeouts |
-| [[Module Reference]] | PowerShell module documentation |
+## Start here
 
-## What is WSUS Manager?
+| Need | Page |
+|---|---|
+| Install the app or build a new WSUS server | [[Installation Guide]] |
+| Restore an air-gapped WSUS server from approved media | [[Air-Gap Workflow]] |
+| Use the GUI day to day | [[User Guide]] |
+| Fix common errors | [[Troubleshooting]] |
+| Review runtime paths, ports, and settings | [[Configuration Guide]] |
+| Build or modify the app | [[Developer Guide]] |
+| Map modules at a glance | [[Module Reference]] |
+| See release notes | [[Changelog]] |
 
-WSUS Manager is a PowerShell-based automation suite for Windows Server Update Services (WSUS) with SQL Server Express 2022. It provides:
+## Operator workflow
 
-- **Modern GUI Application** - Dark-themed WPF interface with auto-refresh dashboard
-- **Air-Gap Support** - Restore approved export folders and copy content with Robocopy when needed
-- **Automated Maintenance** - Scheduled cleanup and optimization tasks
-- **Health Monitoring** - Health Score (0-100), service/database/disk status
-- **One-Click Operations** - Install, backup, restore, diagnostics
-- **Operation History** - Track past operations with completion notifications
-- **DB Size Trending** - Linear regression with days-until-full estimate
+1. Download `GA-WsusManager-v4.1.0.zip` from [GitHub Releases](https://github.com/anthonyscry/GA-WsusManager/releases).
+2. Extract the whole folder under `C:\WSUS\`, for example `C:\WSUS\WsusManager\`.
+3. Keep `GA-WsusManager.exe`, `Scripts\`, `Modules\`, and `icons\` together.
+4. Run `GA-WsusManager.exe` as Administrator.
+5. If WSUS is missing, click **Install WSUS** before restore, Robocopy, diagnostics, or sync operations.
 
----
+## Main menu order
 
-## Features
+**Setup**
+- Install WSUS
 
-### Dashboard
-Real-time monitoring with color-coded status cards and 30-second auto-refresh:
-- **Health Score** - 0-100 weighted score from services, database size, and disk space
-- **Services** - SQL Server, WSUS, IIS status
-- **Database** - SUSDB size vs 10GB SQL Express limit with trend indicator
-- **Disk Space** - Available storage for updates
-- **Automation** - Scheduled task status
-- **Last Sync** - Last successful sync timestamp
+**Maintenance**
+- Restore DB
+- Robocopy
+- Deep Cleanup
 
-### Server Modes
-Server Mode auto-detects Online vs Air-Gap based on internet connectivity to show only relevant operations:
-- **Online Mode** - Online Sync, Robocopy (outbound transfer to air-gap media)
-- **Air-Gap Mode** - Robocopy (inbound from media), Reset Content
+**Online Operations** *(collapsed by default)*
+- Online Sync
+- Schedule Task
 
-### Operations
+**Diagnostics** *(collapsed by default)*
+- Run Diagnostics
+- Reset Content
+- Fix SQL Login
 
-**SETUP**
-| Operation | Description |
-|-----------|-------------|
-| Install WSUS | Fresh installation with SQL Express 2022 |
-| GPO Deployment | Copy the whole `DomainController/` folder to the Domain Controller, then run `Set-WsusGroupPolicy.ps1` there |
+GPO deployment is not a GUI menu item. Copy the whole `DomainController\` folder to the Domain Controller and run `Set-WsusGroupPolicy.ps1` from inside that copied folder.
 
-**MAINTENANCE**
-| Operation | Description |
-|-----------|-------------|
-| Restore DB | Restore SUSDB from backup |
-| Robocopy | Copy approved export/content folders |
-| Deep Cleanup | Run database cleanup and optimization |
+## Health score
 
-**ONLINE OPERATIONS**
-| Operation | Description |
-|-----------|-------------|
-| Online Sync | Sync updates with Microsoft (Full Sync / Quick Sync / Sync Only) |
-| Schedule Task | Create or update the recurring online sync scheduled task |
+Health Score is intentionally simple:
 
-**DIAGNOSTICS**
-| Operation | Description |
-|-----------|-------------|
-| Diagnostics | Comprehensive health check with automatic repair |
-| Reset Content | Re-verify content files against database after air-gap import |
-| Fix SQL Login | Grant SQL sysadmin permissions to the current user |
-> **Note:** Online Sync and Schedule Task should run only on a connected export server that is intentionally allowed to sync with Microsoft.
+| Component | Weight |
+|---|---:|
+| Services | 40 |
+| SUSDB size | 30 |
+| Disk free space | 30 |
 
----
+Scheduled task state, last sync, and operation history appear elsewhere in the UI but do not reduce the score.
 
-## System Requirements
+## Requirements
 
-| Requirement | Specification |
-|-------------|---------------|
-| Operating System | Windows Server 2019 or later |
-| CPU | 4+ cores recommended |
-| RAM | 16+ GB recommended |
-| Disk Space | 50+ GB for updates |
-| PowerShell | 5.1 or later |
-| SQL Server | SQL Server Express 2022 |
-| Privileges | Local Administrator + SQL sysadmin |
+| Requirement | Recommendation |
+|---|---|
+| OS | Windows Server 2019+ |
+| PowerShell | Windows PowerShell 5.1 |
+| Privileges | Local Administrator; SQL sysadmin for database maintenance |
+| SQL | SQL Server Express 2022 |
+| Disk | 200 GB+ recommended for WSUS server/content drive |
 
----
+## Package layout
 
-## Getting Started
-
-### Option 1: Distribution Package (Recommended)
-
-1. Download `GA-WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page
-2. Extract to `C:\WSUS\` (EXE requires Scripts/ and Modules/ in the same directory)
-3. Right-click `GA-WsusManager.exe` -- Run as Administrator
-
-### Option 2: PowerShell Scripts
-
-```powershell
-# Clone the repository
-git clone https://github.com/anthonyscry/GA-WsusManager.git
-
-# Run the CLI
-.\Scripts\Invoke-WsusManagement.ps1
+```text
+GA-WsusManager-v4.1.0\
++-- GA-WsusManager.exe
++-- Scripts\
++-- Modules\
++-- icons\
++-- DomainController\
++-- metadata.json
++-- README.md
++-- QUICK-START.txt
 ```
 
----
-
-## Version History
+## Version history
 
 | Version | Date | Highlights |
-|---------|------|------------|
-| 4.1.0 | Jun 2026 | Stable v4.0.5 baseline with GPO OU creation, SQL login repair, ACL auto-fix, live Robocopy, collapsible operations, simpler health score, and refreshed docs |
-| 4.0.5 | Jun 2026 | Stable rollback baseline with current GPO import, additive product sync, deeper diagnostics, and refreshed operator docs |
-| 4.0.4 | Mar 2026 | sqlcmd.exe fallback for all DB ops, 6-month age decline (preserves approved), sysadmin check via sqlcmd |
-| 4.0.3 | Mar 2026 | Smart decline policy (Edge/Office/WSL/Preview/ARM64), DNS preflight, 180min sync timeout, default products, WID auto-migration |
-| 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, robocopy fix, removed differential export, stream piping fix |
-| 4.0.1 | Mar 2026 | GUI automation tests, install script sync, version alignment |
-| 4.0.0 | Mar 2026 | Dialog factory, operation runner, health score, history, notifications, trending, splash screen, keyboard shortcuts, system tray |
-| 3.9.0 | Mar 2026 | ARM64/25H2 auto-decline, PowerShell-only distribution restored |
-| 3.8.12 | Feb 2026 | TrustServerCertificate compatibility fix |
-| 3.8.10 | Feb 2026 | Deep Cleanup 6-step workflow, unified Diagnostics |
-| 3.8.9 | Feb 2026 | Online Sync rename, Definition Updates, Reset Content |
-| 3.8.7 | Jan 2026 | Live Terminal, Create GPO, WSUS install detection |
-| 3.5.2 | Jan 2026 | 323 unit tests, security hardening, performance |
+|---|---|---|
+| 4.1.0 | Jun 2026 | Stable v4.0.5 baseline with GPO OU creation, SQL login repair, ACL auto-fix, live Robocopy, collapsed sections, simple health score, icons folder, zip-only release asset |
+| 4.0.5 | Jun 2026 | Rollback baseline with current GPO import, additive product sync, diagnostics, and refreshed operator docs |
+| 4.0.4 | Mar 2026 | sqlcmd fallback, age decline preserving approved updates, sysadmin check fallback |
+| 4.0.3 | Mar 2026 | Product defaults, smart decline policy, WID migration, first-sync improvements |
+| 4.0.2 | Mar 2026 | GPO schtasks push, security hardening, Robocopy fixes |
 
-See [[Changelog]] for complete version history.
+See [[Changelog]] for release notes.
 
 ---
 
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/anthonyscry/GA-WsusManager/issues)
-- **Documentation**: This wiki
-- **Author**: Tony Tran, ISSO, GA-ASI
-
----
-
-*Internal use - General Atomics Aeronautical Systems, Inc.*
+Internal use - General Atomics Aeronautical Systems, Inc.

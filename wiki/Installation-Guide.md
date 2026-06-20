@@ -1,323 +1,101 @@
 # Installation Guide
 
-This guide covers everything you need to install and configure WSUS Manager.
+This page covers installing WSUS Manager and building a WSUS + SQL Express server.
 
----
+## Requirements
 
-## Table of Contents
+| Item | Requirement |
+|---|---|
+| OS | Windows Server 2019+ |
+| PowerShell | Windows PowerShell 5.1 |
+| Privileges | Local Administrator |
+| Disk | 200 GB+ recommended for the WSUS server/content drive |
+| SQL installer | `SQLEXPRADV_x64_ENU.exe` in `C:\WSUS\SQLDB\` |
+| Optional installer | `SSMS-Setup-ENU.exe` in `C:\WSUS\SQLDB\` |
 
-1. [Prerequisites](#prerequisites)
-2. [Download Options](#download-options)
-3. [First-Time Setup](#first-time-setup)
-4. [Installing WSUS + SQL Express](#installing-wsus--sql-express)
-5. [SQL Server Configuration](#sql-server-configuration)
-6. [Firewall Configuration](#firewall-configuration)
-7. [Domain Controller Setup](#domain-controller-setup)
-8. [Verification](#verification)
+## Install WSUS Manager
 
----
+1. Download `GA-WsusManager-v4.1.0.zip` from [GitHub Releases](https://github.com/anthonyscry/GA-WsusManager/releases).
+2. Extract the whole package under `C:\WSUS\`, for example `C:\WSUS\WsusManager\`.
+3. Confirm the package stays together:
 
-## Prerequisites
+```text
+GA-WsusManager.exe
+Scripts\
+Modules\
+icons\
+DomainController\     optional, needed for GPO deployment
+metadata.json
+README.md
+QUICK-START.txt
+```
 
-### Hardware Requirements
+Do not copy `GA-WsusManager.exe` by itself. Operations need the adjacent `Scripts\`, `Modules\`, and `icons\` folders.
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| CPU | 2 cores | 4+ cores |
-| RAM | 8 GB | 16+ GB |
-| Disk | 30 GB | 50+ GB SSD |
-| Network | 1 Gbps | 1 Gbps |
-
-### Software Requirements
-
-| Software | Version | Notes |
-|----------|---------|-------|
-| Windows Server | 2019+ | Standard or Datacenter |
-| PowerShell | 5.1+ | Included with Windows |
-| .NET Framework | 4.7.2+ | Usually pre-installed |
-
-### Required Installers
-
-Download these files and save to `C:\WSUS\SQLDB\` (or select their folder when prompted):
-
-| File | Download Link |
-|------|---------------|
-| SQL Server Express 2022 | [Microsoft Download Center](https://www.microsoft.com/en-us/download/details.aspx?id=104781) |
-| SQL Server Management Studio (optional) | [SSMS Download](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) |
-
-> **Important**: Download `SQLEXPRADV_x64_ENU.exe` (SQL Express with Advanced Services)
-
----
-
-## Download Options
-
-### Option 1: Distribution Package (Recommended)
-
-Download `GA-WsusManager-vX.X.X.zip` from the [Releases](https://github.com/anthonyscry/GA-WsusManager/releases) page and extract to `C:\WSUS\`.
-
-The package includes the EXE, Scripts/, Modules/, DomainController/, and documentation. The EXE requires the Scripts/ and Modules/ folders in the same directory.
-
-### Option 2: Clone Repository
+## Prepare SQL installer folder
 
 ```powershell
-# Clone via HTTPS
-git clone https://github.com/anthonyscry/GA-WsusManager.git
-
-# Or via SSH
-git clone git@github.com:anthonyscry/GA-WsusManager.git
+New-Item -ItemType Directory -Path 'C:\WSUS\SQLDB' -Force
 ```
 
-### Option 3: Download ZIP
+Copy the SQL Express installer into that folder:
 
-1. Go to the repository main page
-2. Click **Code** > **Download ZIP**
-3. Extract to desired location
-
----
-
-## First-Time Setup
-
-### 1. Create Directory Structure
-
-The WSUS Manager expects the following directory structure:
-
-```
-C:\WSUS\                    # Main content directory
-├── SQLDB\                  # SQL Express installer (SSMS optional)
-├── Logs\                   # Application logs
-└── WsusContent\            # Update files (auto-created)
+```text
+C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe
 ```
 
-Create the directories:
+SSMS is optional.
+
+## Build a new WSUS server
+
+1. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
+2. If the dashboard says WSUS is missing, click **Install WSUS**.
+3. Select the SQL installer folder (`C:\WSUS\SQLDB` if you used the default).
+4. Enter and confirm the SQL `sa` password.
+5. Keep the WSUS root/content path at `C:\WSUS` unless your deployment standard says otherwise.
+6. Wait for SQL Express + WSUS installation to finish.
+7. Run **Diagnostics**.
+
+The installer handles WID detection/removal, SQL Express setup, WSUS role install, directory creation, permissions, firewall rules, and SQL sysadmin grants for the operator account.
+
+## Air-gapped server setup
+
+After WSUS is installed, follow [[Air-Gap Workflow]] to restore the approved export folder:
+
+1. Transfer the approved export folder by approved USB/removable media.
+2. Click **Restore DB** and select the SUSDB `.bak`.
+3. Use **Robocopy** if content still needs to be copied into `C:\WSUS\`.
+4. Run **Diagnostics**.
+
+No `manifest.json` is required for the current restore workflow.
+
+## GPO setup
+
+On the Domain Controller:
+
+1. Copy the whole `DomainController\` folder from the extracted package to the DC.
+2. Open an elevated PowerShell prompt inside that copied folder.
+3. Run:
 
 ```powershell
-New-Item -ItemType Directory -Path "C:\WSUS\SQLDB" -Force
+.\Set-WsusGroupPolicy.ps1
 ```
 
-### 2. Copy Installers
+The script imports four packaged GPOs and creates missing OUs when needed.
 
-Copy the downloaded SQL Server installers to `C:\WSUS\SQLDB\`:
-- `SQLEXPRADV_x64_ENU.exe`
-- `SSMS-Setup-ENU.exe` (optional -- skipped if not present)
+## Verify installation
 
-### 3. Run as Administrator
+Run **Diagnostics** and confirm:
 
-Right-click `GA-WsusManager.exe` and select **Run as administrator**.
+- SQL Server Express service is running.
+- WSUS Service is running.
+- IIS/W3SVC is running.
+- SUSDB connection works.
+- `C:\WSUS` permissions include IIS and client read access.
+- Health Score is Green when services, database size, and disk are healthy.
 
-> **Note**: Administrator privileges are required for all WSUS operations.
+## Related pages
 
-### 4. Configure Settings
-
-On first launch, go to **Settings** and configure:
-- **WSUS Content Path**: `C:\WSUS` (default)
-- **SQL Instance**: `.\SQLEXPRESS` (default)
-
----
-
-## Installing WSUS + SQL Express
-
-### Using the GUI
-
-1. Launch `GA-WsusManager.exe` as Administrator
-2. Click **Install WSUS** in the sidebar
-3. Browse to the folder containing SQL installers (`C:\WSUS\SQLDB` if you kept defaults)
-4. Click **Install**
-5. Wait for installation to complete (15-30 minutes)
-
-> **Note:** If the default installer folder does not contain `SQLEXPRADV_x64_ENU.exe`, the installer will prompt you to select the correct folder.
-
-### What Gets Installed
-
-The installer performs these operations in order:
-1. Auto-detects and removes Windows Internal Database (WID) if present
-2. Installs SQL Server Express 2022
-3. Cleans up any leftover WID data files to prevent conflicts
-4. Installs SQL Server Management Studio (SSMS) if installer is present
-5. Installs the WSUS Windows feature with SQL Express backend (`UpdateServices-DB`)
-6. Creates and configures the SUSDB database
-7. Sets language to English only via the WSUS API
-8. Configures default update classifications via the WSUS API
-9. Suppresses the WSUS initial configuration wizard (registry + per-user + API)
-10. Sets appropriate directory permissions
-11. Configures firewall rules (ports 8530 HTTP and 8531 HTTPS)
-
-### Installation Log
-
-Logs are saved to `C:\WSUS\Logs\` with timestamps.
-
----
-
-## SQL Server Configuration
-
-### Grant Sysadmin Access
-
-Your account needs sysadmin privileges to manage SUSDB. Choose one of these methods:
-
-**Option A: Use WSUS Manager GUI (Recommended)**
-
-1. Launch `GA-WsusManager.exe` as Administrator
-2. Click **Fix SQL Login** in the Diagnostics section
-3. The app automatically adds the current user as sysadmin
-
-**Option B: Use sqlcmd (No SSMS Required)**
-
-Open an elevated PowerShell prompt:
-
-```powershell
-# Replace DOMAIN\Username with your account
-sqlcmd -S localhost\SQLEXPRESS -E -Q "
-  IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\Username')
-    CREATE LOGIN [DOMAIN\Username] FROM WINDOWS;
-  EXEC sp_addsrvrolemember @loginame = N'DOMAIN\Username', @rolename = N'sysadmin';
-"
-```
-
-> `sqlcmd.exe` ships with SQL Server Express -- no additional downloads needed.
-
-**Option C: Use SSMS (Optional)**
-
-1. Open **SQL Server Management Studio**
-2. Connect to `localhost\SQLEXPRESS`
-3. Expand **Security** > **Logins**
-4. Right-click **Logins** > **New Login**
-5. Enter your domain account or group
-6. Go to **Server Roles** tab
-7. Check **sysadmin**
-8. Click **OK**
-
-### Verify Connection
-
-```powershell
-# Test SQL connection
-sqlcmd -S localhost\SQLEXPRESS -Q "SELECT @@VERSION"
-```
-
-### Database Location
-
-The SUSDB database files are stored in:
-- `C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\SUSDB.mdf`
-- `C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\SUSDB_log.ldf`
-
----
-
-## Firewall Configuration
-
-### Required Ports
-
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 8530 | TCP | WSUS HTTP |
-| 8531 | TCP | WSUS HTTPS |
-| 1433 | TCP | SQL Server (optional, local only) |
-
-### Using WSUS Manager
-
-WSUS Manager automatically configures firewall rules during installation. To verify or repair:
-
-1. Run **Diagnostics** (in the DIAGNOSTICS section)
-2. If firewall rules are missing, the Diagnostics repair step will automatically recreate them
-
-### Manual Configuration
-
-```powershell
-# Create WSUS HTTP rule
-New-NetFirewallRule -DisplayName "WSUS HTTP Traffic (Port 8530)" `
-    -Direction Inbound -Protocol TCP -LocalPort 8530 -Action Allow
-
-# Create WSUS HTTPS rule
-New-NetFirewallRule -DisplayName "WSUS HTTPS Traffic (Port 8531)" `
-    -Direction Inbound -Protocol TCP -LocalPort 8531 -Action Allow
-```
-
----
-
-## Domain Controller Setup
-
-> **AIR-GAP ONLY:** These GPOs direct all Windows Update traffic to the internal
-> WSUS server and block Microsoft Update. Do NOT deploy on internet-connected systems.
-
-### Deploy WSUS Group Policy
-
-Copy the whole `DomainController/` folder to your Domain Controller, keep `Set-WsusGroupPolicy.ps1` and `WSUS GPOs\` together, then run this from inside the copied folder:
-
-```powershell
-.\Set-WsusGroupPolicy.ps1 -WsusServerUrl "http://WSUS01:8530"
-```
-
-### What Gets Configured
-
-The script imports four GPOs:
-1. **WSUS Update Policy - Servers** - Configures domain controllers and member servers to use your WSUS server
-2. **WSUS Update Policy - Workstations** - Configures workstations to use your WSUS server
-3. **WSUS Inbound Allow** - Allows client traffic to the WSUS server
-4. **WSUS Outbound Allow** - Allows clients to reach the WSUS server
-
-### Manual GPO Configuration
-
-If you prefer manual setup:
-
-1. Open **Group Policy Management**
-2. Create new GPO: "WSUS Client Configuration"
-3. Edit > **Computer Configuration** > **Administrative Templates** > **Windows Components** > **Windows Update**
-4. Configure:
-   - **Specify intranet Microsoft update service location**: `http://WSUS01:8530`
-   - **Configure Automatic Updates**: Enabled
-   - **Automatic Update detection frequency**: 22 hours
-
----
-
-## Verification
-
-### Check Services
-
-All three services should be running:
-
-| Service | Display Name |
-|---------|--------------|
-| MSSQL$SQLEXPRESS | SQL Server (SQLEXPRESS) |
-| W3SVC | World Wide Web Publishing Service |
-| WSUSService | WSUS Service |
-
-```powershell
-Get-Service MSSQL`$SQLEXPRESS, W3SVC, WSUSService | Format-Table Name, Status
-```
-
-### Check WSUS Console
-
-1. Open **Server Manager**
-2. Go to **Tools** > **Windows Server Update Services**
-3. Verify you can connect to the WSUS server
-
-### Check Database
-
-```powershell
-# Query database size
-sqlcmd -S localhost\SQLEXPRESS -d SUSDB -Q "SELECT name, size*8/1024 AS SizeMB FROM sys.database_files"
-```
-
-### Run Diagnostics
-
-Use WSUS Manager's Diagnostics to verify all components:
-
-1. Launch `GA-WsusManager.exe`
-2. Click **Diagnostics** (in the DIAGNOSTICS section of the sidebar)
-3. Review the output for any issues
-
----
-
-## Next Steps
-
-- [[User Guide]] - Learn to use the GUI
-- [[Air-Gap Workflow]] - Set up disconnected network updates
-- [[Troubleshooting]] - Fix common issues
-
----
-
-## Helpful Links
-
-| Resource | URL |
-|----------|-----|
-| WSUS Deployment Guide | https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/deploy/deploy-windows-server-update-services |
-| SQL Express Download | https://www.microsoft.com/en-us/download/details.aspx?id=104781 |
-| SSMS Download (optional) | https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms |
-| WSUS Best Practices | https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/plan/plan-your-wsus-deployment |
+- [[User Guide]]
+- [[Air-Gap Workflow]]
+- [[Troubleshooting]]
