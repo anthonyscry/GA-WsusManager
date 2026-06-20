@@ -36,6 +36,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Align GUI Help, About, README, Quick Start, SOP, wiki, and Confluence docs to v4.1.0.
 - Keep PowerShell 5.1-safe UTF-8/BMP UI symbols for compiled GUI reliability.
 - Use `metadata.json` as the release version source for build output and runtime helpers.
+- Rename the release package to `GA-WsusManager-v4.1.0.zip` and publish only the zip asset.
+- Move icon/logo assets into an `icons/` folder in source, `dist/`, and packaged zips.
 
 ### Fixed
 - Fix GPO import when Member Servers, Member_Servers, WSUS Server, or Workstations OUs are missing.
@@ -49,13 +51,15 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Fix product sync so selected products are added without replacing existing subscriptions.
 - Fix smart decline/approval filtering for Office, Visual Studio, Edge, WSL, ARM64, and preview builds.
 - Fix dashboard health scores capped below 100 by non-core task/sync history components.
-- Fix default package/version references that still pointed at v4.0.5.
+- Fix default package/version references that still pointed at v4.0.5 or the old zip name.
 - Fix hardcoded dev paths and stale operator language in release docs.
 - Fix PowerShell 5.1 scheduled-task monthly trigger registration by using XML registration.
 
 ### Removed
 - Remove the GUI **Create GPO** menu option; the packaged Domain Controller script is authoritative.
 - Remove current-score impact from scheduled task state, last sync, and last operation history.
+- Remove standalone EXE upload from GitHub release assets; the EXE remains inside the zip.
+- Remove stale Pathfinder planning artifacts from the repository root.
 
 ### Tests
 - Add/update Pester coverage for GPO OU creation and WSUS computer moves.

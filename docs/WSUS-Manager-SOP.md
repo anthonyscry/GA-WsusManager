@@ -41,7 +41,7 @@
 
 | File | Description |
 |------|-------------|
-| WsusManager-v4.1.0.zip | Complete distribution package |
+| GA-WsusManager-v4.1.0.zip | Complete distribution package |
 
 **Package Contents:**
 
@@ -50,6 +50,7 @@ GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules
 DomainController/         # GPO deployment folder; copy whole folder to the DC when needed
+icons/                   # Required - window, tray, sidebar, and About page icon assets
 QUICK-START.txt           # Quick reference guide
 README.md                 # Full documentation
 ```
@@ -174,7 +175,7 @@ Get-ChildItem -Path "C:\WSUS" -Recurse -Include *.ps1,*.psm1 | Unblock-File
 | Step | Action |
 |------|--------|
 | 1 | Place SQL installers in `C:\WSUS\SQLDB\` |
-| 2 | Extract `WsusManager-v4.1.0.zip` to a folder under `C:\WSUS\` such as `C:\WSUS\WsusManager\` |
+| 2 | Extract `GA-WsusManager-v4.1.0.zip` to a folder under `C:\WSUS\` such as `C:\WSUS\WsusManager\` |
 | 3 | Verify folder structure (EXE + Scripts/ + Modules/) |
 | 4 | Right-click `GA-WsusManager.exe` -> Run as Administrator |
 | 5 | Click **Install WSUS** and keep the WSUS root/content path at `C:\WSUS` |

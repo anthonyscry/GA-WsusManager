@@ -19,7 +19,7 @@ Runs on every push and PR to `main` or `release/*`. Uses GitHub-hosted `windows-
 1. **Syntax Check** — runs `build/Invoke-SyntaxCheck.ps1` against the entire repo. Fails if any `.ps1`, `.psm1`, or `.psd1` has a parse error.
 2. **PSScriptAnalyzer** — installs PSScriptAnalyzer, runs the analyzer across all PS files at Error severity using `.PSScriptAnalyzerSettings.psd1`. Fails on any Error.
 3. **Pester Unit Tests** — installs Pester 5, runs `./Tests` excluding tags `E2E`, `GUI`, `Integration`, `FlaUI` (those need a real WSUS / SQL / IIS stack or interactive desktop). Writes NUnit3 XML to `TestResults/unit-tests.xml`. Fails on any failed test.
-4. **Build EXE** — depends on all of the above. Runs `build.ps1 -SkipTests -NoPush` to produce `dist/GA-WsusManager.exe` and `dist/WsusManager-v*.zip`. Uploads the artifacts for download.
+4. **Build EXE** — depends on all of the above. Runs `build.ps1 -SkipTests -NoPush` to produce `dist/GA-WsusManager.exe` and `dist/GA-WsusManager-v*.zip`. Uploads the artifacts for download.
 
 ### Concurrency
 
@@ -101,13 +101,16 @@ The local scripts overlap with CI but are not a byte-for-byte workflow mirror. U
 
 Primary build artifacts are:
 - `dist\GA-WsusManager.exe`
-- `dist\WsusManager-vX.X.X.zip`
+- `dist\GA-WsusManager-vX.X.X.zip`
+
+GitHub releases should attach only `dist\GA-WsusManager-vX.X.X.zip`; the standalone EXE is included inside the zip and should not be uploaded as a separate release asset.
 
 The distribution zip is expected to include companion folders required by the EXE runtime:
 - `GA-WsusManager.exe`
 - `Scripts/`
 - `Modules/`
 - optional `DomainController/`
+- `icons/`
 - `README.md` copied by `build.ps1`
 - generated `QUICK-START.txt`
 

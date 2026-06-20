@@ -143,7 +143,7 @@ h3. SQL & WSUS Installers
 h3. Distribution Package
 
 ||File||Description||
-|WsusManager-v4.1.0.zip|Complete distribution package|
+|GA-WsusManager-v4.1.0.zip|Complete distribution package|
 
 *Package Contents:*
 
@@ -152,6 +152,7 @@ GA-WsusManager.exe        # Main GUI application
 Scripts/                  # Required - operation scripts
 Modules/                  # Required - PowerShell modules
 DomainController/         # GPO deployment folder; copy whole folder to the DC when needed
+icons/                   # Required - window, tray, sidebar, and About page icon assets
 QUICK-START.txt           # Quick reference and setup guide
 README.md                 # Full documentation
 {code}
@@ -265,7 +266,7 @@ h3. Installation Steps
 
 ||Step||Action||
 |1|Place SQL installers in C:\WSUS\SQLDB\|
-|2|Extract WsusManager-v4.1.0.zip to a folder under C:\WSUS\ such as C:\WSUS\WsusManager\|
+|2|Extract GA-WsusManager-v4.1.0.zip to a folder under C:\WSUS\ such as C:\WSUS\WsusManager\|
 |3|Verify folder structure (EXE + Scripts/ + Modules/)|
 |4|Right-click GA-WsusManager.exe > Run as Administrator|
 |5|Click *Install WSUS* and keep the WSUS root/content path at C:\WSUS|
@@ -730,7 +731,7 @@ h2. Version History
 
 h2. References
 
-|Distribution Package (v4.1.0)|[GitHub Releases - WsusManager-v4.1.0.zip|https://github.com/anthonyscry/GA-WsusManager/releases]|
+|Distribution Package (v4.1.0)|[GitHub Releases - GA-WsusManager-v4.1.0.zip|https://github.com/anthonyscry/GA-WsusManager/releases]|
 |All Releases|[GitHub Releases - WSUS Manager|https://github.com/anthonyscry/GA-WsusManager/releases]|
 |Source Code|[GitHub Repository - GA-WsusManager|https://github.com/anthonyscry/GA-WsusManager]|
 |WSUS Maintenance Guide|[Microsoft Learn - WSUS Maintenance|https://learn.microsoft.com/en-us/windows-server/administration/windows-server-update-services/manage/wsus-maintenance]|

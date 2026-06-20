@@ -29,7 +29,7 @@ Place these on the target server before starting an offline install:
 |------|-------------------|-------|
 | SQL Server Express Advanced installer | `C:\WSUS\SQLDB\SQLEXPRADV_x64_ENU.exe` | Required for fresh WSUS + SQL Express install |
 | SSMS installer | `C:\WSUS\SQLDB\SSMS-Setup-ENU.exe` | Optional |
-| WSUS Manager package | `WsusManager-vX.X.X.zip` | Release artifact from `dist\` or GitHub Releases |
+| WSUS Manager package | `GA-WsusManager-vX.X.X.zip` | Release artifact from `dist\` or GitHub Releases |
 
 ### Pre-change backup checklist for upgrades
 
@@ -54,7 +54,7 @@ Use the signed or approved release zip when available:
 
 ```powershell
 # Example destination; use your approved software distribution location.
-Expand-Archive -Path .\WsusManager-vX.X.X.zip -DestinationPath C:\WSUS\WsusManager-Staging -Force
+Expand-Archive -Path .\GA-WsusManager-vX.X.X.zip -DestinationPath C:\WSUS\WsusManager-Staging -Force
 ```
 
 Confirm the extracted package contains:
@@ -64,6 +64,7 @@ GA-WsusManager.exe
 Scripts\
 Modules\
 DomainController\        optional, needed only for GPO deployment support
+icons\                   window, tray, sidebar, and About page icon assets
 docs\                    operator documentation
 wiki\                    reference documentation
 ```
@@ -73,7 +74,7 @@ wiki\                    reference documentation
 Only build from source on a controlled build workstation or staging server:
 
 ```powershell
-# Produces dist\GA-WsusManager.exe and dist\WsusManager-vX.X.X.zip.
+# Produces dist\GA-WsusManager.exe and dist\GA-WsusManager-vX.X.X.zip.
 .\build.ps1
 ```
 
@@ -99,7 +100,7 @@ Do not deploy the repository working tree as the production runtime. Deploy the 
    ```
 
 2. Copy SQL installers to `C:\WSUS\SQLDB\`.
-3. Extract `WsusManager-vX.X.X.zip` to `C:\WSUS\WsusManager\`.
+3. Extract `GA-WsusManager-vX.X.X.zip` to `C:\WSUS\WsusManager\`.
 4. If files came from the internet, unblock the extracted PowerShell files:
 
    ```powershell

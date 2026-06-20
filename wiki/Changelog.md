@@ -22,17 +22,21 @@ All notable changes to WSUS Manager are documented here.
 - Preserve existing WSUS subscriptions while adding selected sync products.
 - Refresh help, README, Quick Start, SOP, wiki, and Confluence wording for air-gap restore and 200 GB sizing.
 - Use `metadata.json` as the release version source for build output and runtime helpers.
+- Rename the release package to `GA-WsusManager-v4.1.0.zip` and publish only the zip asset.
+- Move icon/logo assets into an `icons/` folder in source, `dist/`, and packaged zips.
 
 ### Fixed
 - Fix GPO import when target OUs are missing, including WSUS server computer moves.
 - Fix SQL preflight failures and Fix SQL Login behavior when SQL tooling is limited.
 - Fix WSUS content ACL repair for IIS_IUSRS and Authenticated Users list/read/execute rights.
-- Fix tray minimize recovery, Robocopy live output, popup readability, and stale v4.0.5 version labels.
+- Fix tray minimize recovery, Robocopy live output, popup readability, and stale v4.0.5/old-package labels.
 - Fix product sync, smart decline/approval filtering, and health scores capped below 100.
 
 ### Removed
 - Remove the GUI **Create GPO** option; use the packaged `DomainController/` script instead.
 - Remove scheduled task, last sync, and last operation history from Health Score calculation.
+- Remove standalone EXE upload from GitHub release assets; the EXE remains inside the zip.
+- Remove stale Pathfinder planning artifacts from the repository root.
 
 ### Tests
 - Add/update Pester and GUI coverage for GPOs, products, SQL login, ACL repair, health score, Help, and tray/live-output behavior.

@@ -46,7 +46,7 @@ WSUS stores its data in a SQL Server Express database (called SUSDB) and its upd
 ## Quick Start
 
 1. Go to the [Releases](../../releases) page.
-2. Download `WsusManager-vX.X.X.zip`.
+2. Download `GA-WsusManager-vX.X.X.zip`.
 3. Extract the full archive to a folder (for example, `C:\WsusManager\`).
 4. Right-click `GA-WsusManager.exe` and select **Run as Administrator**.
 
@@ -113,7 +113,7 @@ This workflow installs WSUS and SQL Server Express on a fresh Windows Server.
 
 1. **Prepare the server.** Log in as an Administrator. Plan for at least 200 GB on the WSUS server/content drive (default: `C:\WSUS\`).
 
-2. **Copy the application.** Extract the `WsusManager-vX.X.X.zip` archive to a folder such as `C:\WsusManager\`.
+2. **Copy the application.** Extract the `GA-WsusManager-vX.X.X.zip` archive to a folder such as `C:\WsusManager\`.
 
 3. **Place the SQL installer.** If the server has no internet access, download `SQL Server Express 2022` and `SQL Server Management Studio (SSMS)` on a connected machine and copy the installers to `C:\WSUS\SQLDB\` on the target server. The install script will look for them there.
 
@@ -311,7 +311,7 @@ GA-WsusManager/
 |-- build.ps1                        # Build script (PS2EXE compiler)
 |-- dist/                            # Build output (gitignored)
 |   |-- GA-WsusManager.exe
-|   +-- WsusManager-vX.X.X.zip
+|   +-- GA-WsusManager-vX.X.X.zip
 |-- Scripts/
 |   |-- WsusManagementGui.ps1        # Main GUI application (WPF/XAML)
 |   |-- Invoke-WsusManagement.ps1    # CLI for WSUS operations
@@ -324,6 +324,7 @@ GA-WsusManager/
 |-- DomainController/                # Air-gap GPO deployment
 |   |-- Set-WsusGroupPolicy.ps1      # GPO import + link script
 |   +-- WSUS GPOs/                   # GPO backup files (4 GPOs)
+|-- icons/                           # Window, tray, sidebar, and About page icon assets
 |-- .github/workflows/               # CI/CD pipeline
 |-- CLAUDE.md                        # Developer documentation
 +-- README.md                        # This file
@@ -388,7 +389,7 @@ Invoke-Pester -Path .\Tests -Output Detailed
 Invoke-ScriptAnalyzer -Path .\Scripts\WsusManagementGui.ps1 -Severity Error,Warning
 ```
 
-Build output goes to `dist/` as `GA-WsusManager.exe` and `WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
+Build output goes to `dist/` as `GA-WsusManager.exe` and `GA-WsusManager-vX.X.X.zip`. The distribution zip includes the EXE, Scripts, Modules, DomainController scripts, branding assets, and documentation.
 
 **CI pipeline** (`.github/workflows/ci.yml` and `.github/workflows/gui-tests.yml`) runs local validation, PSScriptAnalyzer/Pester checks, packaging checks, and GUI smoke tests on the self-hosted Windows runner.
 

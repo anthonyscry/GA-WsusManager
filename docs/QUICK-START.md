@@ -13,17 +13,17 @@ This is a quick-start guide for new operators. For the full reference see [WSUS-
 |------|---------|
 | Server | Windows Server 2019 or 2022, 16 GB RAM, 200 GB disk recommended |
 | Installers | `SQLEXPRADV_x64_ENU.exe` in `C:\WSUS\SQLDB\` (SSMS optional) |
-| Package | `WsusManager-v4.1.0.zip` extracted to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`) |
+| Package | `GA-WsusManager-v4.1.0.zip` extracted to a folder under `C:\WSUS\` (e.g. `C:\WSUS\WsusManager\`) |
 | Privileges | Local Administrator |
 
 ---
 
 ## 1. Install WSUS
 
-1. Extract `WsusManager-v4.1.0.zip` to a folder under `C:\WSUS\`, e.g. `C:\WSUS\WsusManager\`.
+1. Extract `GA-WsusManager-v4.1.0.zip` to a folder under `C:\WSUS\`, e.g. `C:\WSUS\WsusManager\`.
 2. Place SQL installers in `C:\WSUS\SQLDB\`.
 3. Right-click `GA-WsusManager.exe` → **Run as Administrator**.
-4. Click **Install WSUS** and follow the prompts.
+4. If the dashboard shows WSUS is missing, click **Install WSUS** and follow the prompts.
 5. Wait 15-30 minutes for SQL Express + WSUS installation.
 6. The dashboard turns green when services are running.
 

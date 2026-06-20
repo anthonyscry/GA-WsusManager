@@ -402,13 +402,14 @@ Diagnostics verifies:
 **Cause:** EXE deployed without required folders
 
 **Solution:**
-1. Download the full distribution package (`WsusManager-vX.X.X.zip`)
+1. Download the full distribution package (`GA-WsusManager-vX.X.X.zip`)
 2. Extract ALL contents, maintaining folder structure:
    ```
    GA-WsusManager.exe   # Main application
    Scripts/             # REQUIRED - operation scripts
    Modules/             # REQUIRED - PowerShell modules
-    DomainController/    # Optional - Air-gap GPO deployment scripts
+   icons/               # REQUIRED - icon and logo assets
+   DomainController/    # Optional - Air-gap GPO deployment scripts
    ```
 3. Run `GA-WsusManager.exe` from this folder
 

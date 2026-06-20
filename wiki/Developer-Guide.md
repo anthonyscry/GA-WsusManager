@@ -68,11 +68,10 @@ GA-WsusManager/
 ├── CHANGELOG.md                 # Version history
 ├── CLAUDE.md                    # AI assistant guide
 ├── README.md                    # User documentation
-├── Assets/
-│   └── Branding/                # Source icon and logo assets
+├── icons/                       # Source icon and logo assets
 ├── dist/                        # Build output (gitignored)
 │   ├── GA-WsusManager.exe       # Compiled executable
-│   └── WsusManager-vX.X.X.zip  # Distribution package
+│   └── GA-WsusManager-vX.X.X.zip  # Distribution package
 │
 ├── Scripts/                     # Main PowerShell scripts
 │   ├── WsusManagementGui.ps1    # WPF GUI application
@@ -229,7 +228,7 @@ The build script performs:
 ```
 dist/
 ├── GA-WsusManager.exe           # Compiled executable
-└── WsusManager-vX.X.X.zip       # Full distribution package
+└── GA-WsusManager-vX.X.X.zip       # Full distribution package
 ```
 
 The distribution zip contains everything needed for deployment:
@@ -239,8 +238,7 @@ GA-WsusManager.exe
 Scripts/                         # Required -- operation scripts
 Modules/                         # Required -- PowerShell modules
 DomainController/                # GPO script and backups; copy whole folder to the DC
-general_atomics_logo_big.ico
-general_atomics_logo_small.ico
+icons/                           # Required -- icon and logo assets
 QUICK-START.txt
 README.md
 ```

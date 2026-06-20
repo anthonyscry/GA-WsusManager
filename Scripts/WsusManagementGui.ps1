@@ -158,10 +158,10 @@ function Resolve-WsusBrandingAssetPath {
     param([Parameter(Mandatory)][string]$FileName)
 
     $searchRoots = @(
+        (Join-Path $script:ScriptRoot 'icons'),
+        (Join-Path (Split-Path -Parent $script:ScriptRoot) 'icons'),
         $script:ScriptRoot,
-        (Split-Path -Parent $script:ScriptRoot),
-        (Join-Path $script:ScriptRoot 'Assets\Branding'),
-        (Join-Path (Split-Path -Parent $script:ScriptRoot) 'Assets\Branding')
+        (Split-Path -Parent $script:ScriptRoot)
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
 
     foreach ($root in $searchRoots) {
@@ -1997,13 +1997,16 @@ QUICK START GUIDE
 ==================
 
 1. DOWNLOAD & EXTRACT
-   Download WsusManager-v4.1.0.zip or the latest approved release package.
+   Download GA-WsusManager-v4.1.0.zip or the latest approved release package.
    Extract it to a folder on your WSUS server (e.g., C:\WSUS\WsusManager).
    GA-WsusManager.exe, Scripts/, and Modules/ must stay together.
 
 2. RUN AS ADMINISTRATOR
    Right-click GA-WsusManager.exe and select "Run as administrator".
    The dashboard opens with auto-refresh status cards.
+
+   If the dashboard says WSUS is missing, use Install WSUS before restore,
+   diagnostics, Robocopy, or online sync operations.
 
 3. INSTALL WSUS + SQL EXPRESS (first-time setup)
    Click Install WSUS. The installer:

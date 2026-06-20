@@ -407,7 +407,7 @@ $buildParams = @{
     x64 = $true
 }
 
-$brandingDir = Join-Path $PSScriptRoot "Assets\Branding"
+$brandingDir = Join-Path $PSScriptRoot "icons"
 $appIconPath = Join-Path $brandingDir "wsus-icon.ico"
 $sidebarLogoPath = Join-Path $brandingDir "general_atomics_logo_small.ico"
 $aboutLogoPath = Join-Path $brandingDir "general_atomics_logo_big.ico"
@@ -447,7 +447,7 @@ try {
 
         Write-Host "`n[*] Creating distribution package..." -ForegroundColor Yellow
 
-        $packageName = "WsusManager-v$Version"
+        $packageName = "GA-WsusManager-v$Version"
         $zipFileName = "$packageName.zip"
         $stagingDir = Join-Path $env:TEMP "WsusManager-Package-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
         $packageDir = Join-Path $stagingDir $packageName
@@ -457,21 +457,22 @@ try {
         New-Item -ItemType Directory -Path (Join-Path $packageDir "Scripts") -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $packageDir "Modules") -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $packageDir "DomainController") -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $packageDir "icons") -Force | Out-Null
 
         # Copy distribution files
         Copy-Item ".\$OutputName" -Destination $packageDir
         if (Test-Path $appIconPath) {
-            Copy-Item $appIconPath -Destination (Join-Path $packageDir "wsus-icon.ico")
+            Copy-Item $appIconPath -Destination (Join-Path $packageDir "icons\wsus-icon.ico")
         }
         if (Test-Path ".\README.md") { Copy-Item ".\README.md" -Destination $packageDir }
 
-        # Copy logo files for sidebar and About page
+        # Copy icon/logo files for window, tray, sidebar, and About page
         if (Test-Path $sidebarLogoPath) {
-            Copy-Item $sidebarLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_small.ico")
+            Copy-Item $sidebarLogoPath -Destination (Join-Path $packageDir "icons\general_atomics_logo_small.ico")
             Write-Host "    Included sidebar logo" -ForegroundColor Gray
         }
         if (Test-Path $aboutLogoPath) {
-            Copy-Item $aboutLogoPath -Destination (Join-Path $packageDir "general_atomics_logo_big.ico")
+            Copy-Item $aboutLogoPath -Destination (Join-Path $packageDir "icons\general_atomics_logo_big.ico")
             Write-Host "    Included About page logo" -ForegroundColor Gray
         }
 
@@ -515,11 +516,11 @@ INSTALLATION
 ------------
 1. Extract the entire folder to your WSUS server (e.g., C:\WSUS\WsusManager)
 2. Keep the folder structure intact:
-   WsusManager-v$Version\
+   GA-WsusManager-v$Version\
    +-- GA-WsusManager.exe   (main application)
    +-- Scripts\             (required - operation scripts)
    +-- Modules\             (required - PowerShell modules)
-   '-- DomainController\    (optional - GPO scripts)
+   +-- DomainController\    (optional - GPO scripts)
 3. Right-click GA-WsusManager.exe and select "Run as administrator"
 
 IMPORTANT: Do not move GA-WsusManager.exe without its Scripts and Modules folders!
@@ -527,8 +528,9 @@ IMPORTANT: Do not move GA-WsusManager.exe without its Scripts and Modules folder
 FIRST RUN
 ---------
 1. Launch GA-WsusManager.exe as Administrator
-2. The dashboard will auto-detect your WSUS configuration
-3. Use the menu for WSUS operations
+2. If WSUS is missing, click Install WSUS and complete the SQL Express + WSUS setup first.
+3. The dashboard will auto-detect your WSUS configuration after install.
+4. Use the menu for WSUS operations
 
 DOMAIN CONTROLLER SETUP (Air-Gap GPOs)
 --------------------------------------
@@ -571,12 +573,14 @@ Author: Tony Tran, ISSO, GA-ASI
             New-Item -ItemType Directory -Path $distDir -Force | Out-Null
         }
 
-        # Copy exe, zip, and logo files to dist
+        # Copy exe, zip, and icon files to dist
         Copy-Item ".\$OutputName" -Destination $distDir -Force
         Copy-Item ".\$zipFileName" -Destination $distDir -Force
-        if (Test-Path $appIconPath) { Copy-Item $appIconPath -Destination (Join-Path $distDir "wsus-icon.ico") -Force }
-        if (Test-Path $sidebarLogoPath) { Copy-Item $sidebarLogoPath -Destination (Join-Path $distDir "general_atomics_logo_small.ico") -Force }
-        if (Test-Path $aboutLogoPath) { Copy-Item $aboutLogoPath -Destination (Join-Path $distDir "general_atomics_logo_big.ico") -Force }
+        $distIconsDir = Join-Path $distDir "icons"
+        if (-not (Test-Path $distIconsDir)) { New-Item -ItemType Directory -Path $distIconsDir -Force | Out-Null }
+        if (Test-Path $appIconPath) { Copy-Item $appIconPath -Destination (Join-Path $distIconsDir "wsus-icon.ico") -Force }
+        if (Test-Path $sidebarLogoPath) { Copy-Item $sidebarLogoPath -Destination (Join-Path $distIconsDir "general_atomics_logo_small.ico") -Force }
+        if (Test-Path $aboutLogoPath) { Copy-Item $aboutLogoPath -Destination (Join-Path $distIconsDir "general_atomics_logo_big.ico") -Force }
         Write-Host "[+] Copied to dist\$OutputName" -ForegroundColor Green
         Write-Host "[+] Copied to dist\$zipFileName" -ForegroundColor Green
 
