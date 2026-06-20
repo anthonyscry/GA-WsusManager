@@ -62,6 +62,7 @@ installers/*.exe
 # Local workspace state
 /.gstack/
 /.worktrees/
+/lab/
 
 # Screenshots
 /screenshots/
